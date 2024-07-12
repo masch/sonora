@@ -16,6 +16,10 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
+import { PaymentPrompt } from '@/components/payment-prompt';
+import { usePurchase } from '@/hooks/use-purchase';
+import { PaymentClient } from '@/services/payment-client';
+import { getUserEmail } from '@/storage/app-storage';
 import type { TranslationKeys } from '@/i18n/types';
 
 const formatDuration = (seconds: number) => {
@@ -35,6 +39,7 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
   const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
+  const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
 
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
@@ -50,6 +55,10 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const handlePlayAndDownload = () => {
     userInitiatedPlayRef.current = true;
     download.startDownload();
+    // Fire-and-forget access log
+    getUserEmail().then((email) => {
+      PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
+    });
   };
 
   const mappedTrackForFeedback = {
@@ -171,26 +180,41 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
             </TwView>
           </TwView>
 
-          {/* Big play button inline custom overlay */}
-          <TwView className="mt-4">
-            <UnifiedAudioController
-              downloadStatus={download.status}
-              downloadProgress={download.progress}
-              downloadError={download.errorMsg}
-              playerStatus={player.status}
-              positionMs={player.positionMs}
-              durationMs={player.durationMs || track.durationSeconds * 1000}
-              playerError={player.errorMsg}
-              onPlay={player.play}
-              onPause={player.pause}
-              onStop={player.stop}
-              onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
-              onReset={() => player.seekTo(0)}
-              onDownload={handlePlayAndDownload}
-              onCancelDownload={download.deleteTrackLocal}
-              disabled={!track.audioUrl}
-            />
-          </TwView>
+          {/* Payment prompt or Audio controls — depending on purchase state */}
+          {purchaseState.status === 'paid' ? (
+            <TwView className="mt-4">
+              <PaymentPrompt
+                price={purchaseState.price || 0}
+                currency={track.currency}
+                onPay={purchaseActions.pay}
+                onRestore={async (email) => {
+                  return purchaseActions.restore(email);
+                }}
+                loading={purchaseState.paying}
+                error={purchaseState.error}
+              />
+            </TwView>
+          ) : (
+            <TwView className="mt-4">
+              <UnifiedAudioController
+                downloadStatus={download.status}
+                downloadProgress={download.progress}
+                downloadError={download.errorMsg}
+                playerStatus={player.status}
+                positionMs={player.positionMs}
+                durationMs={player.durationMs || track.durationSeconds * 1000}
+                playerError={player.errorMsg}
+                onPlay={player.play}
+                onPause={player.pause}
+                onStop={player.stop}
+                onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
+                onReset={() => player.seekTo(0)}
+                onDownload={handlePlayAndDownload}
+                onCancelDownload={download.deleteTrackLocal}
+                disabled={!track.audioUrl || purchaseState.status === 'loading'}
+              />
+            </TwView>
+          )}
 
           {/* Manual feedback button */}
           <TwView className="self-stretch mt-2">

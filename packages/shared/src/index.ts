@@ -4,4 +4,6 @@ export * from './schemas/config';
 export * from './schemas/translations';
 export * from './semver';
 export * from './api/base-client';
+export * from './enums';
 export * from './utils/logger';
+export * from './utils/format-price';

@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { SUPPORTED_LANGUAGES } from '../enums';
 import {
-  SUPPORTED_LANGUAGES,
-  TranslationEntrySchema,
   TranslationBulkPayloadSchema,
+  TranslationEntrySchema,
   TranslationsMapSchema,
   type SupportedLanguage,
-  type TranslationEntry,
   type TranslationBulkPayload,
+  type TranslationEntry,
   type TranslationsMap,
 } from '../schemas/translations';
 

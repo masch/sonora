@@ -1,0 +1,15 @@
+change: mercadopago-payment
+created: 2026-07-11
+status: archived
+phases:
+  explore: completed
+  proposal: completed
+  spec: completed
+  design: completed
+  tasks: completed
+  apply: completed
+  verify: completed
+  archive: completed
+artifact_store: hybrid
+execution_mode: interactive
+archived_at: 2026-07-12

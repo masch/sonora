@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { translations } from '../db/schema';
-import { type Env, type Variables } from '../index';
+import type { Env, Variables } from '../index';
 import { TranslationBulkPayloadSchema } from '@sonora/shared';
+import type { SupportedLanguage } from '@sonora/shared';
 
 const translationsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -24,7 +25,7 @@ translationsRouter.get('/:lang', async (c) => {
     const rows = await db
       .select({ key: translations.key, value: translations.value })
       .from(translations)
-      .where(eq(translations.lang, lang));
+      .where(eq(translations.lang, lang as SupportedLanguage));
 
     const result: Record<string, string> = {};
     for (const row of rows) {
@@ -101,7 +102,7 @@ translationsRouter.put('/', async (c) => {
       await db
         .insert(translations)
         .values({
-          lang: entry.lang,
+          lang: entry.lang as SupportedLanguage,
           key: entry.key,
           value: entry.value,
         })
