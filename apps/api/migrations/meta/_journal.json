@@ -57,6 +57,13 @@
       "when": 1782520119263,
       "tag": "0007_thankful_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782520119264,
+      "tag": "0008_payment_infrastructure",
+      "breakpoints": true
     }
   ]
 }

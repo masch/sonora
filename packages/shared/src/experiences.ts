@@ -38,7 +38,9 @@ export interface BaseExperience {
   latitude: number;
   longitude: number;
   recordedAt?: string | null;
-  priceLabel?: string | null;
+  free: boolean;
+  price?: number | null;
+  currency?: string;
   imageKey: TrackImageKey;
   geofenceBypassable?: boolean;
 }

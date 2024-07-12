@@ -307,4 +307,30 @@ export const es = {
     filterCercanos: 'Cercanos',
     veryNear: 'Muy cerca',
   },
+  payments: {
+    paid: {
+      label: 'Esta experiencia es una experiencia paga',
+    },
+    price: {
+      ars: 'ARS {{amount}}',
+    },
+    pay: 'Pagar con MercadoPago',
+    restore: {
+      title: 'Restaurar compras',
+      description: 'Ingresá el email que usaste para comprar esta experiencia',
+      emailPlaceholder: 'correo@ejemplo.com',
+      button: 'Restaurar',
+      notFound: 'No se encontraron compras para este email',
+      success: 'Compras restauradas correctamente',
+      link: '¿Ya la compraste? Restaurar compras',
+    },
+    pending: 'Pago pendiente',
+    checkStatus: 'Verificar estado del pago',
+    error: {
+      create: 'No se pudo iniciar el pago. Reintentá.',
+      rejected: 'El pago fue rechazado. Reintentá.',
+      noBrowser: 'No se pudo abrir la página de pago. Reintentá.',
+      restore: 'No se pudieron restaurar las compras. Reintentá.',
+    },
+  },
 } as const;

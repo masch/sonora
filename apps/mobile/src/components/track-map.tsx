@@ -16,22 +16,13 @@ import {
 } from '@/constants/images';
 import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
-import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { getHaversineDistance } from '@/utils/haversine';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { logger } from '@/utils/logger';
-
-function formatDistance(
-  meters: number,
-  t: (key: TranslationKeys, params?: Record<string, unknown>) => string,
-): string {
-  if (meters >= 1000) {
-    return t('map.distanceKilometers', { value: (meters / 1000).toFixed(1) });
-  }
-  return t('map.distanceMeters', { value: Math.round(meters) });
-}
+import { formatDistance } from '@/utils/format-distance';
+import { formatPrice } from '@sonora/shared';
 
 export default function TrackMap() {
   const router = useRouter();
@@ -273,9 +264,9 @@ export default function TrackMap() {
 
                     <TwView className="flex-row items-center gap-2">
                       <TwView className="items-center">
-                        {track.priceLabel && (
+                        {!track.free && track.price && (
                           <ThemedText className="text-[9px] font-black text-zinc-800 dark:text-zinc-100 mb-0.5 tracking-tighter">
-                            {track.priceLabel}
+                            {formatPrice(track.price, track.currency)}
                           </ThemedText>
                         )}
                         <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">

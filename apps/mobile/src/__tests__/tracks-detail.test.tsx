@@ -16,7 +16,8 @@ const mockExperiences: Experience[] = [
     durationSeconds: 2700,
     latitude: -32.211913,
     longitude: -64.73809,
-    priceLabel: '15 mil $',
+    free: true,
+    price: null,
     imageKey: 'trips-deriva-centro-cover',
     waypoints: [
       {
