@@ -1,0 +1,10 @@
+{
+  "project_name": "sonora",
+  "artifact_store": "hybrid",
+  "strict_tdd": true,
+  "test_command": "make validate",
+  "default_language": "en",
+  "delivery_strategy": "ask-on-risk",
+  "execution_mode": "interactive",
+  "review_budget_lines": 400
+}
