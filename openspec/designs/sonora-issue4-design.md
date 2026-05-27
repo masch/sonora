@@ -47,7 +47,7 @@ After migration, the styling system operates on a single principle:
 | Styling source | `StyleSheet.create()` + `useTheme()` | `className` strings |
 | Dark mode | Runtime `useTheme()` → color values | `dark:` variant in CSS |
 | Spacing | `Spacing.half`, `Spacing.one`, etc. | Tailwind scale: `p-0.5`, `p-1`, etc. |
-| Colors | `Colors.light` / `Colors.dark` constants | CSS `@theme` tokens + `light-dark()` |
+| Colors | `Colors.light` / `Colors.dark` constants | CSS `@theme` tokens with `@variant dark` override |
 | Components | `View`, `Text`, `ScrollView` from RN | `TwView`, `TwText`, `TwScrollView` from `@/tw` |
 | Pressable | `Pressable` with `style={({pressed}) => ...}` | `TwPressable` with `active:` variant |
 | Animated containers | `Animated.View` (Reanimated) | `TwAnimatedView` from `@/tw/animated` |
@@ -68,14 +68,13 @@ const theme = useTheme();  // returns light or dark color map
 <View style={{ backgroundColor: theme.background }} />
 ```
 
-After: colors resolved via CSS `light-dark()` function inside `@theme` tokens, applied through Tailwind `dark:` variants:
+After: colors resolved via `@theme` tokens with light defaults and `@variant dark` overrides:
 ```
 <View className="bg-background" />
-<!-- CSS: --color-background: light-dark(#fff, #000) -->
-<!-- At runtime: light or dark based on prefers-color-scheme -->
+/* CSS @theme sets light values, @variant dark overrides in prefers-color-scheme: dark */
 ```
 
-This eliminates the entire `@variant dark` runtime block from global.css (currently defines `--color-bg` and `--color-text` but unused).
+`light-dark()` CSS function was initially considered but does NOT work inside NativeWind's `@theme` processing pipeline. NativeWind converts CSS to runtime style objects for React Native, and `light-dark()` is a browser-only CSS Level 5 function unsupported in that pipeline. The `@variant dark` approach is the NativeWind-idiomatic equivalent.
 
 ---
 
@@ -83,7 +82,7 @@ This eliminates the entire `@variant dark` runtime block from global.css (curren
 
 | Component | Before | After | Complexity | Ph |
 |-----------|--------|-------|------------|----|
-| **global.css** | `@variant dark { ... }` | 5 `@theme` color tokens with `light-dark()` | Simple | 0 |
+| **global.css** | `@variant dark { ... }` | 5 `@theme` color tokens + `@variant dark` overrides | Simple | 0 |
 | **hint-row.tsx** | `View` + `StyleSheet` + `ThemedView` + `Spacing` | `TwView` + inline `className` | Simple | 1 |
 | **web-badge.tsx** | `StyleSheet` + `ThemedView` + `Spacing` + `useColorScheme` | `TwView` + inline `className` | Simple | 1 |
 | **collapsible.tsx** | `StyleSheet` + `ThemedView` + `Spacing` + `FadeIn` | `TwView/TwPressable/TwAnimatedView` + `className` | Medium | 1 |
@@ -92,8 +91,9 @@ This eliminates the entire `@variant dark` runtime block from global.css (curren
 | **ThemedText.tsx** | `StyleSheet` + `useTheme` + `type` prop → style | `TwText` + `type` prop → `className` map | Complex | 3 |
 | **ThemedView.tsx** | `StyleSheet` + `useTheme` background | Inline `TwView` with `bg-*` class (file removed) | Trivial | 3 |
 | **app-tabs.web.tsx** | `StyleSheet` + `Spacing` + `Colors[scheme]` | `className` + `Colors`(kept for SymbolView) | Medium | 4 |
-| **theme.ts** | `Colors`, `Spacing`, `Fonts`, `BottomTabInset`, `MaxContentWidth` | Remove `Colors`, `Spacing` exports | Simple | 5 |
-| **use-theme.ts** | `Colors[scheme]` lookup | Remove if no remaining consumers | Simple | 5 |
+| **screen-wrapper.tsx** | — *(new file)* | `ScreenWrapper` + `ScrollScreenWrapper` | Trivial | — |
+| **theme.ts** | `Colors`, `Spacing`, `Fonts`, `BottomTabInset`, `MaxContentWidth` | Keep all exports (all still have consumers) | Simple | 5 |
+| **use-theme.ts** | `Colors[scheme]` lookup | Keep (used by collapsible.tsx, explore.tsx) | Simple | 5 |
 
 ### Detailed Migration Per Component
 
@@ -380,12 +380,24 @@ Add to `src/global.css` inside the existing `@theme { }` block:
   --font-rounded: var(--font-rounded);
   --font-mono: var(--font-mono);
 
-  /* ── App color tokens ── */
-  --color-text: light-dark(#000000, #ffffff);
-  --color-background: light-dark(#ffffff, #000000);
-  --color-backgroundElement: light-dark(#f0f0f3, #212225);
-  --color-backgroundSelected: light-dark(#e0e1e6, #2e3135);
-  --color-textSecondary: light-dark(#60646c, #b0b4ba);
+  /* ── App color tokens (light defaults) ── */
+  --color-text: #000000;
+  --color-background: #ffffff;
+  --color-backgroundElement: #f0f0f3;
+  --color-backgroundSelected: #e0e1e6;
+  --color-textSecondary: #60646c;
+  --color-link: #3c87f7;
+}
+
+@variant dark {
+  :root {
+    --color-text: #ffffff;
+    --color-background: #000000;
+    --color-backgroundElement: #212225;
+    --color-backgroundSelected: #2e3135;
+    --color-textSecondary: #b0b4ba;
+    --color-link: #3c87f7;
+  }
 }
 ```
 
@@ -396,41 +408,15 @@ Values match exactly from `src/constants/theme.ts`:
 - Selected background (tabs, active): `#E0E1E6` (light) / `#2E3135` (dark)
 - Secondary text: `#60646C` (light) / `#B0B4BA` (dark)
 
-### Why `light-dark()` Instead of `@media (prefers-color-scheme)`
+### Why `@variant dark` Instead of `light-dark()`
 
-`light-dark()` is a CSS Level 5 Color function that does NOT require `@media` blocks or `dark:` variants for the actual value. Benefits:
-1. **Single declaration** per token instead of two (light/dark)
-2. **Automatic** — no `@media` query needed, it follows `color-scheme`
-3. **Works with NativeWind `dark:` class** — NativeWind controls `color-scheme` via `dark:` variant
-4. **No `@variant dark` block needed** — eliminates the existing `@variant dark { :root { ... } }` in global.css
+`light-dark()` is a CSS Level 5 Color function that works in browsers. However, NativeWind processes CSS through `react-native-css` which converts styles to runtime objects for React Native — `light-dark()` is NOT supported in this pipeline. The `@variant dark` approach is the NativeWind-idiomatic equivalent:
 
-### Remove Vestigial Code
-
-Delete the existing `@variant dark` block in `global.css`:
-
-```css
-/* DELETE THIS - replaced by @theme tokens with light-dark() */
-@variant dark {
-  :root {
-    --color-bg: #000000;
-    --color-text: #ffffff;
-  }
-}
-```
-
-These variables (`--color-bg`, `--color-text`) were never registered in `@theme` and are not used by any Tailwind utility class. Settings.tsx already uses `bg-black dark:bg-white` directly.
-
-### Dark Mode Precedence
-
-The `light-dark()` function respects the element/root `color-scheme` property. NativeWind v5 toggles `color-scheme` on the root when `dark:` class is applied. This means:
-
-```
-light-dark(#fff, #000)
-  ├── color-scheme: light → resolves to #fff
-  └── color-scheme: dark  → resolves to #000
-```
-
-No runtime JS needed for color switching.
+1. **Light values** defined in `@theme` as defaults
+2. **Dark values** override via `@variant dark { :root { ... } }` (compiles to `@media (prefers-color-scheme: dark)`)
+3. Works on **both native and web** — NativeWind handles the media query on native via its color scheme detection
+4. **No runtime JS** needed for color switching
+5. `--color-link` kept identical across modes because `#3c87f7` is readable on both light and dark backgrounds
 
 ### TypeScript Types
 
@@ -451,7 +437,7 @@ This auto-picks up `@theme` tokens from `global.css`. After adding the color tok
 
 | Action | Detail |
 |--------|--------|
-| Add `@theme` tokens | 5 color tokens with `light-dark()` (see §5) |
+| Add `@theme` tokens + `@variant dark` | 6 color tokens with light defaults in `@theme`, dark overrides in `@variant dark` (see §5) |
 | Remove `@variant dark` | Vestigial block, no consumers |
 | **Verify**: `make typecheck`, `bun run test` | Ensure no type errors |
 
@@ -578,14 +564,40 @@ Dynamic className for `tabButtonView`:
 <TwView className={`${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
 ```
 
+### ScreenWrapper / ScrollScreenWrapper (Architectural Addition)
+
+Two new wrapper components centralize the `bg-background` pattern so every screen automatically gets the correct background color.
+
+**`ScreenWrapper`** (non-scrollable):
+```tsx
+export function ScreenWrapper({ children, className }) {
+  return <TwView className={`flex-1 bg-background${className ? ` ${className}` : ''}`}>{children}</TwView>
+}
+```
+
+**`ScrollScreenWrapper`** (scrollable):
+```tsx
+export function ScrollScreenWrapper({ children, className, contentInset, contentContainerStyle, contentContainerClassName }) {
+  return <TwScrollView className={`flex-1 bg-background${className ? ` ${className}` : ''}`} ...>{children}</TwScrollView>
+}
+```
+
+Usage across screens:
+
+| Screen | Wrapper | Notes |
+|--------|---------|-------|
+| `index.tsx` | `<ScreenWrapper className="justify-center flex-row">` | Non-scrollable, contains SafeAreaView |
+| `explore.tsx` | `<ScrollScreenWrapper contentInset={...}>` | Scrollable, uses contentInset |
+| `settings.tsx` | `<ScreenWrapper className="flex-row justify-center">` | Non-scrollable, has nested SafeAreaView + TwScrollView |
+
 ### Phase 5 — Cleanup (PR: cleanup)
 
 #### src/constants/theme.ts
 
 | Action | Detail |
 |--------|--------|
-| Remove export | `Colors` — no remaining consumers after migration |
-| Remove export | `Spacing` — no remaining consumers after migration |
+| Keep export | `Colors` — still used by app-tabs.tsx and app-tabs.web.tsx (SymbolView tintColor) |
+| Keep export | `Spacing` — still used by index.tsx and explore.tsx (SafeAreaView insets, inline styles) |
 | Keep export | `Fonts` — used by animated-icon.tsx and animated-icon.web.tsx (not in scope) |
 | Keep export | `BottomTabInset` — used by index.tsx safeArea padding |
 | Keep export | `MaxContentWidth` — may still be used |
@@ -622,12 +634,12 @@ Expected remaining:
 | Risk | Mitigation |
 |------|-----------|
 | Wrong spacing value | Compare each migration against screenshot. Tailwind values produce EXACT same px values (see §3). |
-| Color mismatch | Colors registered in `@theme` use `light-dark()` with EXACT hex values from `Colors` constant. No deviation. |
+| Color mismatch | Colors registered in `@theme` with light defaults and `@variant dark` overrides, using EXACT hex values from `Colors` constant. No deviation. |
 | `font-mono` not working on Android | The `@theme` block already defines `--font-mono` with platform-specific fallbacks (`monospace` on Android). Verify before Phase 1. |
 | `leading-*` mismatch for default/small | Tailwind `text-base` default leading is 24px (= `leading-6`), `text-sm` default leading is 20px (= `leading-5`). Exact match. |
 | `rounded-*` mismatch | `rounded-lg` = 8px, `rounded-2xl` = 16px. Verify Tailwind v4 scale before merge. |
 | `active:` variant not working on native | NativeWind v5 maps RN Pressable pressed state to `active:` variant. Confirm with test component. |
-| `light-dark()` not supported on Android WebView | `light-dark()` is supported in Chrome 120+ (Android WebView). Expo SDK 56 targets modern Chrome. Low risk. |
+| `@variant dark` compatibility | `@variant dark` compiles to `@media (prefers-color-scheme: dark)` which is supported on all modern browsers and native platforms. Zero risk. |
 
 ### Validation Per Phase
 
@@ -686,13 +698,15 @@ File-level summary of import changes per phase:
 | `explore.tsx` | `StyleSheet`, `Spacing`, `BottomTabInset`, `MaxContentWidth` | `TwView`, `TwScrollView`, `TwPressable` |
 | `themed-text.tsx` | `StyleSheet`, `Text`, `Fonts`, `useTheme` | `TwText` |
 | `themed-view.tsx` | (file deleted) | — |
-| `app-tabs.web.tsx` | `StyleSheet`, `Spacing`, `View`, `ThemedView` | `TwView` |
-| `theme.ts` | `Colors`, `Spacing` (exports) | — |
+| `app-tabs.web.tsx` | `StyleSheet`, `Spacing`, `View`, `ThemedView` | `TwView`, `TwPressable` |
+| `screen-wrapper.tsx` | *(new file)* | `TwView`, `TwScrollView` |
+| `settings.tsx` | — | `ScreenWrapper` import |
+| `theme.ts` | — | — (all exports kept, consumers still exist) |
 
 ## Appendix B: Changed file list
 
 ```
-M src/global.css                      (Phase 0)
+M src/global.css                      (Phase 0 — tokens + @variant dark)
 M src/components/hint-row.tsx         (Phase 1)
 M src/components/web-badge.tsx        (Phase 1)
 M src/components/ui/collapsible.tsx   (Phase 1)
@@ -701,7 +715,11 @@ M src/app/explore.tsx                 (Phase 2)
 M src/components/themed-text.tsx      (Phase 3)
 D src/components/themed-view.tsx      (Phase 3)
 M src/components/app-tabs.web.tsx     (Phase 4)
-M src/constants/theme.ts              (Phase 5 — prune Colors, Spacing)
+M src/app/settings.tsx                (Phase 5 — adopt ScreenWrapper)
+A src/components/screen-wrapper.tsx   (NEW — ScreenWrapper + ScrollScreenWrapper)
+M src/tw/animated.tsx                 (FIX — TwAnimatedView typing)
+M src/constants/theme.ts              (Phase 5 — all exports kept)
 
-No new files created. No new dependencies.
+New files:
+- src/components/screen-wrapper.tsx
 ```

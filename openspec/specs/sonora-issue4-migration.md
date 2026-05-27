@@ -18,11 +18,12 @@ Five color tokens MUST be registered in `src/global.css` `@theme` block before a
 | `--color-backgroundSelected` | #E0E1E6 | #2E3135 |
 | `--color-textSecondary` | #60646C | #B0B4BA |
 
-#### Scenario: R0 tokens resolve with light-dark()
+#### Scenario: R0 tokens resolve via @variant dark
 
-- GIVEN `src/global.css` with `@theme { --color-text: light-dark(#000000, #ffffff); ... }`
+- GIVEN `src/global.css` with `@theme { --color-text: #000000; ... }` and `@variant dark { :root { --color-text: #ffffff; ... } }`
 - WHEN a component uses `className="text-text"`
 - THEN it renders as #000000 in light mode and #ffffff in dark mode
+- NOTE: `light-dark()` CSS function was considered but does NOT work inside NativeWind's `@theme` processing pipeline. `@variant dark` override is the correct approach for NativeWind compatibility.
 
 ### R1: Leaf Component Migration (Phase 1)
 
@@ -84,7 +85,7 @@ Five color tokens MUST be registered in `src/global.css` `@theme` block before a
 
 - GIVEN `<ThemedText themeColor="textSecondary">`
 - WHEN color scheme changes
-- THEN the text color MUST change dynamically via `useTheme()` runtime value
+- THEN the text color MUST change dynamically via CSS `@variant dark` variable resolution
 - AND `style` prop merging overrides both className and themeColor
 
 #### Scenario: ThemedView removed, consumers use TwView
@@ -121,7 +122,7 @@ Unused exports from `src/constants/theme.ts` MUST be removed. `useTheme` import 
 - GIVEN `src/constants/theme.ts`
 - WHEN `Fonts`, `Spacing`, `BottomTabInset`, `MaxContentWidth` are still used by non-migrated files
 - THEN only `Colors` and `ThemeColor` type survive if referenced
-- AND `Spacing` MUST be removed from every migrated file
+- AND `Spacing` is removed from StyleSheet usage, but kept in migrated files where inline styles need runtime values (SafeAreaView padding, contentContainerStyle insets)
 
 ## Non-goals
 
