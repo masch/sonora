@@ -13,10 +13,10 @@ function cssComponent<P>(
   mapping: Record<string, string>,
   name: string,
 ) {
-  // useCssElement internally uses complex types; as any is required for this wrapper
-  const Fn = (props: P): React.ReactElement => useCssElement(Component, props as any, mapping as any) as any;
+  const Fn = (props: P): React.ReactElement =>
+    useCssElement(Component, props as Record<string, unknown>, mapping);
   Fn.displayName = name;
-  return Fn as (props: P) => React.ReactElement;
+  return Fn;
 }
 
 export const TwView = cssComponent<React.ComponentProps<typeof RNView>>(RNView, { className: 'style' }, 'TwView');

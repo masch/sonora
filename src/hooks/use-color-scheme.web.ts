@@ -1,19 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
 
 /**
- * To support static rendering, this value needs to be re-calculated on the client side for web
+ * To support static rendering, this value needs to be re-calculated on the client side for web.
+ *
+ * Uses useSyncExternalStore to detect client hydration without triggering
+ * react-hooks/set-state-in-effect (the useState + useEffect pattern was
+ * rejected by Expo's ESLint rules).
  */
 export function useColorScheme() {
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const colorScheme = useRNColorScheme();
 
-  if (hasHydrated) {
+  if (isClient) {
     return colorScheme;
   }
 
