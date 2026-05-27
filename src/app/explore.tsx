@@ -1,15 +1,15 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
-import { TwText } from '@/tw';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { TwView, TwText, TwPressable } from '@/tw';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function TabTwoScreen() {
@@ -34,32 +34,32 @@ export default function TabTwoScreen() {
   });
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
+    <ScrollScreenWrapper
       contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
+      contentContainerClassName="flex-row justify-center"
+      contentContainerStyle={contentPlatformStyle}>
+      <TwView className="max-w-[800px] flex-grow">
+        <TwView className="gap-4 items-center px-6 py-16">
           <TwText className="text-3xl font-bold">Explore</TwText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
+          <ThemedText className="text-center" themeColor="textSecondary">
             This starter app includes example{'\n'}code to help you get started.
           </ThemedText>
 
           <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
+            <TwPressable className="active:opacity-70">
+              <TwView className="bg-backgroundElement flex-row px-6 py-2 rounded-[32px] justify-center gap-1 items-center">
                 <ThemedText type="link">Expo documentation</ThemedText>
                 <SymbolView
                   tintColor={theme.text}
                   name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
                   size={12}
                 />
-              </ThemedView>
-            </Pressable>
+              </TwView>
+            </TwPressable>
           </ExternalLink>
-        </ThemedView>
+        </TwView>
 
-        <ThemedView style={styles.sectionsWrapper}>
+        <TwView className="gap-8 px-6 pt-4">
           <Collapsible title="File-based routing">
             <ThemedText type="small">
               This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
@@ -75,7 +75,7 @@ export default function TabTwoScreen() {
           </Collapsible>
 
           <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
+            <TwView className="bg-backgroundElement items-center">
               <ThemedText type="small">
                 You can open this project on Android, iOS, and the web. To open the web version,
                 press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
@@ -83,9 +83,9 @@ export default function TabTwoScreen() {
               </ThemedText>
               <Image
                 source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
+                style={{ width: '100%', aspectRatio: 296 / 171, borderRadius: 16, marginTop: 8 }}
               />
-            </ThemedView>
+            </TwView>
           </Collapsible>
 
           <Collapsible title="Images">
@@ -94,7 +94,10 @@ export default function TabTwoScreen() {
               <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
               screen densities.
             </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
+            <Image
+              source={require('@/assets/images/react-logo.png')}
+              style={{ width: 100, height: 100, alignSelf: 'center' }}
+            />
             <ExternalLink href="https://reactnative.dev/docs/images">
               <ThemedText type="linkPrimary">Learn more</ThemedText>
             </ExternalLink>
@@ -119,63 +122,9 @@ export default function TabTwoScreen() {
               animate opening this hint.
             </ThemedText>
           </Collapsible>
-        </ThemedView>
+        </TwView>
         {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+      </TwView>
+    </ScrollScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-  },
-});
