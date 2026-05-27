@@ -6,6 +6,7 @@
       "name": "sonora",
       "dependencies": {
         "@expo/ui": "~56.0.13",
+        "@expo/vector-icons": "^15.1.1",
         "@tailwindcss/postcss": "^4.3.0",
         "expo": "~56.0.4",
         "expo-constants": "~56.0.15",
@@ -315,6 +316,8 @@
     "@expo/sudo-prompt": ["@expo/sudo-prompt@9.3.2", "", {}, "sha512-HHQigo3rQWKMDzYDLkubN5WQOYXJJE2eNqIQC2axC2iO3mHdwnIR7FgZVvHWtBwAdzBgAP0ECp8KqS8TiMKvgw=="],
 
     "@expo/ui": ["@expo/ui@56.0.13", "", { "dependencies": { "sf-symbols-typescript": "^2.1.0", "vaul": "^1.1.2" }, "peerDependencies": { "@babel/core": "*", "expo": "*", "react": "*", "react-dom": "*", "react-native": "*", "react-native-reanimated": "*", "react-native-worklets": "*" }, "optionalPeers": ["@babel/core", "react-dom", "react-native-reanimated", "react-native-worklets"] }, "sha512-Dx05pO3lo8lzWp0hgvJ011j/a5DD2BwHXtr08hdiRUc03KrWQJ3QzdbqPqNayrr+Usc2COC+bOkmPNX7N0k0+w=="],
+
+    "@expo/vector-icons": ["@expo/vector-icons@15.1.1", "", { "peerDependencies": { "expo-font": ">=14.0.4", "react": "*", "react-native": "*" } }, "sha512-Iu2VkcoI5vygbtYngm7jb4ifxElNVXQYdDrYkT7UCEIiKLeWnQY0wf2ZhHZ+Wro6Sc5TaumpKUOqDRpLi5rkvw=="],
 
     "@expo/ws-tunnel": ["@expo/ws-tunnel@1.0.6", "", {}, "sha512-nDRbLmSrJar7abvUjp3smDwH8HcbZcoOEa5jVPUv9/9CajgmWw20JNRwTuBRzWIWIkEJDkz20GoNA+tSwUqk0Q=="],
 

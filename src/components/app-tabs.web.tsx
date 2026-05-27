@@ -1,3 +1,4 @@
+import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
 import {
   Tabs,
   TabList,
@@ -10,6 +11,7 @@ import { SymbolView } from 'expo-symbols';
 import { useColorScheme } from 'react-native';
 
 import { ExternalLink } from './external-link';
+import { Icon } from './icon';
 import { ThemedText } from './themed-text';
 import { TwView, TwPressable } from '@/tw';
 
@@ -22,13 +24,13 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton icon={{ ios: 'house', android: 'home', web: 'home' }}>Home</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+            <TabButton icon={{ ios: 'compass.drawing', android: 'explore', web: 'explore' }}>Explore</TabButton>
           </TabTrigger>
           <TabTrigger name="settings" href="/settings" asChild>
-            <TabButton>Settings</TabButton>
+            <TabButton icon={{ ios: 'gear', android: 'settings', web: 'settings' }}>Settings</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -36,11 +38,24 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+type IconSymbols = { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol };
+
+type TabButtonProps = TabTriggerSlotProps & {
+  icon: IconSymbols;
+};
+
+export function TabButton({ children, isFocused, icon, ...props }: TabButtonProps) {
   return (
     <TwPressable {...props} className="active:opacity-70">
       <TwView
-        className={`${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
+        className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
+        <Icon
+          ios={icon.ios}
+          android={icon.android}
+          web={icon.web}
+          size={14}
+          tintColor={isFocused ? 'rgb(107 114 128)' : 'rgb(156 163 175)'}
+        />
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
