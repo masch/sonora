@@ -7,10 +7,12 @@ context: >
   Sonora is an Expo SDK 56 universal app (iOS, Android, Web) built with
   Expo Router (file-based routing), React Native 0.85, React 19, TypeScript 6.0
   (strict), and Bun as package manager. Project structure follows
-  src/{app,components,constants,hooks} convention with path aliases
-  (@/* → src/*, @/assets/* → assets/*). UI layer uses Expo UI primitives,
-  CSS variables in global.css, and a theme system via use-color-scheme hooks.
-  No backend or data layer yet. AGENTS.md mandates Expo v56 versioned docs.
+  src/{app,components,constants,hooks,tw} convention with path aliases
+  (@/* → src/*, @/assets/* → assets/*). Styling uses NativeWind v5
+  (Tailwind CSS v4, CSS-first config) with className via CSS-wrapped
+  components in src/tw/. Theme system in CSS via @theme and @variant dark,
+  coexisting with the original use-color-scheme hooks. No backend or data
+  layer yet. AGENTS.md mandates Expo v56 versioned docs.
 
 strict_tdd: true
 

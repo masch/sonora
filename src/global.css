@@ -1,9 +1,47 @@
+@import 'tailwindcss/theme.css';
+@import 'tailwindcss/preflight.css';
+@import 'tailwindcss/utilities.css';
+@import 'nativewind/theme';
+
+/* Platform font families */
 :root {
-  --font-display:
+  --font-sans:
     Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
     Segoe UI Symbol, Noto Color Emoji;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+@media ios {
+  :root {
+    --font-sans: system-ui;
+    --font-serif: ui-serif;
+    --font-rounded: ui-rounded;
+    --font-mono: ui-monospace;
+  }
+}
+
+@media android {
+  :root {
+    --font-sans: normal;
+    --font-serif: serif;
+    --font-rounded: normal;
+    --font-mono: monospace;
+  }
+}
+
+@theme {
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-rounded: var(--font-rounded);
+  --font-mono: var(--font-mono);
+}
+
+@variant dark {
+  :root {
+    --color-bg: #000000;
+    --color-text: #ffffff;
+  }
 }

@@ -2,6 +2,7 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "skipLibCheck": true,
     "types": ["jest"],
     "paths": {
       "@/*": [
@@ -16,6 +17,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "__mocks__",
+    "node_modules/react-native-css",
+    "node_modules/react-native-worklets",
+    "node_modules/react-native-reanimated/src"
   ]
 }
