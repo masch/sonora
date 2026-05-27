@@ -1,10 +1,12 @@
 import type React from 'react';
 import { useCssElement } from 'react-native-css';
 import Animated from 'react-native-reanimated';
-import type { ViewProps } from 'react-native';
 
-export function TwAnimatedView(props: ViewProps & { className?: string }): React.ReactElement {
-  // @ts-expect-error: useCssElement with Animated.View produces complex union type
-  return useCssElement(Animated.View, props, { className: 'style' });
+export type TwAnimatedViewProps = React.ComponentProps<typeof Animated.View> & { className?: string };
+
+export function TwAnimatedView(props: TwAnimatedViewProps) {
+  // useCssElement with Animated.View produces a union type too complex for TS
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return useCssElement(Animated.View, props as any, { className: 'style' });
 }
 TwAnimatedView.displayName = 'TwAnimatedView';
