@@ -7,15 +7,11 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
-import { useColorScheme } from 'react-native';
-
-import { ExternalLink } from './external-link';
 import { Icon } from './icon';
 import { ThemedText } from './themed-text';
 import { TwView, TwPressable } from '@/tw';
 
-import { RuntimeColors } from '@/constants/theme';
+import { TABS } from '@/constants/tabs';
 
 export default function AppTabs() {
   return (
@@ -23,15 +19,11 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton icon={{ ios: 'house', android: 'home', web: 'home' }}>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton icon={{ ios: 'compass.drawing', android: 'explore', web: 'explore' }}>Explore</TabButton>
-          </TabTrigger>
-          <TabTrigger name="settings" href="/settings" asChild>
-            <TabButton icon={{ ios: 'gear', android: 'settings', web: 'settings' }}>Settings</TabButton>
-          </TabTrigger>
+          {TABS.map((tab) => (
+            <TabTrigger key={tab.name} name={tab.name} href={tab.name === 'index' ? '/' : `/${tab.name}`} asChild>
+              <TabButton icon={tab.symbolViewName}>{tab.label}</TabButton>
+            </TabTrigger>
+          ))}
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -65,30 +57,12 @@ export function TabButton({ children, isFocused, icon, ...props }: TabButtonProp
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <TwView className="absolute w-full p-4 justify-center items-center flex-row">
       <TwView
-        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center max-w-[800px] w-full gap-2"
+        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center justify-center gap-2 self-start"
         {...props}>
-        <ThemedText type="smallBold">Expo Starter</ThemedText>
-
-        <TwView className="flex-1 flex-row justify-center gap-1">
-          {props.children}
-        </TwView>
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <TwPressable className="flex-row justify-center items-center gap-1">
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </TwPressable>
-        </ExternalLink>
+        {props.children}
       </TwView>
     </TwView>
   );

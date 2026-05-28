@@ -42,7 +42,7 @@ describe('Web app-tabs', () => {
 
   it('renders triggers with correct href', () => {
     const { getByTestId } = render(<AppTabsWeb />);
-    expect(getByTestId('tab-trigger-home')).toBeTruthy();
+    expect(getByTestId('tab-trigger-index')).toBeTruthy();
     expect(getByTestId('tab-trigger-explore')).toBeTruthy();
     expect(getByTestId('tab-trigger-settings')).toBeTruthy();
   });
