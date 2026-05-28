@@ -1,8 +1,6 @@
 import { useAppTranslation } from '@/hooks/use-translation';
 import { Platform, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScreenWrapper } from '@/components/screen-wrapper';
 import { TwView, TwText, TwScrollView, TwPressable } from '@/tw';
 
 export default function SettingsScreen() {
@@ -11,11 +9,10 @@ export default function SettingsScreen() {
   const isDark = colorScheme === 'dark';
 
   return (
-    <ScreenWrapper className="flex-row justify-center">
-      <SafeAreaView className="flex-1 max-w-[800px]">
-        <TwScrollView className="flex-1 px-6 pt-4">
-          {/* Header */}
-          <TwView className="items-center justify-center py-16 gap-4">
+    <TwView className="flex-1 bg-background">
+      <TwScrollView className="flex-1 bg-background px-6 pt-4">
+        {/* Header */}
+        <TwView className="items-center justify-center py-16 gap-4">
             <TwText className="text-3xl font-bold text-center text-black dark:text-white">
               {t('settings.title')}
             </TwText>
@@ -114,7 +111,6 @@ export default function SettingsScreen() {
             </TwView>
           )}
         </TwScrollView>
-      </SafeAreaView>
-    </ScreenWrapper>
+    </TwView>
   );
 }
