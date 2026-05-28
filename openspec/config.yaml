@@ -10,9 +10,11 @@ context: >
   src/{app,components,constants,hooks,tw} convention with path aliases
   (@/* → src/*, @/assets/* → assets/*). Styling uses NativeWind v5
   (Tailwind CSS v4, CSS-first config) with className via CSS-wrapped
-  components in src/tw/. Theme system in CSS via @theme and @variant dark,
-  coexisting with the original use-color-scheme hooks. No backend or data
-  layer yet. AGENTS.md mandates Expo v56 versioned docs.
+  components in src/tw/. Theme system is CSS-only via @theme and @variant dark
+  in global.css; RuntimeColors in theme.ts is a minimal JS bridge for 3
+  native-only consumers (SymbolView tintColor, NativeTabs props).
+  use-color-scheme.web.ts provides SSR-safe color scheme detection.
+  No backend or data layer yet. AGENTS.md mandates Expo v56 versioned docs.
 
 strict_tdd: true
 
@@ -22,7 +24,7 @@ testing:
     - jest
   layers:
     unit: true
-    integration: false
+    integration: true
     e2e: false
   coverage: false
   coverage_command: null
