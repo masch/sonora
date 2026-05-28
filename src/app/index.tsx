@@ -1,5 +1,5 @@
 import { Trans } from 'react-i18next';
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 

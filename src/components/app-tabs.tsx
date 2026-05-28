@@ -3,7 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 import { RuntimeColors } from '@/constants/theme';
 import { TABS } from '@/constants/tabs';
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 
 const iconProps = { renderingMode: 'template' as const };
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 
 import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';

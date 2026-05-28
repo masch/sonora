@@ -1,4 +1,4 @@
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { Platform, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

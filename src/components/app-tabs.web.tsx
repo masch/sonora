@@ -8,7 +8,7 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { Icon } from './icon';
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { ThemedText } from './themed-text';
 import { TwView, TwPressable } from '@/tw';
 

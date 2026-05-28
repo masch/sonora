@@ -1,5 +1,5 @@
 import { Trans } from 'react-i18next';
-import { useAppTranslation } from '@/i18n/use-translation';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Platform, useColorScheme } from 'react-native';

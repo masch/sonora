@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { TranslationKeys } from './types';
+import type { TranslationKeys } from '@/i18n/types';
 
 /** Typed `t()` wrapper. Gives autocomplete on valid translation keys. */
 export function useAppTranslation() {
