@@ -2,7 +2,8 @@ import { Platform } from 'react-native';
 import type { TextProps } from 'react-native';
 
 import { TwText } from '@/tw';
-import type { ThemeColor } from '@/constants/theme';
+
+type ThemeColor = 'text' | 'textSecondary' | 'background' | 'backgroundElement' | 'backgroundSelected';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';

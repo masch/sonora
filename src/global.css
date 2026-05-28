@@ -44,6 +44,14 @@
   --color-backgroundSelected: #e0e1e6;
   --color-textSecondary: #60646c;
   --color-link: #3c87f7;
+
+  --spacing-half: 2px;
+  --spacing-one: 4px;
+  --spacing-two: 8px;
+  --spacing-three: 16px;
+  --spacing-four: 24px;
+  --spacing-five: 32px;
+  --spacing-six: 64px;
 }
 
 @variant dark {

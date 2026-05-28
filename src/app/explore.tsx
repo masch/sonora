@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { Platform } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
@@ -9,16 +9,21 @@ import { ThemedText } from '@/components/themed-text';
 import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText, TwPressable } from '@/tw';
-import { BottomTabInset, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { BottomTabInset, TabBottomPadding, RuntimeColors } from '@/constants/theme';
+
+// Offset below the web horizontal tab bar (~48px) plus breathing room
+const WEB_TAB_BAR_OFFSET = 64;
+// Bottom padding to visually balance the header offset on web
+const WEB_BOTTOM_PADDING = 24;
 
 export default function TabTwoScreen() {
   const safeAreaInsets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
   const insets = {
     ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
+    bottom: safeAreaInsets.bottom + BottomTabInset + TabBottomPadding,
   };
-  const theme = useTheme();
 
   const contentPlatformStyle = Platform.select({
     android: {
@@ -28,8 +33,8 @@ export default function TabTwoScreen() {
       paddingBottom: insets.bottom,
     },
     web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
+      paddingTop: WEB_TAB_BAR_OFFSET,
+      paddingBottom: WEB_BOTTOM_PADDING,
     },
   });
 
@@ -50,7 +55,7 @@ export default function TabTwoScreen() {
               <TwView className="bg-backgroundElement flex-row px-6 py-2 rounded-[32px] justify-center gap-1 items-center">
                 <ThemedText type="link">Expo documentation</ThemedText>
                 <SymbolView
-                  tintColor={theme.text}
+                  tintColor={colors.text}
                   name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
                   size={12}
                 />

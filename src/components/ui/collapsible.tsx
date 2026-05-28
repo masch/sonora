@@ -1,15 +1,17 @@
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
+import { useColorScheme } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
+import { RuntimeColors } from '@/constants/theme';
 import { TwView, TwPressable } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
 
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const theme = useTheme();
+  const scheme = useColorScheme();
+  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
 
   return (
     <TwView>
@@ -21,7 +23,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
             size={14}
             weight="bold"
-            tintColor={theme.text}
+            tintColor={colors.text}
             style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
           />
         </TwView>

@@ -15,7 +15,7 @@ import { Icon } from './icon';
 import { ThemedText } from './themed-text';
 import { TwView, TwPressable } from '@/tw';
 
-import { Colors } from '@/constants/theme';
+import { RuntimeColors } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -66,7 +66,7 @@ export function TabButton({ children, isFocused, icon, ...props }: TabButtonProp
 
 export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
 
   return (
     <TwView className="absolute w-full p-4 justify-center items-center flex-row">
