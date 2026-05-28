@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Platform, useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExternalLink } from '@/components/external-link';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
@@ -9,32 +8,18 @@ import { ThemedText } from '@/components/themed-text';
 import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText, TwPressable } from '@/tw';
-import { BottomTabInset, TabBottomPadding, RuntimeColors } from '@/constants/theme';
+import { RuntimeColors } from '@/constants/theme';
+
+// Web: fixed padding below the horizontal tab bar via Tailwind spacing
+const webContainerClass = Platform.select({ web: 'pt-16 pb-6' }) ?? '';
 
 export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + TabBottomPadding,
-  };
-
-  // Android: dynamic padding from safe area insets (must stay as style object)
-  const androidContainerStyle = {
-    paddingTop: insets.top,
-    paddingLeft: insets.left,
-    paddingRight: insets.right,
-    paddingBottom: insets.bottom,
-  };
-  // Web: fixed padding below the horizontal tab bar via Tailwind spacing
-  const webContainerClass = Platform.select({ web: 'pt-16 pb-6' }) ?? '';
 
   return (
     <ScrollScreenWrapper
-      contentInset={insets}
-      contentContainerClassName={`flex-row justify-center ${webContainerClass}`.trim()}
-      contentContainerStyle={Platform.OS === 'android' ? androidContainerStyle : undefined}>
+      contentContainerClassName={`flex-row justify-center ${webContainerClass}`.trim()}>
       <TwView className="max-w-[800px] flex-grow">
         <TwView className="gap-4 items-center px-6 py-16">
           <TwText className="text-3xl font-bold">Explore</TwText>

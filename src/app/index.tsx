@@ -1,6 +1,5 @@
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
@@ -8,7 +7,7 @@ import { ScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText } from '@/tw';
-import { BottomTabInset, TabBottomPadding, MaxContentWidth } from '@/constants/theme';
+import { MaxContentWidth } from '@/constants/theme';
 
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
@@ -37,13 +36,12 @@ const SECTION_GAP = 16;
 export default function HomeScreen() {
   return (
     <ScreenWrapper className="justify-center flex-row">
-      <SafeAreaView
+      <TwView
         style={{
           flex: 1,
           paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
           alignItems: 'center',
           gap: SECTION_GAP,
-          paddingBottom: BottomTabInset + TabBottomPadding,
           maxWidth: MaxContentWidth,
         }}>
         <TwView className="items-center justify-center flex-1 px-6 gap-6">
@@ -70,7 +68,7 @@ export default function HomeScreen() {
         </TwView>
 
         {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
+      </TwView>
     </ScreenWrapper>
   );
 }
