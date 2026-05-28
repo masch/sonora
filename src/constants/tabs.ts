@@ -3,7 +3,7 @@ import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
 export type TabDefinition = {
   /** Route name: "index", "explore", or "settings" */
   name: string;
-  /** Human-readable label (e.g., "Home") */
+  /** Display label (also used as i18n key for translations) */
   label: string;
   /** Ionicons vector icon name (native) */
   ioniconsName: string;

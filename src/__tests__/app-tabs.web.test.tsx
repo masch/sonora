@@ -2,6 +2,14 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+    i18n: { language: 'en' },
+  }),
+}));
+
 // Mock expo-router/ui Tabs components for isolated testing.
 // Use require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/ui', () => {

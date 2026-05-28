@@ -1,4 +1,5 @@
 import '@/global.css';
+import '@/i18n';
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';

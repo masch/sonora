@@ -8,12 +8,14 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { Icon } from './icon';
+import { useAppTranslation } from '@/i18n/use-translation';
 import { ThemedText } from './themed-text';
 import { TwView, TwPressable } from '@/tw';
 
 import { TABS } from '@/constants/tabs';
 
 export default function AppTabs() {
+  const { t } = useAppTranslation();
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -21,7 +23,7 @@ export default function AppTabs() {
         <CustomTabList>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.name === 'index' ? '/' : `/${tab.name}`} asChild>
-              <TabButton icon={tab.symbolViewName}>{tab.label}</TabButton>
+              <TabButton icon={tab.symbolViewName}>{t(`tabs.${tab.name}`)}</TabButton>
             </TabTrigger>
           ))}
         </CustomTabList>

@@ -2,6 +2,16 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
+// Mock react-i18next with a comprehensive mock
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+    i18n: { language: 'en' },
+  }),
+  Trans: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
 // Mock NativeTabs from expo-router for isolated testing.
 // Use require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/unstable-native-tabs', () => {
@@ -38,6 +48,17 @@ jest.mock('expo-router/unstable-native-tabs', () => {
 import AppTabsNative from '@/components/app-tabs';
 
 describe('Native app-tabs', () => {
+  it('renders without crashing', () => {
+    const { toJSON } = render(<AppTabsNative />);
+    expect(toJSON()).not.toBeNull();
+  });
+
+  it('renders trigger labels for all 3 tabs', () => {
+    const { queryByText } = render(<AppTabsNative />);
+    expect(queryByText('Home')).not.toBeNull();
+    expect(queryByText('Explore')).not.toBeNull();
+    expect(queryByText('Settings')).not.toBeNull();
+  });
   it('renders without crashing', () => {
     const { toJSON } = render(<AppTabsNative />);
     expect(toJSON()).not.toBeNull();
