@@ -6,6 +6,12 @@ const Reanimated: Record<string, unknown> = {
   Image,
   ScrollView,
   createAnimatedComponent: (component: unknown) => component,
+  Keyframe: class {
+    constructor(def: Record<string, unknown>) { Object.assign(this, def); }
+    duration() { return this; }
+    delay() { return this; }
+    withCallback() { return this; }
+  },
   useSharedValue: (init: unknown) => ({ value: init }),
   useAnimatedStyle: (callback: () => unknown) => callback(),
   useDerivedValue: (callback: () => unknown) => ({ value: callback() }),
@@ -18,6 +24,7 @@ const Reanimated: Record<string, unknown> = {
     in: () => ({}),
     out: () => ({}),
     inOut: () => ({}),
+    elastic: () => ({}),
   },
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
   runOnUI: (fn: (...args: unknown[]) => unknown) => fn,

@@ -1,9 +1,11 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { useTranslation } from 'react-i18next';
+
+import AppTabsNative from '@/components/app-tabs';
 
 // Mock NativeTabs from expo-router for isolated testing.
-// Use require() inside factory because jest.mock is hoisted above imports.
+// Uses require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/unstable-native-tabs', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView, Text: RNText } = require('react-native');
@@ -35,9 +37,25 @@ jest.mock('expo-router/unstable-native-tabs', () => {
   return { NativeTabs: NativeTabsMock };
 });
 
-import AppTabsNative from '@/components/app-tabs';
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation(
+    (key: string) =>
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+  );
+});
 
 describe('Native app-tabs', () => {
+  it('renders without crashing', () => {
+    const { toJSON } = render(<AppTabsNative />);
+    expect(toJSON()).not.toBeNull();
+  });
+
+  it('renders trigger labels for all 3 tabs', () => {
+    const { queryByText } = render(<AppTabsNative />);
+    expect(queryByText('Home')).not.toBeNull();
+    expect(queryByText('Explore')).not.toBeNull();
+    expect(queryByText('Settings')).not.toBeNull();
+  });
   it('renders without crashing', () => {
     const { toJSON } = render(<AppTabsNative />);
     expect(toJSON()).not.toBeNull();
