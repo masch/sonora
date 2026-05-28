@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 import type { ScrollViewProps } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TwView, TwScrollView } from '@/tw';
+import { BottomTabInset, TabBottomPadding } from '@/constants/theme';
+
+const TAB_BAR_INSET = BottomTabInset + TabBottomPadding;
 
 type ScreenWrapperProps = {
   children: ReactNode;
@@ -9,44 +13,47 @@ type ScreenWrapperProps = {
 };
 
 type ScrollScreenWrapperProps = ScreenWrapperProps &
-  Pick<ScrollViewProps, 'contentInset' | 'contentContainerStyle' | 'contentContainerClassName'>;
+  Pick<ScrollViewProps, 'contentContainerStyle' | 'contentContainerClassName'>;
 
 /**
  * Non-scrollable screen wrapper.
  *
- * Renders a `TwView` with `flex-1 bg-background` pre-applied.
- * Add layout-specific classes via `className`.
+ * Includes SafeAreaView + bottom tab bar inset automatically.
+ * Renders a `TwView` inside with `flex-1 bg-background` pre-applied.
  */
 export function ScreenWrapper({ children, className }: ScreenWrapperProps) {
   return (
-    <TwView
-      className={`flex-1 bg-background${className ? ` ${className}` : ''}`}>
-      {children}
-    </TwView>
+    <SafeAreaView style={{ flex: 1 }}>
+      <TwView
+        className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
+        style={{ paddingBottom: TAB_BAR_INSET }}>
+        {children}
+      </TwView>
+    </SafeAreaView>
   );
 }
 
 /**
  * Scrollable screen wrapper.
  *
+ * Includes SafeAreaView + bottom tab bar inset automatically.
  * Renders a `TwScrollView` with `flex-1 bg-background` pre-applied.
- * Accepts `contentInset`, `contentContainerStyle`, `contentContainerClassName`
- * for scroll-specific configuration.
  */
 export function ScrollScreenWrapper({
   children,
   className,
-  contentInset,
   contentContainerStyle,
   contentContainerClassName,
 }: ScrollScreenWrapperProps) {
   return (
-    <TwScrollView
-      className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-      contentInset={contentInset}
-      contentContainerStyle={contentContainerStyle}
-      contentContainerClassName={contentContainerClassName}>
-      {children}
-    </TwScrollView>
+    <SafeAreaView style={{ flex: 1 }}>
+      <TwScrollView
+        className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
+        contentInset={{ bottom: TAB_BAR_INSET }}
+        contentContainerStyle={contentContainerStyle}
+        contentContainerClassName={contentContainerClassName}>
+        {children}
+      </TwScrollView>
+    </SafeAreaView>
   );
 }
