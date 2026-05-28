@@ -17,46 +17,8 @@ module.exports = defineConfig([
         'error',
         {
           markupOnly: true,
-          allow: [
-            // className and testID are not user-facing
-            'className',
-            'testID',
-            // NativeWind/Expo classnames and Tailwind values
-            'text-',
-            'font-',
-            'bg-',
-            'p-',
-            'm-',
-            'gap-',
-            'flex-',
-            'items-',
-            'justify-',
-            'self-',
-            'rounded-',
-            'w-',
-            'h-',
-            'max-w-',
-            'tracking-',
-            'uppercase',
-            'text-center',
-            'opacity-',
-            'active:',
-            'dark:',
-            // Platform.select values and runtime constants
-            'pt-16 pb-6',
-            // Single-character or short labels that are non-translatable
-            'JD',
-            // Route names and technical identifiers
-            'index',
-            'explore',
-            'settings',
-            // Technical file paths and commands used as HintRow hints
-            'src/app/index.tsx',
-            'npm run reset-project',
-            // Single-char prefixes like v{version} in web badge
-            'v{version}',
-            'v',
-          ],
+          // No allow list needed — all exceptions are handled by
+          // inline eslint-disable comments in specific source lines.
         },
       ],
     },
