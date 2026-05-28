@@ -1,4 +1,3 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
@@ -11,7 +10,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Mock expo-router/ui Tabs components for isolated testing.
-// Use require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/ui', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView } = require('react-native');

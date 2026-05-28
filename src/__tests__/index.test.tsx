@@ -1,24 +1,35 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
-const mockMap: Record<string, string> = {
-  'index.title': 'Welcome to Expo',
-  'index.getStarted': 'get started',
-  'index.hints.editing': 'Try editing',
-  'index.hints.devtools': 'Dev tools',
-  'index.hints.freshStart': 'Fresh start',
-  'index.hints.devtoolsWeb': 'use browser devtools',
-  'index.hints.devtoolsDevice': 'shake device or press m in terminal',
-  'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
-  'index.hints.devtoolsIos': 'press cmd+d',
-};
-const mockT = (k: string) => mockMap[k] ?? k;
-
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (k: string) =>
+      ({
+        'index.title': 'Welcome to Expo',
+        'index.getStarted': 'get started',
+        'index.hints.editing': 'Try editing',
+        'index.hints.devtools': 'Dev tools',
+        'index.hints.freshStart': 'Fresh start',
+        'index.hints.devtoolsWeb': 'use browser devtools',
+        'index.hints.devtoolsDevice': 'shake device or press m in terminal',
+        'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
+        'index.hints.devtoolsIos': 'press cmd+d',
+      })[k] ?? k,
+    i18n: { language: 'en' },
+  }),
   Trans: ({ i18nKey }: { i18nKey?: string; children?: React.ReactNode }) => {
-    if (i18nKey) return (mockT(i18nKey) ?? '') as unknown as React.ReactElement;
+    const mockMap: Record<string, string> = {
+      'index.title': 'Welcome to Expo',
+      'index.getStarted': 'get started',
+      'index.hints.editing': 'Try editing',
+      'index.hints.devtools': 'Dev tools',
+      'index.hints.freshStart': 'Fresh start',
+      'index.hints.devtoolsWeb': 'use browser devtools',
+      'index.hints.devtoolsDevice': 'shake device or press m in terminal',
+      'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
+      'index.hints.devtoolsIos': 'press cmd+d',
+    };
+    if (i18nKey) return (mockMap[i18nKey] ?? '') as unknown as React.ReactElement;
     return null;
   },
 }));

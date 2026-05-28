@@ -1,28 +1,43 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
-const mockMap: Record<string, string> = {
-  'explore.title': 'Explore',
-  'explore.subtitle': 'This starter app includes example\ncode to help you get started.',
-  'explore.docLink': 'Expo documentation',
-  'common.learnMore': 'Learn more',
-  'explore.sections.fileRouting.title': 'File-based routing',
-  'explore.sections.fileRouting.desc':
-    'This app has two screens: src/app/index.tsx and src/app/explore.tsx',
-  'explore.sections.fileRouting.layout':
-    'The layout file in src/app/_layout.tsx sets up the tab navigator.',
-  'explore.sections.platforms.title': 'Android, iOS, and web support',
-  'explore.sections.images.title': 'Images',
-  'explore.sections.theme.title': 'Light and dark mode components',
-  'explore.sections.animations.title': 'Animations',
-};
-const mockT = (k: string) => mockMap[k] ?? k;
-
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (k: string) =>
+      ({
+        'explore.title': 'Explore',
+        'explore.subtitle': 'This starter app includes example\ncode to help you get started.',
+        'explore.docLink': 'Expo documentation',
+        'common.learnMore': 'Learn more',
+        'explore.sections.fileRouting.title': 'File-based routing',
+        'explore.sections.fileRouting.desc':
+          'This app has two screens: src/app/index.tsx and src/app/explore.tsx',
+        'explore.sections.fileRouting.layout':
+          'The layout file in src/app/_layout.tsx sets up the tab navigator.',
+        'explore.sections.platforms.title': 'Android, iOS, and web support',
+        'explore.sections.images.title': 'Images',
+        'explore.sections.theme.title': 'Light and dark mode components',
+        'explore.sections.animations.title': 'Animations',
+      })[k] ?? k,
+    i18n: { language: 'en' },
+  }),
   Trans: ({ i18nKey }: { i18nKey?: string; children?: React.ReactNode }) => {
-    if (i18nKey) return (mockT(i18nKey) ?? '') as unknown as React.ReactElement;
+    const mockMap: Record<string, string> = {
+      'explore.title': 'Explore',
+      'explore.subtitle': 'This starter app includes example\ncode to help you get started.',
+      'explore.docLink': 'Expo documentation',
+      'common.learnMore': 'Learn more',
+      'explore.sections.fileRouting.title': 'File-based routing',
+      'explore.sections.fileRouting.desc':
+        'This app has two screens: src/app/index.tsx and src/app/explore.tsx',
+      'explore.sections.fileRouting.layout':
+        'The layout file in src/app/_layout.tsx sets up the tab navigator.',
+      'explore.sections.platforms.title': 'Android, iOS, and web support',
+      'explore.sections.images.title': 'Images',
+      'explore.sections.theme.title': 'Light and dark mode components',
+      'explore.sections.animations.title': 'Animations',
+    };
+    if (i18nKey) return (mockMap[i18nKey] ?? '') as unknown as React.ReactElement;
     return null;
   },
 }));

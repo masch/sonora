@@ -1,30 +1,30 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
-const mockMap: Record<string, string> = {
-  'settings.title': 'Settings',
-  'settings.subtitle': 'Manage your preferences',
-  'settings.section.preferences': 'Preferences',
-  'settings.section.about': 'About',
-  'settings.preferences.notifications': 'Notifications',
-  'settings.preferences.darkMode': 'Dark Mode',
-  'settings.preferences.darkModeValue.on': 'On',
-  'settings.preferences.darkModeValue.off': 'Off',
-  'settings.preferences.language': 'Language',
-  'settings.language.label': 'English',
-  'settings.profile.name': 'John Doe',
-  'settings.profile.email': 'john@example.com',
-  'settings.about.version': 'Version',
-  'settings.about.versionValue': '1.0.0',
-  'settings.about.terms': 'Terms of Service',
-  'settings.about.privacy': 'Privacy Policy',
-  'settings.footer': 'Powered by Expo + NativeWind',
-};
-const mockT = (k: string) => mockMap[k] ?? k;
-
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (k: string) =>
+      ({
+        'settings.title': 'Settings',
+        'settings.subtitle': 'Manage your preferences',
+        'settings.section.preferences': 'Preferences',
+        'settings.section.about': 'About',
+        'settings.preferences.notifications': 'Notifications',
+        'settings.preferences.darkMode': 'Dark Mode',
+        'settings.preferences.darkModeValue.on': 'On',
+        'settings.preferences.darkModeValue.off': 'Off',
+        'settings.preferences.language': 'Language',
+        'settings.language.label': 'English',
+        'settings.profile.name': 'John Doe',
+        'settings.profile.email': 'john@example.com',
+        'settings.about.version': 'Version',
+        'settings.about.versionValue': '1.0.0',
+        'settings.about.terms': 'Terms of Service',
+        'settings.about.privacy': 'Privacy Policy',
+        'settings.footer': 'Powered by Expo + NativeWind',
+      })[k] ?? k,
+    i18n: { language: 'en' },
+  }),
 }));
 
 import SettingsScreen from '@/app/settings';

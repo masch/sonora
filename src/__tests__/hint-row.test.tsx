@@ -1,15 +1,12 @@
-/* eslint-disable import/first */
 import React from 'react';
 import { render } from '@testing-library/react-native';
 
-const mockMap: Record<string, string> = {
-  'index.hintRow.title': 'Try editing',
-  'index.hintRow.hint': 'app/index.tsx',
-};
-const mockT = (k: string) => mockMap[k] ?? k;
-
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (k: string) =>
+      ({ 'index.hintRow.title': 'Try editing', 'index.hintRow.hint': 'app/index.tsx' })[k] ?? k,
+    i18n: { language: 'en' },
+  }),
 }));
 
 import { HintRow } from '@/components/hint-row';
