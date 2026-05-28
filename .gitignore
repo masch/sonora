@@ -45,3 +45,6 @@ example
 # Agent tooling metadata (generated per-user, not product code)
 **/.atl/
 **/.pi/
+
+# Test
+**/coverage/
