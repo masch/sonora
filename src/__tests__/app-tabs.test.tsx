@@ -2,7 +2,10 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
+import AppTabsNative from '@/components/app-tabs';
+
 // Mock NativeTabs from expo-router for isolated testing.
+// Uses require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/unstable-native-tabs', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView, Text: RNText } = require('react-native');
@@ -33,8 +36,6 @@ jest.mock('expo-router/unstable-native-tabs', () => {
 
   return { NativeTabs: NativeTabsMock };
 });
-
-import AppTabsNative from '@/components/app-tabs';
 
 beforeAll(() => {
   (useTranslation().t as unknown as jest.Mock).mockImplementation(

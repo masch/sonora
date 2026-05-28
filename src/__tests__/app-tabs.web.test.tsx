@@ -2,7 +2,10 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
+import AppTabsWeb from '@/components/app-tabs.web';
+
 // Mock expo-router/ui Tabs components for isolated testing.
+// Uses require() inside factory because jest.mock is hoisted above imports.
 jest.mock('expo-router/ui', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView } = require('react-native');
@@ -23,8 +26,6 @@ jest.mock('expo-router/ui', () => {
     ),
   };
 });
-
-import AppTabsWeb from '@/components/app-tabs.web';
 
 beforeAll(() => {
   (useTranslation().t as unknown as jest.Mock).mockImplementation(
