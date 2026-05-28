@@ -1,15 +1,17 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (k: string) =>
-      ({ 'index.hintRow.title': 'Try editing', 'index.hintRow.hint': 'app/index.tsx' })[k] ?? k,
-    i18n: { language: 'en' },
-  }),
-}));
+import { useTranslation } from 'react-i18next';
 
 import { HintRow } from '@/components/hint-row';
+
+const mockMap: Record<string, string> = {
+  'index.hintRow.title': 'Try editing',
+  'index.hintRow.hint': 'app/index.tsx',
+};
+
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation((k: string) => mockMap[k] ?? k);
+});
 
 describe('HintRow', () => {
   it('renders with default title and hint', () => {

@@ -1,15 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-
-// Mock react-i18next with a comprehensive mock
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
-    i18n: { language: 'en' },
-  }),
-  Trans: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}));
+import { useTranslation } from 'react-i18next';
 
 // Mock NativeTabs from expo-router for isolated testing.
 jest.mock('expo-router/unstable-native-tabs', () => {
@@ -44,6 +35,13 @@ jest.mock('expo-router/unstable-native-tabs', () => {
 });
 
 import AppTabsNative from '@/components/app-tabs';
+
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation(
+    (key: string) =>
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+  );
+});
 
 describe('Native app-tabs', () => {
   it('renders without crashing', () => {

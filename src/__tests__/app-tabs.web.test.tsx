@@ -1,13 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
-    i18n: { language: 'en' },
-  }),
-}));
+import { useTranslation } from 'react-i18next';
 
 // Mock expo-router/ui Tabs components for isolated testing.
 jest.mock('expo-router/ui', () => {
@@ -32,6 +25,13 @@ jest.mock('expo-router/ui', () => {
 });
 
 import AppTabsWeb from '@/components/app-tabs.web';
+
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation(
+    (key: string) =>
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+  );
+});
 
 describe('Web app-tabs', () => {
   it('renders without crashing', () => {

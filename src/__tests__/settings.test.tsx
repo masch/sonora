@@ -1,33 +1,32 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (k: string) =>
-      ({
-        'settings.title': 'Settings',
-        'settings.subtitle': 'Manage your preferences',
-        'settings.section.preferences': 'Preferences',
-        'settings.section.about': 'About',
-        'settings.preferences.notifications': 'Notifications',
-        'settings.preferences.darkMode': 'Dark Mode',
-        'settings.preferences.darkModeValue.on': 'On',
-        'settings.preferences.darkModeValue.off': 'Off',
-        'settings.preferences.language': 'Language',
-        'settings.language.label': 'English',
-        'settings.profile.name': 'John Doe',
-        'settings.profile.email': 'john@example.com',
-        'settings.about.version': 'Version',
-        'settings.about.versionValue': '1.0.0',
-        'settings.about.terms': 'Terms of Service',
-        'settings.about.privacy': 'Privacy Policy',
-        'settings.footer': 'Powered by Expo + NativeWind',
-      })[k] ?? k,
-    i18n: { language: 'en' },
-  }),
-}));
+import { useTranslation } from 'react-i18next';
 
 import SettingsScreen from '@/app/settings';
+
+const mockMap: Record<string, string> = {
+  'settings.title': 'Settings',
+  'settings.subtitle': 'Manage your preferences',
+  'settings.section.preferences': 'Preferences',
+  'settings.section.about': 'About',
+  'settings.preferences.notifications': 'Notifications',
+  'settings.preferences.darkMode': 'Dark Mode',
+  'settings.preferences.darkModeValue.on': 'On',
+  'settings.preferences.darkModeValue.off': 'Off',
+  'settings.preferences.language': 'Language',
+  'settings.language.label': 'English',
+  'settings.profile.name': 'John Doe',
+  'settings.profile.email': 'john@example.com',
+  'settings.about.version': 'Version',
+  'settings.about.versionValue': '1.0.0',
+  'settings.about.terms': 'Terms of Service',
+  'settings.about.privacy': 'Privacy Policy',
+  'settings.footer': 'Powered by Expo + NativeWind',
+};
+
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation((k: string) => mockMap[k] ?? k);
+});
 
 describe('Settings screen', () => {
   it('renders the title and subtitle', () => {
