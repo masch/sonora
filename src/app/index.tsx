@@ -8,7 +8,7 @@ import { ScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText } from '@/tw';
-import { BottomTabInset, Spacing, MaxContentWidth } from '@/constants/theme';
+import { BottomTabInset, TabBottomPadding, MaxContentWidth } from '@/constants/theme';
 
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
@@ -29,16 +29,21 @@ function getDevMenuHint() {
   );
 }
 
+// Horizontal padding matching the card border-radius rhythm (24px)
+const SCREEN_HORIZONTAL_PADDING = 24;
+// Vertical gap between hero section and the "get started" card
+const SECTION_GAP = 16;
+
 export default function HomeScreen() {
   return (
     <ScreenWrapper className="justify-center flex-row">
       <SafeAreaView
         style={{
           flex: 1,
-          paddingHorizontal: Spacing.four,
+          paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
           alignItems: 'center',
-          gap: Spacing.three,
-          paddingBottom: BottomTabInset + Spacing.three,
+          gap: SECTION_GAP,
+          paddingBottom: BottomTabInset + TabBottomPadding,
           maxWidth: MaxContentWidth,
         }}>
         <TwView className="items-center justify-center flex-1 px-6 gap-6">
