@@ -11,11 +11,6 @@ import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText, TwPressable } from '@/tw';
 import { BottomTabInset, TabBottomPadding, RuntimeColors } from '@/constants/theme';
 
-// Offset below the web horizontal tab bar (~48px) plus breathing room
-const WEB_TAB_BAR_OFFSET = 64;
-// Bottom padding to visually balance the header offset on web
-const WEB_BOTTOM_PADDING = 24;
-
 export default function TabTwoScreen() {
   const safeAreaInsets = useSafeAreaInsets();
   const scheme = useColorScheme();
@@ -25,24 +20,21 @@ export default function TabTwoScreen() {
     bottom: safeAreaInsets.bottom + BottomTabInset + TabBottomPadding,
   };
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: WEB_TAB_BAR_OFFSET,
-      paddingBottom: WEB_BOTTOM_PADDING,
-    },
-  });
+  // Android: dynamic padding from safe area insets (must stay as style object)
+  const androidContainerStyle = {
+    paddingTop: insets.top,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+    paddingBottom: insets.bottom,
+  };
+  // Web: fixed padding below the horizontal tab bar via Tailwind spacing
+  const webContainerClass = Platform.select({ web: 'pt-16 pb-6' }) ?? '';
 
   return (
     <ScrollScreenWrapper
       contentInset={insets}
-      contentContainerClassName="flex-row justify-center"
-      contentContainerStyle={contentPlatformStyle}>
+      contentContainerClassName={`flex-row justify-center ${webContainerClass}`.trim()}
+      contentContainerStyle={Platform.OS === 'android' ? androidContainerStyle : undefined}>
       <TwView className="max-w-[800px] flex-grow">
         <TwView className="gap-4 items-center px-6 py-16">
           <TwText className="text-3xl font-bold">Explore</TwText>
