@@ -14,7 +14,7 @@ module.exports = defineConfig([
         { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
       ],
       'i18next/no-literal-string': [
-        'warn',
+        'error',
         {
           markupOnly: true,
           allow: [
@@ -56,22 +56,15 @@ module.exports = defineConfig([
             // Single-char prefixes like v{version} in web badge
             'v{version}',
             'v',
-            // Test file literal strings (test descriptions and assertions)
-            'Hello View',
-            'Nested',
-            'Bold Text',
-            'Empty Class',
-            'Scroll Content',
-            'Item 1',
-            'Item 2',
-            'Press Me',
-            'Multi Press',
-            'Animated Content',
-            'Deeply Nested',
-            'Custom Hint',
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['**/__tests__/**'],
+    rules: {
+      'i18next/no-literal-string': 'off',
     },
   },
   {

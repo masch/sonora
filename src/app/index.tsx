@@ -64,12 +64,18 @@ export default function HomeScreen() {
         <TwView className="bg-backgroundElement gap-4 self-stretch px-4 py-6 rounded-[24px]">
           <HintRow
             title={t('index.hints.editing')}
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+            hint={
+              // eslint-disable-next-line i18next/no-literal-string
+              <ThemedText type="code">src/app/index.tsx</ThemedText>
+            }
           />
           <HintRow title={t('index.hints.devtools')} hint={getDevMenuHint()} />
           <HintRow
             title={t('index.hints.freshStart')}
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
+            hint={
+              // eslint-disable-next-line i18next/no-literal-string
+              <ThemedText type="code">npm run reset-project</ThemedText>
+            }
           />
         </TwView>
 
