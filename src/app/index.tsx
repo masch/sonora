@@ -67,16 +67,14 @@ export default function HomeScreen() {
         <HintRow
           title={t('index.hints.editing')}
           hint={
-            // eslint-disable-next-line i18next/no-literal-string
-            <ThemedText type="code">src/app/index.tsx</ThemedText>
+            <ThemedText type="code">{t('index.hintRow.hint')}</ThemedText>
           }
         />
         <HintRow title={t('index.hints.devtools')} hint={getDevMenuHint()} />
         <HintRow
           title={t('index.hints.freshStart')}
           hint={
-            // eslint-disable-next-line i18next/no-literal-string
-            <ThemedText type="code">npm run reset-project</ThemedText>
+            <ThemedText type="code">{t('index.hintRow.resetCommand')}</ThemedText>
           }
         />
       </TwView>

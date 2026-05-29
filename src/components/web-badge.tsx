@@ -5,6 +5,9 @@ import { useColorScheme } from 'react-native';
 import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';
 
+const expoBadgeWhite = require('@/assets/images/expo-badge-white.png');
+const expoBadge = require('@/assets/images/expo-badge.png');
+
 export function WebBadge() {
   const scheme = useColorScheme();
 
@@ -14,11 +17,7 @@ export function WebBadge() {
         {'v'}{version}
       </ThemedText>
       <Image
-        source={
-          scheme === 'dark'
-            ? require('@/assets/images/expo-badge-white.png')
-            : require('@/assets/images/expo-badge.png')
-        }
+        source={scheme === 'dark' ? expoBadgeWhite : expoBadge}
         style={{ width: 123, aspectRatio: 123 / 24 }}
       />
     </TwView>

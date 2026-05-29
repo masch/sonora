@@ -12,6 +12,9 @@ import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText, TwPressable } from '@/tw';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
+const tutorialWebImg = require('@/assets/images/tutorial-web.png');
+const reactLogoImg = require('@/assets/images/react-logo.png');
+
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const webContainerClass = Platform.select({ web: 'pt-16 pb-6' }) ?? '';
 
@@ -71,7 +74,7 @@ export default function TabTwoScreen() {
                 />
               </ThemedText>
               <Image
-                source={require('@/assets/images/tutorial-web.png')}
+                source={tutorialWebImg}
                 style={{ width: '100%', aspectRatio: 296 / 171, borderRadius: 16, marginTop: 8 }}
               />
             </TwView>
@@ -85,7 +88,7 @@ export default function TabTwoScreen() {
               />
             </ThemedText>
             <Image
-              source={require('@/assets/images/react-logo.png')}
+              source={reactLogoImg}
               style={{ width: 100, height: 100, alignSelf: 'center' }}
             />
             <ExternalLink href="https://reactnative.dev/docs/images">

@@ -38,9 +38,9 @@ type TabButtonProps = TabTriggerSlotProps & {
   icon: IconSymbols;
 };
 
-export function TabButton({ children, isFocused, icon, ...props }: TabButtonProps) {
+export function TabButton({ children, isFocused, icon, onPress, style, href, target, rel }: TabButtonProps) {
   return (
-    <TwPressable {...props} className="active:opacity-70">
+    <TwPressable onPress={onPress} style={style} href={href} target={target} rel={rel} className="active:opacity-70">
       <TwView
         className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
         <Icon
@@ -58,13 +58,13 @@ export function TabButton({ children, isFocused, icon, ...props }: TabButtonProp
   );
 }
 
-export function CustomTabList(props: TabListProps) {
+export function CustomTabList({ children, style }: TabListProps) {
   return (
     <TwView className="absolute w-full p-4 justify-center items-center flex-row">
       <TwView
-        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center justify-center gap-2 self-start"
-        {...props}>
-        {props.children}
+        style={style}
+        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center justify-center gap-2 self-start">
+        {children}
       </TwView>
     </TwView>
   );
