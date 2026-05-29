@@ -36,11 +36,18 @@ type IconSymbols = { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol }
 
 type TabButtonProps = TabTriggerSlotProps & {
   icon: IconSymbols;
+  href?: string;
+  target?: string;
+  rel?: string;
 };
 
 export function TabButton({ children, isFocused, icon, onPress, style, href, target, rel }: TabButtonProps) {
   return (
-    <TwPressable onPress={onPress} style={style} href={href} target={target} rel={rel} className="active:opacity-70">
+    <TwPressable
+      onPress={onPress}
+      style={style}
+      {...({ href, target, rel } as Record<string, unknown>)}
+      className="active:opacity-70">
       <TwView
         className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
         <Icon

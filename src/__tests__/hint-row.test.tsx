@@ -17,13 +17,13 @@ describe('HintRow', () => {
   it('renders with default title and hint', () => {
     const { getByText } = render(<HintRow />);
     expect(getByText('Try editing')).toBeTruthy();
-    expect(getByText('app/index.tsx')).toBeTruthy();
+    expect(getByText('src/app/index.tsx')).toBeTruthy();
   });
 
   it('renders with overridden title prop', () => {
     const { getByText } = render(<HintRow title="Custom Title" />);
     expect(getByText('Custom Title')).toBeTruthy();
-    expect(getByText('app/index.tsx')).toBeTruthy();
+    expect(getByText('src/app/index.tsx')).toBeTruthy();
   });
 
   it('renders with overridden hint prop', () => {

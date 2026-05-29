@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react';
-import { useAppTranslation } from '@/hooks/use-translation';
-
 import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';
 
@@ -9,10 +7,12 @@ type HintRowProps = {
   hint?: ReactNode;
 };
 
+const DEFAULT_TITLE = 'Try editing';
+const DEFAULT_HINT = 'src/app/index.tsx';
+
 export function HintRow({ title, hint }: HintRowProps) {
-  const { t } = useAppTranslation();
-  const resolvedTitle = title ?? t('index.hintRow.title');
-  const resolvedHint = hint ?? t('index.hintRow.hint');
+  const resolvedTitle = title ?? DEFAULT_TITLE;
+  const resolvedHint = hint ?? DEFAULT_HINT;
   return (
     <TwView className="flex-row justify-between">
       <ThemedText type="small">{resolvedTitle}</ThemedText>
