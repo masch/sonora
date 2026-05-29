@@ -1,15 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
-import { RuntimeColors } from '@/constants/theme';
 import { TABS } from '@/constants/tabs';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const iconProps = { renderingMode: 'template' as const };
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = useThemeColors();
   const { t } = useAppTranslation();
 
   return (
