@@ -13,3 +13,4 @@ export function TwAnimatedView(props: TwAnimatedViewProps) {
   return useCssElement(View, props, { className: 'style' });
 }
 TwAnimatedView.displayName = 'TwAnimatedView';
+

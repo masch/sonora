@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { VectorIcon } from 'expo-router';
 import { TABS } from '@/constants/tabs';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -17,11 +18,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger key={tab.name} name={tab.name}>
           <NativeTabs.Trigger.Label>{t(`tabs.${tab.name}`)}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
-            src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name={tab.ioniconsName} />}
-            renderingMode="template"
+            src={<VectorIcon family={Ionicons} name={tab.ioniconsName} />}
           />
         </NativeTabs.Trigger>
       ))}
     </NativeTabs>
   );
 }
+

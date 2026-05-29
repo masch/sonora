@@ -54,3 +54,4 @@ describe('Web app-tabs', () => {
     expect(getByTestId('tab-trigger-settings')).toBeTruthy();
   });
 });
+

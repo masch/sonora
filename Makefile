@@ -63,7 +63,13 @@ gga: ## Run GGA (Gentleman Guardian Angel) code review on staged files
 
 .PHONY: gga-full
 gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unstages)
-	git add $(shell git ls-files '*.ts' '*.tsx' '*.js' '*.jsx') && gga run && git reset
+	@FILES="$$(git ls-files '*.ts' '*.tsx' '*.js' '*.jsx')"; \
+	for f in $$FILES; do echo "" >> $$f; done; \
+	git add $$FILES; \
+	gga run; \
+	EXIT_CODE=$$?; \
+	git checkout -- $$FILES; \
+	exit $$EXIT_CODE
 
 # ── Maintenance ───────────────────────────────
 

@@ -35,3 +35,4 @@ export const TABS = [
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
   },
 ] as const satisfies TabDefinition[];
+

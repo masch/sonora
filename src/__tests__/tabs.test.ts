@@ -32,3 +32,4 @@ describe('Tab definitions', () => {
     expect(tab.symbolViewName.web).toBe('settings');
   });
 });
+

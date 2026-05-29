@@ -17,3 +17,4 @@ export function HintRow({ title, hint }: HintRowProps) {
     </TwView>
   );
 }
+

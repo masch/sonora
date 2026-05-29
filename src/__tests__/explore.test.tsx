@@ -52,3 +52,4 @@ describe('Explore screen', () => {
     expect(getByText('Animations')).toBeTruthy();
   });
 });
+
