@@ -21,7 +21,8 @@ export const en = {
     },
     hintRow: {
       title: 'Try editing',
-      hint: 'app/index.tsx',
+      hint: 'src/app/index.tsx',
+      resetCommand: 'npm run reset-project',
     },
   },
   explore: {
