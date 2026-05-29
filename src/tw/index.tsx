@@ -24,5 +24,7 @@ export const TwText = cssComponent<React.ComponentProps<typeof RNText>>(RNText, 
 export const TwScrollView = cssComponent<
   React.ComponentProps<typeof RNScrollView> & { contentContainerClassName?: string }
 >(RNScrollView, { className: 'style', contentContainerClassName: 'contentContainerStyle' }, 'TwScrollView');
-export const TwPressable = cssComponent<React.ComponentProps<typeof RNPressable>>(RNPressable, { className: 'style' }, 'TwPressable');
+export const TwPressable = cssComponent<
+  React.ComponentProps<typeof RNPressable> & { href?: string; target?: string; rel?: string }
+>(RNPressable, { className: 'style' }, 'TwPressable');
 export const TwTextInput = cssComponent<React.ComponentProps<typeof RNTextInput>>(RNTextInput, { className: 'style' }, 'TwTextInput');
