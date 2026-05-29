@@ -19,11 +19,6 @@ export const es = {
       devtoolsAndroid: 'presioná <0>cmd+m (o ctrl+m)</0>',
       devtoolsIos: 'presioná <0>cmd+d</0>',
     },
-    hintRow: {
-      title: 'Probá editar',
-      hint: 'src/app/index.tsx',
-      resetCommand: 'npm run reset-project',
-    },
   },
   explore: {
     title: 'Explorar',

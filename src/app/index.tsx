@@ -18,6 +18,10 @@ const SECTION_GAP = 16;
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pt-16 pb-6';
 
+// Technical constants (paths & commands) excluded from translation lists
+const HINT_FILE_PATH = 'src/app/index.tsx';
+const RESET_PROJECT_COMMAND = 'npm run reset-project';
+
 export default function HomeScreen() {
   const { t } = useAppTranslation();
 
@@ -67,14 +71,14 @@ export default function HomeScreen() {
         <HintRow
           title={t('index.hints.editing')}
           hint={
-            <ThemedText type="code">{t('index.hintRow.hint')}</ThemedText>
+            <ThemedText type="code">{HINT_FILE_PATH}</ThemedText>
           }
         />
         <HintRow title={t('index.hints.devtools')} hint={getDevMenuHint()} />
         <HintRow
           title={t('index.hints.freshStart')}
           hint={
-            <ThemedText type="code">{t('index.hintRow.resetCommand')}</ThemedText>
+            <ThemedText type="code">{RESET_PROJECT_COMMAND}</ThemedText>
           }
         />
       </TwView>
