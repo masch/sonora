@@ -49,8 +49,21 @@ test: ## Run tests (Jest with jest-expo preset, one-shot)
 
 # ── CI ────────────────────────────────────────
 
+.PHONY: validate-static
+validate-static: test lint typecheck ## Run CI gate without GGA (test → lint → typecheck)
+
 .PHONY: validate
-validate: test lint typecheck ## Run full CI gate (test → lint → typecheck)
+validate: validate-static gga ## Run full CI gate with GGA review (test → lint → typecheck → gga)
+
+# ── Review ─────────────────────────────────────
+
+.PHONY: gga
+gga: ## Run GGA (Gentleman Guardian Angel) code review on staged files
+	gga run
+
+.PHONY: gga-full
+gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unstages)
+	git add $(shell git ls-files '*.ts' '*.tsx' '*.js' '*.jsx') && gga run && git reset
 
 # ── Maintenance ───────────────────────────────
 
