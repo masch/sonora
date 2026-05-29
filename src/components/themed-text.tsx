@@ -31,8 +31,12 @@ const colorClassMap: Record<string, string> = {
 };
 
 export function ThemedText({ style, type = 'default', themeColor, className, ...rest }: ThemedTextProps) {
-  const typeClass = typeClassMap[type] ?? typeClassMap.default;
-  const colorClass = themeColor ? (colorClassMap[themeColor] ?? 'text-text') : 'text-text';
+  const typeClass = Object.prototype.hasOwnProperty.call(typeClassMap, type)
+    ? typeClassMap[type]
+    : typeClassMap.default;
+  const colorClass = themeColor && Object.prototype.hasOwnProperty.call(colorClassMap, themeColor)
+    ? colorClassMap[themeColor]
+    : 'text-text';
   const combined = `${typeClass} ${colorClass}${className ? ` ${className}` : ''}`;
   return <TwText className={combined} style={style} {...rest} />;
 }

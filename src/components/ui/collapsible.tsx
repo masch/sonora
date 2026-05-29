@@ -1,17 +1,15 @@
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
-import { useColorScheme } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { RuntimeColors } from '@/constants/theme';
 import { TwView, TwPressable } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const scheme = useColorScheme();
-  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = useThemeColors();
 
   return (
     <TwView>

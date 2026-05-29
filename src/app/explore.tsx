@@ -2,7 +2,7 @@ import { Trans } from 'react-i18next';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
@@ -10,14 +10,13 @@ import { ThemedText } from '@/components/themed-text';
 import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
 import { TwView, TwText, TwPressable } from '@/tw';
-import { RuntimeColors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const webContainerClass = Platform.select({ web: 'pt-16 pb-6' }) ?? '';
 
 export default function TabTwoScreen() {
-  const scheme = useColorScheme();
-  const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = useThemeColors();
   const { t } = useAppTranslation();
 
   return (
