@@ -46,7 +46,9 @@ export function TabButton({ children, isFocused, icon, onPress, style, href, tar
     <TwPressable
       onPress={onPress}
       style={style}
-      {...({ href, target, rel } as Record<string, unknown>)}
+      href={href}
+      target={target}
+      rel={rel}
       className="active:opacity-70">
       <TwView
         className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
