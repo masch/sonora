@@ -1,14 +1,18 @@
 # Pull Request Description
 
 ## Title
+
 `feat: add prettier formatter target and integrate with static validation`
 
 ## Body
+
 ```markdown
 ## Goal
+
 This PR adds Prettier formatting target and configurations to the project, formats the codebase, and integrates code style checking into the static validation pipeline.
 
 ## Proposed Changes
+
 1. **Prettier DevDependency**: Installed `"prettier": "3.8.3"` under `devDependencies` in `package.json`.
 2. **Formatting Configurations**:
    - Created `.prettierrc` defining formatting rules.
