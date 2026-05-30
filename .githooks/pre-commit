@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+# 1. Format code
+make format
+
+# 2. Stage the formatted files so gga reviews the final version
+git add -u
+
+# 3. Run all validation steps (collect all failures)
+STATUS=0
+make test   || STATUS=$?
+make lint   || STATUS=$?
+make typecheck || STATUS=$?
+make gga    || STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo "pre-commit: validation failed (exit $STATUS). Use 'git commit --no-verify' to skip."
+fi
+exit $STATUS

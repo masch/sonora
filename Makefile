@@ -30,8 +30,9 @@ doctor: ## Run expo-doctor diagnostics
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
-install: ## Install project dependencies
+install: ## Install project dependencies and configure git hooks
 	bun install
+	git config core.hooksPath .githooks
 
 .PHONY: lint
 lint: ## Run linter (expo lint)
