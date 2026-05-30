@@ -34,7 +34,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 
 - **Native animations**: `expo-reanimated` via `animated-icon.tsx`.
 - **Web animations**: `animated-icon.web.tsx` using CSS transitions.
-  g **No direct `react-native` `Animated` API** — use Reanimated only.
+- **No direct `react-native` `Animated` API** — use Reanimated only.
 
 ## 5. Testing Conventions
 
