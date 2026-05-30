@@ -24,8 +24,8 @@ dev-ios: ## Launch Expo dev server for iOS
 	bun run ios
 
 .PHONY: doctor
-doctor: ## Run expo-doctor diagnostics
-	bunx expo-doctor
+doctor: ## Run React Doctor audit
+	bunx react-doctor@latest
 
 # ── Utilities ─────────────────────────────────
 

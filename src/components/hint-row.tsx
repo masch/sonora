@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';
 
-type HintRowProps = {
+interface HintRowProps {
   title: string;
   hint: ReactNode;
-};
+}
 
 export function HintRow({ title, hint }: HintRowProps) {
   return (

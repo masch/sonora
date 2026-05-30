@@ -4,3 +4,5 @@ dist
 web-build
 coverage
 bun.lock
+.agents
+.claude
