@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
@@ -90,7 +91,12 @@ export function AnimatedIcon() {
         <Image style={styles.glow} source={logoGlowImg} />
       </Animated.View>
 
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
+      <Animated.View entering={keyframe.duration(DURATION)} style={styles.backgroundContainer}>
+        <LinearGradient
+          colors={['#3C9FFE', '#0274DF']}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
         <Image style={styles.image} source={expoLogoImg} />
       </Animated.View>
@@ -120,9 +126,9 @@ const styles = StyleSheet.create({
     width: 76,
     height: 71,
   },
-  background: {
+  backgroundContainer: {
     borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    overflow: 'hidden',
     width: 128,
     height: 128,
     position: 'absolute',
