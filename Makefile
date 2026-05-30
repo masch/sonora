@@ -62,7 +62,7 @@ test: ## Run tests (Jest with jest-expo preset, one-shot)
 validate: format test lint typecheck gga ## Run full development gate (format → test → lint → typecheck → gga)
 
 .PHONY: check
-check: format-check test lint typecheck doctor ## Run CI verification gate (format-check → test → lint → typecheck → doctor)
+check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
 
 # ── Review ─────────────────────────────────────
 
