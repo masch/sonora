@@ -75,3 +75,4 @@ describe('Native app-tabs', () => {
     expect(getByTestId('native-trigger-settings')).toBeTruthy();
   });
 });
+

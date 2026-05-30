@@ -11,13 +11,8 @@ jest.mock('react-native-worklets', () => {
   const WM = {
     makeShareableClone: (v: unknown) => v,
     scheduleOnUI: () => {},
-    scheduleOnUIFn: () => () => {},
-    registerAlias: () => {},
-    runOnUIFn0: () => () => {},
-    runOnUIFn1: () => () => {},
-    runOnUIFn2: () => () => {},
-    runOnUIFn3: () => () => {},
-    runOnUIFn4: () => () => {},
+    scheduleOnRN: jest.fn((...args: unknown[]) => undefined),
   };
   return WM;
 });
+

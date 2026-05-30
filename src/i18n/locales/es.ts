@@ -81,3 +81,4 @@ export const es = {
     footer: 'Powered by Expo + NativeWind',
   },
 } as const;
+

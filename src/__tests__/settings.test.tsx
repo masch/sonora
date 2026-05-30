@@ -61,3 +61,4 @@ describe('Settings screen', () => {
     expect(getByText('Privacy Policy')).toBeTruthy();
   });
 });
+

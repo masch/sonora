@@ -30,42 +30,12 @@ const colorClassMap = {
   backgroundSelected: 'text-backgroundSelected',
 } as const;
 
-function getTypeClass(type: string): string {
-  switch (type) {
-    case 'title':
-      return typeClassMap.title;
-    case 'small':
-      return typeClassMap.small;
-    case 'smallBold':
-      return typeClassMap.smallBold;
-    case 'subtitle':
-      return typeClassMap.subtitle;
-    case 'link':
-      return typeClassMap.link;
-    case 'linkPrimary':
-      return typeClassMap.linkPrimary;
-    case 'code':
-      return typeClassMap.code;
-    default:
-      return typeClassMap.default;
-  }
+function getTypeClass(type: ThemedTextProps['type']): string {
+  return typeClassMap[type || 'default'];
 }
 
-function getColorClass(color?: string): string {
-  switch (color) {
-    case 'text':
-      return colorClassMap.text;
-    case 'textSecondary':
-      return colorClassMap.textSecondary;
-    case 'background':
-      return colorClassMap.background;
-    case 'backgroundElement':
-      return colorClassMap.backgroundElement;
-    case 'backgroundSelected':
-      return colorClassMap.backgroundSelected;
-    default:
-      return 'text-text';
-  }
+function getColorClass(color?: ThemeColor): string {
+  return color ? colorClassMap[color] : 'text-text';
 }
 
 export function ThemedText({ style, type = 'default', themeColor, className, children }: ThemedTextProps) {
@@ -74,3 +44,4 @@ export function ThemedText({ style, type = 'default', themeColor, className, chi
   const combined = `${typeClass} ${colorClass}${className ? ` ${className}` : ''}`;
   return <TwText className={combined} style={style}>{children}</TwText>;
 }
+

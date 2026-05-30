@@ -42,3 +42,4 @@ const Reanimated: Record<string, unknown> = {
 
 export default Reanimated;
 module.exports = Reanimated;
+
