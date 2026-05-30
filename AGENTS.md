@@ -34,7 +34,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 
 - **Native animations**: `expo-reanimated` via `animated-icon.tsx`.
 - **Web animations**: `animated-icon.web.tsx` using CSS transitions.
-- **No direct `react-native` `Animated` API** — use Reanimated only.
+  g **No direct `react-native` `Animated` API** — use Reanimated only.
 
 ## 5. Testing Conventions
 
@@ -70,3 +70,8 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 - **No direct pushes to `main`** — all changes go through PRs.
 - **No `--no-verify`** — except for emergencies (document in commit message).
 - **No `--amend`** on shared branches.
+- **Post-Merge** ("mergeado"):
+  1. Confirm PR and issue closed
+  2. Switch to `main`
+  3. `git pull origin main`
+  4. `git branch -d branch-name`
