@@ -23,4 +23,3 @@ export function ExternalLink({ href, ...rest }: Props) {
     />
   );
 }
-

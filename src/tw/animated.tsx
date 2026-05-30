@@ -3,7 +3,9 @@ import type { ComponentType } from 'react';
 import { useCssElement } from 'react-native-css';
 import Animated from 'react-native-reanimated';
 
-export type TwAnimatedViewProps = React.ComponentProps<typeof Animated.View> & { className?: string };
+export type TwAnimatedViewProps = React.ComponentProps<typeof Animated.View> & {
+  className?: string;
+};
 
 export function TwAnimatedView(props: TwAnimatedViewProps) {
   // useCssElement with Animated.View produces a union type too complex for TS (TS2590).
@@ -13,4 +15,3 @@ export function TwAnimatedView(props: TwAnimatedViewProps) {
   return useCssElement(View, props, { className: 'style' });
 }
 TwAnimatedView.displayName = 'TwAnimatedView';
-

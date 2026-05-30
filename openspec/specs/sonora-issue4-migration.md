@@ -10,13 +10,13 @@ Eliminate dual styling (StyleSheet + className) by migrating remaining `StyleShe
 
 Five color tokens MUST be registered in `src/global.css` `@theme` block before any component migration.
 
-| Token | Light | Dark |
-|-------|-------|------|
-| `--color-background` | #ffffff | #000000 |
-| `--color-text` | #000000 | #ffffff |
-| `--color-backgroundElement` | #F0F0F3 | #212225 |
+| Token                        | Light   | Dark    |
+| ---------------------------- | ------- | ------- |
+| `--color-background`         | #ffffff | #000000 |
+| `--color-text`               | #000000 | #ffffff |
+| `--color-backgroundElement`  | #F0F0F3 | #212225 |
 | `--color-backgroundSelected` | #E0E1E6 | #2E3135 |
-| `--color-textSecondary` | #60646C | #B0B4BA |
+| `--color-textSecondary`      | #60646C | #B0B4BA |
 
 #### Scenario: R0 tokens resolve via @variant dark
 

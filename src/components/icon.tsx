@@ -12,4 +12,3 @@ type IconProps = {
 export function Icon({ ios, android, web, size = 24, tintColor }: IconProps) {
   return <SymbolView name={{ ios, android, web }} size={size} tintColor={tintColor} />;
 }
-

@@ -17,6 +17,7 @@ _layout.tsx
 ```
 
 Each tab screen receives its own `ScreenWrapper` or `ScrollScreenWrapper`, which provides:
+
 - `SafeAreaView` (outer, `flex: 1`)
 - Inner View/ScrollView with `flex-1 bg-background`
 - Bottom tab bar inset via `paddingBottom` (ScreenWrapper) or `contentInset` (ScrollScreenWrapper)
@@ -51,6 +52,7 @@ Three independent issues cause the breakage on Android:
 ```
 
 The hero `TwView` has `flex-1` (`flex-grow: 1, flex-shrink: 1, flex-basis: 0`). It acts as a vertical spacer, consuming ALL remaining space after the "get started" label and card. On Android, the available height inside `ScreenWrapper` is different due to:
+
 - Different status bar height
 - NativeTabs bottom tab bar rendering with different actual height
 - Bottom navigation bar (system) on different Android versions
@@ -65,7 +67,9 @@ This causes the flex distribution to produce a different layout than iOS/web.
 // screen-wrapper.tsx
 export function ScreenWrapper({ children, className }) {
   return (
-    <SafeAreaView style={{ flex: 1 }}>          {/* SafeAreaView #1 */}
+    <SafeAreaView style={{ flex: 1 }}>
+      {' '}
+      {/* SafeAreaView #1 */}
       <TwView style={{ paddingBottom: TAB_BAR_INSET }}>{children}</TwView>
     </SafeAreaView>
   );
@@ -92,6 +96,7 @@ On Android, `SafeAreaView` adds top padding for the status bar (~24–48dp depen
 ```
 
 Key differences:
+
 1. **`flex-grow` instead of `flex-1`** — `flex-grow: 1` lets the view grow from its natural height but does NOT force `flex-basis: 0`. The hero content uses `py-16` (padding, not flex) for vertical space.
 2. **`contentInset` instead of `paddingBottom`** — the bottom tab bar inset is a visual inset on the scroll view, not actual layout padding that reduces available space.
 3. **No `SafeAreaView` nesting** — the scroll wrapper provides exactly one.
@@ -99,14 +104,14 @@ Key differences:
 
 #### Summary of differences
 
-| Factor | Explore (works) | Home (broken) | Settings (broken) |
-|--------|----------------|---------------|-------------------|
-| Wrapper | `ScrollScreenWrapper` | `ScreenWrapper` | `ScreenWrapper` |
-| Bottom inset | `contentInset` (visual) | `paddingBottom` (layout) | `paddingBottom` (layout) |
-| Vertical centering | `py-16` padding | `flex-1` hero section | N/A (scroll) |
-| SafeAreaView | 1x (via wrapper) | 1x (via wrapper) | **2x** (wrapper + manual) |
-| Flex for hero | `flex-grow` (natural basis) | `flex-1` (zero basis) | N/A |
-| Overflow | Scroll | Fixed | Scroll |
+| Factor             | Explore (works)             | Home (broken)            | Settings (broken)         |
+| ------------------ | --------------------------- | ------------------------ | ------------------------- |
+| Wrapper            | `ScrollScreenWrapper`       | `ScreenWrapper`          | `ScreenWrapper`           |
+| Bottom inset       | `contentInset` (visual)     | `paddingBottom` (layout) | `paddingBottom` (layout)  |
+| Vertical centering | `py-16` padding             | `flex-1` hero section    | N/A (scroll)              |
+| SafeAreaView       | 1x (via wrapper)            | 1x (via wrapper)         | **2x** (wrapper + manual) |
+| Flex for hero      | `flex-grow` (natural basis) | `flex-1` (zero basis)    | N/A                       |
+| Overflow           | Scroll                      | Fixed                    | Scroll                    |
 
 ### Approaches
 

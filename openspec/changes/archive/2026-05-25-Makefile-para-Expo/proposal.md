@@ -7,6 +7,7 @@ Provide a standard Makefile entry point for common dev tasks (start, lint, typec
 ## Scope
 
 ### In Scope
+
 - Root `Makefile` with 13 targets: `start`, `dev-web`, `dev-android`, `dev-ios`, `doctor`, `install`, `lint`, `typecheck`, `validate`, `test`, `clean`, `reset`, `help`
 - `start` as the default target (first target in file)
 - `validate` includes `test` + `lint` + `typecheck` (CI gate matching engram config)
@@ -19,6 +20,7 @@ Provide a standard Makefile entry point for common dev tasks (start, lint, typec
 - Update `openspec/config.yaml` with real test runner info
 
 ### Out of Scope
+
 - CI/CD pipeline (CI will use `make` but is out of scope here)
 - Writing actual test files (just the infra to run them)
 - Formatter setup (not configured in this project yet)
@@ -28,9 +30,11 @@ Provide a standard Makefile entry point for common dev tasks (start, lint, typec
 ## Capabilities
 
 ### New Capabilities
+
 None — this is a pure tooling/config change with no spec-level behavior.
 
 ### Modified Capabilities
+
 None — no existing specs are affected.
 
 ## Approach
@@ -38,14 +42,16 @@ None — no existing specs are affected.
 **Smart DX Makefile + TDD infra** (expanded from exploration approach 3):
 
 **Makefile:**
+
 - Thin wrappers delegating to `bun run <script>` for existing scripts
 - `typecheck` and `validate` add functionality not in package.json
 - `validate` = `make test && make lint && make typecheck` (tests first, per TDD)
 - Auto-generated `help` target via `@grep -E '^[a-zA-Z_-]+:' Makefile
-- Targets ordered: convenience (start, dev-*) → utilities (install, lint, typecheck) → test → CI (validate) → maintenance (clean, reset)
+- Targets ordered: convenience (start, dev-\*) → utilities (install, lint, typecheck) → test → CI (validate) → maintenance (clean, reset)
 - Standard phony declarations for all targets
 
 **Test runner setup:**
+
 - Install `jest-expo`, `jest`, `@types/jest` via `bunx expo install --dev`
 - Install `@testing-library/react-native` via `bunx expo install --dev`
 - Add `jest` preset to `package.json`
@@ -56,23 +62,23 @@ None — no existing specs are affected.
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `Makefile` | New | Root-level make targets for dev workflow |
-| `package.json` | Modified | Add Jest config (preset, transformIgnorePatterns) and `test` script |
-| `tsconfig.json` | Modified | Add `"types": ["jest"]` |
-| `openspec/config.yaml` | Modified | Update testing section with real runner |
-| `.engram/config.json` | Unchanged | Already references `make validate` — no update needed |
+| Area                   | Impact    | Description                                                         |
+| ---------------------- | --------- | ------------------------------------------------------------------- |
+| `Makefile`             | New       | Root-level make targets for dev workflow                            |
+| `package.json`         | Modified  | Add Jest config (preset, transformIgnorePatterns) and `test` script |
+| `tsconfig.json`        | Modified  | Add `"types": ["jest"]`                                             |
+| `openspec/config.yaml` | Modified  | Update testing section with real runner                             |
+| `.engram/config.json`  | Unchanged | Already references `make validate` — no update needed               |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| `expo lint` not yet configured | Low | Target exists, fails gracefully; configure ESLint separately |
-| `tsc --noEmit` surfaces existing errors | Med | Run once after creation; fix or document known issues |
-| Jest config may need tweaks for Expo SDK 56 | Low | Follow official jest-expo preset; test after install |
-| `@testing-library/react-native` may not work with React 19.2 without config | Low | Already compatible per Expo docs |
-| Bun + Jest compatibility | Low | jest-expo uses Jest, works with bun as package manager |
+| Risk                                                                        | Likelihood | Mitigation                                                   |
+| --------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------ |
+| `expo lint` not yet configured                                              | Low        | Target exists, fails gracefully; configure ESLint separately |
+| `tsc --noEmit` surfaces existing errors                                     | Med        | Run once after creation; fix or document known issues        |
+| Jest config may need tweaks for Expo SDK 56                                 | Low        | Follow official jest-expo preset; test after install         |
+| `@testing-library/react-native` may not work with React 19.2 without config | Low        | Already compatible per Expo docs                             |
+| Bun + Jest compatibility                                                    | Low        | jest-expo uses Jest, works with bun as package manager       |
 
 ## Rollback Plan
 

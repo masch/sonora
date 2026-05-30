@@ -9,10 +9,12 @@
 - `src/app/explore.tsx` — Explore tab
 
 **Tab setup** uses platform-specific files via `.tsx`/`.web.tsx`:
+
 - **Native** (`app-tabs.tsx`): `NativeTabs` from `expo-router/unstable-native-tabs` with 2 triggers (Home, Explore), PNG icons from `assets/images/tabIcons/`
 - **Web** (`app-tabs.web.tsx`): `expo-router/ui` with `Tabs/TabList/TabTrigger/TabSlot`, custom tab bar with branding and external Docs link
 
 **Styling** is entirely via `StyleSheet.create()` across all 9+ components with:
+
 - Custom theme constants in `src/constants/theme.ts` (`Colors`, `Fonts`, `Spacing`)
 - `useTheme()` hook wrapping `useColorScheme()` for light/dark mode
 - `global.css` at `src/global.css` with CSS custom properties for web font families
@@ -65,6 +67,7 @@
 5. **Web tab bar already works** — The web version uses `expo-router/ui` which renders as Views/Texts that WILL support className. This can be migrated later.
 
 **Specific plan:**
+
 - Add NativeWind v5 infrastructure (deps, metro, postcss, global.css, lightningcss override)
 - Create `src/app/settings.tsx` with NativeWind className usage as the demo
 - Add a 3rd trigger in both `app-tabs.tsx` and `app-tabs.web.tsx`
@@ -84,6 +87,7 @@
 ### Ready for Proposal
 
 Yes — the exploration is complete. Tell the orchestrator to proceed with the Proposal phase. The user should know that:
+
 1. NativeWind v5 works with Expo SDK 56 (React Native 0.85.3 >= 0.81.4 minimum)
 2. NativeTabs tab bar CANNOT be styled with className (it uses native APIs) — only screen content benefits from NativeWind
 3. The current flat route structure is appropriate and should be kept

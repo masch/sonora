@@ -6,20 +6,20 @@
 
 The system MUST NOT export `Colors`, `Fonts`, or `useTheme`. The only runtime color export SHALL be `RuntimeColors` (5 colors × 2 modes). Consumers MUST use `useColorScheme()` from `react-native` directly.
 
-| Scenario | GIVEN | WHEN | THEN |
-|----------|-------|------|------|
-| Colors removed | file imports `Colors` from `@/constants/theme` | `make typecheck` runs | fails with module-not-found |
-| Fonts removed | file imports `Fonts` from `@/constants/theme` | `make typecheck` runs | fails with module-not-found |
-| useTheme deleted | file imports `{ useTheme }` from `@/hooks/use-theme` | `make typecheck` runs | fails with module-not-found |
-| use-color-scheme shim deleted | file imports from `@/hooks/use-color-scheme` | bundler resolves module on web | `.web.ts` SSR variant used; native resolves from `react-native` |
+| Scenario                      | GIVEN                                                | WHEN                           | THEN                                                            |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------ | --------------------------------------------------------------- |
+| Colors removed                | file imports `Colors` from `@/constants/theme`       | `make typecheck` runs          | fails with module-not-found                                     |
+| Fonts removed                 | file imports `Fonts` from `@/constants/theme`        | `make typecheck` runs          | fails with module-not-found                                     |
+| useTheme deleted              | file imports `{ useTheme }` from `@/hooks/use-theme` | `make typecheck` runs          | fails with module-not-found                                     |
+| use-color-scheme shim deleted | file imports from `@/hooks/use-color-scheme`         | bundler resolves module on web | `.web.ts` SSR variant used; native resolves from `react-native` |
 
 ### Requirement: ThemeColor Type Migration
 
 `ThemeColor` SHALL become a plain string union `'text' | 'textSecondary' | 'background' | 'backgroundElement' | 'backgroundSelected'`.
 
-| Scenario | GIVEN | WHEN | THEN |
-|----------|-------|------|------|
-| Valid string compiles | `<ThemedText themeColor="text">` | `make typecheck` runs | passes without error |
+| Scenario                | GIVEN                                    | WHEN                  | THEN                  |
+| ----------------------- | ---------------------------------------- | --------------------- | --------------------- |
+| Valid string compiles   | `<ThemedText themeColor="text">`         | `make typecheck` runs | passes without error  |
 | Invalid string rejected | `<ThemedText themeColor="invalidColor">` | `make typecheck` runs | fails with type error |
 
 ## MODIFIED Requirements
@@ -30,6 +30,7 @@ The toolchain MUST configure Metro, PostCSS, and global CSS for NativeWind v5 co
 (Previously: only color and font tokens in @theme; now also spacing tokens)
 
 #### Scenario: global.css imports Tailwind
+
 - GIVEN `src/global.css`
 - WHEN the app loads
 - THEN it MUST include `@import "tailwindcss"`
@@ -38,16 +39,19 @@ The toolchain MUST configure Metro, PostCSS, and global CSS for NativeWind v5 co
 - AND web font `@import` statements MUST remain unchanged
 
 #### Scenario: Metro wraps with withNativewind
+
 - GIVEN `metro.config.js`
 - WHEN the app bundle compiles
 - THEN the config MUST export `withNativewind()` wrapping the Expo config
 
 #### Scenario: PostCSS applies tailwindcss/postcss
+
 - GIVEN `postcss.config.mjs`
 - WHEN PostCSS processes CSS
 - THEN it MUST use the `@tailwindcss/postcss` plugin
 
 #### Scenario: lightningcss is pinned
+
 - GIVEN `package.json` overrides
 - WHEN `bun install` completes
 - THEN `lightningcss` MUST resolve to 1.30.1
@@ -58,12 +62,14 @@ The system MUST provide NativeWind-wrapped RN primitives for className prop supp
 (Previously: only color and font tokens autocomplete; now also spacing tokens)
 
 #### Scenario: Wrappers exist in src/tw/
+
 - GIVEN `src/tw/` exports
 - WHEN a screen imports from `src/tw/`
 - THEN it MUST receive View, Text, ScrollView, Pressable, TextInput, and Image wrapped with `useCssElement`
 - AND each MUST accept className and render with NativeWind styling
 
 #### Scenario: TypeScript recognizes theme tokens
+
 - GIVEN `nativewind-env.d.ts` exists
 - WHEN TypeScript type-checks the project
 - THEN custom colors, spacing, and fonts from the Tailwind `@theme` MUST be recognized

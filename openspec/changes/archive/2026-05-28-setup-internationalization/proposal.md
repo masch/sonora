@@ -13,9 +13,11 @@
 ## Capabilities
 
 ### New
+
 - `internationalization`: Externalized strings with locale detection and typed translation keys. Infrastructure-only — no new user-facing feature.
 
 ### Modified
+
 - None — pure refactor, no behavioral spec change.
 
 ## Approach
@@ -31,24 +33,24 @@
 
 ## Affected Areas
 
-| Area | Change | What |
-|------|--------|------|
-| `src/i18n/` | New (3 files) | Init, en.ts, types.ts |
-| `src/app/_layout.tsx` | +1 line | Import `@/i18n` |
-| `src/app/explore.tsx` | ~12 strings | t() replacements |
-| `src/app/index.tsx` | ~7 strings | t() replacements |
-| `src/app/settings.tsx` | ~15 strings | t() replacements |
-| `src/constants/tabs.ts` | ~3 labels | t() replacements |
-| `src/components/hint-row.tsx` | ~2 defaults | t() replacements |
-| `eslint.config.js` | 1 rule | `i18next/no-literal-string` |
+| Area                          | Change        | What                        |
+| ----------------------------- | ------------- | --------------------------- |
+| `src/i18n/`                   | New (3 files) | Init, en.ts, types.ts       |
+| `src/app/_layout.tsx`         | +1 line       | Import `@/i18n`             |
+| `src/app/explore.tsx`         | ~12 strings   | t() replacements            |
+| `src/app/index.tsx`           | ~7 strings    | t() replacements            |
+| `src/app/settings.tsx`        | ~15 strings   | t() replacements            |
+| `src/constants/tabs.ts`       | ~3 labels     | t() replacements            |
+| `src/components/hint-row.tsx` | ~2 defaults   | t() replacements            |
+| `eslint.config.js`            | 1 rule        | `i18next/no-literal-string` |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| expo-localization crash on unsupported platform | Low | try/catch, fallback `'en'` |
-| ESLint rule too aggressive | Med | Configure `allow` list for code/file paths |
-| Missing string during migration | Med | ESLint catches remaining literals |
+| Risk                                            | Likelihood | Mitigation                                 |
+| ----------------------------------------------- | ---------- | ------------------------------------------ |
+| expo-localization crash on unsupported platform | Low        | try/catch, fallback `'en'`                 |
+| ESLint rule too aggressive                      | Med        | Configure `allow` list for code/file paths |
+| Missing string during migration                 | Med        | ESLint catches remaining literals          |
 
 ## Rollback Plan
 

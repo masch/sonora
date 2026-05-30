@@ -28,7 +28,8 @@ export const es = {
       fileRouting: {
         title: 'Ruteo por archivos',
         desc: 'Esta app tiene dos pantallas: <0>src/app/index.tsx</0> y <0>src/app/explore.tsx</0>',
-        layout: 'El archivo de layout en <0>src/app/_layout.tsx</0> configura el navegador de tabs.',
+        layout:
+          'El archivo de layout en <0>src/app/_layout.tsx</0> configura el navegador de tabs.',
       },
       platforms: {
         title: 'Compatibilidad con Android, iOS y web',
@@ -81,4 +82,3 @@ export const es = {
     footer: 'Powered by Expo + NativeWind',
   },
 } as const;
-

@@ -5,5 +5,3 @@ export function useThemeColors() {
   const scheme = useColorScheme();
   return scheme === 'dark' ? RuntimeColors.dark : RuntimeColors.light;
 }
-
-

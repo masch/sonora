@@ -17,52 +17,52 @@ Replaced all 9 PNG-based tab icons with vector icon systems: `@expo/vector-icons
 
 ### SDD Artifacts
 
-| Artifact | File | Status |
-|----------|------|--------|
-| Proposal | `openspec/changes/sonora-issue7/proposal.md` | ✅ Complete |
-| Spec (Delta) | `openspec/specs/sonora-issue7-spec.md` | ✅ Complete |
-| Design | `openspec/changes/sonora-issue7/design.md` | ✅ Complete |
-| Tasks | `openspec/changes/sonora-issue7/tasks.md` | ✅ Complete (18/18 tasks) |
-| Verify Report | `openspec/changes/sonora-issue7/verify-report.md` | ✅ Complete |
-| **Archive Report** | `openspec/changes/archive/2026-05-27-sonora-issue7/archive-report.md` | ✅ **This file** |
+| Artifact           | File                                                                  | Status                    |
+| ------------------ | --------------------------------------------------------------------- | ------------------------- |
+| Proposal           | `openspec/changes/sonora-issue7/proposal.md`                          | ✅ Complete               |
+| Spec (Delta)       | `openspec/specs/sonora-issue7-spec.md`                                | ✅ Complete               |
+| Design             | `openspec/changes/sonora-issue7/design.md`                            | ✅ Complete               |
+| Tasks              | `openspec/changes/sonora-issue7/tasks.md`                             | ✅ Complete (18/18 tasks) |
+| Verify Report      | `openspec/changes/sonora-issue7/verify-report.md`                     | ✅ Complete               |
+| **Archive Report** | `openspec/changes/archive/2026-05-27-sonora-issue7/archive-report.md` | ✅ **This file**          |
 
 ### Artifact Store
 
 - **Backend**: hybrid (filesystem + Engram)
 - **Engram topic key format**: `sdd/sonora-issue7/{artifact}`
 
-| Artifact | Observation ID | Topic Key |
-|----------|---------------|-----------|
-| Archive Report | (saved below) | `sdd/sonora-issue7/archive-report` |
+| Artifact       | Observation ID | Topic Key                          |
+| -------------- | -------------- | ---------------------------------- |
+| Archive Report | (saved below)  | `sdd/sonora-issue7/archive-report` |
 
 ---
 
 ## Implementation Stats
 
-| Metric | Value |
-|--------|-------|
-| Files created | 1 (`src/components/icon.tsx`) |
-| Files modified | 3 (`app-tabs.tsx`, `app-tabs.web.tsx`, `package.json`) |
-| Files deleted | 9 (PNG assets in `assets/images/tabIcons/`) |
-| Total lines added | 52 |
-| Total lines removed | 16 |
-| Binary files deleted | 9 |
-| Commit | `828709e` (PR #13) |
-| `make typecheck` | ✅ Passed |
-| `bun run test` | ✅ Passed (20 tests) |
-| `make lint` | ✅ Passed |
-| No stale tabIcons references | ✅ Confirmed (`grep -r tabIcons src/` → 0) |
+| Metric                       | Value                                                  |
+| ---------------------------- | ------------------------------------------------------ |
+| Files created                | 1 (`src/components/icon.tsx`)                          |
+| Files modified               | 3 (`app-tabs.tsx`, `app-tabs.web.tsx`, `package.json`) |
+| Files deleted                | 9 (PNG assets in `assets/images/tabIcons/`)            |
+| Total lines added            | 52                                                     |
+| Total lines removed          | 16                                                     |
+| Binary files deleted         | 9                                                      |
+| Commit                       | `828709e` (PR #13)                                     |
+| `make typecheck`             | ✅ Passed                                              |
+| `bun run test`               | ✅ Passed (20 tests)                                   |
+| `make lint`                  | ✅ Passed                                              |
+| No stale tabIcons references | ✅ Confirmed (`grep -r tabIcons src/` → 0)             |
 
 ### Changed Files Detail
 
-| File | Action | Lines |
-|------|--------|-------|
-| `src/components/icon.tsx` | **Created** | 14 |
-| `src/components/app-tabs.tsx` | Modified | 15 changed (9 added, 6 removed) |
-| `src/components/app-tabs.web.tsx` | Modified | 25 changed (20 added, 5 removed) |
-| `package.json` | Modified | +1 dependency (`@expo/vector-icons`) |
-| `bun.lock` | Modified | +3 lines |
-| `assets/images/tabIcons/*.png` | **Deleted** | 9 binary files removed |
+| File                              | Action      | Lines                                |
+| --------------------------------- | ----------- | ------------------------------------ |
+| `src/components/icon.tsx`         | **Created** | 14                                   |
+| `src/components/app-tabs.tsx`     | Modified    | 15 changed (9 added, 6 removed)      |
+| `src/components/app-tabs.web.tsx` | Modified    | 25 changed (20 added, 5 removed)     |
+| `package.json`                    | Modified    | +1 dependency (`@expo/vector-icons`) |
+| `bun.lock`                        | Modified    | +3 lines                             |
+| `assets/images/tabIcons/*.png`    | **Deleted** | 9 binary files removed               |
 
 ---
 
@@ -103,9 +103,11 @@ Replaced all 9 PNG-based tab icons with vector icon systems: `@expo/vector-icons
 **Why**: No stale references possible — the project won't build if a `require('...')` remains. Confirmed zero references via `grep`.
 
 ### Rejected — Keep PNGs
+
 Raster assets don't scale, don't support `tintColor`, add ~120 KB to bundle, require manual resolution selection.
 
 ### Rejected — Custom SVG Components
+
 No bundler `react-native-svg` config in project. `@expo/vector-icons` and `expo-symbols` are zero-config and already compatible with Expo SDK 56.
 
 ---
@@ -114,8 +116,8 @@ No bundler `react-native-svg` config in project. `@expo/vector-icons` and `expo-
 
 The delta spec (`openspec/specs/sonora-issue7-spec.md`) contains ADDED, MODIFIED, and REMOVED requirements relative to the icon system domain. The existing main spec `openspec/specs/nativewind-styling/spec.md` has a "Tab Navigation" requirement (basic structural rendering) that was modified by this change.
 
-| Domain | Action | Details |
-|--------|--------|---------|
+| Domain                                | Action     | Details                                                                                                                                                                                                                                                     |
+| ------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `nativewind-styling` (Tab Navigation) | Not merged | The Tab Navigation requirement in the main spec covers structural tab rendering (tabs show on native/web). The icon details are specific to this icon migration. The delta spec is kept as a standalone artifact at `openspec/specs/sonora-issue7-spec.md`. |
 
 The delta spec serves as a standalone paper trail for the icon migration. Requirements from the MODIFIED "Tab Navigation" section have been applied to the codebase and verified; the main spec's "Tab Navigation" remains accurate at the structural level. A future consolidation pass can merge icon-specific requirements into a domain-level icon system spec if needed.
@@ -126,13 +128,13 @@ The delta spec serves as a standalone paper trail for the icon migration. Requir
 
 The following were explicitly excluded from this change:
 
-| Item | Reason |
-|------|--------|
-| Other SVG or icon system migrations beyond tabs | Scope limited to tab navigation icons |
-| Animation or interactive icon states | Not required for tab bar icons |
-| Dark mode icon variants | `renderingMode: "template"` and `tintColor` prop handle this dynamically |
+| Item                                                                       | Reason                                                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Other SVG or icon system migrations beyond tabs                            | Scope limited to tab navigation icons                                         |
+| Animation or interactive icon states                                       | Not required for tab bar icons                                                |
+| Dark mode icon variants                                                    | `renderingMode: "template"` and `tintColor` prop handle this dynamically      |
 | `expo-symbols` `SFSymbol` / `AndroidSymbol` type re-export from `icon.tsx` | Task specified it but verify report flagged it as a suggestion — non-blocking |
-| Color scheme branch coverage in tests | Pre-existing gap (would need `useColorScheme` mock setup) |
+| Color scheme branch coverage in tests                                      | Pre-existing gap (would need `useColorScheme` mock setup)                     |
 
 ---
 
@@ -141,6 +143,7 @@ The following were explicitly excluded from this change:
 ### 1. Test Coverage Gaps (WARNING)
 
 **Issue**: 7 of 10 spec scenarios have no covering test. Specifically:
+
 - Icon component prop forwarding (4 scenarios: SF Symbol, Material, web icon, size/tintColor) are untested
 - Web tab icon name diversity (1 scenario) is untested
 - Color scheme adaptation (1 scenario) is untested
@@ -165,14 +168,14 @@ The following were explicitly excluded from this change:
 
 ## SDD Cycle Summary
 
-| Phase | Artifact | Status |
-|-------|----------|--------|
-| 📋 Proposal | `openspec/changes/sonora-issue7/proposal.md` | ✅ Complete |
-| 📝 Spec | `openspec/specs/sonora-issue7-spec.md` | ✅ Complete |
-| 🏗️ Design | `openspec/changes/sonora-issue7/design.md` | ✅ Complete |
-| ✅ Tasks | `openspec/changes/sonora-issue7/tasks.md` | ✅ Complete (18/18) |
-| 🔧 Apply | PR #13 (commit `828709e`) | ✅ Complete |
-| 🔍 Verify | `openspec/changes/sonora-issue7/verify-report.md` | ✅ Complete (PASS WITH WARNINGS) |
-| 📦 **Archive** | **This report** | ✅ **Complete** |
+| Phase          | Artifact                                          | Status                           |
+| -------------- | ------------------------------------------------- | -------------------------------- |
+| 📋 Proposal    | `openspec/changes/sonora-issue7/proposal.md`      | ✅ Complete                      |
+| 📝 Spec        | `openspec/specs/sonora-issue7-spec.md`            | ✅ Complete                      |
+| 🏗️ Design      | `openspec/changes/sonora-issue7/design.md`        | ✅ Complete                      |
+| ✅ Tasks       | `openspec/changes/sonora-issue7/tasks.md`         | ✅ Complete (18/18)              |
+| 🔧 Apply       | PR #13 (commit `828709e`)                         | ✅ Complete                      |
+| 🔍 Verify      | `openspec/changes/sonora-issue7/verify-report.md` | ✅ Complete (PASS WITH WARNINGS) |
+| 📦 **Archive** | **This report**                                   | ✅ **Complete**                  |
 
 The SDD cycle for sonora-issue7 is **complete**. Ready for the next change.

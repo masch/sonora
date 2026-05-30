@@ -9,4 +9,3 @@ export type RecursiveKeyOf<TObj extends Record<string, unknown>> = {
 
 /** Union type of all translation keys — derived from the `en` translations object. */
 export type TranslationKeys = RecursiveKeyOf<typeof en>;
-

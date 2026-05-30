@@ -37,6 +37,14 @@ install: ## Install project dependencies
 lint: ## Run linter (expo lint)
 	bun run lint
 
+.PHONY: format
+format: ## Run prettier to format code
+	bun run format
+
+.PHONY: format-check
+format-check: ## Check code formatting using prettier
+	bun run format:check
+
 .PHONY: typecheck
 typecheck: ## Run TypeScript type check
 	tsc --noEmit
@@ -49,11 +57,11 @@ test: ## Run tests (Jest with jest-expo preset, one-shot)
 
 # ── CI ────────────────────────────────────────
 
-.PHONY: validate-static
-validate-static: test lint typecheck ## Run CI gate without GGA (test → lint → typecheck)
-
 .PHONY: validate
-validate: validate-static gga ## Run full CI gate with GGA review (test → lint → typecheck → gga)
+validate: format test lint typecheck gga ## Run full development gate (format → test → lint → typecheck → gga)
+
+.PHONY: check
+check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
 
 # ── Review ─────────────────────────────────────
 
