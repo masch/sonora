@@ -7,13 +7,15 @@ import { BottomTabInset, TabBottomPadding } from '@/constants/theme';
 
 const TAB_BAR_INSET = BottomTabInset + TabBottomPadding;
 
-type ScreenWrapperProps = {
+interface ScreenWrapperProps {
   children: ReactNode;
   className?: string;
-};
+}
 
-type ScrollScreenWrapperProps = ScreenWrapperProps &
-  Pick<ScrollViewProps, 'contentContainerStyle' | 'contentContainerClassName'>;
+interface ScrollScreenWrapperProps extends ScreenWrapperProps {
+  contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
+  contentContainerClassName?: ScrollViewProps['contentContainerClassName'];
+}
 
 /**
  * Non-scrollable screen wrapper.

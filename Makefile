@@ -24,8 +24,8 @@ dev-ios: ## Launch Expo dev server for iOS
 	bun run ios
 
 .PHONY: doctor
-doctor: ## Run expo-doctor diagnostics
-	bunx expo-doctor
+doctor: ## Run React Doctor audit
+	bunx react-doctor@latest
 
 # ── Utilities ─────────────────────────────────
 
@@ -62,7 +62,7 @@ test: ## Run tests (Jest with jest-expo preset, one-shot)
 validate: format test lint typecheck gga ## Run full development gate (format → test → lint → typecheck → gga)
 
 .PHONY: check
-check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
+check: format-check test lint typecheck doctor ## Run CI verification gate (format-check → test → lint → typecheck → doctor)
 
 # ── Review ─────────────────────────────────────
 

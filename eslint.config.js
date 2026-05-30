@@ -8,7 +8,9 @@ module.exports = defineConfig([
   {
     plugins: { i18next: i18nextPlugin },
     rules: {
+      'no-console': 'warn',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       '@typescript-eslint/ban-ts-comment': [
         'error',
         { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },

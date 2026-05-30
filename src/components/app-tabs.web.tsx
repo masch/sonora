@@ -18,6 +18,7 @@ export default function AppTabs() {
   const { t } = useAppTranslation();
   return (
     <Tabs>
+      {/* TabSlot is a third-party component (expo-router/ui) that doesn't support className for height */}
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
@@ -37,14 +38,18 @@ export default function AppTabs() {
   );
 }
 
-type IconSymbols = { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol };
+interface IconSymbols {
+  ios: SFSymbol;
+  android: AndroidSymbol;
+  web: AndroidSymbol;
+}
 
-type TabButtonProps = TabTriggerSlotProps & {
+interface TabButtonProps extends TabTriggerSlotProps {
   icon: IconSymbols;
   href?: string;
   target?: string;
   rel?: string;
-};
+}
 
 export function TabButton({
   children,
@@ -63,6 +68,8 @@ export function TabButton({
       href={href}
       target={target}
       rel={rel}
+      accessibilityLabel={typeof children === 'string' ? children : undefined}
+      testID={href === '/' ? 'tab-index' : `tab-${href?.replace('/', '')}`}
       className="active:opacity-70"
     >
       <TwView
