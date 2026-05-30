@@ -7,7 +7,8 @@ node_modules/
 .expo/
 dist/
 web-build/
-expo-env.d.ts
+# expo-env.d.ts is NOT ignored — tracked in git so CI inherits Expo
+# type declarations (*.css, *.module.css, etc.). See git add of the file.
 
 # Native
 .kotlin/
