@@ -9,21 +9,25 @@ Context: Replace PNG tab icons with Ionicons (native) and `expo-symbols` SymbolV
 The system MUST provide a reusable `Icon` component that wraps `expo-symbols` `SymbolView` and accepts platform-discriminated names via `{ios, android?, web?}` props.
 
 #### Scenario: Renders SF Symbol on iOS
+
 - GIVEN an `Icon` with `ios="house"` and no `android` / `web` keys
 - WHEN it renders on iOS
 - THEN the `SymbolView` MUST receive `name={{ ios: 'house' }}` and render the SF Symbol "house"
 
 #### Scenario: Renders Material icon on Android
+
 - GIVEN an `Icon` with `ios="house"` and `android="home"`
 - WHEN it renders on Android
 - THEN the `SymbolView` MUST receive `name={{ ios: 'house', android: 'home' }}` and render the Material icon "home"
 
 #### Scenario: Renders web icon
+
 - GIVEN an `Icon` with `ios="house"`, `android="home"`, and `web="home"`
 - WHEN it renders on web
 - THEN the `SymbolView` MUST receive all three name keys
 
 #### Scenario: Forwards size and tintColor
+
 - GIVEN an `Icon` with `size={14}` and `tintColor="rgb(107 114 128)"`
 - WHEN it renders
 - THEN the props MUST be forwarded to `SymbolView`
@@ -33,6 +37,7 @@ The system MUST provide a reusable `Icon` component that wraps `expo-symbols` `S
 Web tab icons MUST use distinct SF Symbol / Material icon names per platform key to ensure correct rendering on iOS Safari, Android Chrome, and desktop browsers.
 
 #### Scenario: Web tab icon names differ by platform
+
 - GIVEN the `Icon` component receives `{ios: 'gear', android: 'settings', web: 'settings'}`
 - WHEN rendering on web
 - THEN `SymbolView` MUST receive all three keys in its `name` prop
@@ -47,6 +52,7 @@ Tabs MUST render with platform-native vector icons. Three tabs (Home, Explore, S
 (Previously: Tab icons loaded via `require('@/assets/images/tabIcons/*.png')`; no icon system specification.)
 
 #### Scenario: Native tab icons use Ionicons
+
 - GIVEN the app runs on iOS or Android
 - WHEN the tab bar renders via `NativeTabs`
 - THEN each `NativeTabs.Trigger` MUST render an Ionicons icon via `NativeTabs.Trigger.VectorIcon`
@@ -54,6 +60,7 @@ Tabs MUST render with platform-native vector icons. Three tabs (Home, Explore, S
 - AND `renderingMode` MUST be `"template"`
 
 #### Scenario: Web tab icons use SymbolView
+
 - GIVEN the app runs on web
 - WHEN the tab bar renders via `Tabs` from `expo-router/ui`
 - THEN each `TabButton` MUST render an `Icon` component
@@ -62,6 +69,7 @@ Tabs MUST render with platform-native vector icons. Three tabs (Home, Explore, S
 - AND Settings MUST use `{ios:'gear', android:'settings', web:'settings'}`
 
 #### Scenario: Icons adapt to color scheme
+
 - GIVEN the device is in dark or light mode
 - WHEN a tab icon renders
 - THEN the icon `tintColor` MUST respect the current color scheme via `Colors` theme tokens

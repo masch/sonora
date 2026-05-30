@@ -6,5 +6,3 @@ export function useAppTranslation() {
   const { t } = useTranslation();
   return { t: (key: TranslationKeys): string => t(key) };
 }
-
-

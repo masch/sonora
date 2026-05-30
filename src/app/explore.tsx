@@ -24,7 +24,8 @@ export default function TabTwoScreen() {
 
   return (
     <ScrollScreenWrapper
-      contentContainerClassName={`flex-row justify-center ${webContainerClass}`.trim()}>
+      contentContainerClassName={`flex-row justify-center ${webContainerClass}`.trim()}
+    >
       <TwView className="max-w-[800px] flex-grow">
         <TwView className="gap-4 items-center px-6 py-16">
           <TwText className="text-3xl font-bold">{t('explore.title')}</TwText>
@@ -87,10 +88,7 @@ export default function TabTwoScreen() {
                 components={[<ThemedText key="code" type="code" />]}
               />
             </ThemedText>
-            <Image
-              source={reactLogoImg}
-              style={{ width: 100, height: 100, alignSelf: 'center' }}
-            />
+            <Image source={reactLogoImg} style={{ width: 100, height: 100, alignSelf: 'center' }} />
             <ExternalLink href="https://reactnative.dev/docs/images">
               <ThemedText type="linkPrimary">{t('common.learnMore')}</ThemedText>
             </ExternalLink>
@@ -122,4 +120,3 @@ export default function TabTwoScreen() {
     </ScrollScreenWrapper>
   );
 }
-

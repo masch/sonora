@@ -92,10 +92,7 @@ export function AnimatedIcon() {
       </Animated.View>
 
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.backgroundContainer}>
-        <LinearGradient
-          colors={['#3C9FFE', '#0274DF']}
-          style={StyleSheet.absoluteFill}
-        />
+        <LinearGradient colors={['#3C9FFE', '#0274DF']} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
         <Image style={styles.image} source={expoLogoImg} />
@@ -139,4 +136,3 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
 });
-

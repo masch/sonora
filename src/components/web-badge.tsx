@@ -14,7 +14,8 @@ export function WebBadge() {
   return (
     <TwView className="items-center gap-2 p-8">
       <ThemedText type="code" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-        {'v'}{version}
+        {'v'}
+        {version}
       </ThemedText>
       <Image
         source={scheme === 'dark' ? expoBadgeWhite : expoBadge}
@@ -23,4 +24,3 @@ export function WebBadge() {
     </TwView>
   );
 }
-

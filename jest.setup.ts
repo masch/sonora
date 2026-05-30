@@ -15,4 +15,3 @@ jest.mock('react-native-worklets', () => {
   };
   return WM;
 });
-

@@ -10,35 +10,35 @@ Eliminated the dual-source-of-truth between `src/constants/theme.ts` and `src/gl
 
 ## Artifact Inventory
 
-| Artifact | Engram ID | Path |
-|----------|-----------|------|
-| Proposal | #2612 | `openspec/changes/archive/2026-05-27-sonora-issue5/proposal.md` |
-| Spec (delta) | #2613 | `openspec/changes/archive/2026-05-27-sonora-issue5/specs/nativewind-styling/spec.md` |
-| Design | #2614 | `openspec/changes/archive/2026-05-27-sonora-issue5/design.md` |
-| Tasks | #2615 | `openspec/changes/archive/2026-05-27-sonora-issue5/tasks.md` |
-| Apply Progress | #2616 | — (Engram only) |
-| Verify Report | #2620 | `openspec/changes/archive/2026-05-27-sonora-issue5/verify-report.md` |
-| Archive Report | #2622 | `openspec/changes/archive/2026-05-27-sonora-issue5/archive-report.md` |
+| Artifact       | Engram ID | Path                                                                                 |
+| -------------- | --------- | ------------------------------------------------------------------------------------ |
+| Proposal       | #2612     | `openspec/changes/archive/2026-05-27-sonora-issue5/proposal.md`                      |
+| Spec (delta)   | #2613     | `openspec/changes/archive/2026-05-27-sonora-issue5/specs/nativewind-styling/spec.md` |
+| Design         | #2614     | `openspec/changes/archive/2026-05-27-sonora-issue5/design.md`                        |
+| Tasks          | #2615     | `openspec/changes/archive/2026-05-27-sonora-issue5/tasks.md`                         |
+| Apply Progress | #2616     | — (Engram only)                                                                      |
+| Verify Report  | #2620     | `openspec/changes/archive/2026-05-27-sonora-issue5/verify-report.md`                 |
+| Archive Report | #2622     | `openspec/changes/archive/2026-05-27-sonora-issue5/archive-report.md`                |
 
 ## Implementation Stats
 
-| Metric | Value |
-|--------|-------|
-| Tasks total | 15 |
-| Tasks complete | 14 |
+| Metric           | Value                                       |
+| ---------------- | ------------------------------------------- |
+| Tasks total      | 15                                          |
+| Tasks complete   | 14                                          |
 | Tasks incomplete | 1 (5.3 Visual check — manual, non-blocking) |
-| Files changed | 10 modified, 2 deleted |
-| Test suites | 3 |
-| Tests passing | 20 (unchanged from baseline) |
-| Build | ✅ Passed |
-| Lint | ✅ Clean |
-| Typecheck | ✅ Clean |
-| Import audit | ✅ Zero surviving old exports |
+| Files changed    | 10 modified, 2 deleted                      |
+| Test suites      | 3                                           |
+| Tests passing    | 20 (unchanged from baseline)                |
+| Build            | ✅ Passed                                   |
+| Lint             | ✅ Clean                                    |
+| Typecheck        | ✅ Clean                                    |
+| Import audit     | ✅ Zero surviving old exports               |
 
 ## Specs Synced
 
-| Domain | Action | Details |
-|--------|--------|---------|
+| Domain             | Action  | Details                                                                                                                                                                                                |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | nativewind-styling | Updated | 2 requirements added (Runtime Theme Removal, ThemeColor Migration), 2 requirements modified (Build Infrastructure global.css scenario with spacing tokens, Component Wrappers TS recognition extended) |
 
 ## Key Decisions Made

@@ -6,14 +6,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
+| Field                   | Value                                                  |
+| ----------------------- | ------------------------------------------------------ |
 | Estimated changed lines | ~68 (52 additions + 16 deletions, 9 PNG files removed) |
-| Largest single phase | Phase 3 (Web Tabs, ~25 lines) |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | size-exception |
+| Largest single phase    | Phase 3 (Web Tabs, ~25 lines)                          |
+| 400-line budget risk    | Low                                                    |
+| Chained PRs recommended | No                                                     |
+| Delivery strategy       | ask-on-risk                                            |
+| Chain strategy          | size-exception                                         |
 
 Decision needed before apply: No
 Chained PRs recommended: No
@@ -40,6 +40,7 @@ Chain strategy: size-exception
 **Dependencies**: None
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] Typing: `ios` is required, `android`/`web` optional per spec scenario
 - [x] Default `size` of 24 matches design spec
@@ -63,6 +64,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 1 (no — Icon component is web-only, native uses VectorIcon directly)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] Three tab triggers render with Ionicons: home-outline, compass-outline, settings-outline
 - [x] `renderingMode: "template"` inherits parent tint color
@@ -90,6 +92,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 1 (`Icon` component must exist)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] Three tab slugs (home, explore, settings) render with platform-discriminated Icon
 - [x] Focused vs unfocused tintColor differs
@@ -115,6 +118,7 @@ Chain strategy: size-exception
 **Dependencies**: Phases 2-3 (remove require imports before deleting PNGs)
 
 **Verification**:
+
 - [x] `make validate` — all checks pass
 - [x] `grep -r 'tabIcons' src/` — zero results
 - [x] Project builds without errors

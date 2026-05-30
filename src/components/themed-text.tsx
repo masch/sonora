@@ -3,7 +3,12 @@ import type { TextProps } from 'react-native';
 
 import { TwText } from '@/tw';
 
-type ThemeColor = 'text' | 'textSecondary' | 'background' | 'backgroundElement' | 'backgroundSelected';
+type ThemeColor =
+  | 'text'
+  | 'textSecondary'
+  | 'background'
+  | 'backgroundElement'
+  | 'backgroundSelected';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -38,10 +43,19 @@ function getColorClass(color?: ThemeColor): string {
   return color ? colorClassMap[color] : 'text-text';
 }
 
-export function ThemedText({ style, type = 'default', themeColor, className, children }: ThemedTextProps) {
+export function ThemedText({
+  style,
+  type = 'default',
+  themeColor,
+  className,
+  children,
+}: ThemedTextProps) {
   const typeClass = getTypeClass(type);
   const colorClass = getColorClass(themeColor);
   const combined = `${typeClass} ${colorClass}${className ? ` ${className}` : ''}`;
-  return <TwText className={combined} style={style}>{children}</TwText>;
+  return (
+    <TwText className={combined} style={style}>
+      {children}
+    </TwText>
+  );
 }
-

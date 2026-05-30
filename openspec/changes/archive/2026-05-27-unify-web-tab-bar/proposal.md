@@ -7,6 +7,7 @@ The app has two divergent tab bar implementations (native + web) with inconsiste
 ## Scope
 
 ### In Scope
+
 - Create `src/constants/tabs.ts` with shared tab definitions (name, label, icon names for both icon systems)
 - Remove "Expo Starter" branding and external "Docs" link from web tab bar
 - Fix tab name `"home"` → `"index"` in `app-tabs.web.tsx`
@@ -14,6 +15,7 @@ The app has two divergent tab bar implementations (native + web) with inconsiste
 - Update web tab bar tests for naming consistency
 
 ### Out of Scope
+
 - Full unification into one component — NativeTabs and expo-router/ui Tabs have fundamentally incompatible APIs
 - Design changes to tab bar appearance, layout, or floating pill styling
 - Adding new tabs or modifying tab labels/routes
@@ -22,9 +24,11 @@ The app has two divergent tab bar implementations (native + web) with inconsiste
 ## Capabilities
 
 ### New Capabilities
+
 None — pure refactor, no new behavioral capability introduced.
 
 ### Modified Capabilities
+
 None — spec-level behavior unchanged. Tab labels, icons, routes, and navigation behavior remain identical. The existing `sonora-issue7` icon names contract is preserved.
 
 ## Approach
@@ -37,20 +41,20 @@ The native implementation is structurally unchanged — it continues using `Nati
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `src/constants/tabs.ts` | **NEW** | Shared typed tab definitions array |
-| `src/components/app-tabs.tsx` | Modified | Iterate shared defs instead of hardcoded triggers |
-| `src/components/app-tabs.web.tsx` | Modified | Iterate shared defs, remove branding/docs link, `"home"` → `"index"` |
-| `src/__tests__/app-tabs.web.test.tsx` | Modified | Update `tab-trigger-home` test ID assertion → `tab-trigger-index` |
+| Area                                  | Impact   | Description                                                          |
+| ------------------------------------- | -------- | -------------------------------------------------------------------- |
+| `src/constants/tabs.ts`               | **NEW**  | Shared typed tab definitions array                                   |
+| `src/components/app-tabs.tsx`         | Modified | Iterate shared defs instead of hardcoded triggers                    |
+| `src/components/app-tabs.web.tsx`     | Modified | Iterate shared defs, remove branding/docs link, `"home"` → `"index"` |
+| `src/__tests__/app-tabs.web.test.tsx` | Modified | Update `tab-trigger-home` test ID assertion → `tab-trigger-index`    |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| `"home"` → `"index"` breaks deep links | Low | Tab name is internal trigger ID; route is still `"/"` |
-| Web bar layout shifts after branding removal | Low | Floating pill root container unchanged; only inner branding/docs elements removed |
-| Test assertions mismatch on tab name | Low | Fix test assertion alongside component rename — committed together |
+| Risk                                         | Likelihood | Mitigation                                                                        |
+| -------------------------------------------- | ---------- | --------------------------------------------------------------------------------- |
+| `"home"` → `"index"` breaks deep links       | Low        | Tab name is internal trigger ID; route is still `"/"`                             |
+| Web bar layout shifts after branding removal | Low        | Floating pill root container unchanged; only inner branding/docs elements removed |
+| Test assertions mismatch on tab name         | Low        | Fix test assertion alongside component rename — committed together                |
 
 ## Rollback Plan
 

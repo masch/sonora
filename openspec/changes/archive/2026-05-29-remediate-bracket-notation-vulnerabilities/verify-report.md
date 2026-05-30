@@ -1,7 +1,9 @@
 # Verify Report: Remediate Bracket Notation Vulnerabilities
 
 ## Automated Verification
+
 Executed the local test suite using `bun jest --watchAll=false` and confirmed all tests passed successfully:
+
 ```
 PASS src/__tests__/settings.test.tsx
 PASS src/__tests__/tabs.test.ts
@@ -17,5 +19,6 @@ Tests:       43 passed, 43 total
 ```
 
 ## Security Scanner Verification
+
 - Fixed findings: 4 findings in source code files resolved.
 - Reported outcome to the local SecureCoder API on port `42155`.

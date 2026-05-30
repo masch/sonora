@@ -31,7 +31,7 @@ testing:
   linter: make lint
   type_checker: make typecheck
   validate: make validate
-  formatter: null
+  formatter: make format
 
 phases:
   explore:

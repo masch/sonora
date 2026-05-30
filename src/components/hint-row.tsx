@@ -12,9 +12,10 @@ export function HintRow({ title, hint }: HintRowProps) {
     <TwView className="flex-row justify-between">
       <ThemedText type="small">{title}</ThemedText>
       <TwView className="bg-backgroundSelected rounded-lg py-0.5 px-2">
-        <ThemedText type="small" themeColor="textSecondary">{hint}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {hint}
+        </ThemedText>
       </TwView>
     </TwView>
   );
 }
-

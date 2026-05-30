@@ -11,17 +11,14 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      labelStyle={{ selected: { color: colors.text } }}
+    >
       {TABS.map((tab) => (
         <NativeTabs.Trigger key={tab.name} name={tab.name}>
           <NativeTabs.Trigger.Label>{t(`tabs.${tab.name}`)}</NativeTabs.Trigger.Label>
-          <NativeTabs.Trigger.Icon
-            sf={tab.symbolViewName.ios}
-            md={tab.symbolViewName.android}
-          />
+          <NativeTabs.Trigger.Icon sf={tab.symbolViewName.ios} md={tab.symbolViewName.android} />
         </NativeTabs.Trigger>
       ))}
     </NativeTabs>
   );
 }
-

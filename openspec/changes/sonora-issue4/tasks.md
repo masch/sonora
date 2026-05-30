@@ -6,14 +6,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
+| Field                   | Value                        |
+| ----------------------- | ---------------------------- |
 | Estimated changed lines | ~270 (additions + deletions) |
-| Largest single phase | Phase 2 (~80 lines) |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | size-exception |
+| Largest single phase    | Phase 2 (~80 lines)          |
+| 400-line budget risk    | Low                          |
+| Chained PRs recommended | No                           |
+| Delivery strategy       | ask-on-risk                  |
+| Chain strategy          | size-exception               |
 
 Decision needed before apply: No
 Chained PRs recommended: No
@@ -24,26 +24,26 @@ Chain strategy: size-exception
 
 ### Spacing Translation Reference
 
-| Custom | Value (px) | Tailwind class |
-|--------|-----------|----------------|
-| `Spacing.half` | 2 | `*-0.5` |
-| `Spacing.one` | 4 | `*-1` |
-| `Spacing.two` | 8 | `*-2` |
-| `Spacing.three` | 16 | `*-4` |
-| `Spacing.four` | 24 | `*-6` |
-| `Spacing.five` | 32 | `*-8` |
-| `Spacing.six` | 64 | `*-16` |
+| Custom          | Value (px) | Tailwind class |
+| --------------- | ---------- | -------------- |
+| `Spacing.half`  | 2          | `*-0.5`        |
+| `Spacing.one`   | 4          | `*-1`          |
+| `Spacing.two`   | 8          | `*-2`          |
+| `Spacing.three` | 16         | `*-4`          |
+| `Spacing.four`  | 24         | `*-6`          |
+| `Spacing.five`  | 32         | `*-8`          |
+| `Spacing.six`   | 64         | `*-16`         |
 
 ### Border Radius Mapping
 
-| Spacing | px | Tailwind |
-|---------|----|----------|
-| `half` | 2 | `rounded-sm` |
-| `one` | 4 | `rounded` |
-| `two` | 8 | `rounded-lg` |
-| `three` | 16 | `rounded-2xl` |
-| `four` | 24 | `rounded-[24px]` |
-| `five` | 32 | `rounded-[32px]` |
+| Spacing | px  | Tailwind         |
+| ------- | --- | ---------------- |
+| `half`  | 2   | `rounded-sm`     |
+| `one`   | 4   | `rounded`        |
+| `two`   | 8   | `rounded-lg`     |
+| `three` | 16  | `rounded-2xl`    |
+| `four`  | 24  | `rounded-[24px]` |
+| `five`  | 32  | `rounded-[32px]` |
 
 ---
 
@@ -54,6 +54,7 @@ Chain strategy: size-exception
 **Files**: `src/global.css`
 
 **Changes**:
+
 - [x] Add inside existing `@theme { }`: `--color-text`, `--color-background`, `--color-backgroundElement`, `--color-backgroundSelected`, `--color-textSecondary` — each with `light-dark(<light>, <dark>)` matching hex values from `src/constants/theme.ts`
 - [x] Delete `@variant dark { :root { --color-bg: ...; --color-text: ...; } }` block (lines 42-47)
 
@@ -62,6 +63,7 @@ Chain strategy: size-exception
 **Dependencies**: None (base)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] `bun run test` — all pass
 - [x] Confirm `bg-background`, `text-text`, `text-textSecondary` etc. resolve as valid NativeWind class names
@@ -76,6 +78,7 @@ Chain strategy: size-exception
 **Files**: `src/components/hint-row.tsx`, `src/components/web-badge.tsx`, `src/components/ui/collapsible.tsx`
 
 ### 1.1 hint-row.tsx ✅
+
 - [x] **Remove imports**: `View`, `StyleSheet` (RN); `ThemedView`; `Spacing`
 - [x] **Add import**: `TwView` from `@/tw`
 - [x] **JSX changes**:
@@ -84,6 +87,7 @@ Chain strategy: size-exception
 - [x] **Delete**: `const styles = StyleSheet.create({...})` block (5 lines)
 
 ### 1.2 web-badge.tsx ✅
+
 - [x] **Remove imports**: `StyleSheet`; `ThemedView`; `Spacing`
 - [x] **Add import**: `TwView` from `@/tw`
 - [x] **Keep**: `useColorScheme` (badge image source logic)
@@ -94,6 +98,7 @@ Chain strategy: size-exception
 - [x] **Delete**: `StyleSheet.create` block (9 lines)
 
 ### 1.3 collapsible.tsx ✅
+
 - [x] **Remove imports**: `StyleSheet`; `ThemedView`; `Spacing`
 - [x] **Add imports**: `TwView`, `TwPressable` from `@/tw`; `TwAnimatedView` from `@/tw/animated`
 - [x] **Keep**: `useTheme` (SymbolView tintColor); `FadeIn` from reanimated
@@ -110,6 +115,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 0 (color tokens must exist)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] `bun run test` — all pass
 - [x] `grep -c 'StyleSheet.create'` on each file → 0
@@ -124,6 +130,7 @@ Chain strategy: size-exception
 **Files**: `src/app/index.tsx`, `src/app/explore.tsx`
 
 ### 2.1 index.tsx ✅
+
 - [x] **Remove imports**: `StyleSheet`; `ThemedView`
 - [x] **Add import**: `TwView` from `@/tw`
 - [x] **Keep**: `BottomTabInset`, `Spacing`, `MaxContentWidth` (safeArea dynamic paddingBottom)
@@ -136,6 +143,7 @@ Chain strategy: size-exception
 - [x] **Delete**: `StyleSheet.create` block (22 lines)
 
 ### 2.2 explore.tsx ✅
+
 - [x] **Remove imports**: `StyleSheet`; `ThemedView`
 - [x] **Add imports**: `TwView`, `TwScrollView`, `TwPressable` from `@/tw`
 - [x] **Keep**: `useTheme` (SymbolView tintColor); `useSafeAreaInsets`; `Spacing`, `BottomTabInset` (dynamic insets stay as JS values)
@@ -158,6 +166,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 1 (leaf components are rendered inside pages), Phase 3 (ThemedText `className` prop may be used before it's refactored — use `style` as fallback if not yet available)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] `bun run test` — all pass
 - Manual: verify explore.tsx scroll, contentInset, collapsible animations, Pressable `active:` opacity all work
@@ -172,6 +181,7 @@ Chain strategy: size-exception
 **Files**: `src/components/themed-text.tsx`, `src/components/themed-view.tsx`
 
 ### 3.1 themed-text.tsx ✅
+
 - [x] **Remove imports**: `StyleSheet`, `Text` (RN); `Fonts`; `useTheme`
 - [x] **Add imports**: `TwText` from `@/tw`
 - [x] **Add** `className?: string` to `ThemedTextProps`
@@ -189,6 +199,7 @@ Chain strategy: size-exception
 - [x] **Delete**: `StyleSheet.create` block (27 lines)
 
 ### 3.2 themed-view.tsx ✅
+
 - [x] **DELETE** file entirely (16 lines)
 - [x] All callers already replaced in Phases 1, 2, 4 with `TwView` + `bg-*` class
 - [x] Example/ directory imports fixed to use local relative paths
@@ -198,6 +209,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 0 (color tokens), independent of Phase 1/2/4 (but provides className prop that they reference)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors (verify `ThemedText` props backward-compat)
 - [x] `bun run test` — all pass
 - [x] Confirm `src/components/themed-view.tsx` is deleted
@@ -212,6 +224,7 @@ Chain strategy: size-exception
 **Files**: `src/components/app-tabs.web.tsx`
 
 **Changes**:
+
 - [x] **Remove imports**: `StyleSheet`, `View`, `ThemedView`, `Spacing`
 - [x] **Add import**: `TwView`, `TwPressable` from `@/tw`
 - [x] **Keep**: `Colors` (SymbolView tintColor)
@@ -229,6 +242,7 @@ Chain strategy: size-exception
 **Dependencies**: Phase 0 (color tokens), Phase 3 (ThemedText className prop for `brandText`)
 
 **Verification**:
+
 - [x] `make typecheck` — no errors
 - [x] `bun run test` — all pass
 - Manual: web-only check on `/` and `/explore` routes, verify tab bar layout, focus states, dark mode
@@ -242,6 +256,7 @@ Chain strategy: size-exception
 **Files**: `src/constants/theme.ts`
 
 **Changes**:
+
 - [x] `Colors` → **keep** (consumed by app-tabs.web.tsx SymbolView tintColor, app-tabs.tsx native props)
 - [x] `Spacing` → **keep** (consumed by index.tsx safeArea padding, explore.tsx dynamic insets)
 - [x] `Fonts` → **keep** (consumed by animated-icon.tsx/web — out of scope)
@@ -252,6 +267,7 @@ Chain strategy: size-exception
 **No exports removed** — all are still consumed by in-scope or out-of-scope files. Cleanup is a verification pass.
 
 **Audit commands**:
+
 - [x] `grep -rn 'StyleSheet.create' src/ --include='*.tsx'` — confirm only `animated-icon.tsx`, `animated-icon.web.tsx` remain
 - [x] `grep -rn 'Spacing' src/ --include='*.tsx'` — confirm no refs remain in migrated files (only dynamic JS values)
 - [x] `make typecheck` — zero errors
@@ -262,6 +278,7 @@ Chain strategy: size-exception
 **Dependencies**: All phases 0-4 complete
 
 **Verification**:
+
 - [x] Run full test suite: `typecheck && bun run test` — ✅
 - Visual: web + iOS simulator, light + dark mode toggle
 - [x] Confirm `grep -rn 'StyleSheet.create' src/components/ src/app/` returns 0 for migrated files

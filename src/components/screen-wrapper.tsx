@@ -26,7 +26,8 @@ export function ScreenWrapper({ children, className }: ScreenWrapperProps) {
     <SafeAreaView style={{ flex: 1 }}>
       <TwView
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-        style={{ paddingBottom: TAB_BAR_INSET }}>
+        style={{ paddingBottom: TAB_BAR_INSET }}
+      >
         {children}
       </TwView>
     </SafeAreaView>
@@ -51,10 +52,10 @@ export function ScrollScreenWrapper({
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
         contentInset={{ bottom: TAB_BAR_INSET }}
         contentContainerStyle={contentContainerStyle}
-        contentContainerClassName={contentContainerClassName}>
+        contentContainerClassName={contentContainerClassName}
+      >
         {children}
       </TwScrollView>
     </SafeAreaView>
   );
 }
-

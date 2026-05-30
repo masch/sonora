@@ -8,16 +8,16 @@
 
 ### Artifact Traceability
 
-| Artifact | Engram ID | Engram Topic Key | OpenSpec Path |
-|----------|-----------|-----------------|---------------|
-| exploration | #2661 | sdd/add-gga-makefile-target/explore | openspec/changes/archive/2026-05-29-add-gga-makefile-target/exploration.md |
-| proposal | #2662 | sdd/add-gga-makefile-target/proposal | openspec/changes/archive/2026-05-29-add-gga-makefile-target/proposal.md |
-| spec | #2664 | sdd/add-gga-makefile-target/spec | openspec/changes/archive/2026-05-29-add-gga-makefile-target/spec.md |
-| design | #2663 | sdd/add-gga-makefile-target/design | openspec/changes/archive/2026-05-29-add-gga-makefile-target/design.md |
-| tasks | #2665 | sdd/add-gga-makefile-target/tasks | openspec/changes/archive/2026-05-29-add-gga-makefile-target/tasks.md |
-| apply-progress | #2666 | sdd/add-gga-makefile-target/apply-progress | openspec/changes/archive/2026-05-29-add-gga-makefile-target/apply-progress.md |
-| verify-report | #2667 | sdd/add-gga-makefile-target/verify-report | openspec/changes/archive/2026-05-29-add-gga-makefile-target/verify-report.md |
-| archive-report | (this) | sdd/add-gga-makefile-target/archive-report | openspec/changes/archive/2026-05-29-add-gga-makefile-target/archive-report.md |
+| Artifact       | Engram ID | Engram Topic Key                           | OpenSpec Path                                                                 |
+| -------------- | --------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| exploration    | #2661     | sdd/add-gga-makefile-target/explore        | openspec/changes/archive/2026-05-29-add-gga-makefile-target/exploration.md    |
+| proposal       | #2662     | sdd/add-gga-makefile-target/proposal       | openspec/changes/archive/2026-05-29-add-gga-makefile-target/proposal.md       |
+| spec           | #2664     | sdd/add-gga-makefile-target/spec           | openspec/changes/archive/2026-05-29-add-gga-makefile-target/spec.md           |
+| design         | #2663     | sdd/add-gga-makefile-target/design         | openspec/changes/archive/2026-05-29-add-gga-makefile-target/design.md         |
+| tasks          | #2665     | sdd/add-gga-makefile-target/tasks          | openspec/changes/archive/2026-05-29-add-gga-makefile-target/tasks.md          |
+| apply-progress | #2666     | sdd/add-gga-makefile-target/apply-progress | openspec/changes/archive/2026-05-29-add-gga-makefile-target/apply-progress.md |
+| verify-report  | #2667     | sdd/add-gga-makefile-target/verify-report  | openspec/changes/archive/2026-05-29-add-gga-makefile-target/verify-report.md  |
+| archive-report | (this)    | sdd/add-gga-makefile-target/archive-report | openspec/changes/archive/2026-05-29-add-gga-makefile-target/archive-report.md |
 
 ### Final Makefile State
 
@@ -32,12 +32,12 @@ Single file changed (`Makefile`):
 
 ### Tasks Completion
 
-| Task | Status |
-|------|--------|
-| 1.1 Rename validate-static | ✅ Complete |
+| Task                                | Status      |
+| ----------------------------------- | ----------- |
+| 1.1 Rename validate-static          | ✅ Complete |
 | 1.2 Add gga target + Review section | ✅ Complete |
-| 1.3 Add combined validate target | ✅ Complete |
-| 1.4 Verify targets via make help | ✅ Complete |
+| 1.3 Add combined validate target    | ✅ Complete |
+| 1.4 Verify targets via make help    | ✅ Complete |
 
 4/4 tasks complete.
 

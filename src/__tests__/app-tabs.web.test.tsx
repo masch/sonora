@@ -10,15 +10,11 @@ jest.mock('expo-router/ui', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView } = require('react-native');
   return {
-    Tabs: ({ children }: { children: React.ReactNode }) => (
-      <RNView>{children}</RNView>
-    ),
+    Tabs: ({ children }: { children: React.ReactNode }) => <RNView>{children}</RNView>,
     TabList: ({ children, ...props }: Record<string, unknown>) => (
       <RNView {...props}>{children as React.ReactNode}</RNView>
     ),
-    TabSlot: ({ style }: { style?: Record<string, unknown> }) => (
-      <RNView style={style} />
-    ),
+    TabSlot: ({ style }: { style?: Record<string, unknown> }) => <RNView style={style} />,
     TabTrigger: ({ children, name, ...props }: Record<string, unknown>) => (
       <RNView {...props} testID={`tab-trigger-${name as string}`}>
         {children as React.ReactNode}
@@ -30,7 +26,8 @@ jest.mock('expo-router/ui', () => {
 beforeAll(() => {
   (useTranslation().t as unknown as jest.Mock).mockImplementation(
     (key: string) =>
-      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ??
+      key,
   );
 });
 
@@ -54,4 +51,3 @@ describe('Web app-tabs', () => {
     expect(getByTestId('tab-trigger-settings')).toBeTruthy();
   });
 });
-

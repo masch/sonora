@@ -7,6 +7,7 @@ Add NativeWind v5 preview + Tailwind CSS v4 to enable className-based styling fo
 ## Scope
 
 ### In Scope
+
 - Install NativeWind v5 preview deps + pin LightningCSS 1.30.1 via overrides
 - Create `metro.config.js` with `withNativewind`, `postcss.config.mjs` with `@tailwindcss/postcss`
 - Replace `src/global.css` with Tailwind v4 imports (keep web font vars)
@@ -16,6 +17,7 @@ Add NativeWind v5 preview + Tailwind CSS v4 to enable className-based styling fo
 - Update `src/app/index.tsx` and `src/app/explore.tsx` headers to demonstrate className works across all 3 screens
 
 ### Out of Scope
+
 - Migrating existing screen bodies from StyleSheet to className (separate change)
 - Migrating the theme system (Colors, Fonts, Spacing) to Tailwind tokens
 - Migrating web tab bar layout (branding, Docs link) — stays as-is
@@ -23,9 +25,11 @@ Add NativeWind v5 preview + Tailwind CSS v4 to enable className-based styling fo
 ## Capabilities
 
 ### New Capabilities
+
 - `nativewind-styling`: className-based component styling using Tailwind CSS v4 for all screens and components
 
 ### Modified Capabilities
+
 None
 
 ## Approach
@@ -34,28 +38,28 @@ Incremental. Add NativeWind infra (deps, metro, postcss, global.css, wrapper com
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `package.json` | Modified | 5 new deps + LightningCSS override |
-| `metro.config.js` | New | `withNativewind` wrapper |
-| `postcss.config.mjs` | New | `@tailwindcss/postcss` plugin |
-| `src/global.css` | Replaced | Tailwind v4 imports + web font vars |
-| `nativewind-env.d.ts` | New | Auto-generated types |
-| `src/tw/` | New dir | CSS-wrapped component wrappers |
-| `src/app/settings.tsx` | New | 3rd route with className |
-| `src/app/index.tsx` | Modified | Header uses className |
-| `src/app/explore.tsx` | Modified | Header uses className |
-| `src/components/app-tabs.tsx` | Modified | 3rd NativeTabs trigger |
-| `src/components/app-tabs.web.tsx` | Modified | 3rd TabTrigger |
+| Area                              | Impact   | Description                         |
+| --------------------------------- | -------- | ----------------------------------- |
+| `package.json`                    | Modified | 5 new deps + LightningCSS override  |
+| `metro.config.js`                 | New      | `withNativewind` wrapper            |
+| `postcss.config.mjs`              | New      | `@tailwindcss/postcss` plugin       |
+| `src/global.css`                  | Replaced | Tailwind v4 imports + web font vars |
+| `nativewind-env.d.ts`             | New      | Auto-generated types                |
+| `src/tw/`                         | New dir  | CSS-wrapped component wrappers      |
+| `src/app/settings.tsx`            | New      | 3rd route with className            |
+| `src/app/index.tsx`               | Modified | Header uses className               |
+| `src/app/explore.tsx`             | Modified | Header uses className               |
+| `src/components/app-tabs.tsx`     | Modified | 3rd NativeTabs trigger              |
+| `src/components/app-tabs.web.tsx` | Modified | 3rd TabTrigger                      |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| LightningCSS desync from Expo | Med | Pin to 1.30.1 via overrides |
-| react-native-css nightly API drift | Low | Pin exact commit hash |
-| NativeWind v5 preview API changes | Low | Pin exact version |
-| Bun overrides not working | Low | Verify after install; fallback to resolutions |
+| Risk                               | Likelihood | Mitigation                                    |
+| ---------------------------------- | ---------- | --------------------------------------------- |
+| LightningCSS desync from Expo      | Med        | Pin to 1.30.1 via overrides                   |
+| react-native-css nightly API drift | Low        | Pin exact commit hash                         |
+| NativeWind v5 preview API changes  | Low        | Pin exact version                             |
+| Bun overrides not working          | Low        | Verify after install; fallback to resolutions |
 
 ## Rollback Plan
 

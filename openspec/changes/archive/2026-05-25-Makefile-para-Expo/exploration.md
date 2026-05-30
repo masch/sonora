@@ -19,6 +19,7 @@ The project is **sonora**, an Expo SDK 56 universal app (iOS, Android, Web) usin
 **`.engram/config.json`** defines `"test_command": "make validate"` — meaning the `validate` target must be defined in the Makefile. The `validate` target is referenced but does not exist yet.
 
 **OpenSpec testing config:**
+
 - Linter: `expo lint`
 - Type checker: `tsc --noEmit`
 - Test runner: `none` (no unit/integration/e2e tests; available: `bun test`)
@@ -52,6 +53,7 @@ The project is **sonora**, an Expo SDK 56 universal app (iOS, Android, Web) usin
 **Approach 3: Smart DX Makefile.**
 
 Rationale:
+
 - `.engram/config.json` already commits to `make validate` — the Makefile is expected.
 - `validate` should run `make lint && make typecheck` (lint + TypeScript check) since there's no test runner yet.
 - `make install` (`bun install`) and `make clean` are universal conventions.
@@ -61,20 +63,20 @@ Rationale:
 
 **Target proposal:**
 
-| Target | Command | Notes |
-|--------|---------|-------|
-| `start` | `bun run start` | Default `make` target (first target) |
-| `dev-web` | `bun run web` | Launch web |
-| `dev-android` | `bun run android` | Launch Android |
-| `dev-ios` | `bun run ios` | Launch iOS |
-| `install` | `bun install` | Install dependencies |
-| `lint` | `bun run lint` | ESLint via expo lint |
-| `typecheck` | `tsc --noEmit` | TypeScript check |
-| `validate` | `make lint && make typecheck` | CI gate |
-| `test` | `bun test` | Placeholder for future tests |
-| `clean` | `rm -rf node_modules .expo web-build dist` | Deep clean |
-| `reset` | `make clean && make install` | Full reset |
-| `help` | Lists all targets | Self-documenting |
+| Target        | Command                                    | Notes                                |
+| ------------- | ------------------------------------------ | ------------------------------------ |
+| `start`       | `bun run start`                            | Default `make` target (first target) |
+| `dev-web`     | `bun run web`                              | Launch web                           |
+| `dev-android` | `bun run android`                          | Launch Android                       |
+| `dev-ios`     | `bun run ios`                              | Launch iOS                           |
+| `install`     | `bun install`                              | Install dependencies                 |
+| `lint`        | `bun run lint`                             | ESLint via expo lint                 |
+| `typecheck`   | `tsc --noEmit`                             | TypeScript check                     |
+| `validate`    | `make lint && make typecheck`              | CI gate                              |
+| `test`        | `bun test`                                 | Placeholder for future tests         |
+| `clean`       | `rm -rf node_modules .expo web-build dist` | Deep clean                           |
+| `reset`       | `make clean && make install`               | Full reset                           |
+| `help`        | Lists all targets                          | Self-documenting                     |
 
 ### Risks
 

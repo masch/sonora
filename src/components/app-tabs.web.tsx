@@ -22,7 +22,12 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           {TABS.map((tab) => (
-            <TabTrigger key={tab.name} name={tab.name} href={tab.name === 'index' ? '/' : `/${tab.name}`} asChild>
+            <TabTrigger
+              key={tab.name}
+              name={tab.name}
+              href={tab.name === 'index' ? '/' : `/${tab.name}`}
+              asChild
+            >
               <TabButton icon={tab.symbolViewName}>{t(`tabs.${tab.name}`)}</TabButton>
             </TabTrigger>
           ))}
@@ -41,7 +46,16 @@ type TabButtonProps = TabTriggerSlotProps & {
   rel?: string;
 };
 
-export function TabButton({ children, isFocused, icon, onPress, style, href, target, rel }: TabButtonProps) {
+export function TabButton({
+  children,
+  isFocused,
+  icon,
+  onPress,
+  style,
+  href,
+  target,
+  rel,
+}: TabButtonProps) {
   return (
     <TwPressable
       onPress={onPress}
@@ -49,9 +63,11 @@ export function TabButton({ children, isFocused, icon, onPress, style, href, tar
       href={href}
       target={target}
       rel={rel}
-      className="active:opacity-70">
+      className="active:opacity-70"
+    >
       <TwView
-        className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}>
+        className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}
+      >
         <Icon
           ios={icon.ios}
           android={icon.android}
@@ -72,10 +88,10 @@ export function CustomTabList({ children, style }: TabListProps) {
     <TwView className="absolute w-full p-4 justify-center items-center flex-row">
       <TwView
         style={style}
-        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center justify-center gap-2 self-start">
+        className="bg-backgroundElement py-2 px-8 rounded-[32px] flex-row items-center justify-center gap-2 self-start"
+      >
         {children}
       </TwView>
     </TwView>
   );
 }
-

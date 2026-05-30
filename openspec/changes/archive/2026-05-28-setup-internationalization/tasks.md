@@ -2,13 +2,13 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
+| Field                   | Value                                         |
+| ----------------------- | --------------------------------------------- |
 | Estimated changed lines | ~330 (150 new + 180 modified across 11 files) |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Suggested split | Single PR |
-| Delivery strategy | ask-on-risk |
+| 400-line budget risk    | Low                                           |
+| Chained PRs recommended | No                                            |
+| Suggested split         | Single PR                                     |
+| Delivery strategy       | ask-on-risk                                   |
 
 Decision needed before apply: No
 Chained PRs recommended: No

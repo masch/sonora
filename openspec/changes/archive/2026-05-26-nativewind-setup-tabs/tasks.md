@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | ~330 |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Suggested split | Single PR |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | pending |
+| Field                   | Value       |
+| ----------------------- | ----------- |
+| Estimated changed lines | ~330        |
+| 400-line budget risk    | Low         |
+| Chained PRs recommended | No          |
+| Suggested split         | Single PR   |
+| Delivery strategy       | ask-on-risk |
+| Chain strategy          | pending     |
 
 Decision needed before apply: Yes
 Chained PRs recommended: No
@@ -18,9 +18,9 @@ Chain strategy: pending
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Notes |
-|------|------|-----------|-------|
-| 1 | Complete NativeWind infra + tabs + tests | PR 1 | Single PR — under 400 lines, no split needed |
+| Unit | Goal                                     | Likely PR | Notes                                        |
+| ---- | ---------------------------------------- | --------- | -------------------------------------------- |
+| 1    | Complete NativeWind infra + tabs + tests | PR 1      | Single PR — under 400 lines, no split needed |
 
 ## Phase 1: Infrastructure
 

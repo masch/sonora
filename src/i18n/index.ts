@@ -27,4 +27,3 @@ instance.use(initReactI18next).init({
 });
 
 export default i18next;
-

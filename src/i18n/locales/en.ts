@@ -40,7 +40,7 @@ export const en = {
       },
       theme: {
         title: 'Light and dark mode components',
-        desc: 'This template has light and dark mode support. The <0>useColorScheme()</0> hook lets you inspect what the user\'s current color scheme is, and so you can adjust UI colors accordingly.',
+        desc: "This template has light and dark mode support. The <0>useColorScheme()</0> hook lets you inspect what the user's current color scheme is, and so you can adjust UI colors accordingly.",
       },
       animations: {
         title: 'Animations',
@@ -83,4 +83,3 @@ export const en = {
 } as const;
 
 export type EnDict = typeof en;
-

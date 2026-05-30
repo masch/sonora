@@ -15,7 +15,8 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
     <TwView>
       <TwPressable
         className="flex-row items-center gap-2 active:opacity-70"
-        onPress={() => setIsOpen((value) => !value)}>
+        onPress={() => setIsOpen((value) => !value)}
+      >
         <TwView className="bg-backgroundElement w-6 h-6 rounded-xl justify-center items-center">
           <SymbolView
             name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
@@ -30,12 +31,9 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
       </TwPressable>
       {isOpen && (
         <TwAnimatedView entering={FadeIn.duration(200)}>
-          <TwView className="bg-backgroundElement mt-4 rounded-2xl ml-6 p-6">
-            {children}
-          </TwView>
+          <TwView className="bg-backgroundElement mt-4 rounded-2xl ml-6 p-6">{children}</TwView>
         </TwAnimatedView>
       )}
     </TwView>
   );
 }
-

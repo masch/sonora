@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
+| Field                   | Value                                     |
+| ----------------------- | ----------------------------------------- |
 | Estimated changed lines | ~90 (35 new + 55 modified across 4 files) |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Suggested split | Single PR |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | pending |
+| 400-line budget risk    | Low                                       |
+| Chained PRs recommended | No                                        |
+| Suggested split         | Single PR                                 |
+| Delivery strategy       | ask-on-risk                               |
+| Chain strategy          | pending                                   |
 
 Decision needed before apply: Yes
 Chained PRs recommended: No
@@ -18,9 +18,9 @@ Chain strategy: pending
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Notes |
-|------|------|-----------|-------|
-| 1 | Shared config + component iterations + cleanup + test fix | Single PR | All 4 files, atomic commit, well under 400 lines |
+| Unit | Goal                                                      | Likely PR | Notes                                            |
+| ---- | --------------------------------------------------------- | --------- | ------------------------------------------------ |
+| 1    | Shared config + component iterations + cleanup + test fix | Single PR | All 4 files, atomic commit, well under 400 lines |
 
 ## Phase 1: Foundation — Shared Tab Config
 
@@ -46,14 +46,14 @@ Chain strategy: pending
 
 ## Scenario Coverage
 
-| Scenario | Requirement | Tasks |
-|----------|-------------|-------|
-| S1: Native triggers driven by shared defs | Unified Tab Definitions | 1.1, 2.1 |
-| S2: Web triggers driven by shared defs | Unified Tab Definitions | 1.1, 2.2 |
-| S3: Three tabs preserved with correct icons | Unified Tab Definitions | 1.1 |
-| S4: No branding text | Web Bar Cleanup | 2.3 |
-| S5: No Docs external link | Web Bar Cleanup | 2.3 |
-| S6: Pill container preserved | Web Bar Cleanup | 2.3 |
-| S7: Root trigger renamed to "index" | Tab Naming Consistency | 2.4 |
-| S8: Old "home" name absent | Tab Naming Consistency | 2.4 |
-| S9: Test assertion updated | Tab Naming Consistency | 3.1 |
+| Scenario                                    | Requirement             | Tasks    |
+| ------------------------------------------- | ----------------------- | -------- |
+| S1: Native triggers driven by shared defs   | Unified Tab Definitions | 1.1, 2.1 |
+| S2: Web triggers driven by shared defs      | Unified Tab Definitions | 1.1, 2.2 |
+| S3: Three tabs preserved with correct icons | Unified Tab Definitions | 1.1      |
+| S4: No branding text                        | Web Bar Cleanup         | 2.3      |
+| S5: No Docs external link                   | Web Bar Cleanup         | 2.3      |
+| S6: Pill container preserved                | Web Bar Cleanup         | 2.3      |
+| S7: Root trigger renamed to "index"         | Tab Naming Consistency  | 2.4      |
+| S8: Old "home" name absent                  | Tab Naming Consistency  | 2.4      |
+| S9: Test assertion updated                  | Tab Naming Consistency  | 3.1      |

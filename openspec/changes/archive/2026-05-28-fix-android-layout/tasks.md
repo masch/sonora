@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | 4 |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Suggested split | Single PR |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | size-exception |
+| Field                   | Value          |
+| ----------------------- | -------------- |
+| Estimated changed lines | 4              |
+| 400-line budget risk    | Low            |
+| Chained PRs recommended | No             |
+| Suggested split         | Single PR      |
+| Delivery strategy       | ask-on-risk    |
+| Chain strategy          | size-exception |
 
 Decision needed before apply: No
 Chained PRs recommended: No

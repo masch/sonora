@@ -22,9 +22,7 @@ jest.mock('expo-router/unstable-native-tabs', () => {
   );
   Trigger.displayName = 'Trigger';
 
-  const Label = ({ children }: { children?: React.ReactNode }) => (
-    <RNText>{children}</RNText>
-  );
+  const Label = ({ children }: { children?: React.ReactNode }) => <RNText>{children}</RNText>;
   Label.displayName = 'Label';
 
   const Icon = () => null;
@@ -40,7 +38,8 @@ jest.mock('expo-router/unstable-native-tabs', () => {
 beforeAll(() => {
   (useTranslation().t as unknown as jest.Mock).mockImplementation(
     (key: string) =>
-      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ?? key,
+      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ??
+      key,
   );
 });
 
@@ -75,4 +74,3 @@ describe('Native app-tabs', () => {
     expect(getByTestId('native-trigger-settings')).toBeTruthy();
   });
 });
-

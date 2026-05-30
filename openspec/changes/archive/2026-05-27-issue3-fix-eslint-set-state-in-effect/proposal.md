@@ -7,10 +7,12 @@
 ## Scope
 
 ### In Scope
+
 - Replace `useState` + `useEffect` hydration guard with `useSyncExternalStore`
 - Preserve existing behavior: SSR→`'light'`, pre-hydration→`'light'`, post-hydration→actual scheme
 
 ### Out of Scope
+
 - No changes to consumers (`use-theme.ts`, `app-tabs.web.tsx`, etc.)
 - No behavior or API changes to the hook
 - No changes to the native `use-color-scheme.ts` (no lint error there)
@@ -28,16 +30,16 @@ Replace the `useState`/`useEffect` pattern with `useSyncExternalStore` (React 18
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
+| Area                                | Impact   | Description                                                |
+| ----------------------------------- | -------- | ---------------------------------------------------------- |
 | `src/hooks/use-color-scheme.web.ts` | Modified | Replace `useState`/`useEffect` with `useSyncExternalStore` |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| Hydration mismatch on dark mode | Low | `useSyncExternalStore` server snapshot returns `false` → `'light'`, same as current behavior |
-| Runtime behavior change | Low | Exact same return values in all states — validated by existing tests |
+| Risk                            | Likelihood | Mitigation                                                                                   |
+| ------------------------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| Hydration mismatch on dark mode | Low        | `useSyncExternalStore` server snapshot returns `false` → `'light'`, same as current behavior |
+| Runtime behavior change         | Low        | Exact same return values in all states — validated by existing tests                         |
 
 ## Rollback Plan
 

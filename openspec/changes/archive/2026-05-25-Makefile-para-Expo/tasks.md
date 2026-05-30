@@ -2,14 +2,14 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | ~100 |
-| 400-line budget risk | Low |
-| Chained PRs recommended | No |
-| Suggested split | single PR |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | size-exception |
+| Field                   | Value          |
+| ----------------------- | -------------- |
+| Estimated changed lines | ~100           |
+| 400-line budget risk    | Low            |
+| Chained PRs recommended | No             |
+| Suggested split         | single PR      |
+| Delivery strategy       | ask-on-risk    |
+| Chain strategy          | size-exception |
 
 Decision needed before apply: No
 Chained PRs recommended: No
@@ -18,9 +18,9 @@ Chain strategy: size-exception
 
 ### Suggested Work Units
 
-| Unit | Goal | Likely PR | Notes |
-|------|------|-----------|-------|
-| 1 | Makefile + TDD infra | PR 1 (single) | All changes in one PR, ~100 lines total |
+| Unit | Goal                 | Likely PR     | Notes                                   |
+| ---- | -------------------- | ------------- | --------------------------------------- |
+| 1    | Makefile + TDD infra | PR 1 (single) | All changes in one PR, ~100 lines total |
 
 ## Phase 1: Dependencies & Config Setup
 

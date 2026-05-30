@@ -32,14 +32,19 @@ export default function HomeScreen() {
     if (Device.isDevice) {
       return (
         <ThemedText type="small">
-          <Trans i18nKey="index.hints.devtoolsDevice" components={[<ThemedText key="code" type="code" />]} />
+          <Trans
+            i18nKey="index.hints.devtoolsDevice"
+            components={[<ThemedText key="code" type="code" />]}
+          />
         </ThemedText>
       );
     }
     return (
       <ThemedText type="small">
         <Trans
-          i18nKey={Platform.OS === 'android' ? 'index.hints.devtoolsAndroid' : 'index.hints.devtoolsIos'}
+          i18nKey={
+            Platform.OS === 'android' ? 'index.hints.devtoolsAndroid' : 'index.hints.devtoolsIos'
+          }
           components={[<ThemedText key="code" type="code" />]}
         />
       </ThemedText>
@@ -55,12 +60,11 @@ export default function HomeScreen() {
         alignItems: 'center',
         gap: SECTION_GAP,
       }}
-      className="self-center">
+      className="self-center"
+    >
       <TwView className="items-center justify-center px-6 gap-6 py-16">
         <AnimatedIcon />
-        <TwText className="text-3xl font-bold text-center">
-          {t('index.title')}
-        </TwText>
+        <TwText className="text-3xl font-bold text-center">{t('index.title')}</TwText>
       </TwView>
 
       <ThemedText type="code" className="uppercase">
@@ -70,16 +74,12 @@ export default function HomeScreen() {
       <TwView className="bg-backgroundElement gap-6 self-stretch px-4 py-4 rounded-[24px]">
         <HintRow
           title={t('index.hints.editing')}
-          hint={
-            <ThemedText type="code">{HINT_FILE_PATH}</ThemedText>
-          }
+          hint={<ThemedText type="code">{HINT_FILE_PATH}</ThemedText>}
         />
         <HintRow title={t('index.hints.devtools')} hint={getDevMenuHint()} />
         <HintRow
           title={t('index.hints.freshStart')}
-          hint={
-            <ThemedText type="code">{RESET_PROJECT_COMMAND}</ThemedText>
-          }
+          hint={<ThemedText type="code">{RESET_PROJECT_COMMAND}</ThemedText>}
         />
       </TwView>
 
@@ -103,4 +103,3 @@ export default function HomeScreen() {
     </ScrollScreenWrapper>
   );
 }
-

@@ -40,4 +40,3 @@ describe('Home screen', () => {
     expect(getByText('Fresh start')).toBeTruthy();
   });
 });
-

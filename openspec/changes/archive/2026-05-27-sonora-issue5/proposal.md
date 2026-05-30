@@ -7,6 +7,7 @@ Colors and Fonts are duplicated in `src/constants/theme.ts` and `src/global.css`
 ## Scope
 
 ### In Scope
+
 - Replace `Colors` export with a minimal `RuntimeColors` map (5 colors × 2 modes) for the 3 native runtime consumers
 - Remove `Fonts` export entirely — zero imports, already live in `@theme`
 - Delete `use-theme.ts` — replace with inline `RuntimeColors[scheme]` lookups
@@ -16,6 +17,7 @@ Colors and Fonts are duplicated in `src/constants/theme.ts` and `src/global.css`
 - Migrate `Spacing.*` style props to Tailwind classes in `index.tsx` and `explore.tsx`
 
 ### Out of Scope
+
 - Removing `use-color-scheme.web.ts` (needed for web SSR hydration)
 - New features, behavioral changes, or UI redesign
 - BottomTabInset + TabBottomPadding computed expression (remains as style prop because BottomTabInset is platform-dependent)
@@ -37,26 +39,26 @@ Colors and Fonts are duplicated in `src/constants/theme.ts` and `src/global.css`
 
 ## Affected Areas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `src/global.css` | Modified | Add spacing tokens to @theme |
-| `src/constants/theme.ts` | Modified | Remove Colors/Fonts, add RuntimeColors, remove Spacing |
-| `src/hooks/use-theme.ts` | Removed | Inline into consumers |
-| `src/hooks/use-color-scheme.ts` | Removed | Unused re-export shim |
-| `src/components/themed-text.tsx` | Modified | ThemeColor → string union |
-| `src/components/app-tabs.tsx` | Modified | Colors → RuntimeColors |
-| `src/components/app-tabs.web.tsx` | Modified | Colors → RuntimeColors |
-| `src/components/ui/collapsible.tsx` | Modified | useTheme → direct lookup |
-| `src/app/explore.tsx` | Modified | useTheme → direct lookup; Spacing → className |
-| `src/app/index.tsx` | Modified | Spacing → className |
+| Area                                | Impact   | Description                                            |
+| ----------------------------------- | -------- | ------------------------------------------------------ |
+| `src/global.css`                    | Modified | Add spacing tokens to @theme                           |
+| `src/constants/theme.ts`            | Modified | Remove Colors/Fonts, add RuntimeColors, remove Spacing |
+| `src/hooks/use-theme.ts`            | Removed  | Inline into consumers                                  |
+| `src/hooks/use-color-scheme.ts`     | Removed  | Unused re-export shim                                  |
+| `src/components/themed-text.tsx`    | Modified | ThemeColor → string union                              |
+| `src/components/app-tabs.tsx`       | Modified | Colors → RuntimeColors                                 |
+| `src/components/app-tabs.web.tsx`   | Modified | Colors → RuntimeColors                                 |
+| `src/components/ui/collapsible.tsx` | Modified | useTheme → direct lookup                               |
+| `src/app/explore.tsx`               | Modified | useTheme → direct lookup; Spacing → className          |
+| `src/app/index.tsx`                 | Modified | Spacing → className                                    |
 
 ## Risks
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| RuntimeColors out of sync with @theme | Low | Single source in theme.ts, comment pointing to CSS |
-| use-color-scheme.ts delete breaks web SSR | Med | Keep `.web.ts`, test web build before merge |
-| Missed Colors import | Low | `make typecheck` catches dead imports |
+| Risk                                      | Likelihood | Mitigation                                         |
+| ----------------------------------------- | ---------- | -------------------------------------------------- |
+| RuntimeColors out of sync with @theme     | Low        | Single source in theme.ts, comment pointing to CSS |
+| use-color-scheme.ts delete breaks web SSR | Med        | Keep `.web.ts`, test web build before merge        |
+| Missed Colors import                      | Low        | `make typecheck` catches dead imports              |
 
 ## Rollback Plan
 

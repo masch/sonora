@@ -30,9 +30,7 @@ describe('TwView', () => {
 
 describe('TwText', () => {
   it('renders text content with className', () => {
-    const { getByText } = render(
-      <TwText className="text-lg font-bold">Bold Text</TwText>,
-    );
+    const { getByText } = render(<TwText className="text-lg font-bold">Bold Text</TwText>);
     expect(getByText('Bold Text')).toBeTruthy();
   });
 
@@ -102,11 +100,7 @@ describe('TwTextInput', () => {
   it('calls onChangeText when text changes', () => {
     const onChangeText = jest.fn();
     const { getByDisplayValue } = render(
-      <TwTextInput
-        className="border p-2"
-        value=""
-        onChangeText={onChangeText}
-      />,
+      <TwTextInput className="border p-2" value="" onChangeText={onChangeText} />,
     );
     fireEvent.changeText(getByDisplayValue(''), 'New text');
     expect(onChangeText).toHaveBeenCalledWith('New text');
@@ -158,4 +152,3 @@ describe('TwAnimatedView', () => {
     expect(getByText('Deeply Nested')).toBeTruthy();
   });
 });
-

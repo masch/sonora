@@ -8,19 +8,19 @@ Single file change to `Makefile`: rename the `validate` target to `validate-stat
 
 ### Decision: PATH-based `gga` invocation
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Full path `/home/masch/.local/bin/gga` | Brittle across machines | ❌ Rejected |
-| PATH lookup `gga run` | Portable, standard make pattern | ✅ Chosen |
+| Option                                 | Tradeoff                        | Decision    |
+| -------------------------------------- | ------------------------------- | ----------- |
+| Full path `/home/masch/.local/bin/gga` | Brittle across machines         | ❌ Rejected |
+| PATH lookup `gga run`                  | Portable, standard make pattern | ✅ Chosen   |
 
 **Rationale**: Makefiles conventionally rely on PATH resolution for commands. A hard-coded absolute path breaks on any other machine and violates the principle of least surprise.
 
 ### Decision: `validate-static` as the static-only gate
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Keep `validate` and add `gga` as separate | No upgrade path for CI scripts | ❌ Rejected |
-| Rename to `validate-static` + new `validate` | Explicit naming, preserves CI contract | ✅ Chosen |
+| Option                                       | Tradeoff                               | Decision    |
+| -------------------------------------------- | -------------------------------------- | ----------- |
+| Keep `validate` and add `gga` as separate    | No upgrade path for CI scripts         | ❌ Rejected |
+| Rename to `validate-static` + new `validate` | Explicit naming, preserves CI contract | ✅ Chosen   |
 
 **Rationale**: The proposal explicitly requires that `validate` remains the default CI gate. By making `validate-static` the static-check subset, scripts that want only static checks have a clear target, while `validate` continues to mean "the full gate."
 
@@ -38,17 +38,17 @@ make validate
 
 ## File Changes
 
-| File | Action | Description |
-|------|--------|-------------|
+| File       | Action | Description                                                                                            |
+| ---------- | ------ | ------------------------------------------------------------------------------------------------------ |
 | `Makefile` | Modify | Rename `validate` → `validate-static`, add `gga` target, add combined `validate`, add "Review" section |
 
 ## Target Behavior
 
-| Target | Dependencies | Command | Section |
-|--------|-------------|---------|---------|
-| `validate-static` | test, lint, typecheck | — | CI |
-| `gga` | — | `gga run` | Review |
-| `validate` | validate-static, gga | — | CI |
+| Target            | Dependencies          | Command   | Section |
+| ----------------- | --------------------- | --------- | ------- |
+| `validate-static` | test, lint, typecheck | —         | CI      |
+| `gga`             | —                     | `gga run` | Review  |
+| `validate`        | validate-static, gga  | —         | CI      |
 
 ## Execution Order
 

@@ -12,31 +12,31 @@ The change is a pure refactor — no behavioral changes. Tab labels, icons, rout
 
 ## Artifact Inventory
 
-| Artifact | Engram ID | Archive Path |
-|----------|-----------|--------------|
-| Proposal | #2624 | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/proposal.md` |
-| Spec (standalone) | #2625 | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/specs/spec.md` |
-| Design | #2626 | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/design.md` |
-| Tasks | #2627 | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/tasks.md` |
-| Apply Progress | #2628 | — (Engram only) |
-| Verify Report | #2629 | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/verify-report.md` |
-| Archive Report | (this) | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/archive-report.md` |
+| Artifact          | Engram ID | Archive Path                                                              |
+| ----------------- | --------- | ------------------------------------------------------------------------- |
+| Proposal          | #2624     | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/proposal.md`       |
+| Spec (standalone) | #2625     | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/specs/spec.md`     |
+| Design            | #2626     | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/design.md`         |
+| Tasks             | #2627     | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/tasks.md`          |
+| Apply Progress    | #2628     | — (Engram only)                                                           |
+| Verify Report     | #2629     | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/verify-report.md`  |
+| Archive Report    | (this)    | `openspec/changes/archive/2026-05-27-unify-web-tab-bar/archive-report.md` |
 
 ## Implementation Stats
 
-| Metric | Value |
-|--------|-------|
-| Tasks total | 9 |
-| Tasks complete | 9 |
-| Tasks incomplete | 0 |
-| Files created | 2 (`src/constants/tabs.ts`, `src/__tests__/tabs.test.ts`) |
-| Files modified | 2 (`src/components/app-tabs.tsx`, `src/components/app-tabs.web.tsx`, `src/__tests__/app-tabs.web.test.tsx`) |
-| Test suites | 4 |
-| Tests passing | 24 (unchanged from baseline) |
-| Build | ✅ Passed |
-| Lint | ✅ Clean |
-| Typecheck | ✅ Clean |
-| Import audit | ✅ All tab data flows from `TABS` |
+| Metric           | Value                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| Tasks total      | 9                                                                                                           |
+| Tasks complete   | 9                                                                                                           |
+| Tasks incomplete | 0                                                                                                           |
+| Files created    | 2 (`src/constants/tabs.ts`, `src/__tests__/tabs.test.ts`)                                                   |
+| Files modified   | 2 (`src/components/app-tabs.tsx`, `src/components/app-tabs.web.tsx`, `src/__tests__/app-tabs.web.test.tsx`) |
+| Test suites      | 4                                                                                                           |
+| Tests passing    | 24 (unchanged from baseline)                                                                                |
+| Build            | ✅ Passed                                                                                                   |
+| Lint             | ✅ Clean                                                                                                    |
+| Typecheck        | ✅ Clean                                                                                                    |
+| Import audit     | ✅ All tab data flows from `TABS`                                                                           |
 
 ## Specs Synced
 

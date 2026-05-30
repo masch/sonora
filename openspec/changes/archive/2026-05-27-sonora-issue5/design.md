@@ -8,48 +8,48 @@ Eliminate the dual-source-of-truth between `src/constants/theme.ts` and `src/glo
 
 ### Decision: Keep RuntimeColors as Minimal Bridge
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Remove Colors entirely, hardcode hex values in consumers | DRY violation — 3 files repeat hex values | Rejected |
-| Replace Colors with RuntimeColors (5 colors × 2 modes) | 3 consumer files use same lookup pattern; one source of truth still in JS | **Chosen** |
-| Use CSS custom properties read via `getComputedStyle` | Native platforms can't read CSS vars at runtime | Rejected |
+| Option                                                   | Tradeoff                                                                  | Decision   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------- | ---------- |
+| Remove Colors entirely, hardcode hex values in consumers | DRY violation — 3 files repeat hex values                                 | Rejected   |
+| Replace Colors with RuntimeColors (5 colors × 2 modes)   | 3 consumer files use same lookup pattern; one source of truth still in JS | **Chosen** |
+| Use CSS custom properties read via `getComputedStyle`    | Native platforms can't read CSS vars at runtime                           | Rejected   |
 
-**Rationale**: 3 native-only props (`NativeTabs` container props, `SymbolView` tintColor) require runtime color *strings* — CSS classes can't pass a `tintColor` string prop. `RuntimeColors` mirrors the `Colors` shape so the lookup pattern `Color[scheme]` → `RuntimeColors[scheme]` is a find-and-replace.
+**Rationale**: 3 native-only props (`NativeTabs` container props, `SymbolView` tintColor) require runtime color _strings_ — CSS classes can't pass a `tintColor` string prop. `RuntimeColors` mirrors the `Colors` shape so the lookup pattern `Color[scheme]` → `RuntimeColors[scheme]` is a find-and-replace.
 
 ### Decision: Remove Spacing Export, Inline Values
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Keep Spacing export | Dual source of truth continues | Rejected |
-| Inline hardcoded numbers where Spacing was used in style objects | Simple, one-time cost | **Chosen** |
-| Convert all style objects to className | `SafeAreaView` isn't in `src/tw/` — requires wrapping or style prop | Rejected (for non-Tw components) |
+| Option                                                           | Tradeoff                                                            | Decision                         |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------- |
+| Keep Spacing export                                              | Dual source of truth continues                                      | Rejected                         |
+| Inline hardcoded numbers where Spacing was used in style objects | Simple, one-time cost                                               | **Chosen**                       |
+| Convert all style objects to className                           | `SafeAreaView` isn't in `src/tw/` — requires wrapping or style prop | Rejected (for non-Tw components) |
 
 **Rationale**: `Spacing` was used in two places: `index.tsx` (SafeAreaView style object) and `explore.tsx` (Platform.select style object). Neither can use Tailwind classes because they're on components without className support or in computed style objects. Inlining the numeric values is the simplest path.
 
 ### Decision: Delete use-theme.ts, Inline Lookup
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Keep use-theme.ts | Hides one RuntimeColors lookup | Rejected |
-| Inline `useColorScheme()` + `RuntimeColors[scheme]` | 2 consumers add 3 lines each | **Chosen** |
+| Option                                              | Tradeoff                       | Decision   |
+| --------------------------------------------------- | ------------------------------ | ---------- |
+| Keep use-theme.ts                                   | Hides one RuntimeColors lookup | Rejected   |
+| Inline `useColorScheme()` + `RuntimeColors[scheme]` | 2 consumers add 3 lines each   | **Chosen** |
 
 **Rationale**: After removing `Colors` (the old source), `useTheme` becomes a 3-line wrapper around `RuntimeColors` + `useColorScheme`. That's not worth a hook file. The two consumers (collapsible, explore) each add a `useColorScheme()` call and a `RuntimeColors[scheme]` lookup.
 
 ### Decision: Add TabBottomPadding Constant
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Inline `16` in `BottomTabInset + 16` expression | Magic number | Rejected |
-| Keep `Spacing.three` | Can't — Spacing is removed | Rejected |
-| Add `export const TabBottomPadding = 16` | Named constant documents purpose | **Chosen** |
+| Option                                          | Tradeoff                         | Decision   |
+| ----------------------------------------------- | -------------------------------- | ---------- |
+| Inline `16` in `BottomTabInset + 16` expression | Magic number                     | Rejected   |
+| Keep `Spacing.three`                            | Can't — Spacing is removed       | Rejected   |
+| Add `export const TabBottomPadding = 16`        | Named constant documents purpose | **Chosen** |
 
 **Rationale**: The `BottomTabInset + Spacing.three` expression must stay as a style prop (computed platform value). Extracting `16` into `TabBottomPadding` replaces the named reference while documenting intent.
 
 ### Decision: ThemeColor Type Moves to ThemedText
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Keep ThemeColor in theme.ts | Exists only for 1 consumer | Rejected |
+| Option                                    | Tradeoff                              | Decision   |
+| ----------------------------------------- | ------------------------------------- | ---------- |
+| Keep ThemeColor in theme.ts               | Exists only for 1 consumer            | Rejected   |
 | Define string union locally in ThemedText | Colocated with use, no imports needed | **Chosen** |
 
 **Rationale**: `ThemeColor` only existed because it was derived from `keyof typeof Colors`. With `Colors` removed, the type has no home in `theme.ts`. Moving it to `themed-text.tsx` as a plain union keeps the type where it's used.
@@ -75,18 +75,18 @@ BottomTabInset + TabBottomPadding ──→ computed style prop in index.tsx, ex
 
 ## File Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/global.css` | Modify | Add `--spacing-half` through `--spacing-six` tokens to `@theme` |
-| `src/constants/theme.ts` | Modify | Remove `Colors`, `Fonts`, `Spacing`, `ThemeColor`; add `RuntimeColors`, `TabBottomPadding` |
-| `src/hooks/use-theme.ts` | Delete | Inline into `collapsible.tsx` and `explore.tsx` |
-| `src/hooks/use-color-scheme.ts` | Delete | Re-export shim, zero consumers after `use-theme.ts` removed |
-| `src/components/themed-text.tsx` | Modify | Import `ThemeColor` type locally as string union; remove `theme.ts` dependency |
-| `src/components/app-tabs.tsx` | Modify | `Colors` → `RuntimeColors` |
-| `src/components/app-tabs.web.tsx` | Modify | `Colors` → `RuntimeColors` |
-| `src/components/ui/collapsible.tsx` | Modify | Remove `useTheme`; add `useColorScheme` + `RuntimeColors` |
-| `src/app/explore.tsx` | Modify | Remove `useTheme`, `Spacing`; add `useColorScheme`, `RuntimeColors`, `TabBottomPadding`; inline spacing values |
-| `src/app/index.tsx` | Modify | Remove `Spacing`; inline spacing values; use `TabBottomPadding` |
+| File                                | Action | Description                                                                                                    |
+| ----------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| `src/global.css`                    | Modify | Add `--spacing-half` through `--spacing-six` tokens to `@theme`                                                |
+| `src/constants/theme.ts`            | Modify | Remove `Colors`, `Fonts`, `Spacing`, `ThemeColor`; add `RuntimeColors`, `TabBottomPadding`                     |
+| `src/hooks/use-theme.ts`            | Delete | Inline into `collapsible.tsx` and `explore.tsx`                                                                |
+| `src/hooks/use-color-scheme.ts`     | Delete | Re-export shim, zero consumers after `use-theme.ts` removed                                                    |
+| `src/components/themed-text.tsx`    | Modify | Import `ThemeColor` type locally as string union; remove `theme.ts` dependency                                 |
+| `src/components/app-tabs.tsx`       | Modify | `Colors` → `RuntimeColors`                                                                                     |
+| `src/components/app-tabs.web.tsx`   | Modify | `Colors` → `RuntimeColors`                                                                                     |
+| `src/components/ui/collapsible.tsx` | Modify | Remove `useTheme`; add `useColorScheme` + `RuntimeColors`                                                      |
+| `src/app/explore.tsx`               | Modify | Remove `useTheme`, `Spacing`; add `useColorScheme`, `RuntimeColors`, `TabBottomPadding`; inline spacing values |
+| `src/app/index.tsx`                 | Modify | Remove `Spacing`; inline spacing values; use `TabBottomPadding`                                                |
 
 ## Interfaces / Contracts
 
@@ -125,7 +125,12 @@ export const MaxContentWidth = 800;
 
 ```ts
 // src/components/themed-text.tsx
-type ThemeColor = 'text' | 'textSecondary' | 'background' | 'backgroundElement' | 'backgroundSelected';
+type ThemeColor =
+  | 'text'
+  | 'textSecondary'
+  | 'background'
+  | 'backgroundElement'
+  | 'backgroundSelected';
 ```
 
 ### @theme Spacing Tokens Added to global.css
@@ -147,15 +152,15 @@ type ThemeColor = 'text' | 'textSecondary' | 'background' | 'backgroundElement' 
 
 The `Spacing` constants map to both Tailwind standard classes and custom `--spacing-*` tokens:
 
-| Constant | Value | Standard Tailwind Class | Custom `--spacing-*` Token |
-|----------|-------|------------------------|---------------------------|
-| `Spacing.half` | 2 | `p-0.5`, `gap-0.5` | `--spacing-half: 2` |
-| `Spacing.one` | 4 | `p-1`, `gap-1` | `--spacing-one: 4` |
-| `Spacing.two` | 8 | `p-2`, `gap-2` | `--spacing-two: 8` |
-| `Spacing.three` | 16 | `p-4`, `gap-4` | `--spacing-three: 16` |
-| `Spacing.four` | 24 | `p-6`, `gap-6` | `--spacing-four: 24` |
-| `Spacing.five` | 32 | `p-8`, `gap-8` | `--spacing-five: 32` |
-| `Spacing.six` | 64 | `p-16`, `gap-16` | `--spacing-six: 64` |
+| Constant        | Value | Standard Tailwind Class | Custom `--spacing-*` Token |
+| --------------- | ----- | ----------------------- | -------------------------- |
+| `Spacing.half`  | 2     | `p-0.5`, `gap-0.5`      | `--spacing-half: 2`        |
+| `Spacing.one`   | 4     | `p-1`, `gap-1`          | `--spacing-one: 4`         |
+| `Spacing.two`   | 8     | `p-2`, `gap-2`          | `--spacing-two: 8`         |
+| `Spacing.three` | 16    | `p-4`, `gap-4`          | `--spacing-three: 16`      |
+| `Spacing.four`  | 24    | `p-6`, `gap-6`          | `--spacing-four: 24`       |
+| `Spacing.five`  | 32    | `p-8`, `gap-8`          | `--spacing-five: 32`       |
+| `Spacing.six`   | 64    | `p-16`, `gap-16`        | `--spacing-six: 64`        |
 
 ## Spacing Inline Values in index.tsx and explore.tsx
 
@@ -200,17 +205,18 @@ const colors = RuntimeColors[scheme === 'unspecified' ? 'light' : scheme];
 ```
 
 This replaces:
+
 - `useTheme()` returning `Colors[scheme]` (collapsible.tsx, explore.tsx)
 - `Colors[scheme === 'unspecified' ? 'light' : scheme]` (app-tabs.tsx, app-tabs.web.tsx)
 
 ## Testing Strategy
 
-| Layer | What to Test | Approach |
-|-------|-------------|----------|
-| TypeScript | No imports of removed exports compile | `make typecheck` |
-| Visual | Light + dark mode renders identically on iOS, Android, Web | Manual comparison screenshots |
-| Visual | BottomTabInset + TabBottomPadding layout unchanged | Manual scroll-to-bottom check |
-| Import audit | Zero `Colors`, `Fonts`, `useTheme`, `Spacing` imports survive | `rg` search before merge |
+| Layer        | What to Test                                                  | Approach                      |
+| ------------ | ------------------------------------------------------------- | ----------------------------- |
+| TypeScript   | No imports of removed exports compile                         | `make typecheck`              |
+| Visual       | Light + dark mode renders identically on iOS, Android, Web    | Manual comparison screenshots |
+| Visual       | BottomTabInset + TabBottomPadding layout unchanged            | Manual scroll-to-bottom check |
+| Import audit | Zero `Colors`, `Fonts`, `useTheme`, `Spacing` imports survive | `rg` search before merge      |
 
 ## Migration / Rollout
 
