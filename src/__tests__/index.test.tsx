@@ -5,6 +5,38 @@ import { useTranslation } from 'react-i18next';
 import HomeScreen from '@/app/index';
 
 jest.mock('expo-device', () => ({ isDevice: false }));
+jest.mock('@/hooks/use-offline-geofence', () => ({
+  useOfflineGeofence: () => ({
+    isNearStart: false,
+    gpsAccuracy: null,
+    gpsStatus: 'initializing',
+    distanceMeters: null,
+    requiredRadiusMeters: 50,
+    errorMsg: null,
+  }),
+}));
+jest.mock('@/hooks/use-trip-download', () => ({
+  useTripDownload: () => ({
+    status: 'idle',
+    progress: 0,
+    localAudioUri: null,
+    errorMsg: null,
+    startDownload: jest.fn(),
+    deleteTripLocal: jest.fn(),
+  }),
+}));
+jest.mock('@/hooks/use-immersion-player', () => ({
+  useImmersionPlayer: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    errorMsg: null,
+    play: jest.fn(),
+    pause: jest.fn(),
+    stop: jest.fn(),
+    seekTo: jest.fn(),
+  }),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',
