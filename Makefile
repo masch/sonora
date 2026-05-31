@@ -24,8 +24,12 @@ dev-ios: ## Launch Expo dev server for iOS
 	bun run ios
 
 .PHONY: doctor
-doctor: ## Run React Doctor audit
-	bunx react-doctor@latest
+doctor: ## Run React Doctor audit (full verbose scan)
+	bunx react-doctor@latest --verbose
+
+.PHONY: doctor-diff
+doctor-diff: ## Run React Doctor audit on staged diff (regression check)
+	bunx react-doctor@latest --verbose --diff --fail-on warning
 
 # ── Utilities ─────────────────────────────────
 

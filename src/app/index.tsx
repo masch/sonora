@@ -71,7 +71,7 @@ export default function HomeScreen() {
         {t('index.getStarted')}
       </ThemedText>
 
-      <TwView className="bg-backgroundElement gap-6 self-stretch px-4 py-4 rounded-[24px]">
+      <TwView className="bg-backgroundElement gap-6 self-stretch p-4 rounded-[24px]">
         <HintRow
           title={t('index.hints.editing')}
           hint={<ThemedText type="code">{HINT_FILE_PATH}</ThemedText>}
