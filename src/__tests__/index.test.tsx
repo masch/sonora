@@ -5,6 +5,16 @@ import { useTranslation } from 'react-i18next';
 import HomeScreen from '@/app/index';
 
 jest.mock('expo-device', () => ({ isDevice: false }));
+jest.mock('@/hooks/use-offline-geofence', () => ({
+  useOfflineGeofence: () => ({
+    isNearStart: false,
+    gpsAccuracy: null,
+    gpsStatus: 'initializing',
+    distanceMeters: null,
+    requiredRadiusMeters: 50,
+    errorMsg: null,
+  }),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',

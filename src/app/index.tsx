@@ -1,20 +1,18 @@
-import { Trans } from 'react-i18next';
+/* eslint-disable i18next/no-literal-string */
 import { useAppTranslation } from '@/hooks/use-translation';
 import * as Device from 'expo-device';
+import { Trans } from 'react-i18next';
 import { Platform } from 'react-native';
 
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
-import { ScrollScreenWrapper, ScreenWrapper } from '@/components/screen-wrapper';
+import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
-import { TwView, TwText } from '@/tw';
 import { MaxContentWidth } from '@/constants/theme';
+import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
+import { TwText, TwView } from '@/tw';
 
-// Horizontal padding matching the card border-radius rhythm (24px)
-const SCREEN_HORIZONTAL_PADDING = 24;
-// Vertical gap between hero section and the "get started" card
-const SECTION_GAP = 16;
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pt-16 pb-6';
 
@@ -51,16 +49,17 @@ export default function HomeScreen() {
     );
   };
 
+  const geofence = useOfflineGeofence({
+    latitude: -32.21218267316605,
+    longitude: -64.73809012343702,
+  });
+
   const innerView = (
     <TwView
       style={{
-        width: '100%',
         maxWidth: MaxContentWidth,
-        paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
-        alignItems: 'center',
-        gap: SECTION_GAP,
       }}
-      className="self-center"
+      className="self-center w-full px-6 items-center gap-4"
     >
       <TwView className="items-center justify-center px-6 gap-6 py-16">
         <AnimatedIcon />
@@ -70,6 +69,51 @@ export default function HomeScreen() {
       <ThemedText type="code" className="uppercase">
         {t('index.getStarted')}
       </ThemedText>
+
+      {/* Temporal Geofence Debug Panel */}
+      <TwView className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border border-emerald-500/20">
+        <TwText className="font-bold text-sm text-emerald-400">GPS Offline Geofence Debug</TwText>
+        <HintRow
+          title="GPS Status"
+          hint={<ThemedText type="code">{geofence.gpsStatus}</ThemedText>}
+        />
+        <HintRow
+          title="GPS Accuracy"
+          hint={
+            <ThemedText type="code">
+              {geofence.gpsAccuracy !== null ? `${geofence.gpsAccuracy.toFixed(1)}m` : 'N/A'}
+            </ThemedText>
+          }
+        />
+        <HintRow
+          title="Distance to Start"
+          hint={
+            <TwText className="text-sm font-code">
+              {geofence.distanceMeters !== null ? `${geofence.distanceMeters.toFixed(1)}m` : 'N/A'}
+            </TwText>
+          }
+        />
+        <HintRow
+          title="Required Proximity"
+          hint={
+            <ThemedText type="code">{`${geofence.requiredRadiusMeters}m`}</ThemedText>
+          }
+        />
+        <HintRow
+          title="Near Start Location?"
+          hint={
+            <ThemedText
+              type="code"
+              className={geofence.isNearStart ? 'text-emerald-400' : 'text-rose-400'}
+            >
+              {geofence.isNearStart ? `YES (Within ${geofence.requiredRadiusMeters}m)` : 'NO'}
+            </ThemedText>
+          }
+        />
+        {geofence.errorMsg && (
+          <TwText className="text-xs text-rose-400 mt-1">Error: {geofence.errorMsg}</TwText>
+        )}
+      </TwView>
 
       <TwView className="bg-backgroundElement gap-6 self-stretch p-4 rounded-[24px]">
         <HintRow
@@ -83,6 +127,7 @@ export default function HomeScreen() {
         />
       </TwView>
 
+
       {Platform.OS === 'web' && <WebBadge />}
     </TwView>
   );
@@ -90,7 +135,7 @@ export default function HomeScreen() {
   if (Platform.OS === 'web') {
     return (
       <ScreenWrapper>
-        <TwView className={CONTENT_PADDING} style={{ flex: 1 }}>
+        <TwView className={`${CONTENT_PADDING} flex-1`}>
           {innerView}
         </TwView>
       </ScreenWrapper>
