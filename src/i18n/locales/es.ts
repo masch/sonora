@@ -8,6 +8,7 @@ export const es = {
   },
   tabs: {
     index: 'Inicio',
+    walk: 'Caminata',
     explore: 'Explorar',
     settings: 'Ajustes',
   },

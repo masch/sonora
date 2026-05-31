@@ -8,6 +8,7 @@ export const en = {
   },
   tabs: {
     index: 'Home',
+    walk: 'Walk',
     explore: 'Explore',
     settings: 'Settings',
   },
