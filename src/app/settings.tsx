@@ -24,7 +24,7 @@ export default function SettingsScreen() {
         {/* Profile Section */}
         <TwView className="rounded-2xl bg-gray-100 dark:bg-zinc-900 p-4 mb-4">
           <TwView className="flex-row items-center gap-4">
-            <TwView className="w-16 h-16 rounded-full bg-blue-500 items-center justify-center">
+            <TwView className="size-16 rounded-full bg-blue-500 items-center justify-center">
               <TwText className="text-2xl font-bold text-white">
                 {t('settings.profile.initials')}
               </TwText>

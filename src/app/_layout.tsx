@@ -1,3 +1,4 @@
+// Expo Router auto-loads _layout.tsx by convention — not an unused file
 import '@/global.css';
 import '@/i18n';
 

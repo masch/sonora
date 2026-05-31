@@ -1,21 +1,25 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+// react-doctor-disable-next-line react-doctor/rn-no-legacy-expo-packages — actively maintained in SDK 56, backgroundImage CSS is experimental
 import { LinearGradient } from 'expo-linear-gradient';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
+// react-doctor-disable-next-line deslop/unused-export — false positive: used in _layout.tsx via @/ alias
 export function AnimatedSplashOverlay() {
+  const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
 
   if (!visible) return null;
 
+  const scaleFactor = height / 90;
+
   const splashKeyframe = new Keyframe({
     0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
+      transform: [{ scale: scaleFactor }],
       opacity: 1,
     },
     20: {
@@ -44,16 +48,6 @@ export function AnimatedSplashOverlay() {
     />
   );
 }
-
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
 
 const logoKeyframe = new Keyframe({
   0: {
@@ -84,7 +78,20 @@ const glowKeyframe = new Keyframe({
 const logoGlowImg = require('@/assets/images/logo-glow.png');
 const expoLogoImg = require('@/assets/images/expo-logo.png');
 
+// react-doctor-disable-next-line deslop/unused-export — false positive: used externally via @/ alias
 export function AnimatedIcon() {
+  const { height } = useWindowDimensions();
+
+  const keyframe = new Keyframe({
+    0: {
+      transform: [{ scale: height / 90 }],
+    },
+    100: {
+      transform: [{ scale: 1 }],
+      easing: Easing.elastic(0.7),
+    },
+  });
+
   return (
     <View style={styles.iconContainer}>
       <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
@@ -133,6 +140,6 @@ const styles = StyleSheet.create({
   backgroundSolidColor: {
     ...StyleSheet.absoluteFill,
     backgroundColor: '#208AEF',
-    zIndex: 1000,
+    zIndex: 200,
   },
 });

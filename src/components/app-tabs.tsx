@@ -3,6 +3,7 @@ import { TABS } from '@/constants/tabs';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
+// react-doctor-disable-next-line deslop/unused-export — false positive: default export used by Expo Router via @/ alias
 export default function AppTabs() {
   const colors = useThemeColors();
   const { t } = useAppTranslation();
