@@ -33,7 +33,7 @@ This document maps out the specific execution steps and commit roadmap for imple
   - _Files:_ [NEW] `src/hooks/use-immersion-player.ts`, [NEW] `src/hooks/__tests__/use-immersion-player.test.ts`
   - _Commit:_ `feat(hooks): implement useImmersionPlayer hook with exclusive focus`
 
-- [ ] **Task 5: Presentational UI Components**
+- [x] **Task 5: Presentational UI Components**
   - Create the Tailwind-styled cards for download tracking, player control overlays, and GPS quality pills.
   - _Files:_ [NEW] `src/components/download-progress-card.tsx`, [NEW] `src/components/gps-precision-badge.tsx`, [NEW] `src/components/audio-media-controls.tsx`
   - _Commit:_ `feat(components): add download card, gps badge and media controls UI`

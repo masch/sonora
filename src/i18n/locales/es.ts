@@ -51,6 +51,31 @@ export const es = {
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',
     },
+    waitingForDownload: 'Descargá el audio primero para reproducirlo',
+  },
+  components: {
+    downloadCard: {
+      btnDownload: 'Descargar',
+      btnDelete: 'Borrar',
+      statusCompleted: '✓',
+      progressPercent: '{{value}}%',
+    },
+    gpsBadge: {
+      statusInitializing: 'Inicializando GPS…',
+      statusWeak: 'Señal GPS débil. Alejate de árboles/paredes para mejorar la precisión.',
+      statusReady: 'GPS listo',
+      distance: 'Distancia',
+      accuracy: 'Precisión',
+      nearStart: 'Cerca del inicio',
+    },
+    mediaControls: {
+      btnPlay: 'Reproducir',
+      btnPause: 'Pausa',
+      btnStop: 'Detener',
+      statusLoading: 'Cargando…',
+      position: '{{value}}s',
+      duration: '{{value}}s',
+    },
   },
   errors: {
     invalidDownloadConfig: 'Configuración de descarga o viaje inválida',

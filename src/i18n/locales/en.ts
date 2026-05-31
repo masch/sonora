@@ -51,6 +51,31 @@ export const en = {
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',
     },
+    waitingForDownload: 'Download audio first to play it',
+  },
+  components: {
+    downloadCard: {
+      btnDownload: 'Download',
+      btnDelete: 'Delete',
+      statusCompleted: '✓',
+      progressPercent: '{{value}}%',
+    },
+    gpsBadge: {
+      statusInitializing: 'Initializing GPS…',
+      statusWeak: 'Weak GPS signal. Step away from trees/walls to improve accuracy.',
+      statusReady: 'GPS ready',
+      distance: 'Distance',
+      accuracy: 'Accuracy',
+      nearStart: 'Near start',
+    },
+    mediaControls: {
+      btnPlay: 'Play',
+      btnPause: 'Pause',
+      btnStop: 'Stop',
+      statusLoading: 'Loading…',
+      position: '{{value}}s',
+      duration: '{{value}}s',
+    },
   },
   errors: {
     invalidDownloadConfig: 'Invalid trip or download configuration',

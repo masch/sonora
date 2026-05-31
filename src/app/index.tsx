@@ -4,6 +4,9 @@ import { Trans } from 'react-i18next';
 import { Platform } from 'react-native';
 
 import { AnimatedIcon } from '@/components/animated-icon';
+import AudioMediaControls from '@/components/audio-media-controls';
+import DownloadProgressCard from '@/components/download-progress-card';
+import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
 import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
@@ -11,7 +14,7 @@ import { WebBadge } from '@/components/web-badge';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTripDownload } from '@/hooks/use-trip-download';
-import { TwPressable, TwText, TwView } from '@/tw';
+import { TwText, TwView } from '@/tw';
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pt-16 pb-6';
@@ -72,221 +75,38 @@ export default function HomeScreen() {
         {t('index.getStarted')}
       </ThemedText>
 
-      {/* Temporal Geofence Debug Panel */}
-      <TwView className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border border-emerald-500/20">
-        <TwText className="font-bold text-sm text-emerald-400">
-          {t('index.geofence.debugTitle')}
-        </TwText>
-        <HintRow
-          title={t('index.geofence.gpsStatus')}
-          hint={<ThemedText type="code">{geofence.gpsStatus}</ThemedText>}
-        />
-        <HintRow
-          title={t('index.geofence.gpsAccuracy')}
-          hint={
-            <ThemedText type="code">
-              {geofence.gpsAccuracy !== null
-                ? `${geofence.gpsAccuracy.toFixed(1)}m`
-                : t('index.geofence.notAvailable')}
-            </ThemedText>
-          }
-        />
-        <HintRow
-          title={t('index.geofence.distanceToStart')}
-          hint={
-            <TwText className="text-sm font-code">
-              {geofence.distanceMeters !== null
-                ? `${geofence.distanceMeters.toFixed(1)}m`
-                : t('index.geofence.notAvailable')}
-            </TwText>
-          }
-        />
-        <HintRow
-          title={t('index.geofence.requiredProximity')}
-          hint={<ThemedText type="code">{`${geofence.requiredRadiusMeters}m`}</ThemedText>}
-        />
-        <HintRow
-          title={t('index.geofence.nearStartLocation')}
-          hint={
-            <ThemedText
-              type="code"
-              className={geofence.isNearStart ? 'text-emerald-400' : 'text-rose-400'}
-            >
-              {geofence.isNearStart
-                ? t('index.geofence.yesWithinRadius', { radius: geofence.requiredRadiusMeters })
-                : t('index.geofence.no')}
-            </ThemedText>
-          }
-        />
-        {geofence.errorMsg && (
-          <TwText className="text-xs text-rose-400 mt-1">
-            {t('index.geofence.errorPrefix', { error: geofence.errorMsg })}
-          </TwText>
-        )}
-      </TwView>
+      <GpsPrecisionBadge
+        gpsStatus={geofence.gpsStatus}
+        gpsAccuracy={geofence.gpsAccuracy}
+        distanceMeters={geofence.distanceMeters}
+        isNearStart={geofence.isNearStart}
+        requiredRadiusMeters={geofence.requiredRadiusMeters}
+      />
 
-      {/* Temporal Download Debug Panel */}
-      <TwView className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border border-blue-500/20">
-        <TwText className="font-bold text-sm text-blue-400">
-          {t('index.downloadDebug.title')}
-        </TwText>
-        <HintRow
-          title={t('index.downloadDebug.status')}
-          hint={<ThemedText type="code">{download.status}</ThemedText>}
-        />
-        <HintRow
-          title={t('index.downloadDebug.progress')}
-          hint={<ThemedText type="code">{`${download.progress}%`}</ThemedText>}
-        />
-        {download.localAudioUri && (
-          <HintRow
-            title={t('index.downloadDebug.localUri')}
-            hint={
-              <TwText
-                className="text-xs font-code text-zinc-400 max-w-[200px]"
-                numberOfLines={1}
-                ellipsizeMode="head"
-              >
-                {download.localAudioUri}
-              </TwText>
-            }
-          />
-        )}
-        {download.errorMsg && (
-          <TwText className="text-xs text-rose-400 mt-1">
-            {t('index.geofence.errorPrefix', { error: download.errorMsg })}
-          </TwText>
-        )}
-        <TwView className="flex-row gap-4 mt-2">
-          <TwView className="flex-1">
-            <TwView className="bg-blue-600 rounded-xl overflow-hidden">
-              <TwPressable
-                accessibilityLabel={t('index.downloadDebug.btnDownload')}
-                testID="download-button"
-                className="py-3 items-center active:bg-blue-700"
-                onPress={download.startDownload}
-                disabled={download.status === 'downloading'}
-              >
-                <TwText className="text-white font-bold text-sm">
-                  {t('index.downloadDebug.btnDownload')}
-                </TwText>
-              </TwPressable>
-            </TwView>
-          </TwView>
-          <TwView className="flex-1">
-            <TwView className="bg-zinc-700 rounded-xl overflow-hidden">
-              <TwPressable
-                accessibilityLabel={t('index.downloadDebug.btnDelete')}
-                testID="delete-button"
-                className="py-3 items-center active:bg-zinc-800"
-                onPress={download.deleteTripLocal}
-              >
-                <TwText className="text-white font-bold text-sm">
-                  {t('index.downloadDebug.btnDelete')}
-                </TwText>
-              </TwPressable>
-            </TwView>
-          </TwView>
-        </TwView>
-      </TwView>
+      <DownloadProgressCard
+        status={download.status}
+        progress={download.progress}
+        errorMsg={download.errorMsg}
+        onDownload={download.startDownload}
+        onDelete={download.deleteTripLocal}
+      />
 
-      {/* Temporal Audio Player Debug Panel */}
-      <TwView className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border border-violet-500/20">
-        <TwText className="font-bold text-sm text-violet-400">
-          {t('index.playerDebug.title')}
-        </TwText>
-        <HintRow
-          title={t('index.playerDebug.status')}
-          hint={
-            <TwText className="text-sm font-code">
-              {player.status === 'loading' ? t('index.playerDebug.loading') : player.status}
-            </TwText>
-          }
-        />
-        {player.status === 'playing' || player.status === 'paused' ? (
-          <>
-            <HintRow
-              title={t('index.playerDebug.position')}
-              hint={
-                <ThemedText type="code">
-                  {t('index.playerDebug.positionValue', {
-                    value: (player.positionMs / 1000).toFixed(1),
-                  })}
-                </ThemedText>
-              }
-            />
-            <HintRow
-              title={t('index.playerDebug.duration')}
-              hint={
-                <ThemedText type="code">
-                  {player.durationMs > 0
-                    ? t('index.playerDebug.durationValue', {
-                        value: (player.durationMs / 1000).toFixed(1),
-                      })
-                    : t('index.geofence.notAvailable')}
-                </ThemedText>
-              }
-            />
-          </>
-        ) : null}
-        {player.errorMsg && (
-          <TwText className="text-xs text-rose-400 mt-1">
-            {t('index.geofence.errorPrefix', { error: player.errorMsg })}
-          </TwText>
-        )}
-        <TwView className="flex-row gap-4 mt-2">
-          {player.status === 'playing' ? (
-            <TwView className="flex-1">
-              <TwView className="bg-amber-600 rounded-xl overflow-hidden">
-                <TwPressable
-                  accessibilityLabel={t('index.playerDebug.btnPause')}
-                  testID="audio-pause-button"
-                  className="py-3 items-center active:bg-amber-700"
-                  onPress={player.pause}
-                >
-                  <TwText className="text-white font-bold text-sm">
-                    {t('index.playerDebug.btnPause')}
-                  </TwText>
-                </TwPressable>
-              </TwView>
-            </TwView>
-          ) : (
-            <TwView className="flex-1">
-              <TwView
-                className={`rounded-xl overflow-hidden ${
-                  download.localAudioUri ? 'bg-violet-600' : 'bg-zinc-700'
-                }`}
-              >
-                <TwPressable
-                  accessibilityLabel={t('index.playerDebug.btnPlay')}
-                  testID="audio-play-button"
-                  className="py-3 items-center active:bg-violet-700"
-                  onPress={player.play}
-                  disabled={!download.localAudioUri}
-                >
-                  <TwText className="text-white font-bold text-sm">
-                    {t('index.playerDebug.btnPlay')}
-                  </TwText>
-                </TwPressable>
-              </TwView>
-            </TwView>
-          )}
-          <TwView className="flex-1">
-            <TwView className="bg-zinc-700 rounded-xl overflow-hidden">
-              <TwPressable
-                accessibilityLabel={t('index.playerDebug.btnStop')}
-                testID="audio-stop-button"
-                className="py-3 items-center active:bg-zinc-800"
-                onPress={player.stop}
-              >
-                <TwText className="text-white font-bold text-sm">
-                  {t('index.playerDebug.btnStop')}
-                </TwText>
-              </TwPressable>
-            </TwView>
-          </TwView>
+      {download.status === 'downloading' ? (
+        <TwView className="bg-backgroundElement gap-2 self-stretch p-4 rounded-[24px] items-center">
+          <TwText className="text-sm text-zinc-400">{t('index.waitingForDownload')}</TwText>
         </TwView>
-      </TwView>
+      ) : (
+        <AudioMediaControls
+          status={player.status}
+          positionMs={player.positionMs}
+          durationMs={player.durationMs}
+          errorMsg={player.errorMsg}
+          onPlay={player.play}
+          onPause={player.pause}
+          onStop={player.stop}
+          disabled={!download.localAudioUri}
+        />
+      )}
 
       <TwView className="bg-backgroundElement gap-6 self-stretch p-4 rounded-[24px]">
         <HintRow
