@@ -49,6 +49,9 @@ export function useTripDownload(
     }
 
     async function checkLocalFile() {
+      // On web there's no persistent local file system — start idle
+      if (Platform.OS === 'web') return;
+
       try {
         const targetUri = getTargetUri(tripId);
         if (!targetUri) return;
@@ -118,9 +121,17 @@ export function useTripDownload(
         if (Platform.OS !== 'web') throw storageErr;
       }
 
-      // 2. Download — use fetch on web, expo-file-system on native
+      // 2. Download — on web, use the remote URL directly (streaming via expo-audio)
       if (Platform.OS === 'web') {
-        await webDownload(remoteAudioUrl);
+        // Web doesn't have a persistent filesystem. The player streams the
+        // audio directly from the remote URL (HTML5 Audio supports CORS-less
+        // playback, even if fetch does not).
+        setState({
+          status: 'completed',
+          progress: 100,
+          localAudioUri: remoteAudioUrl,
+          errorMsg: null,
+        });
       } else {
         await nativeDownload(remoteAudioUrl, targetUri, tripId);
       }
@@ -135,51 +146,6 @@ export function useTripDownload(
       logger.error('Download execution error:', msg);
     }
   };
-
-  async function webDownload(url: string) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      // Fallback: read entire blob at once (no progress tracking)
-      const blob = await response.blob();
-      const blobUri = URL.createObjectURL(blob);
-      setState({
-        status: 'completed',
-        progress: 100,
-        localAudioUri: blobUri,
-        errorMsg: null,
-      });
-      return;
-    }
-
-    const contentLength = Number(response.headers.get('Content-Length') ?? '0');
-    let received = 0;
-    const chunks: Uint8Array[] = [];
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      if (contentLength > 0) {
-        setState((prev) => ({
-          ...prev,
-          progress: Math.floor((received / contentLength) * 100),
-        }));
-      }
-    }
-
-    const blob = new Blob(chunks, { type: response.headers.get('Content-Type') ?? 'audio/mpeg' });
-    const blobUri = URL.createObjectURL(blob);
-    setState({
-      status: 'completed',
-      progress: 100,
-      localAudioUri: blobUri,
-      errorMsg: null,
-    });
-  }
 
   async function nativeDownload(url: string, targetUri: string, tripId: string) {
     // 2. Ensure parent directory exists
@@ -218,12 +184,8 @@ export function useTripDownload(
   }
 
   const deleteTripLocal = async () => {
-    // On web, blob URLs are ephemeral — just reset state
+    // On web, there's no persistent local file — just reset state
     if (Platform.OS === 'web') {
-      // Revoke the blob URL to free memory
-      if (state.localAudioUri?.startsWith('blob:')) {
-        URL.revokeObjectURL(state.localAudioUri);
-      }
       setState({
         status: 'idle',
         progress: 0,

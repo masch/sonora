@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { logger } from '@/utils/logger';
 
@@ -26,9 +27,11 @@ async function setupImmersionAudioSession(): Promise<void> {
 }
 
 export function useImmersionPlayer(localAudioUri: string | null) {
+  // On web, skip downloadFirst — the HTML5 Audio element can stream from
+  // cross-origin URLs directly even without CORS fetch access.
   const player = useAudioPlayer(localAudioUri, {
     updateInterval: 500,
-    downloadFirst: true,
+    downloadFirst: Platform.OS !== 'web',
   });
   const {
     playing,
