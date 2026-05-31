@@ -38,9 +38,10 @@ This document maps out the specific execution steps and commit roadmap for imple
   - _Files:_ [NEW] `src/components/download-progress-card.tsx`, [NEW] `src/components/gps-precision-badge.tsx`, [NEW] `src/components/audio-media-controls.tsx`
   - _Commit:_ `feat(components): add download card, gps badge and media controls UI`
 
-- [ ] **Task 6: Trip Detail Screen Integration**
+- [x] **Task 6: Trip Detail Screen Integration**
   - Assemble all services on `src/app/trips/[id].tsx` container view.
-  - _Files:_ [NEW] `src/app/trips/[id].tsx`, [NEW] `src/app/trips/__tests__/[id].test.tsx`
+  - _Files:_ [NEW] `src/app/trips/[id].tsx`, [NEW] `src/__tests__/trips.test.tsx`,
+    [NEW] `src/data/trips.ts`
   - _Commit:_ `feat(trips): integrate download, geofence and player on trip detail screen`
 
 ---

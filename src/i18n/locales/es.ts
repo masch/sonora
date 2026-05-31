@@ -2,6 +2,10 @@ export const es = {
   common: {
     learnMore: 'Saber más',
   },
+  trips: {
+    notFound: 'Viaje no encontrado',
+    duration: 'Caminata de {{minutes}} min',
+  },
   tabs: {
     index: 'Inicio',
     explore: 'Explorar',

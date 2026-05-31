@@ -2,6 +2,10 @@ export const en = {
   common: {
     learnMore: 'Learn more',
   },
+  trips: {
+    notFound: 'Trip not found',
+    duration: '{{minutes}} min walk',
+  },
   tabs: {
     index: 'Home',
     explore: 'Explore',

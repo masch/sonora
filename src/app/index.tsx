@@ -91,11 +91,8 @@ export default function HomeScreen() {
         onDelete={download.deleteTripLocal}
       />
 
-      {download.status === 'downloading' ? (
-        <TwView className="bg-backgroundElement gap-2 self-stretch p-4 rounded-[24px] items-center">
-          <TwText className="text-sm text-zinc-400">{t('index.waitingForDownload')}</TwText>
-        </TwView>
-      ) : (
+      {/* Audio player — only shown when download completed */}
+      {download.status === 'completed' ? (
         <AudioMediaControls
           status={player.status}
           positionMs={player.positionMs}
@@ -106,7 +103,11 @@ export default function HomeScreen() {
           onStop={player.stop}
           disabled={!download.localAudioUri}
         />
-      )}
+      ) : download.status === 'downloading' ? (
+        <TwView className="bg-backgroundElement gap-2 self-stretch p-4 rounded-[24px] items-center">
+          <TwText className="text-sm text-zinc-400">{t('index.waitingForDownload')}</TwText>
+        </TwView>
+      ) : null}
 
       <TwView className="bg-backgroundElement gap-6 self-stretch p-4 rounded-[24px]">
         <HintRow
