@@ -98,6 +98,24 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 	git checkout -- $$FILES; \
 	exit $$EXIT_CODE
 
+# ── EAS Deploy ───────────────────────────────
+
+.PHONY: eas-whoami
+eas-whoami: ## Verify EAS authentication (uses EXPO_TOKEN from .env)
+	eas whoami
+
+.PHONY: eas-build-android
+eas-build-android: ## Build Android production APK via EAS Build
+	eas build -p android --profile production --wait
+
+.PHONY: eas-build-android-preview
+eas-build-android-preview: ## Build Android preview APK (internal distribution) via EAS Build
+	eas build -p android --profile preview --wait
+
+.PHONY: eas-build-web
+eas-build-web: ## Export web app and deploy to EAS Hosting
+	bunx expo export --platform web && eas deploy --prod
+
 # ── Maintenance ───────────────────────────────
 
 .PHONY: clean
