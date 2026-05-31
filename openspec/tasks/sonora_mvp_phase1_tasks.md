@@ -28,7 +28,7 @@ This document maps out the specific execution steps and commit roadmap for imple
   - _Files:_ [NEW] `src/hooks/use-trip-download.ts`, [NEW] `src/hooks/__tests__/use-trip-download.test.ts`
   - _Commit:_ `feat(hooks): implement useTripDownload hook with space limits`
 
-- [ ] **Task 4: Background audio player hook**
+- [x] **Task 4: Background audio player hook**
   - Implement Audio exclusive focus and hardware unplug triggers.
   - _Files:_ [NEW] `src/hooks/use-immersion-player.ts`, [NEW] `src/hooks/__tests__/use-immersion-player.test.ts`
   - _Commit:_ `feat(hooks): implement useImmersionPlayer hook with exclusive focus`

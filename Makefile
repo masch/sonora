@@ -23,6 +23,20 @@ dev-android: ## Launch Expo dev server for Android
 dev-ios: ## Launch Expo dev server for iOS
 	bun run ios
 
+# ── Native ─────────────────────────────────────
+
+.PHONY: rebuild-android
+rebuild-android: ## Rebuild native Android project (after adding native modules like expo-av)
+	bunx expo run:android
+
+.PHONY: rebuild-ios
+rebuild-ios: ## Rebuild native iOS project (after adding native modules)
+	bunx expo run:ios
+
+.PHONY: prebuild
+prebuild: ## Regenerate native project files without compiling
+	bunx expo prebuild
+
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
 	bunx react-doctor@latest --verbose

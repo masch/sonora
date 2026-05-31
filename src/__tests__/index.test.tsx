@@ -25,6 +25,18 @@ jest.mock('@/hooks/use-trip-download', () => ({
     deleteTripLocal: jest.fn(),
   }),
 }));
+jest.mock('@/hooks/use-immersion-player', () => ({
+  useImmersionPlayer: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    errorMsg: null,
+    play: jest.fn(),
+    pause: jest.fn(),
+    stop: jest.fn(),
+    seekTo: jest.fn(),
+  }),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',

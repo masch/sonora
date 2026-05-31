@@ -39,6 +39,18 @@ export const en = {
       btnDownload: 'Download',
       btnDelete: 'Delete',
     },
+    playerDebug: {
+      title: 'Audio Player Debug',
+      status: 'Player Status',
+      position: 'Position',
+      duration: 'Duration',
+      btnPlay: 'Play',
+      btnPause: 'Pause',
+      btnStop: 'Stop',
+      loading: 'Loading...',
+      positionValue: '{{value}}s',
+      durationValue: '{{value}}s',
+    },
   },
   errors: {
     invalidDownloadConfig: 'Invalid trip or download configuration',

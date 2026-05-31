@@ -8,6 +8,7 @@ import { HintRow } from '@/components/hint-row';
 import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
+import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTripDownload } from '@/hooks/use-trip-download';
 import { TwPressable, TwText, TwView } from '@/tw';
@@ -57,6 +58,8 @@ export default function HomeScreen() {
     'umepay-bosque',
     'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
   );
+
+  const player = useImmersionPlayer(download.localAudioUri);
 
   const innerView = (
     <TwView className="self-center w-full max-w-[800px] px-6 items-center gap-4">
@@ -180,6 +183,104 @@ export default function HomeScreen() {
               >
                 <TwText className="text-white font-bold text-sm">
                   {t('index.downloadDebug.btnDelete')}
+                </TwText>
+              </TwPressable>
+            </TwView>
+          </TwView>
+        </TwView>
+      </TwView>
+
+      {/* Temporal Audio Player Debug Panel */}
+      <TwView className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border border-violet-500/20">
+        <TwText className="font-bold text-sm text-violet-400">
+          {t('index.playerDebug.title')}
+        </TwText>
+        <HintRow
+          title={t('index.playerDebug.status')}
+          hint={
+            <TwText className="text-sm font-code">
+              {player.status === 'loading' ? t('index.playerDebug.loading') : player.status}
+            </TwText>
+          }
+        />
+        {player.status === 'playing' || player.status === 'paused' ? (
+          <>
+            <HintRow
+              title={t('index.playerDebug.position')}
+              hint={
+                <ThemedText type="code">
+                  {t('index.playerDebug.positionValue', {
+                    value: (player.positionMs / 1000).toFixed(1),
+                  })}
+                </ThemedText>
+              }
+            />
+            <HintRow
+              title={t('index.playerDebug.duration')}
+              hint={
+                <ThemedText type="code">
+                  {player.durationMs > 0
+                    ? t('index.playerDebug.durationValue', {
+                        value: (player.durationMs / 1000).toFixed(1),
+                      })
+                    : t('index.geofence.notAvailable')}
+                </ThemedText>
+              }
+            />
+          </>
+        ) : null}
+        {player.errorMsg && (
+          <TwText className="text-xs text-rose-400 mt-1">
+            {t('index.geofence.errorPrefix', { error: player.errorMsg })}
+          </TwText>
+        )}
+        <TwView className="flex-row gap-4 mt-2">
+          {player.status === 'playing' ? (
+            <TwView className="flex-1">
+              <TwView className="bg-amber-600 rounded-xl overflow-hidden">
+                <TwPressable
+                  accessibilityLabel={t('index.playerDebug.btnPause')}
+                  testID="audio-pause-button"
+                  className="py-3 items-center active:bg-amber-700"
+                  onPress={player.pause}
+                >
+                  <TwText className="text-white font-bold text-sm">
+                    {t('index.playerDebug.btnPause')}
+                  </TwText>
+                </TwPressable>
+              </TwView>
+            </TwView>
+          ) : (
+            <TwView className="flex-1">
+              <TwView
+                className={`rounded-xl overflow-hidden ${
+                  download.localAudioUri ? 'bg-violet-600' : 'bg-zinc-700'
+                }`}
+              >
+                <TwPressable
+                  accessibilityLabel={t('index.playerDebug.btnPlay')}
+                  testID="audio-play-button"
+                  className="py-3 items-center active:bg-violet-700"
+                  onPress={player.play}
+                  disabled={!download.localAudioUri}
+                >
+                  <TwText className="text-white font-bold text-sm">
+                    {t('index.playerDebug.btnPlay')}
+                  </TwText>
+                </TwPressable>
+              </TwView>
+            </TwView>
+          )}
+          <TwView className="flex-1">
+            <TwView className="bg-zinc-700 rounded-xl overflow-hidden">
+              <TwPressable
+                accessibilityLabel={t('index.playerDebug.btnStop')}
+                testID="audio-stop-button"
+                className="py-3 items-center active:bg-zinc-800"
+                onPress={player.stop}
+              >
+                <TwText className="text-white font-bold text-sm">
+                  {t('index.playerDebug.btnStop')}
                 </TwText>
               </TwPressable>
             </TwView>

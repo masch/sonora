@@ -39,6 +39,18 @@ export const es = {
       btnDownload: 'Descargar',
       btnDelete: 'Borrar',
     },
+    playerDebug: {
+      title: 'Debug de Audio Player',
+      status: 'Estado del Player',
+      position: 'Posición',
+      duration: 'Duración',
+      btnPlay: 'Reproducir',
+      btnPause: 'Pausa',
+      btnStop: 'Detener',
+      loading: 'Cargando...',
+      positionValue: '{{value}}s',
+      durationValue: '{{value}}s',
+    },
   },
   errors: {
     invalidDownloadConfig: 'Configuración de descarga o viaje inválida',

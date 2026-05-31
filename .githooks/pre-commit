@@ -36,6 +36,18 @@ fi
 
 set -e
 
+# 0. Restore expo-env.d.ts and .gitignore if expo-cli trampled them
+for f in expo-env.d.ts .gitignore; do
+  if ! git diff --quiet "$f" 2>/dev/null; then
+    if git show HEAD:"$f" 2>/dev/null | diff - "$f" >/dev/null 2>&1; then
+      : # no diff or binary
+    else
+      printf 'pre-commit: %s was modified by expo-cli — reverting\n' "$f"
+      git checkout -- "$f"
+    fi
+  fi
+done
+
 # 1. Format code
 make format
 
