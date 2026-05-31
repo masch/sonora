@@ -15,6 +15,16 @@ jest.mock('@/hooks/use-offline-geofence', () => ({
     errorMsg: null,
   }),
 }));
+jest.mock('@/hooks/use-trip-download', () => ({
+  useTripDownload: () => ({
+    status: 'idle',
+    progress: 0,
+    localAudioUri: null,
+    errorMsg: null,
+    startDownload: jest.fn(),
+    deleteTripLocal: jest.fn(),
+  }),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',

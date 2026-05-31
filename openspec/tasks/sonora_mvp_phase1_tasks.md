@@ -13,17 +13,17 @@ This document maps out the specific execution steps and commit roadmap for imple
 
 ## 2. Checklist Roadmap
 
-- [ ] **Task 1: Math utility setup**
+- [x] **Task 1: Math utility setup**
   - Create the Haversine distance calculator helper.
   - _Files:_ [NEW] `src/utils/haversine.ts`, [NEW] `src/utils/__tests__/haversine.test.ts`
   - _Commit:_ `feat(utils): add haversine formula distance helper with tests`
 
-- [ ] **Task 2: Geofencing state hook**
+- [x] **Task 2: Geofencing state hook**
   - Implement GPS coordinate matching and accuracy-latency warning trigger.
   - _Files:_ [NEW] `src/hooks/use-offline-geofence.ts`, [NEW] `src/hooks/__tests__/use-offline-geofence.test.ts`
   - _Commit:_ `feat(hooks): implement useOfflineGeofence hook with precision indicators`
 
-- [ ] **Task 3: Download manager state hook**
+- [x] **Task 3: Download manager state hook**
   - Build disk space checker and FileSystem background download manager.
   - _Files:_ [NEW] `src/hooks/use-trip-download.ts`, [NEW] `src/hooks/__tests__/use-trip-download.test.ts`
   - _Commit:_ `feat(hooks): implement useTripDownload hook with space limits`

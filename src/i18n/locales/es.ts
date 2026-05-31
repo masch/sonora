@@ -19,6 +19,32 @@ export const es = {
       devtoolsAndroid: 'presioná <0>cmd+m (o ctrl+m)</0>',
       devtoolsIos: 'presioná <0>cmd+d</0>',
     },
+    geofence: {
+      debugTitle: 'Debug de Geofence GPS Offline',
+      gpsStatus: 'Estado de GPS',
+      gpsAccuracy: 'Precisión de GPS',
+      distanceToStart: 'Distancia al inicio',
+      requiredProximity: 'Proximidad requerida',
+      nearStartLocation: '¿Cerca del inicio?',
+      yesWithinRadius: 'SÍ (Dentro de {{radius}}m)',
+      no: 'NO',
+      errorPrefix: 'Error: {{error}}',
+      notAvailable: 'N/A',
+    },
+    downloadDebug: {
+      title: 'Debug de Descarga de Audio',
+      status: 'Estado de descarga',
+      progress: 'Progreso',
+      localUri: 'URI Local',
+      btnDownload: 'Descargar',
+      btnDelete: 'Borrar',
+    },
+  },
+  errors: {
+    invalidDownloadConfig: 'Configuración de descarga o viaje inválida',
+    insufficientSpace:
+      'Espacio de almacenamiento insuficiente. Libre: {{free}}MB, Requerido: {{required}}MB',
+    downloadWriteFailed: 'La descarga no pudo escribirse en la ruta destino',
   },
   explore: {
     title: 'Explorar',
