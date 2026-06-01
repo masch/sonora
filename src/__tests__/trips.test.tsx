@@ -48,6 +48,10 @@ jest.mock('@/hooks/use-immersion-player', () => ({
   }),
 }));
 
+jest.mock('react-native-webview', () => ({
+  WebView: 'WebView',
+}));
+
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
 

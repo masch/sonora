@@ -2,13 +2,23 @@ export const en = {
   common: {
     learnMore: 'Learn more',
   },
+  map: {
+    offlineTitle: 'Map unavailable',
+    offlineDescription: 'Connect to the internet to see the map',
+    noTripsTitle: 'No trips available',
+    viewTrip: 'View trip',
+    loadingMap: 'Loading map…',
+    distanceFromYou: '{{distance}} away',
+    distanceMeters: '{{value}} m',
+    distanceKilometers: '{{value}} km',
+  },
   trips: {
     notFound: 'Trip not found',
     duration: '{{minutes}} min walk',
+    coordinates: '{{lat}}, {{lng}}',
   },
   tabs: {
     index: 'Home',
-    walk: 'Walk',
     explore: 'Explore',
     settings: 'Settings',
   },

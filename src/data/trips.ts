@@ -18,10 +18,37 @@ export const TRIPS: Record<string, LocalTripMetadata> = {
       'A meditative walk through the ancient forest of Umepay, following the path carved by centuries of wind and water.',
     durationMinutes: 45,
     startCoordinates: {
-      latitude: -32.21218267316605,
+      // 30 m north of the original point (1° lat ≈ 111 320 m)
+      latitude: -32.211913,
       longitude: -64.73809012343702,
     },
     audioRemoteUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  },
+  'rio-claro': {
+    id: 'rio-claro',
+    title: 'Río Claro',
+    description:
+      'A gentle walk along the crystal-clear river, with the sound of water guiding every step through shaded banks.',
+    durationMinutes: 30,
+    startCoordinates: {
+      // 100 m north of Umepay Bosque (1° lat ≈ 111 320 m)
+      latitude: -32.211015,
+      longitude: -64.73809012343702,
+    },
+    audioRemoteUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  },
+  'cerro-pintado': {
+    id: 'cerro-pintado',
+    title: 'Cerro Pintado',
+    description:
+      'A rewarding ascent through layered rock formations to a summit with panoramic views of the Sierras Grandes.',
+    durationMinutes: 75,
+    startCoordinates: {
+      // 200 m northeast of Umepay Bosque (1° lat ≈ 111 320 m, 1° lng ≈ 94 180 m)
+      latitude: -32.210116,
+      longitude: -64.735966,
+    },
+    audioRemoteUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
   },
 };
 

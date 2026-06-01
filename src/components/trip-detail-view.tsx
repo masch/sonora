@@ -6,6 +6,7 @@ import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
+import TripDetailMap from '@/components/trip-detail-map';
 import { getTripById } from '@/data/trips';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
@@ -21,9 +22,8 @@ interface TripDetailViewProps {
 const CONTENT_PADDING = 'pt-16 pb-6';
 
 /**
- * Shared trip detail view used by both trips/[id].tsx (dynamic route) and
- * walk.tsx (dedicated tab). Receives a concrete tripId instead of reading
- * from route params, so it works in both contexts.
+ * Shared trip detail view used by trips/[id].tsx (dynamic route).
+ * Receives a concrete tripId instead of reading from route params.
  */
 export default function TripDetailView({ tripId }: TripDetailViewProps) {
   const { t } = useAppTranslation();
@@ -61,6 +61,12 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
       <ThemedText type="default" className="text-center">
         {trip.description}
       </ThemedText>
+
+      {/* Mini map */}
+      <TripDetailMap
+        latitude={trip.startCoordinates.latitude}
+        longitude={trip.startCoordinates.longitude}
+      />
 
       {/* GPS precision */}
       <GpsPrecisionBadge
