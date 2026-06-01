@@ -5,6 +5,15 @@
 
 # ── Convenience ────────────────────────────────
 
+# Incluye el archivo .env (el guión '-' evita que falle si el archivo no existe)
+-include .env
+
+# Exporta explícitamente el token para que esté disponible en todas las subshells
+EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
+export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
+
+EAS_CLI_VERSION = 20.0.0
+
 .DEFAULT_GOAL := start
 
 .PHONY: start
@@ -97,6 +106,38 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 	EXIT_CODE=$$?; \
 	git checkout -- $$FILES; \
 	exit $$EXIT_CODE
+
+# ── EAS Deploy ───────────────────────────────
+
+EAS_CLI_VERSION ?=
+
+.PHONY: eas-whoami
+eas-whoami: ## Verify EAS authentication (uses EXPO_TOKEN from .env)
+	bunx eas-cli@$(EAS_CLI_VERSION) whoami
+
+.PHONY: eas-list
+eas-list: ## List recent EAS builds
+	bunx eas-cli@$(EAS_CLI_VERSION) build:list
+
+.PHONY: eas-init
+eas-init: ## Initialize EAS for this project (first-time setup)
+	bunx eas-cli@$(EAS_CLI_VERSION) init
+
+.PHONY: eas-build-android
+eas-build-android: eas-whoami ## Build Android production APK via EAS Build (checks auth first)
+	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
+
+.PHONY: eas-build-android-preview
+eas-build-android-preview: eas-whoami ## Build Android preview APK via EAS Build (checks auth first)
+	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
+
+.PHONY: eas-upload-apk
+eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
+	bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
+
+.PHONY: eas-build-web
+eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
+	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 # ── Maintenance ───────────────────────────────
 

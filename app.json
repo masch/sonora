@@ -42,6 +42,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef4f0ad4-7ef6-4b37-858a-b1fc857d048a"
+      }
+    },
+    "owner": "sonoraderivapoeticas-team"
   }
 }

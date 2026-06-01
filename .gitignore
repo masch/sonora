@@ -33,6 +33,10 @@ yarn-error.*
 .env
 .env*.local
 
+# Generated APK files (local EAS builds)
+*.apk
+*.aab
+
 # typescript
 *.tsbuildinfo
 
