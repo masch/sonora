@@ -62,7 +62,9 @@ export default function GpsPrecisionBadge({
         title={t('components.gpsBadge.accuracy')}
         hint={
           <ThemedText type="code">
-            {gpsAccuracy !== null ? `${gpsAccuracy.toFixed(1)}m` : 'N/A'}
+            {gpsAccuracy !== null
+              ? t('map.distanceMeters', { value: gpsAccuracy.toFixed(1) })
+              : t('index.geofence.notAvailable')}
           </ThemedText>
         }
       />
@@ -70,13 +72,21 @@ export default function GpsPrecisionBadge({
         title={t('components.gpsBadge.distance')}
         hint={
           <ThemedText type="code">
-            {distanceMeters !== null ? `${distanceMeters.toFixed(1)}m` : 'N/A'}
+            {distanceMeters !== null
+              ? distanceMeters >= 1000
+                ? t('map.distanceKilometers', { value: (distanceMeters / 1000).toFixed(1) })
+                : t('map.distanceMeters', { value: Math.round(distanceMeters) })
+              : t('index.geofence.notAvailable')}
           </ThemedText>
         }
       />
       <HintRow
         title={t('index.geofence.requiredProximity')}
-        hint={<ThemedText type="code">{`${requiredRadiusMeters}m`}</ThemedText>}
+        hint={
+          <ThemedText type="code">
+            {t('map.distanceMeters', { value: requiredRadiusMeters })}
+          </ThemedText>
+        }
       />
       <HintRow
         title={t('index.geofence.nearStartLocation')}

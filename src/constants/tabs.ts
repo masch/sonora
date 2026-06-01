@@ -23,12 +23,6 @@ export const TABS = [
     symbolViewName: { ios: 'house', android: 'home', web: 'home' },
   },
   {
-    name: 'walk',
-    label: 'Walk',
-    ioniconsName: 'ear-outline',
-    symbolViewName: { ios: 'ear', android: 'headphones', web: 'headphones' },
-  },
-  {
     name: 'explore',
     label: 'Explore',
     ioniconsName: 'compass-outline',

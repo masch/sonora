@@ -1,54 +1,56 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { useTranslation } from 'react-i18next';
 
-import TabTwoScreen from '@/app/explore';
+// ---------------------------------------------------------------------------
+// Mock modules required by TripMap (native)
+// ---------------------------------------------------------------------------
 
-jest.mock('expo-image', () => ({ Image: 'Image' }));
-jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
+jest.mock('@/data/trips', () => ({
+  getAllTrips: jest.fn(() => [
+    {
+      id: 'umepay-bosque',
+      title: 'Umepay Bosque Antiguo',
+      description: 'A meditative walk through the ancient forest.',
+      durationMinutes: 45,
+      startCoordinates: { latitude: -32.212, longitude: -64.738 },
+      audioRemoteUrl: 'https://example.com/audio.mp3',
+    },
+  ]),
+}));
 
-const mockMap: Record<string, string> = {
-  'explore.title': 'Explore',
-  'explore.subtitle': 'This starter app includes example\ncode to help you get started.',
-  'explore.docLink': 'Expo documentation',
-  'common.learnMore': 'Learn more',
-  'explore.sections.fileRouting.title': 'File-based routing',
-  'explore.sections.fileRouting.desc':
-    'This app has two screens: src/app/index.tsx and src/app/explore.tsx',
-  'explore.sections.fileRouting.layout':
-    'The layout file in src/app/_layout.tsx sets up the tab navigator.',
-  'explore.sections.platforms.title': 'Android, iOS, and web support',
-  'explore.sections.images.title': 'Images',
-  'explore.sections.theme.title': 'Light and dark mode components',
-  'explore.sections.animations.title': 'Animations',
+const mockPush = jest.fn();
+const MockLink = ({ children, testID, ...props }: Record<string, unknown>) => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const RN = require('react-native');
+  return (
+    <RN.TouchableOpacity testID={testID} onPress={() => mockPush(props.href)}>
+      {children}
+    </RN.TouchableOpacity>
+  );
 };
+jest.mock('expo-router', () => ({
+  Link: MockLink,
+  useRouter: () => ({ push: mockPush }),
+}));
 
-beforeAll(() => {
-  (useTranslation().t as unknown as jest.Mock).mockImplementation((k: string) => mockMap[k] ?? k);
-});
+jest.mock('@/hooks/use-translation', () => ({
+  useAppTranslation: () => ({ t: (k: string) => k }),
+}));
+
+// Import after mocks
+import ExploreScreen from '@/app/(tabs)/explore';
 
 describe('Explore screen', () => {
-  it('renders the title', () => {
-    const { getByText } = render(<TabTwoScreen />);
-    expect(getByText('Explore')).toBeTruthy();
+  it('renders TripMap component', () => {
+    const { getByText } = render(<ExploreScreen />);
+
+    expect(getByText('map.offlineDescription')).toBeTruthy();
+    expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
   });
 
-  it('renders the subtitle', () => {
-    const { getByText } = render(<TabTwoScreen />);
-    expect(getByText(/This starter app includes example/)).toBeTruthy();
-  });
+  it('renders without crashing', () => {
+    const { toJSON } = render(<ExploreScreen />);
 
-  it('renders the Expo documentation link', () => {
-    const { getByText } = render(<TabTwoScreen />);
-    expect(getByText('Expo documentation')).toBeTruthy();
-  });
-
-  it('renders all collapsible section titles', () => {
-    const { getByText } = render(<TabTwoScreen />);
-    expect(getByText('File-based routing')).toBeTruthy();
-    expect(getByText('Android, iOS, and web support')).toBeTruthy();
-    expect(getByText('Images')).toBeTruthy();
-    expect(getByText('Light and dark mode components')).toBeTruthy();
-    expect(getByText('Animations')).toBeTruthy();
+    expect(toJSON()).not.toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
-import HomeScreen from '@/app/index';
+import HomeScreen from '@/app/(tabs)/index';
 
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/hooks/use-offline-geofence', () => ({

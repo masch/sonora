@@ -50,7 +50,7 @@ describe('GpsPrecisionBadge', () => {
     });
 
     it('shows accuracy value when provided', () => {
-      const { getByText } = render(
+      const { getAllByText } = render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -60,11 +60,11 @@ describe('GpsPrecisionBadge', () => {
         />,
       );
 
-      expect(getByText('45.0m')).toBeTruthy();
+      expect(getAllByText('map.distanceMeters')).toHaveLength(3);
     });
 
-    it('shows distance value when provided', () => {
-      const { getByText } = render(
+    it('shows distance in meters when under 1000', () => {
+      const { getAllByText } = render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -74,7 +74,21 @@ describe('GpsPrecisionBadge', () => {
         />,
       );
 
-      expect(getByText('200.0m')).toBeTruthy();
+      expect(getAllByText('map.distanceMeters')).toHaveLength(3);
+    });
+
+    it('shows distance in km when 1000 or more', () => {
+      const { getByText } = render(
+        <GpsPrecisionBadge
+          gpsStatus="weak"
+          gpsAccuracy={45}
+          distanceMeters={1250}
+          isNearStart={false}
+          requiredRadiusMeters={150}
+        />,
+      );
+
+      expect(getByText('map.distanceKilometers')).toBeTruthy();
     });
   });
 
@@ -109,7 +123,7 @@ describe('GpsPrecisionBadge', () => {
   });
 
   describe('null values', () => {
-    it('shows N/A for both accuracy and distance when both are null', () => {
+    it('shows notAvailable key for both accuracy and distance when both are null', () => {
       const { getAllByText } = render(
         <GpsPrecisionBadge
           gpsStatus="initializing"
@@ -120,11 +134,11 @@ describe('GpsPrecisionBadge', () => {
         />,
       );
 
-      const naElements = getAllByText('N/A');
+      const naElements = getAllByText('index.geofence.notAvailable');
       expect(naElements).toHaveLength(2);
     });
 
-    it('shows no N/A when both accuracy and distance are provided', () => {
+    it('shows no notAvailable when both accuracy and distance are provided', () => {
       const { queryByText } = render(
         <GpsPrecisionBadge
           gpsStatus="ready"

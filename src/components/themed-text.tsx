@@ -48,13 +48,14 @@ export function ThemedText({
   type = 'default',
   themeColor,
   className,
+  testID,
   children,
 }: ThemedTextProps) {
   const typeClass = getTypeClass(type);
   const colorClass = getColorClass(themeColor);
   const combined = `${typeClass} ${colorClass}${className ? ` ${className}` : ''}`;
   return (
-    <TwText className={combined} style={style}>
+    <TwText className={combined} style={style} testID={testID}>
       {children}
     </TwText>
   );
