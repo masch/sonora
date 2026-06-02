@@ -123,20 +123,24 @@ eas-list: ## List recent EAS builds
 eas-init: ## Initialize EAS for this project (first-time setup)
 	bunx eas-cli@$(EAS_CLI_VERSION) init
 
+# production vs preview:
+#   production → APK firmado para Google Play (firma con keystore de producción)
+#   preview    → APK de prueba para instalar directo en el celu (distribución interna, sin Play Store)
+
 .PHONY: eas-build-android
-eas-build-android: eas-whoami ## Build Android production APK via EAS Build cloud (checks auth first)
+eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
 
 .PHONY: eas-build-android-preview
-eas-build-android-preview: eas-whoami ## Build Android preview APK via EAS Build cloud (checks auth first)
+eas-build-android-preview: eas-whoami ## Build test APK for sideload via EAS cloud (internal distribution)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
 
 .PHONY: eas-build-android-local
-eas-build-android-local: eas-whoami ## Build Android production APK locally (requires Android SDK + keystore)
+eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Android SDK + production keystore)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
-eas-build-android-preview-local: eas-whoami ## Build Android preview APK locally (requires Android SDK)
+eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
