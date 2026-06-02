@@ -12,6 +12,10 @@
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
 export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
 
+SOCKET_SECURITY_API_KEY_CLEAN := $(patsubst "%",%,$(SOCKET_SECURITY_API_KEY))
+export SOCKET_SECURITY_API_KEY= $(SOCKET_SECURITY_API_KEY_CLEAN)
+
+
 EAS_CLI_VERSION = 20.0.0
 
 .DEFAULT_GOAL := start
@@ -57,8 +61,9 @@ doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 # ── Supply Chain Security ──────────────────────
 
 .PHONY: socket-scan
-socket-scan: ## Run Socket.dev security scan (set SOCKET_CLI_API_TOKEN in .env)
-	bunx socket scan create --json --no-set-as-alerts-page --branch=$(shell git branch --show-current)
+socket-scan: ## Run Socket.dev security scan (needs SOCKET_SECURITY_API_KEY in .env)
+	SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
+		--json --no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 # ── Utilities ─────────────────────────────────
 
