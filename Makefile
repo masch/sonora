@@ -12,6 +12,13 @@
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
 export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
 
+SOCKET_SECURITY_API_KEY_CLEAN := $(patsubst "%",%,$(SOCKET_SECURITY_API_KEY))
+export SOCKET_SECURITY_API_KEY=$(SOCKET_SECURITY_API_KEY_CLEAN)
+
+SOCKET_CLI_ORG_SLUG_CLEAN := $(patsubst "%",%,$(SOCKET_CLI_ORG_SLUG))
+export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
+
+
 EAS_CLI_VERSION = 20.0.0
 
 .DEFAULT_GOAL := start
@@ -53,6 +60,17 @@ doctor: ## Run React Doctor audit (full verbose scan)
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 	bunx react-doctor@latest --verbose --diff --fail-on warning
+
+# ── Supply Chain Security ──────────────────────
+
+.PHONY: socket-login socket-scan
+socket-login: ## Authenticate with Socket.dev CLI (persists token locally)
+	bunx socket login
+
+socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_SECURITY_API_KEY + ORG in .env, API token scopes: full-scans:create, full-scans:list, security-policy:read)
+	SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
+		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
+		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 # ── Utilities ─────────────────────────────────
 
