@@ -1,6 +1,7 @@
 export const es = {
   common: {
-    learnMore: 'Saber más',
+    learnMore: 'Más información',
+    dismiss: 'Cerrar',
   },
   map: {
     offlineTitle: 'Mapa no disponible',
@@ -90,6 +91,21 @@ export const es = {
       statusLoading: 'Cargando…',
       position: '{{value}}s',
       duration: '{{value}}s',
+    },
+  },
+  feedback: {
+    form: {
+      title: 'Dejá tu opinión',
+      placeholder: 'Contanos sobre tu experiencia…',
+      submit: 'Enviar',
+      sending: 'Enviando…',
+      sent: '¡Enviado!',
+      queued: 'Guardado sin conexión — se enviará cuando te conectes',
+      error: 'Algo salió mal',
+      retry: 'Reintentar',
+      validation: {
+        empty: 'El mensaje no puede estar vacío',
+      },
     },
   },
   errors: {

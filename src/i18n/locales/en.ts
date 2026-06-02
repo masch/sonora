@@ -1,6 +1,7 @@
 export const en = {
   common: {
     learnMore: 'Learn more',
+    dismiss: 'Dismiss',
   },
   map: {
     offlineTitle: 'Map unavailable',
@@ -90,6 +91,21 @@ export const en = {
       statusLoading: 'Loading…',
       position: '{{value}}s',
       duration: '{{value}}s',
+    },
+  },
+  feedback: {
+    form: {
+      title: 'Leave feedback',
+      placeholder: 'Tell us about your experience…',
+      submit: 'Send',
+      sending: 'Sending…',
+      sent: 'Sent!',
+      queued: 'Saved offline — will send when connected',
+      error: 'Something went wrong',
+      retry: 'Retry',
+      validation: {
+        empty: 'Message cannot be empty',
+      },
     },
   },
   errors: {

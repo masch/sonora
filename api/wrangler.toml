@@ -1,0 +1,14 @@
+name = "sonora-api"
+main = "src/index.ts"
+compatibility_date = "2025-02-04"
+
+# KV binding for feedback idempotency storage (MVP)
+# Create the namespace with: npx wrangler kv:namespace create "FEEDBACK_STORE"
+# Then copy the id below:
+# kv_namespaces = [
+#   { binding = "FEEDBACK_STORE", id = "<your-namespace-id>" }
+# ]
+
+# Environment variable for the KV namespace id
+[vars]
+FEEDBACK_MAX_LENGTH = "1000"

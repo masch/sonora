@@ -75,8 +75,9 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
-install: ## Install project dependencies and configure git hooks
+install: ## Install project + backend API dependencies and configure git hooks
 	bun install
+	cd $(API_DIR) && bun install 2>/dev/null || true
 	git config core.hooksPath .githooks
 
 .PHONY: lint
@@ -94,6 +95,30 @@ format-check: ## Check code formatting using prettier
 .PHONY: typecheck
 typecheck: ## Run TypeScript type check
 	tsc --noEmit
+
+# ── Backend API ───────────────────────────────
+
+API_DIR = api
+
+.PHONY: api-install
+api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest)
+	cd $(API_DIR) && bun install
+
+.PHONY: api-dev
+api-dev: ## Run Hono API locally with wrangler dev
+	cd $(API_DIR) && bun run dev
+
+.PHONY: api-test
+api-test: ## Run backend API tests (Vitest)
+	cd $(API_DIR) && bun run test
+
+.PHONY: api-typecheck
+api-typecheck: ## Run TypeScript type check for the API
+	cd $(API_DIR) && bun run typecheck
+
+.PHONY: api-deploy
+api-deploy: ## Deploy Hono API to Cloudflare Workers
+	cd $(API_DIR) && bun run deploy
 
 # ── Test ──────────────────────────────────────
 

@@ -1,3 +1,5 @@
+export type FeedbackTriggerMode = 'audio_end' | 'geofence' | 'manual';
+
 export interface LocalTripMetadata {
   id: string;
   title: string;
@@ -8,6 +10,7 @@ export interface LocalTripMetadata {
     longitude: number;
   };
   audioRemoteUrl: string;
+  feedbackTrigger?: FeedbackTriggerMode;
 }
 
 export const TRIPS: Record<string, LocalTripMetadata> = {
@@ -23,6 +26,7 @@ export const TRIPS: Record<string, LocalTripMetadata> = {
       longitude: -64.73809012343702,
     },
     audioRemoteUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    feedbackTrigger: 'manual',
   },
   'rio-claro': {
     id: 'rio-claro',

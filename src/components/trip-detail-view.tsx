@@ -1,18 +1,26 @@
+import { useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { Platform } from 'react-native';
 
 import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
+import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import TripDetailMap from '@/components/trip-detail-map';
 import { getTripById } from '@/data/trips';
+import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
+import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
+import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTripDownload } from '@/hooks/use-trip-download';
-import { TwText, TwView } from '@/tw';
+import { TwPressable, TwText, TwView } from '@/tw';
+import type { FeedbackStatus } from '@/types/feedback';
+
+const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
 
 interface TripDetailViewProps {
   tripId: string;
@@ -27,6 +35,9 @@ const CONTENT_PADDING = 'pt-16 pb-6';
  */
 export default function TripDetailView({ tripId }: TripDetailViewProps) {
   const { t } = useAppTranslation();
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [showManualFeedback, setShowManualFeedback] = useState(false);
 
   const trip = getTripById(tripId);
 
@@ -34,6 +45,60 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
   const geofence = useOfflineGeofence(trip?.startCoordinates ?? { latitude: 0, longitude: 0 });
   const download = useTripDownload(trip?.id ?? null, trip?.audioRemoteUrl ?? null);
   const player = useImmersionPlayer(download.localAudioUri);
+  const feedbackTrigger = useFeedbackTrigger(trip ?? undefined, {
+    didJustFinish: player.status === 'stopped',
+    isNearStart: geofence.isNearStart,
+  });
+  const feedbackQueue = useFeedbackQueue();
+
+  // Auto-sync feedback queue on connectivity restore
+  useFeedbackSync();
+
+  const handleFeedbackSubmit = useCallback(
+    async (message: string) => {
+      setFeedbackStatus('sending');
+      setFeedbackError(null);
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripId,
+            message,
+            idempotencyKey:
+              crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+            createdAt: new Date().toISOString(),
+          }),
+        });
+
+        if (response.status === 201) {
+          setFeedbackStatus('sent');
+        } else {
+          // Server error — queue offline
+          await feedbackQueue.enqueue({ tripId, message });
+          setFeedbackStatus('queued');
+        }
+      } catch {
+        // Network error — queue offline
+        try {
+          await feedbackQueue.enqueue({ tripId, message });
+          setFeedbackStatus('queued');
+        } catch {
+          setFeedbackStatus('error');
+          setFeedbackError(t('feedback.form.error'));
+        }
+      }
+    },
+    [tripId, feedbackQueue, t],
+  );
+
+  const handleFeedbackDismiss = useCallback(() => {
+    setFeedbackStatus(undefined);
+    setFeedbackError(null);
+    setShowManualFeedback(false);
+    feedbackTrigger.dismiss();
+  }, [feedbackTrigger]);
 
   if (!trip) {
     return (
@@ -45,6 +110,9 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
       </ScreenWrapper>
     );
   }
+
+  const showFeedbackForm =
+    feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
   const innerView = (
     <TwView className="self-center w-full max-w-[800px] px-6 items-center gap-6">
@@ -103,6 +171,22 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
           <TwText className="text-sm text-zinc-400">{t('index.waitingForDownload')}</TwText>
         </TwView>
       ) : null}
+
+      {/* Manual feedback button (when feedbackTrigger is 'manual') */}
+      {trip.feedbackTrigger === 'manual' && (
+        <TwView className="self-stretch">
+          <TwView className="bg-violet-600 rounded-xl overflow-hidden">
+            <TwPressable
+              accessibilityLabel={t('feedback.form.title')}
+              testID="feedback-manual-button"
+              className="py-3 items-center active:opacity-80"
+              onPress={() => setShowManualFeedback(true)}
+            >
+              <TwText className="text-white font-bold text-sm">{t('feedback.form.title')}</TwText>
+            </TwPressable>
+          </TwView>
+        </TwView>
+      )}
     </TwView>
   );
 
@@ -118,6 +202,15 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
           {innerView}
         </ScrollScreenWrapper>
       )}
+
+      {/* Feedback form modal */}
+      <FeedbackForm
+        visible={showFeedbackForm}
+        onSubmit={handleFeedbackSubmit}
+        onDismiss={handleFeedbackDismiss}
+        status={feedbackStatus}
+        errorMsg={feedbackError}
+      />
     </TwView>
   );
 }
