@@ -60,8 +60,11 @@ doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 
 # ── Supply Chain Security ──────────────────────
 
-.PHONY: socket-scan
-socket-scan: ## Run Socket.dev security scan (needs SOCKET_SECURITY_API_KEY in .env)
+.PHONY: socket-login socket-scan
+socket-login: ## Authenticate with Socket.dev CLI (persists token locally)
+	bunx socket login
+
+socket-scan: ## Run Socket.dev security scan (requires: socket-login or SOCKET_SECURITY_API_KEY in .env)
 	SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
 		--json --no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
