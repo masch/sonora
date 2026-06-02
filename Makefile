@@ -68,8 +68,9 @@ socket-login: ## Authenticate with Socket.dev CLI (persists token locally)
 	bunx socket login
 
 socket-scan: ## Run Socket.dev security scan (requires: SOCKET_SECURITY_API_KEY + ORG in .env)
-	SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG) SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
-		--json --no-set-as-alerts-page --branch=$(shell git branch --show-current)
+	SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
+		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) \
+		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 # ── Utilities ─────────────────────────────────
 
