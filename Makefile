@@ -54,6 +54,12 @@ doctor: ## Run React Doctor audit (full verbose scan)
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 	bunx react-doctor@latest --verbose --diff --fail-on warning
 
+# ── Supply Chain Security ──────────────────────
+
+.PHONY: socket-scan
+socket-scan: ## Run Socket.dev security scan (set SOCKET_CLI_API_TOKEN in .env)
+	bunx socket scan create --json --no-set-as-alerts-page --branch=$(shell git branch --show-current)
+
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
