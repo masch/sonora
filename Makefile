@@ -124,12 +124,20 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 	bunx eas-cli@$(EAS_CLI_VERSION) init
 
 .PHONY: eas-build-android
-eas-build-android: eas-whoami ## Build Android production APK via EAS Build (checks auth first)
+eas-build-android: eas-whoami ## Build Android production APK via EAS Build cloud (checks auth first)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
 
 .PHONY: eas-build-android-preview
-eas-build-android-preview: eas-whoami ## Build Android preview APK via EAS Build (checks auth first)
+eas-build-android-preview: eas-whoami ## Build Android preview APK via EAS Build cloud (checks auth first)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
+
+.PHONY: eas-build-android-local
+eas-build-android-local: eas-whoami ## Build Android production APK locally (requires Android SDK + keystore)
+	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
+
+.PHONY: eas-build-android-preview-local
+eas-build-android-preview-local: eas-whoami ## Build Android preview APK locally (requires Android SDK)
+	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
