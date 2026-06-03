@@ -1,0 +1,184 @@
+import { renderHook, act } from '@testing-library/react-hooks';
+import { useFeedbackTrigger } from '../use-feedback-trigger';
+import type { LocalTripMetadata } from '@/data/trips';
+
+describe('useFeedbackTrigger', () => {
+  describe('audio_end mode', () => {
+    it('should show feedback form when audio finishes (transition from false to true)', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'audio_end',
+      };
+
+      // Start with audio playing (not finished)
+      const { result, rerender } = renderHook(
+        ({ didJustFinish }: { didJustFinish: boolean }) =>
+          useFeedbackTrigger(trip, { didJustFinish }),
+        { initialProps: { didJustFinish: false } },
+      );
+
+      // Initially not triggered since audio is still playing
+      expect(result.current.showFeedback).toBe(false);
+
+      // Audio finishes — trigger transition
+      rerender({ didJustFinish: true });
+
+      expect(result.current.showFeedback).toBe(true);
+    });
+
+    it('should NOT show feedback form when audio is still playing', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'audio_end',
+      };
+
+      const { result } = renderHook(() => useFeedbackTrigger(trip, { didJustFinish: false }));
+
+      expect(result.current.showFeedback).toBe(false);
+    });
+  });
+
+  describe('geofence mode', () => {
+    it('should show feedback form when GPS detects arrival', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'geofence',
+      };
+
+      // Simulate geofence arrival: was not near, now is near
+      const { result, rerender } = renderHook(
+        ({ isNearStart }: { isNearStart: boolean }) => useFeedbackTrigger(trip, { isNearStart }),
+        { initialProps: { isNearStart: false } },
+      );
+
+      // Initially not triggered
+      expect(result.current.showFeedback).toBe(false);
+
+      // Arrive at geofence
+      rerender({ isNearStart: true });
+
+      expect(result.current.showFeedback).toBe(true);
+    });
+
+    it('should NOT show feedback form when not near geofence', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'geofence',
+      };
+
+      const { result } = renderHook(() => useFeedbackTrigger(trip, { isNearStart: false }));
+
+      expect(result.current.showFeedback).toBe(false);
+    });
+  });
+
+  describe('manual mode', () => {
+    it('should not auto-show feedback form (view manages button)', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'manual',
+      };
+
+      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+
+      // Manual mode does NOT auto-show — the view renders a button
+      expect(result.current.showFeedback).toBe(false);
+    });
+  });
+
+  describe('no trigger defined', () => {
+    it('should not show feedback form', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        // No feedbackTrigger
+      };
+
+      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+
+      expect(result.current.showFeedback).toBe(false);
+    });
+  });
+
+  describe('dismiss', () => {
+    it('should reset showFeedback to false when dismiss is called', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'audio_end',
+      };
+
+      // Start with audio playing, then finish to trigger
+      const { result, rerender } = renderHook(
+        ({ didJustFinish }: { didJustFinish: boolean }) =>
+          useFeedbackTrigger(trip, { didJustFinish }),
+        { initialProps: { didJustFinish: false } },
+      );
+
+      rerender({ didJustFinish: true });
+
+      expect(result.current.showFeedback).toBe(true);
+
+      act(() => {
+        result.current.dismiss();
+      });
+
+      expect(result.current.showFeedback).toBe(false);
+    });
+
+    it('dismiss on manual mode is a no-op (stays false)', () => {
+      const trip: LocalTripMetadata = {
+        id: 'trip-1',
+        title: 'Test Trip',
+        description: 'Test',
+        durationMinutes: 30,
+        startCoordinates: { latitude: 0, longitude: 0 },
+        audioRemoteUrl: 'https://example.com/audio.mp3',
+        feedbackTrigger: 'manual',
+      };
+
+      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+
+      expect(result.current.showFeedback).toBe(false);
+
+      act(() => {
+        result.current.dismiss();
+      });
+
+      expect(result.current.showFeedback).toBe(false);
+    });
+  });
+});

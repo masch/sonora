@@ -21,6 +21,7 @@
     "expo-location": "^56.0.15",
     "expo-router": "~56.2.8",
     "expo-splash-screen": "56.0.10",
+    "expo-sqlite": "^56.0.4",
     "expo-status-bar": "56.0.4",
     "expo-symbols": "56.0.5",
     "expo-system-ui": "56.0.5",
@@ -33,6 +34,7 @@
     "react-i18next": "17.0.8",
     "react-native": "0.85.3",
     "react-native-css": "3.0.7",
+    "@react-native-community/netinfo": "^11.4.1",
     "react-native-gesture-handler": "2.31.2",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "5.7.0",
@@ -80,6 +82,10 @@
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1"
     },
+    "testPathIgnorePatterns": [
+      "/api/",
+      "/node_modules/"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage/async-storage|@react-native-community/.*)"
     ]

@@ -54,11 +54,14 @@ make format
 # 2. Stage the formatted files so gga reviews the final version
 git add -u
 
-# 3. Run all validation steps (collect all failures)
+# 3. Run all validation steps (collect all failures; run API if files changed)
 STATUS=0
 make test   || STATUS=$?
 make lint   || STATUS=$?
 make typecheck || STATUS=$?
+if git diff --cached --name-only -- 'api/*' | grep -q .; then
+  make api-validate || STATUS=$?
+fi
 make gga    || STATUS=$?
 
 if [ $STATUS -ne 0 ]; then

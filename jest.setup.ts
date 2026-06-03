@@ -15,3 +15,31 @@ jest.mock('react-native-worklets', () => {
   };
   return WM;
 });
+
+// Mock expo-sqlite/kv-store for offline queue storage
+const mockKvStore = {
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+  removeItem: jest.fn(() => Promise.resolve()),
+  clear: jest.fn(() => Promise.resolve()),
+  getItemSync: jest.fn(() => null),
+  setItemSync: jest.fn(),
+};
+jest.mock('expo-sqlite/kv-store', () => mockKvStore);
+
+// Mock @react-native-community/netinfo for network monitoring
+const mockNetInfoState = {
+  type: 'wifi',
+  isConnected: true,
+  isInternetReachable: true,
+  details: {},
+};
+jest.mock('@react-native-community/netinfo', () => ({
+  addEventListener: jest.fn((handler: (state: typeof mockNetInfoState) => void) => {
+    handler(mockNetInfoState);
+    return jest.fn();
+  }),
+  fetch: jest.fn(() => Promise.resolve(mockNetInfoState)),
+  useNetInfo: jest.fn(() => mockNetInfoState),
+  refresh: jest.fn(() => Promise.resolve(mockNetInfoState)),
+}));

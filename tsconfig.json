@@ -12,6 +12,7 @@
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"],
   "exclude": [
     "__mocks__",
+    "api",
     "node_modules/react-native-css",
     "node_modules/react-native-worklets",
     "node_modules/react-native-reanimated/src"

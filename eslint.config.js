@@ -6,6 +6,16 @@ const i18nextPlugin = require('eslint-plugin-i18next');
 module.exports = defineConfig([
   expoConfig,
   {
+    settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: './tsconfig.json',
+        },
+      },
+    },
+  },
+  {
     plugins: { i18next: i18nextPlugin },
     rules: {
       'no-console': 'warn',
