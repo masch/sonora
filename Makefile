@@ -129,7 +129,10 @@ test: ## Run tests (Jest with jest-expo preset, one-shot)
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format test lint typecheck gga ## Run full development gate (format → test → lint → typecheck → gga)
+validate: format test lint typecheck api-validate gga ## Run full development gate (includes API validation)
+
+.PHONY: api-validate
+api-validate: api-test api-typecheck ## Run API tests + typecheck
 
 .PHONY: check
 check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
