@@ -38,6 +38,19 @@ describe('isUniqueViolation', () => {
     expect(isUniqueViolation({ message: 'something broke' })).toBe(false);
   });
 
+  it('returns false for FK violation code 23503', () => {
+    // Foreign key violation should NOT be treated as unique violation
+    const err = new Error('FK violation') as unknown as Record<string, unknown>;
+    err.code = '23503';
+    expect(isUniqueViolation(err)).toBe(false);
+  });
+
+  it('returns false for FK violation code 23503 in cause', () => {
+    const err = new Error('Drizzle FK violation') as unknown as Record<string, unknown>;
+    err.cause = { code: '23503' };
+    expect(isUniqueViolation(err)).toBe(false);
+  });
+
   it('returns false for an object with empty cause', () => {
     expect(isUniqueViolation({ cause: {} })).toBe(false);
   });
