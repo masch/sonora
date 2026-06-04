@@ -1,0 +1,3 @@
+.dev.vars
+# migrations are committed (Drizzle migrations are source of truth for production)
+# migrations/

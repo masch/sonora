@@ -42,7 +42,9 @@ make dev-android # Expo dev server for Android
 | `dev-web` / `dev-ios` / `dev-android` | Launch Expo dev server for a specific platform                |
 | `install`                             | Install dependencies + configure git hook                     |
 | `format`                              | Format code with Prettier                                     |
-| `test`                                | Run Jest test suite                                           |
+| `test-front`                          | Run frontend tests (Jest)                                     |
+| `api-test` / `test-back`              | Run backend API tests (Vitest)                                |
+| `test`                                | Run all tests (frontend + backend)                            |
 | `lint`                                | Run ESLint via `expo lint`                                    |
 | `typecheck`                           | TypeScript type checking (`tsc --noEmit`)                     |
 | `validate`                            | Full development gate: format → test → lint → typecheck → gga |
@@ -81,6 +83,65 @@ src/
 ├── __mocks__/    # Test mocks
 └── global.css    # Global styles
 ```
+
+## API — Feedback Database
+
+The backend API (`api/`) stores feedback in Postgres. Two runtimes are supported: local development with Podman, and production on Cloudflare Workers with Neon.
+
+### Local setup
+
+```bash
+# 1. Start Postgres via Podman
+make api-db-up
+
+# 2. Generate and apply the initial migration
+make api-db-migrate
+
+# 3. Start the local Hono server (port 3000)
+make api-dev-local
+
+# 4. Test it
+curl -X POST http://localhost:3000/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{"tripId":"trip-1","message":"Great trail!","idempotencyKey":"key-1","createdAt":"2026-06-03T00:00:00.000Z"}'
+
+# 5. Open a psql shell to inspect data
+make api-db-shell
+
+# 6. Stop Postgres when done
+make api-db-down
+```
+
+### Production setup (Neon + Cloudflare Workers)
+
+```bash
+# 1. Create a Neon Postgres project (https://neon.tech)
+#    Copy the connection string (starts with postgres://...)
+
+# 2. Generate and apply the migration locally first
+make api-db-migrate
+
+# 3. Set the Neon connection string as a Worker secret
+cd api && npx wrangler secret put NEON_DATABASE_URL
+# Paste the connection string when prompted
+
+# 4. Deploy the API to Cloudflare Workers
+make api-deploy
+```
+
+The Worker reads `DB_ADAPTER=neon` from `wrangler.toml` and connects via `@neondatabase/serverless` HTTP driver automatically.
+
+### Makefile targets (database)
+
+| Target            | Description                                  |
+| ----------------- | -------------------------------------------- |
+| `api-db-up`       | Start Postgres container (Podman)            |
+| `api-db-down`     | Stop Postgres container                      |
+| `api-db-generate` | Generate a Drizzle migration from schema     |
+| `api-db-migrate`  | Generate + apply pending migrations          |
+| `api-db-studio`   | Launch Drizzle Studio (GUI database browser) |
+| `api-db-shell`    | Open an interactive psql shell               |
+| `api-dev-local`   | Run the API server locally with Postgres     |
 
 ## Platform support
 
