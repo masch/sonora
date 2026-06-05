@@ -32,8 +32,9 @@ const TwTextBase = cssComponent<React.ComponentProps<typeof RNText>>(
 );
 
 export function TwText(props: React.ComponentProps<typeof RNText> & { className?: string }) {
-  const { className = '', ...rest } = props;
-  return <TwTextBase className={`font-sans ${className}`} {...rest} />;
+  const { className = '', style, ...rest } = props;
+
+  return <TwTextBase className={`font-sans ${className}`} style={style} {...rest} />;
 }
 export const TwScrollView = cssComponent<
   React.ComponentProps<typeof RNScrollView> & { contentContainerClassName?: string }

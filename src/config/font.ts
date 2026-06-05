@@ -24,10 +24,22 @@ export const fontConfig = {
 
   /** Android font definitions — each weight under the same fontFamily */
   androidFonts: [
-    { path: 'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf', weight: 400 as const },
-    { path: 'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf', weight: 500 as const },
-    { path: 'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf', weight: 600 as const },
-    { path: 'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf', weight: 700 as const },
+    {
+      path: 'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
+      weight: 400 as const,
+    },
+    {
+      path: 'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
+      weight: 500 as const,
+    },
+    {
+      path: 'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
+      weight: 600 as const,
+    },
+    {
+      path: 'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
+      weight: 700 as const,
+    },
   ],
 
   /** Native font file paths (flat, for iOS / config plugin fallback) */
