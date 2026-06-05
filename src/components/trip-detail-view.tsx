@@ -59,12 +59,14 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
       setFeedbackStatus('sending');
       setFeedbackError(null);
 
+      const tripUuid = trip?.uuid ?? tripId;
+
       try {
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tripId,
+            tripId: tripUuid,
             message,
             idempotencyKey:
               crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
@@ -76,13 +78,13 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
           setFeedbackStatus('sent');
         } else {
           // Server error — queue offline
-          await feedbackQueue.enqueue({ tripId, message });
+          await feedbackQueue.enqueue({ tripId: tripUuid, message });
           setFeedbackStatus('queued');
         }
       } catch {
         // Network error — queue offline
         try {
-          await feedbackQueue.enqueue({ tripId, message });
+          await feedbackQueue.enqueue({ tripId: tripUuid, message });
           setFeedbackStatus('queued');
         } catch {
           setFeedbackStatus('error');
@@ -90,7 +92,7 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
         }
       }
     },
-    [tripId, feedbackQueue, t],
+    [tripId, trip, feedbackQueue, t],
   );
 
   const handleFeedbackDismiss = useCallback(() => {

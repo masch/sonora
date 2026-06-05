@@ -1,9 +1,10 @@
-import { integer, pgSchema, serial, text, timestamp } from 'drizzle-orm/pg-core';
+import { integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const sonoraSchema = pgSchema('sonora');
 
 export const trips = sonoraSchema.table('trips', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  slug: text('slug').unique().notNull(),
   title: text('title').notNull(),
   description: text('description').notNull(),
   durationMinutes: integer('duration_minutes').notNull(),
@@ -12,8 +13,8 @@ export const trips = sonoraSchema.table('trips', {
 });
 
 export const feedback = sonoraSchema.table('feedback', {
-  id: serial('id').primaryKey(),
-  tripId: text('trip_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  tripId: uuid('trip_id')
     .notNull()
     .references(() => trips.id),
   message: text('message').notNull(),
