@@ -24,11 +24,17 @@ export const TwView = cssComponent<React.ComponentProps<typeof RNView>>(
   { className: 'style' },
   'TwView',
 );
-export const TwText = cssComponent<React.ComponentProps<typeof RNText>>(
+
+const TwTextBase = cssComponent<React.ComponentProps<typeof RNText>>(
   RNText,
   { className: 'style' },
   'TwText',
 );
+
+export function TwText(props: React.ComponentProps<typeof RNText> & { className?: string }) {
+  const { className = '', ...rest } = props;
+  return <TwTextBase className={`font-sans ${className}`} {...rest} />;
+}
 export const TwScrollView = cssComponent<
   React.ComponentProps<typeof RNScrollView> & { contentContainerClassName?: string }
 >(

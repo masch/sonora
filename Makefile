@@ -21,6 +21,10 @@ export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
 
 EAS_CLI_VERSION = 20.0.0
 
+ANDROID_HOME ?= $(HOME)/dev/android/sdk
+ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
+ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
+
 .DEFAULT_GOAL := start
 
 .PHONY: start
@@ -233,6 +237,25 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 .PHONY: eas-build-web
 eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
 	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+
+# ── Emulator ───────────────────────────────
+
+.PHONY: android-reset
+android-reset:
+	@echo "🚀 Resetting the emulator: $(ANDROID_FIRST_AVD)..."
+	$(ANDROID_EMULATOR) @$(ANDROID_FIRST_AVD) -wipe-data &
+
+.PHONY: android-restart
+android-restart: android-stop
+	@echo "🔄 Restarting the emulator: $(ANDROID_FIRST_AVD)..."
+	@sleep 1
+	$(ANDROID_EMULATOR) @$(ANDROID_FIRST_AVD) &
+
+.PHONY: android-kill
+android-kill:
+	@echo "💀 Killing the emulator (force): $(ANDROID_FIRST_AVD)..."
+	-pkill -9 emulator || true
+	-pkill -9 qemu-system || true
 
 # ── Maintenance ───────────────────────────────
 

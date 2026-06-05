@@ -12,10 +12,21 @@ export const es = {
     distanceFromYou: 'a {{distance}}',
     distanceMeters: '{{value}} m',
     distanceKilometers: '{{value}} km',
+    overlayTitle:
+      'SONORA ES UNA EXPERIENCIA\nGUIADA POR MEDIO DE AURICULARES\nASISTIDA CON UN MAPA\nTE INVITAMOS A DESCUBRIR\nLO QUE HAY A TU ALREDEDOR',
+    instructionDuration: '5 min',
+    instructionsTitle: 'INSTRUCCIONES',
+    instructionsSub: '(cómo usar Sonora App)',
+    tripsTitle: 'RECORRIDOS',
+    tripCardMeta: '{{duration}} min · {{sections}}{{type}}{{distance}}',
+    zeroDistance: '0 mts',
   },
   trips: {
     notFound: 'Viaje no encontrado',
     duration: 'Caminata de {{minutes}} min',
+    minAbbr: 'min',
+    sectionsCount: '{{count}} SECCIONES',
+    metersAbbr: 'mts',
     coordinates: '{{lat}}, {{lng}}',
   },
   tabs: {
