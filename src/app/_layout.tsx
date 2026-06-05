@@ -22,12 +22,33 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  const [fontsLoaded, fontError] = useFonts({
-    Caveat: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
-    'Caveat-Medium': require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
-    'Caveat-SemiBold': require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
-    'Caveat-Bold': require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
-  });
+  // Each weight registered under the same fontFamily='Caveat' so Android
+  // resolves fontFamily + fontWeight correctly (bold, medium, etc.).
+  // The extra props (fontFamily, fontWeight) are used by the native module
+  // even though the TS types don't expose them.
+  const fontMap: Record<string, Record<string, unknown>> = {
+    CaveatRegular: {
+      uri: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
+      fontFamily: fontConfig.family,
+      fontWeight: '400',
+    },
+    CaveatMedium: {
+      uri: require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
+      fontFamily: fontConfig.family,
+      fontWeight: '500',
+    },
+    CaveatSemiBold: {
+      uri: require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
+      fontFamily: fontConfig.family,
+      fontWeight: '600',
+    },
+    CaveatBold: {
+      uri: require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
+      fontFamily: fontConfig.family,
+      fontWeight: '700',
+    },
+  };
+  const [fontsLoaded, fontError] = useFonts(fontMap);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

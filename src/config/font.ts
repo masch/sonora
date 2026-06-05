@@ -22,16 +22,21 @@ export const fontConfig = {
   googleFontsUrl:
     'https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap',
 
-  /** Native font file paths (relative to project root, for expo-font config plugin) */
+  /** Android font definitions — each weight under the same fontFamily */
+  androidFonts: [
+    { path: 'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf', weight: 400 as const },
+    { path: 'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf', weight: 500 as const },
+    { path: 'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf', weight: 600 as const },
+    { path: 'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf', weight: 700 as const },
+  ],
+
+  /** Native font file paths (flat, for iOS / config plugin fallback) */
   nativeFonts: [
     'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
     'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
     'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
     'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
   ],
-
-  /** Optional: npm package for Expo Go / font loading */
-  npmPackage: '@expo-google-fonts/caveat',
 } as const;
 
 export type FontWeight = (typeof fontConfig.weights)[number];

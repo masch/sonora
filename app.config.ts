@@ -42,7 +42,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-localization',
     'expo-asset',
-    ['expo-font', { fonts: fontConfig.nativeFonts }],
+    [
+      'expo-font',
+      {
+        fonts: fontConfig.nativeFonts,
+        android: {
+          fonts: [
+            {
+              fontFamily: fontConfig.family,
+              fontDefinitions: fontConfig.androidFonts.map((f) => ({
+                path: f.path,
+                weight: f.weight,
+              })),
+            },
+          ],
+        },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
