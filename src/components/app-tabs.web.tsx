@@ -1,12 +1,10 @@
 import { Tabs, TabList, TabTrigger, TabSlot } from 'expo-router/ui';
-import { useAppTranslation } from '@/hooks/use-translation';
 
 import { TabButton } from './app-tabs/tab-button';
 import { CustomTabList } from './app-tabs/custom-tab-list';
 import { TABS } from '@/constants/tabs';
 
 export default function AppTabs() {
-  const { t } = useAppTranslation();
   return (
     <Tabs>
       {/* TabSlot is a third-party component (expo-router/ui) that doesn't support className for height */}
@@ -20,7 +18,7 @@ export default function AppTabs() {
               href={tab.name === 'index' ? '/' : `/${tab.name}`}
               asChild
             >
-              <TabButton icon={tab.symbolViewName} label={t(`tabs.${tab.name}`)} />
+              <TabButton icon={tab.symbolViewName} />
             </TabTrigger>
           ))}
         </CustomTabList>

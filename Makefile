@@ -19,6 +19,8 @@ SOCKET_CLI_ORG_SLUG_CLEAN := $(patsubst "%",%,$(SOCKET_CLI_ORG_SLUG))
 export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
 
 
+MOBILE_BUNDLE_ID = com.masch.sonora
+
 EAS_CLI_VERSION = 20.0.0
 
 ANDROID_HOME ?= $(HOME)/dev/android/sdk
@@ -239,6 +241,11 @@ eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks au
 	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 # ── Emulator ───────────────────────────────
+
+.PHONY: android-app-top
+android-app-stop:
+	@echo "🛑 Stopping app ($(MOBILE_BUNDLE_ID))..."
+	adb shell am force-stop $(MOBILE_BUNDLE_ID)
 
 .PHONY: android-reset
 android-reset:

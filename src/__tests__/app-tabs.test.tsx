@@ -49,24 +49,6 @@ describe('Native app-tabs', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders trigger labels for all 3 tabs', () => {
-    const { queryByText } = render(<AppTabsNative />);
-    expect(queryByText('Home')).not.toBeNull();
-    expect(queryByText('Explore')).not.toBeNull();
-    expect(queryByText('Settings')).not.toBeNull();
-  });
-  it('renders without crashing', () => {
-    const { toJSON } = render(<AppTabsNative />);
-    expect(toJSON()).not.toBeNull();
-  });
-
-  it('renders trigger labels for all 3 tabs', () => {
-    const { queryByText } = render(<AppTabsNative />);
-    expect(queryByText('Home')).not.toBeNull();
-    expect(queryByText('Explore')).not.toBeNull();
-    expect(queryByText('Settings')).not.toBeNull();
-  });
-
   it('renders triggers with correct name', () => {
     const { getByTestId } = render(<AppTabsNative />);
     expect(getByTestId('native-trigger-index')).toBeTruthy();

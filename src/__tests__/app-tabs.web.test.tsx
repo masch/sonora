@@ -38,10 +38,10 @@ describe('Web app-tabs', () => {
   });
 
   it('renders TabTrigger for all 3 tabs', () => {
-    const { queryByText } = render(<AppTabsWeb />);
-    expect(queryByText('Home')).not.toBeNull();
-    expect(queryByText('Explore')).not.toBeNull();
-    expect(queryByText('Settings')).not.toBeNull();
+    const { getByTestId } = render(<AppTabsWeb />);
+    expect(getByTestId('tab-trigger-index')).toBeTruthy();
+    expect(getByTestId('tab-trigger-explore')).toBeTruthy();
+    expect(getByTestId('tab-trigger-settings')).toBeTruthy();
   });
 
   it('renders triggers with correct href', () => {

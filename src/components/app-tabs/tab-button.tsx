@@ -13,7 +13,7 @@ interface IconSymbols {
 
 interface TabButtonProps extends TabTriggerSlotProps {
   icon: IconSymbols;
-  label: string;
+  label?: string;
   href?: string;
   target?: string;
   rel?: string;
@@ -50,9 +50,11 @@ export function TabButton({
           size={14}
           tintColor={isFocused ? 'rgb(107 114 128)' : 'rgb(156 163 175)'}
         />
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {label}
-        </ThemedText>
+        {label && (
+          <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+            {label}
+          </ThemedText>
+        )}
       </TwView>
     </TwPressable>
   );

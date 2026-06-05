@@ -58,6 +58,12 @@
   font-size: 32px;
 }
 
+/* Font-family override — var() no resuelve en react-native-css, */
+/* así que pisamos la utility class con el nombre directo.      */
+.font-sans {
+  font-family: Caveat;
+}
+
 /* Platform font families */
 /* Font family name MUST match src/config/font.ts → fontConfig.cssFamily */
 :root {
@@ -80,9 +86,7 @@
 
 @media android {
   :root {
-    --font-sans: normal;
     --font-serif: serif;
-    --font-rounded: normal;
     --font-mono: monospace;
   }
 }
