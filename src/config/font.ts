@@ -49,6 +49,14 @@ export const fontConfig = {
     'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
     'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
   ],
+
+  /** Font map for `useFonts` / `loadAsync` in expo-font */
+  expoFontMap: {
+    Caveat: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
+    'Caveat-Medium': require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
+    'Caveat-SemiBold': require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
+    'Caveat-Bold': require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
+  },
 } as const;
 
 export type FontWeight = (typeof fontConfig.weights)[number];

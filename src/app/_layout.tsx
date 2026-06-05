@@ -22,12 +22,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  const [fontsLoaded, fontError] = useFonts({
-    Caveat: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
-    'Caveat-Medium': require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
-    'Caveat-SemiBold': require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
-    'Caveat-Bold': require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
-  });
+  const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
