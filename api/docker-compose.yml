@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sonora-postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: sonora
+      POSTGRES_PASSWORD: sonora
+      POSTGRES_DB: sonora
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -120,16 +120,53 @@ api-typecheck: ## Run TypeScript type check for the API
 api-deploy: ## Deploy Hono API to Cloudflare Workers
 	cd $(API_DIR) && bun run deploy
 
+# ── Backend API — Database ──────────────────────
+
+.PHONY: api-db-up
+api-db-up: ## Start Postgres (Podman)
+	podman compose -f $(API_DIR)/docker-compose.yml up -d
+
+.PHONY: api-db-down
+api-db-down: ## Stop Postgres (Podman)
+	podman compose -f $(API_DIR)/docker-compose.yml down
+
+.PHONY: api-db-generate
+api-db-generate: ## Generate Drizzle migration from schema changes
+	cd $(API_DIR) && bun run db:generate
+
+.PHONY: api-db-migrate
+api-db-migrate: api-db-generate ## Apply pending Drizzle migrations
+	cd $(API_DIR) && DATABASE_URL="postgres://sonora:sonora@localhost:5432/sonora" bun run db:migrate
+
+.PHONY: api-db-studio
+api-db-studio: ## Launch Drizzle Studio (GUI for local DB)
+	cd $(API_DIR) && bun run db:studio
+
+.PHONY: api-db-shell
+api-db-shell: ## Open psql shell to local Postgres
+	podman compose -f $(API_DIR)/docker-compose.yml exec postgres psql -U sonora -d sonora
+
+.PHONY: api-dev-local
+api-dev-local: ## Run Hono API locally with Docker Postgres
+	cd $(API_DIR) && DATABASE_URL="postgres://sonora:sonora@localhost:5432/sonora" bun run dev:local
+
 # ── Test ──────────────────────────────────────
 
-.PHONY: test
-test: ## Run tests (Jest with jest-expo preset, one-shot)
+.PHONY: test-front
+test-front: ## Run frontend tests (Jest with jest-expo preset, one-shot)
 	bunx jest --passWithNoTests
+
+.PHONY: test-back
+test-back: ## Run backend API tests (Vitest, alias for api-test)
+	$(MAKE) api-test
+
+.PHONY: test
+test: test-front test-back ## Run all tests (frontend + backend)
 
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format test lint typecheck api-validate gga ## Run full development gate (includes API validation)
+validate: format test lint typecheck api-typecheck gga ## Run full development gate (tests + lint + typecheck + gga)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck

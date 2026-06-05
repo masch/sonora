@@ -7,6 +7,7 @@ describe('useFeedbackTrigger', () => {
     it('should show feedback form when audio finishes (transition from false to true)', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -34,6 +35,7 @@ describe('useFeedbackTrigger', () => {
     it('should NOT show feedback form when audio is still playing', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -52,6 +54,7 @@ describe('useFeedbackTrigger', () => {
     it('should show feedback form when GPS detects arrival', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -78,6 +81,7 @@ describe('useFeedbackTrigger', () => {
     it('should NOT show feedback form when not near geofence', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -96,6 +100,7 @@ describe('useFeedbackTrigger', () => {
     it('should not auto-show feedback form (view manages button)', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -115,6 +120,7 @@ describe('useFeedbackTrigger', () => {
     it('should not show feedback form', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -133,6 +139,7 @@ describe('useFeedbackTrigger', () => {
     it('should reset showFeedback to false when dismiss is called', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,
@@ -162,6 +169,7 @@ describe('useFeedbackTrigger', () => {
     it('dismiss on manual mode is a no-op (stays false)', () => {
       const trip: LocalTripMetadata = {
         id: 'trip-1',
+        uuid: '00000000-0000-0000-0000-000000000000',
         title: 'Test Trip',
         description: 'Test',
         durationMinutes: 30,

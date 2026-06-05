@@ -1,14 +1,18 @@
 name = "sonora-api"
 main = "src/index.ts"
-compatibility_date = "2025-02-04"
+compatibility_date = "2026-06-03"
+nodejs_compat = true
 
-# KV binding for feedback idempotency storage (MVP)
+# KV binding for feedback idempotency (fast-path only — Postgres is authoritative)
 # Create the namespace with: npx wrangler kv:namespace create "FEEDBACK_STORE"
 # Then copy the id below:
 # kv_namespaces = [
 #   { binding = "FEEDBACK_STORE", id = "<your-namespace-id>" }
 # ]
 
-# Environment variable for the KV namespace id
+# Neon Postgres
+# Set NEON_DATABASE_URL via: npx wrangler secret put NEON_DATABASE_URL
+
 [vars]
 FEEDBACK_MAX_LENGTH = "1000"
+DB_ADAPTER = "neon"
