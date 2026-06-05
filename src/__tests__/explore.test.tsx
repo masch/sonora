@@ -44,8 +44,8 @@ describe('Explore screen', () => {
   it('renders TripMap component', () => {
     const { getByText } = render(<ExploreScreen />);
 
-    expect(getByText('map.offlineDescription')).toBeTruthy();
     expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
+    expect(getByText('map.tripsTitle')).toBeTruthy();
   });
 
   it('renders without crashing', () => {

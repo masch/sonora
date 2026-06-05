@@ -121,10 +121,10 @@ describe('TripMap native component', () => {
     expect(getByText('map.noTripsTitle')).toBeTruthy();
   });
 
-  it('renders offline description', () => {
+  it('renders instructions card', () => {
     const { getByText } = render(<TripMap />);
 
-    expect(getByText('map.offlineDescription')).toBeTruthy();
+    expect(getByText('map.instructionsTitle')).toBeTruthy();
   });
 
   // -----------------------------------------------------------------------

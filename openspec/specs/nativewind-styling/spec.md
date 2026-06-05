@@ -33,7 +33,7 @@ The toolchain MUST configure Metro, PostCSS, and global CSS for NativeWind v5 co
 - GIVEN `src/global.css`
 - WHEN the app loads
 - THEN it MUST include `@import "tailwindcss"`
-- AND it MUST preserve the `@theme` block with Spline Sans, system-ui, ui-serif, ui-rounded, and ui-monospace font families
+- AND it MUST preserve the `@theme` block with Caveat, system-ui, ui-serif, ui-rounded, and ui-monospace font families
 - AND `@theme` MUST define `--spacing-half` through `--spacing-six` tokens matching the Spacing constant values (2, 4, 8, 16, 24, 32, 64)
 - AND web font `@import` statements MUST remain unchanged
 

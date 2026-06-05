@@ -1,4 +1,5 @@
 import { type ExpoConfig, type ConfigContext } from 'expo/config';
+import { fontConfig } from './src/config/font.ts';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -41,6 +42,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-localization',
     'expo-asset',
+    [
+      'expo-font',
+      {
+        fonts: fontConfig.nativeFonts,
+        android: {
+          fonts: [
+            {
+              fontFamily: fontConfig.family,
+              fontDefinitions: fontConfig.androidFonts.map((f) => ({
+                path: f.path,
+                weight: f.weight,
+              })),
+            },
+          ],
+        },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
