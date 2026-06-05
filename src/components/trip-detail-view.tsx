@@ -59,7 +59,9 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
       setFeedbackStatus('sending');
       setFeedbackError(null);
 
-      const tripUuid = trip?.uuid ?? tripId;
+      // Resolve UUID inside callback to avoid capturing trip object in deps
+      const currentTrip = getTripById(tripId);
+      const tripUuid = currentTrip?.uuid ?? tripId;
 
       try {
         const response = await fetch(API_URL, {
@@ -92,7 +94,7 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
         }
       }
     },
-    [tripId, trip, feedbackQueue, t],
+    [tripId, feedbackQueue, t],
   );
 
   const handleFeedbackDismiss = useCallback(() => {
