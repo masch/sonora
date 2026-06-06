@@ -50,12 +50,17 @@ export const fontConfig = {
     'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
   ],
 
-  /** Font map for `useFonts` / `loadAsync` in expo-font */
-  expoFontMap: {
-    Caveat: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
-    'Caveat-Medium': require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
-    'Caveat-SemiBold': require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
-    'Caveat-Bold': require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
+  /** Font map for `useFonts` / `loadAsync` in expo-font.
+   * Method (not a plain object) so `require()` is lazy — avoids crash in
+   * Node.js ESM contexts like `app.config.ts` that import this module but
+   * never access `expoFontMap`. */
+  expoFontMap(): Record<string, number> {
+    return {
+      Caveat: require('@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf'),
+      'Caveat-Medium': require('@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf'),
+      'Caveat-SemiBold': require('@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf'),
+      'Caveat-Bold': require('@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf'),
+    };
   },
 } as const;
 

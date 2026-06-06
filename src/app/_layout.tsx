@@ -22,7 +22,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap);
+  const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap());
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
