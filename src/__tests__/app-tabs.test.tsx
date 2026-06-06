@@ -49,10 +49,18 @@ describe('Native app-tabs', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders triggers with correct name', () => {
+  it('renders trigger for visible (index) tab', () => {
     const { getByTestId } = render(<AppTabsNative />);
     expect(getByTestId('native-trigger-index')).toBeTruthy();
-    expect(getByTestId('native-trigger-explore')).toBeTruthy();
-    expect(getByTestId('native-trigger-settings')).toBeTruthy();
+  });
+
+  it('does NOT render trigger for hidden (explore) tab', () => {
+    const { queryByTestId } = render(<AppTabsNative />);
+    expect(queryByTestId('native-trigger-explore')).toBeNull();
+  });
+
+  it('does NOT render trigger for hidden (settings) tab', () => {
+    const { queryByTestId } = render(<AppTabsNative />);
+    expect(queryByTestId('native-trigger-settings')).toBeNull();
   });
 });

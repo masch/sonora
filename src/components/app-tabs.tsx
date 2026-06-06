@@ -12,7 +12,7 @@ export default function AppTabs() {
       indicatorColor={colors.backgroundElement}
       labelVisibilityMode="unlabeled"
     >
-      {TABS.map((tab) => (
+      {TABS.filter((tab) => !tab.hidden).map((tab) => (
         <NativeTabs.Trigger key={tab.name} name={tab.name}>
           <NativeTabs.Trigger.Label hidden />
           <NativeTabs.Trigger.Icon sf={tab.symbolViewName.ios} md={tab.symbolViewName.android} />

@@ -37,17 +37,18 @@ describe('Web app-tabs', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders TabTrigger for all 3 tabs', () => {
+  it('renders TabTrigger for visible (index) tab', () => {
     const { getByTestId } = render(<AppTabsWeb />);
     expect(getByTestId('tab-trigger-index')).toBeTruthy();
-    expect(getByTestId('tab-trigger-explore')).toBeTruthy();
-    expect(getByTestId('tab-trigger-settings')).toBeTruthy();
   });
 
-  it('renders triggers with correct href', () => {
-    const { getByTestId } = render(<AppTabsWeb />);
-    expect(getByTestId('tab-trigger-index')).toBeTruthy();
-    expect(getByTestId('tab-trigger-explore')).toBeTruthy();
-    expect(getByTestId('tab-trigger-settings')).toBeTruthy();
+  it('does NOT render TabTrigger for hidden (explore) tab', () => {
+    const { queryByTestId } = render(<AppTabsWeb />);
+    expect(queryByTestId('tab-trigger-explore')).toBeNull();
+  });
+
+  it('does NOT render TabTrigger for hidden (settings) tab', () => {
+    const { queryByTestId } = render(<AppTabsWeb />);
+    expect(queryByTestId('tab-trigger-settings')).toBeNull();
   });
 });

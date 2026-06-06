@@ -13,6 +13,8 @@ export interface TabDefinition {
     android?: AndroidSymbol;
     web?: AndroidSymbol;
   };
+  /** When true, tab is hidden from the visible tab bar */
+  hidden?: boolean;
 }
 
 export const TABS = [
@@ -21,17 +23,20 @@ export const TABS = [
     label: 'Home',
     ioniconsName: 'home-outline',
     symbolViewName: { ios: 'house', android: 'home', web: 'home' },
+    hidden: false,
   },
   {
     name: 'explore',
     label: 'Explore',
     ioniconsName: 'compass-outline',
     symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
+    hidden: true,
   },
   {
     name: 'settings',
     label: 'Settings',
     ioniconsName: 'settings-outline',
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
+    hidden: true,
   },
 ] as const satisfies TabDefinition[];

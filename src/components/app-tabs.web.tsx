@@ -11,14 +11,14 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => !tab.hidden).map((tab) => (
             <TabTrigger
               key={tab.name}
               name={tab.name}
               href={tab.name === 'index' ? '/' : `/${tab.name}`}
               asChild
             >
-              <TabButton icon={tab.symbolViewName} />
+              <TabButton icon={tab.symbolViewName} label={tab.label} hideLabel />
             </TabTrigger>
           ))}
         </CustomTabList>
