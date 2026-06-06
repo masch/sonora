@@ -1,34 +1,37 @@
 import type { ReactNode } from 'react';
-import type { ScrollViewProps } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, type ScrollViewProps } from 'react-native';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { TwView, TwScrollView } from '@/tw';
 import { BottomTabInset, TabBottomPadding } from '@/constants/theme';
 
-const TAB_BAR_INSET = BottomTabInset + TabBottomPadding;
+export const TAB_BAR_INSET = BottomTabInset + TabBottomPadding;
 
 interface ScreenWrapperProps {
   children: ReactNode;
   className?: string;
+  withTabBar?: boolean;
 }
 
 interface ScrollScreenWrapperProps extends ScreenWrapperProps {
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
   contentContainerClassName?: ScrollViewProps['contentContainerClassName'];
+  disableBottomPadding?: boolean;
 }
 
 /**
  * Non-scrollable screen wrapper.
  *
- * Includes SafeAreaView + bottom tab bar inset automatically.
+ * Includes SafeAreaView + bottom tab bar inset automatically if withTabBar is true.
  * Renders a `TwView` inside with `flex-1 bg-background` pre-applied.
  */
-export function ScreenWrapper({ children, className }: ScreenWrapperProps) {
+export function ScreenWrapper({ children, className, withTabBar = true }: ScreenWrapperProps) {
+  const edges: Edge[] = withTabBar ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={edges}>
       <TwView
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-        style={{ paddingBottom: TAB_BAR_INSET }}
+        style={withTabBar && Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
       >
         {children}
       </TwView>
@@ -39,7 +42,7 @@ export function ScreenWrapper({ children, className }: ScreenWrapperProps) {
 /**
  * Scrollable screen wrapper.
  *
- * Includes SafeAreaView + bottom tab bar inset automatically.
+ * Includes SafeAreaView + bottom tab bar inset automatically if withTabBar is true.
  * Renders a `TwScrollView` with `flex-1 bg-background` pre-applied.
  */
 export function ScrollScreenWrapper({
@@ -47,13 +50,25 @@ export function ScrollScreenWrapper({
   className,
   contentContainerStyle,
   contentContainerClassName,
+  withTabBar = true,
+  disableBottomPadding = false,
 }: ScrollScreenWrapperProps) {
+  const edges: Edge[] = withTabBar ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={edges}>
       <TwScrollView
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-        contentInset={{ bottom: TAB_BAR_INSET }}
-        contentContainerStyle={contentContainerStyle}
+        contentInset={
+          withTabBar && !disableBottomPadding && Platform.OS === 'ios'
+            ? { bottom: TAB_BAR_INSET }
+            : undefined
+        }
+        contentContainerStyle={[
+          withTabBar &&
+            !disableBottomPadding &&
+            Platform.OS === 'ios' && { paddingBottom: TAB_BAR_INSET },
+          contentContainerStyle,
+        ]}
         contentContainerClassName={contentContainerClassName}
       >
         {children}

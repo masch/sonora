@@ -1,10 +1,10 @@
 import TripMap from '@/components/trip-map';
-import { ScreenWrapper } from '@/components/screen-wrapper';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 
 export default function ExploreScreen() {
   return (
-    <ScreenWrapper>
+    <ScrollScreenWrapper disableBottomPadding contentContainerStyle={{ flexGrow: 1 }}>
       <TripMap />
-    </ScreenWrapper>
+    </ScrollScreenWrapper>
   );
 }

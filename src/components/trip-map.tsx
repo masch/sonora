@@ -1,15 +1,17 @@
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { TAB_BAR_INSET } from '@/components/screen-wrapper';
+
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { getAllTrips } from '@/data/trips';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { Icon } from '@/components/icon';
 import { getHaversineDistance } from '@/utils/haversine';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
@@ -78,7 +80,7 @@ export default function TripMap() {
 
   if (trips.length === 0) {
     return (
-      <TwView className="flex-1 items-center justify-center">
+      <TwView className="flex-grow items-center justify-center p-6">
         <ThemedText>{t('map.noTripsTitle')}</ThemedText>
       </TwView>
     );
@@ -96,7 +98,7 @@ export default function TripMap() {
   };
 
   return (
-    <ScrollScreenWrapper contentContainerStyle={{ flexGrow: 1 }}>
+    <TwView className="flex-1">
       {/* Top Banner */}
       <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
         <TwImage
@@ -139,13 +141,11 @@ export default function TripMap() {
       </TwView>
 
       {/* Main Content Area */}
-      <TwView className="relative flex-1 gap-3 p-4">
-        <TwImage
-          source={mainBg}
-          className="absolute inset-0 w-full h-full"
-          contentFit="cover"
-          alt=""
-        />
+      <TwView
+        className="relative flex-1 gap-3 p-4"
+        style={Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
+      >
+        <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
         {/* Instructions Card */}
         <TwView className="relative overflow-hidden rounded-[24px] bg-white/80 shadow-md backdrop-blur-md z-10">
           <TwImage source={instructionsBg} className="w-full h-44" contentFit="cover" alt="" />
@@ -293,6 +293,6 @@ export default function TripMap() {
           </TwView>
         </TwView>
       </TwView>
-    </ScrollScreenWrapper>
+    </TwView>
   );
 }
