@@ -31,7 +31,7 @@ export function ScreenWrapper({ children, className, withTabBar = true }: Screen
     <SafeAreaView style={{ flex: 1 }} edges={edges}>
       <TwView
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-        style={withTabBar ? { paddingBottom: TAB_BAR_INSET } : undefined}
+        style={withTabBar && Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
       >
         {children}
       </TwView>
@@ -58,9 +58,15 @@ export function ScrollScreenWrapper({
     <SafeAreaView style={{ flex: 1 }} edges={edges}>
       <TwScrollView
         className={`flex-1 bg-background${className ? ` ${className}` : ''}`}
-        contentInset={withTabBar && !disableBottomPadding && Platform.OS === 'ios' ? { bottom: TAB_BAR_INSET } : undefined}
+        contentInset={
+          withTabBar && !disableBottomPadding && Platform.OS === 'ios'
+            ? { bottom: TAB_BAR_INSET }
+            : undefined
+        }
         contentContainerStyle={[
-          withTabBar && !disableBottomPadding && Platform.OS === 'android' && { paddingBottom: TAB_BAR_INSET },
+          withTabBar &&
+            !disableBottomPadding &&
+            Platform.OS === 'ios' && { paddingBottom: TAB_BAR_INSET },
           contentContainerStyle,
         ]}
         contentContainerClassName={contentContainerClassName}

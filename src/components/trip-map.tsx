@@ -143,14 +143,9 @@ export default function TripMap() {
       {/* Main Content Area */}
       <TwView
         className="relative flex-1 gap-3 p-4"
-        style={{ paddingBottom: TAB_BAR_INSET }}
+        style={Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
       >
-        <TwImage
-          source={mainBg}
-          className="absolute inset-0 w-full h-full"
-          contentFit="cover"
-          alt=""
-        />
+        <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
         {/* Instructions Card */}
         <TwView className="relative overflow-hidden rounded-[24px] bg-white/80 shadow-md backdrop-blur-md z-10">
           <TwImage source={instructionsBg} className="w-full h-44" contentFit="cover" alt="" />
