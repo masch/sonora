@@ -1,12 +1,12 @@
+import { fontConfig } from '@/config/font';
 import '@/global.css';
 import '@/i18n';
-import { fontConfig } from '@/config/font';
 
-import { Stack, DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
 if (typeof document !== 'undefined') {

@@ -5,13 +5,13 @@ import { Platform } from 'react-native';
 
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { getAllTrips } from '@/data/trips';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { Icon } from '@/components/icon';
 import { getHaversineDistance } from '@/utils/haversine';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
