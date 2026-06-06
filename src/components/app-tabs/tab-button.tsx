@@ -14,6 +14,7 @@ interface IconSymbols {
 interface TabButtonProps extends TabTriggerSlotProps {
   icon: IconSymbols;
   label?: string;
+  hideLabel?: boolean;
   href?: string;
   target?: string;
   rel?: string;
@@ -21,6 +22,7 @@ interface TabButtonProps extends TabTriggerSlotProps {
 
 export function TabButton({
   label,
+  hideLabel,
   isFocused,
   icon,
   onPress,
@@ -50,7 +52,7 @@ export function TabButton({
           size={14}
           tintColor={isFocused ? 'rgb(107 114 128)' : 'rgb(156 163 175)'}
         />
-        {label && (
+        {label && !hideLabel && (
           <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
             {label}
           </ThemedText>

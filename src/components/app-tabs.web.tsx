@@ -18,7 +18,7 @@ export default function AppTabs() {
               href={tab.name === 'index' ? '/' : `/${tab.name}`}
               asChild
             >
-              <TabButton icon={tab.symbolViewName} label={tab.label} />
+              <TabButton icon={tab.symbolViewName} label={tab.label} hideLabel />
             </TabTrigger>
           ))}
         </CustomTabList>
