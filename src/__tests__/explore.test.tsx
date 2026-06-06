@@ -1,56 +1,79 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { useTranslation } from 'react-i18next';
 
-// ---------------------------------------------------------------------------
-// Mock modules required by TripMap (native)
-// ---------------------------------------------------------------------------
-
-jest.mock('@/data/trips', () => ({
-  getAllTrips: jest.fn(() => [
-    {
-      id: 'umepay-bosque',
-      title: 'Umepay Bosque Antiguo',
-      description: 'A meditative walk through the ancient forest.',
-      durationMinutes: 45,
-      startCoordinates: { latitude: -32.212, longitude: -64.738 },
-      audioRemoteUrl: 'https://example.com/audio.mp3',
-    },
-  ]),
-}));
-
-const mockPush = jest.fn();
-const MockLink = ({ children, testID, ...props }: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const RN = require('react-native');
-  return (
-    <RN.TouchableOpacity testID={testID} onPress={() => mockPush(props.href)}>
-      {children}
-    </RN.TouchableOpacity>
-  );
-};
-jest.mock('expo-router', () => ({
-  Link: MockLink,
-  useRouter: () => ({ push: mockPush }),
-}));
-
-jest.mock('@/hooks/use-translation', () => ({
-  useAppTranslation: () => ({ t: (k: string) => k }),
-}));
-
-// Import after mocks
 import ExploreScreen from '@/app/(tabs)/explore';
 
-describe('Explore screen', () => {
-  it('renders TripMap component', () => {
-    const { getByText } = render(<ExploreScreen />);
+jest.mock('expo-device', () => ({ isDevice: false }));
+jest.mock('@/hooks/use-offline-geofence', () => ({
+  useOfflineGeofence: () => ({
+    isNearStart: false,
+    gpsAccuracy: null,
+    gpsStatus: 'initializing',
+    distanceMeters: null,
+    requiredRadiusMeters: 50,
+    errorMsg: null,
+  }),
+}));
+jest.mock('@/hooks/use-trip-download', () => ({
+  useTripDownload: () => ({
+    status: 'idle',
+    progress: 0,
+    localAudioUri: null,
+    errorMsg: null,
+    startDownload: jest.fn(),
+    deleteTripLocal: jest.fn(),
+  }),
+}));
+jest.mock('@/hooks/use-immersion-player', () => ({
+  useImmersionPlayer: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    errorMsg: null,
+    play: jest.fn(),
+    pause: jest.fn(),
+    stop: jest.fn(),
+    seekTo: jest.fn(),
+  }),
+}));
 
-    expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
-    expect(getByText('map.tripsTitle')).toBeTruthy();
+const mockMap: Record<string, string> = {
+  'index.title': 'Welcome to Expo',
+  'index.getStarted': 'get started',
+  'index.hints.editing': 'Try editing',
+  'index.hints.devtools': 'Dev tools',
+  'index.hints.freshStart': 'Fresh start',
+  'index.hints.devtoolsWeb': 'use browser devtools',
+  'index.hints.devtoolsDevice': 'shake device or press m in terminal',
+  'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
+  'index.hints.devtoolsIos': 'press cmd+d',
+};
+
+beforeAll(() => {
+  (useTranslation().t as unknown as jest.Mock).mockImplementation((k: string) => mockMap[k] ?? k);
+});
+
+describe('Explore screen (now Home content)', () => {
+  it('renders the title', () => {
+    const { getByText } = render(<ExploreScreen />);
+    expect(getByText('Welcome to Expo')).toBeTruthy();
+  });
+
+  it('renders the get started badge', () => {
+    const { getByText } = render(<ExploreScreen />);
+    expect(getByText('get started')).toBeTruthy();
+  });
+
+  it('renders all HintRow titles', () => {
+    const { getByText } = render(<ExploreScreen />);
+    expect(getByText('Try editing')).toBeTruthy();
+    expect(getByText('Dev tools')).toBeTruthy();
+    expect(getByText('Fresh start')).toBeTruthy();
   });
 
   it('renders without crashing', () => {
     const { toJSON } = render(<ExploreScreen />);
-
     expect(toJSON()).not.toBeNull();
   });
 });
