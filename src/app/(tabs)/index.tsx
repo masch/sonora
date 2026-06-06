@@ -125,14 +125,6 @@ export default function HomeScreen() {
     </TwView>
   );
 
-  if (Platform.OS === 'web') {
-    return (
-      <ScreenWrapper>
-        <TwView className={`${CONTENT_PADDING} flex-1`}>{innerView}</TwView>
-      </ScreenWrapper>
-    );
-  }
-
   return (
     <ScrollScreenWrapper contentContainerClassName={CONTENT_PADDING}>
       {innerView}

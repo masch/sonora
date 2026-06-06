@@ -6,7 +6,6 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import TripDetailMap from '@/components/trip-detail-map';
 import { getTripById } from '@/data/trips';
@@ -24,6 +23,7 @@ const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
 
 interface TripDetailViewProps {
   tripId: string;
+  isWeb: boolean;
 }
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
@@ -33,7 +33,7 @@ const CONTENT_PADDING = 'pt-16 pb-6';
  * Shared trip detail view used by trips/[id].tsx (dynamic route).
  * Receives a concrete tripId instead of reading from route params.
  */
-export default function TripDetailView({ tripId }: TripDetailViewProps) {
+export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
@@ -106,12 +106,10 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
 
   if (!trip) {
     return (
-      <ScreenWrapper>
-        <TwView className="flex-1 items-center justify-center px-6">
-          <Stack.Screen options={{ title: t('trips.notFound') }} />
-          <ThemedText themeColor="text">{t('trips.notFound')}</ThemedText>
-        </TwView>
-      </ScreenWrapper>
+      <TwView className="flex-grow items-center justify-center px-6">
+        <Stack.Screen options={{ title: t('trips.notFound') }} />
+        <ThemedText themeColor="text">{t('trips.notFound')}</ThemedText>
+      </TwView>
     );
   }
 
@@ -197,15 +195,7 @@ export default function TripDetailView({ tripId }: TripDetailViewProps) {
   return (
     <TwView className="flex-1">
       <Stack.Screen options={{ title: trip.title }} />
-      {Platform.OS === 'web' ? (
-        <ScreenWrapper>
-          <TwView className={`${CONTENT_PADDING} flex-1`}>{innerView}</TwView>
-        </ScreenWrapper>
-      ) : (
-        <ScrollScreenWrapper contentContainerClassName={CONTENT_PADDING}>
-          {innerView}
-        </ScrollScreenWrapper>
-      )}
+      {isWeb ? <TwView className={`${CONTENT_PADDING} flex-1`}>{innerView}</TwView> : innerView}
 
       {/* Feedback form modal */}
       <FeedbackForm
