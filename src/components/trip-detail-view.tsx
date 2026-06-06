@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
-import { Platform } from 'react-native';
 
 import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';

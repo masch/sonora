@@ -8,7 +8,7 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
-import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';

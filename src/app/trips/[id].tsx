@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Platform } from 'react-native';
 
 import TripDetailView from '@/components/trip-detail-view';
-import { ScreenWrapper, ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 
 const CONTENT_PADDING = 'pt-16 pb-6';
 
