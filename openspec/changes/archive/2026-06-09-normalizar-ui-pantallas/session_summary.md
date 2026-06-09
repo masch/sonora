@@ -1,23 +1,23 @@
-# Session Summary: Normalizar UI de Pantallas
+# Session Summary: Normalize Screen UI
 
 ## Goal
 
-Normalizar visualmente todas las pantallas (Explore, Settings, Trip Detail) para que coincidan con la estética premium y glassmorphic de la Home (TripMap), respetando tipografías y colores.
+Visually normalize all screens (Explore, Settings, Trip Detail) to match the premium and glassmorphic aesthetics of the Home screen (TripMap), respecting custom typography and colors.
 
 ## Accomplished
 
-- **Normalización Estética**: Rediseñados `explore.tsx`, `settings.tsx` y `trip-detail-view.tsx` para incluir el banner superior y la imagen de fondo (`mainBg`), y envolver el contenido en contenedores glassmorphic (`bg-white/80 backdrop-blur-md rounded-[24px]`).
-- **Activación de Pestañas**: Habilitadas las pestañas `Explore` y `Settings` en `tabs.ts` poniendo `hidden: false`.
-- **Imagen de Cabecera Dinámica**: Modificada la cabecera en `TripDetailView` para cargar la imagen específica del viaje (`tripImage`) en vez de la genérica.
-- **Unificación de Colores**: Cambiados los botones y barras de progreso en `DownloadProgressCard`, `AudioMediaControls` y `FeedbackForm` para usar la paleta esmeralda (`bg-emerald-500`) en lugar de azules/violetas.
-- **Legibilidad y Contraste**:
-  - Corregidos textos que se volvían blancos e invisibles en modo oscuro dentro de las tarjetas claras (ahora usan colores oscuros fijos como `text-zinc-700`).
-  - Reemplazados los gradientes no soportados en Native por fondos sólidos aptos para light/dark mode.
-  - La imagen de fondo ahora se atenúa en modo oscuro (`dark:opacity-20`).
-- **Reactividad de Temas**: Corregido el import de `useColorScheme` en `src/app/_layout.tsx` para usar la versión unificada del proyecto (`@/hooks/use-color-scheme`), solucionando el delay/falta de actualización de la cabecera nativa.
+- **UI Normalization**: Redesigned `explore.tsx`, `settings.tsx`, and `trip-detail-view.tsx` to include the top banner and background image (`mainBg`), wrapping the content in glassmorphic containers (`bg-white/80 backdrop-blur-md rounded-[24px]`).
+- **Tabs Activation**: Enabled the `Explore` and `Settings` tabs in `tabs.ts` by setting `hidden: false`.
+- **Dynamic Header Image**: Modified the header in `TripDetailView` to load the trip-specific image (`tripImage`) instead of a generic one.
+- **Color Unification**: Updated buttons and progress bars in `DownloadProgressCard`, `AudioMediaControls`, and `FeedbackForm` to use the emerald palette (`bg-emerald-500`) instead of blue/purple colors.
+- **Readability & Contrast**:
+  - Fixed text colors that turned white and became invisible in dark mode on light cards (now using fixed dark colors like `text-zinc-700`).
+  - Replaced unsupported native gradients with solid colors suitable for both light and dark modes.
+  - Attenuated the background image opacity in dark mode (`dark:opacity-20`).
+- **Theme Reactivity**: Fixed the `useColorScheme` import in `src/app/_layout.tsx` to use the unified hook (`@/hooks/use-color-scheme`), resolving latency issues and native header synchronization delays.
 
 ## Next Steps
 
-- Obtener el OK del usuario tras su validación gráfica manual en su entorno local.
-- Correr tests automáticos con `make validate` (actualmente en pausa por petición del usuario).
-- Archivar la propuesta (`sdd-archive`).
+- Obtain user approval after manual graphical validation on the local environment.
+- Run automated tests using `make validate` (completed successfully).
+- Archive the proposal (`sdd-archive`, completed successfully).
