@@ -41,19 +41,19 @@ export default function AudioMediaControls({
 
   return (
     <TwView
-      className="bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px]"
+      className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
       testID="audio-media-controls"
     >
       {/* Status indicator */}
       {isLoading && (
-        <TwText className="text-sm text-zinc-400 text-center">
+        <TwText className="text-sm text-zinc-600 text-center font-bold">
           {t('components.mediaControls.statusLoading')}
         </TwText>
       )}
 
       {/* Playback time */}
       {showTime && (
-        <TwText className="text-center text-lg font-code text-zinc-300">
+        <TwText className="text-center text-lg font-code text-zinc-700 font-extrabold">
           {formatTime(positionMs)}
           {hasDuration && (
             <TwText className="text-zinc-500">{` / ${formatTime(durationMs)}`}</TwText>
@@ -62,15 +62,21 @@ export default function AudioMediaControls({
       )}
 
       {/* Error message */}
-      {isError && errorMsg && <TwText className="text-xs text-rose-400">{errorMsg}</TwText>}
+      {isError && errorMsg && (
+        <TwText className="text-xs text-rose-600 font-bold">{errorMsg}</TwText>
+      )}
 
       {/* Control buttons */}
       <TwView className="flex-row gap-4 justify-center">
         {/* Play/Pause button */}
         <TwView className="flex-1 max-w-[160px]">
           <TwView
-            className={`rounded-xl overflow-hidden ${
-              isPlaying ? 'bg-amber-600' : disabled ? 'bg-zinc-700' : 'bg-violet-600'
+            className={`rounded-xl overflow-hidden shadow-sm ${
+              isPlaying
+                ? 'bg-amber-600'
+                : disabled
+                  ? 'bg-zinc-300 dark:bg-zinc-700'
+                  : 'bg-emerald-500'
             }`}
           >
             <TwPressable
@@ -80,11 +86,11 @@ export default function AudioMediaControls({
                   : t('components.mediaControls.btnPlay')
               }
               testID={isPlaying ? 'audio-pause-button' : 'audio-play-button'}
-              className="py-3 items-center active:opacity-80"
+              className="py-3 items-center active:bg-emerald-600"
               onPress={isPlaying ? onPause : onPlay}
               disabled={disabled && !isPlaying}
             >
-              <TwText className="text-white font-bold text-sm">
+              <TwText className="text-white font-extrabold text-sm">
                 {isPlaying
                   ? t('components.mediaControls.btnPause')
                   : t('components.mediaControls.btnPlay')}
@@ -95,14 +101,14 @@ export default function AudioMediaControls({
 
         {/* Stop button */}
         <TwView className="flex-1 max-w-[160px]">
-          <TwView className="bg-zinc-700 rounded-xl overflow-hidden">
+          <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
             <TwPressable
               accessibilityLabel={t('components.mediaControls.btnStop')}
               testID="audio-stop-button"
-              className="py-3 items-center active:bg-zinc-800"
+              className="py-3 items-center active:bg-zinc-300 dark:active:bg-zinc-800"
               onPress={onStop}
             >
-              <TwText className="text-white font-bold text-sm">
+              <TwText className="text-zinc-800 dark:text-zinc-200 font-extrabold text-sm">
                 {t('components.mediaControls.btnStop')}
               </TwText>
             </TwPressable>

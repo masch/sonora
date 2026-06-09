@@ -64,7 +64,7 @@ export default function FeedbackForm({
           <TwView className="flex-row justify-between items-center">
             <TwText className="text-lg font-bold text-text">{t('feedback.form.title')}</TwText>
             <TwPressable
-              accessibilityLabel={t('common.dismiss') || 'Dismiss'}
+              accessibilityLabel={t('common.dismiss')}
               testID="feedback-dismiss-button"
               onPress={handleDismiss}
               className="p-2"
@@ -115,7 +115,7 @@ export default function FeedbackForm({
               {/* Sending indicator */}
               {isSending && (
                 <TwView className="py-4 items-center" testID="feedback-sending-state">
-                  <TwText className="text-violet-400 font-bold">
+                  <TwText className="text-emerald-400 font-bold">
                     {t('feedback.form.sending')}
                   </TwText>
                 </TwView>
@@ -140,11 +140,11 @@ export default function FeedbackForm({
 
               {/* Submit button (hidden while sending, shown for idle/error) */}
               {!isSending && !isError && (
-                <TwView className="bg-violet-600 rounded-xl overflow-hidden">
+                <TwView className="bg-emerald-500 rounded-xl overflow-hidden">
                   <TwPressable
                     accessibilityLabel={t('feedback.form.submit')}
                     testID="feedback-submit-button"
-                    className="py-3 items-center active:opacity-80"
+                    className="py-3 items-center active:bg-emerald-600"
                     onPress={handleSubmit}
                   >
                     <TwText className="text-white font-bold">{t('feedback.form.submit')}</TwText>

@@ -15,8 +15,12 @@ import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTripDownload } from '@/hooks/use-trip-download';
-import { TwPressable, TwText, TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
+import { TwImage } from '@/tw/image';
+import { Icon } from '@/components/icon';
 import type { FeedbackStatus } from '@/types/feedback';
+
+const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 
 const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
 
@@ -24,9 +28,6 @@ interface TripDetailViewProps {
   tripId: string;
   isWeb: boolean;
 }
-
-// Web: fixed padding below the horizontal tab bar via Tailwind spacing
-const CONTENT_PADDING = 'pt-16 pb-6';
 
 /**
  * Shared trip detail view used by trips/[id].tsx (dynamic route).
@@ -112,89 +113,125 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
     );
   }
 
+  const tripImage =
+    trip.imageKey === 'deriva-centro'
+      ? require('@/assets/images/sonora/deriva-centro.png')
+      : require('@/assets/images/sonora/bonus-track.png');
+
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
   const innerView = (
-    <TwView className="self-center w-full max-w-[800px] px-6 items-center gap-6">
-      {/* Trip header */}
-      <TwView className="items-center gap-2 pt-6">
-        <ThemedText type="default" className="text-2xl font-bold text-center">
-          {trip.title}
-        </ThemedText>
-        <ThemedText type="small" className="text-center">
-          {t('trips.duration', { minutes: trip.durationMinutes })}
-        </ThemedText>
+    <TwView className="flex-1">
+      {/* Top Banner */}
+      <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
+        <TwImage
+          source={tripImage}
+          className="absolute inset-0 w-full h-full"
+          contentFit="cover"
+          alt=""
+        />
+        <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
+          <Icon
+            ios="speaker.wave.2.fill"
+            android="volume_up"
+            web="volume_up"
+            size={18}
+            tintColor="#000000"
+          />
+        </TwView>
       </TwView>
 
-      <ThemedText type="default" className="text-center">
-        {trip.description}
-      </ThemedText>
+      {/* Main Content Area */}
+      <TwView className="relative flex-1 gap-4 p-4">
+        <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
 
-      {/* Mini map */}
-      <TripDetailMap
-        latitude={trip.startCoordinates.latitude}
-        longitude={trip.startCoordinates.longitude}
-      />
-
-      {/* GPS precision */}
-      <GpsPrecisionBadge
-        gpsStatus={geofence.gpsStatus}
-        gpsAccuracy={geofence.gpsAccuracy}
-        distanceMeters={geofence.distanceMeters}
-        isNearStart={geofence.isNearStart}
-        requiredRadiusMeters={geofence.requiredRadiusMeters}
-      />
-
-      {/* Download card */}
-      <DownloadProgressCard
-        status={download.status}
-        progress={download.progress}
-        errorMsg={download.errorMsg}
-        onDownload={download.startDownload}
-        onDelete={download.deleteTripLocal}
-      />
-
-      {/* Audio player — only shown when download completed */}
-      {download.status === 'completed' ? (
-        <AudioMediaControls
-          status={player.status}
-          positionMs={player.positionMs}
-          durationMs={player.durationMs}
-          errorMsg={player.errorMsg}
-          onPlay={player.play}
-          onPause={player.pause}
-          onStop={player.stop}
-          disabled={!download.localAudioUri}
-        />
-      ) : download.status === 'downloading' ? (
-        <TwView className="bg-backgroundElement gap-2 self-stretch p-4 rounded-[24px] items-center">
-          <TwText className="text-sm text-zinc-400">{t('index.waitingForDownload')}</TwText>
-        </TwView>
-      ) : null}
-
-      {/* Manual feedback button (when feedbackTrigger is 'manual') */}
-      {trip.feedbackTrigger === 'manual' && (
-        <TwView className="self-stretch">
-          <TwView className="bg-violet-600 rounded-xl overflow-hidden">
-            <TwPressable
-              accessibilityLabel={t('feedback.form.title')}
-              testID="feedback-manual-button"
-              className="py-3 items-center active:opacity-80"
-              onPress={() => setShowManualFeedback(true)}
-            >
-              <TwText className="text-white font-bold text-sm">{t('feedback.form.title')}</TwText>
-            </TwPressable>
+        {/* Main Details Card */}
+        <TwView className="w-full max-w-[800px] self-center bg-white/80 p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+          {/* Trip header */}
+          <TwView className="items-center gap-2 py-2">
+            <ThemedText className="text-2xl font-black text-center text-zinc-800 tracking-wider">
+              {trip.title}
+            </ThemedText>
+            <ThemedText className="text-zinc-600 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
+              {t('trips.duration', { minutes: trip.durationMinutes })}
+            </ThemedText>
           </TwView>
+
+          <ThemedText className="text-center text-sm font-bold text-zinc-700 leading-relaxed p-2 rounded-xl bg-white/40">
+            {trip.description}
+          </ThemedText>
+
+          {/* Mini map */}
+          <TripDetailMap
+            latitude={trip.startCoordinates.latitude}
+            longitude={trip.startCoordinates.longitude}
+          />
+
+          {/* GPS precision */}
+          <GpsPrecisionBadge
+            gpsStatus={geofence.gpsStatus}
+            gpsAccuracy={geofence.gpsAccuracy}
+            distanceMeters={geofence.distanceMeters}
+            isNearStart={geofence.isNearStart}
+            requiredRadiusMeters={geofence.requiredRadiusMeters}
+          />
+
+          {/* Download card */}
+          <DownloadProgressCard
+            status={download.status}
+            progress={download.progress}
+            errorMsg={download.errorMsg}
+            onDownload={download.startDownload}
+            onDelete={download.deleteTripLocal}
+          />
+
+          {/* Audio player — only shown when download completed */}
+          {download.status === 'completed' ? (
+            <AudioMediaControls
+              status={player.status}
+              positionMs={player.positionMs}
+              durationMs={player.durationMs}
+              errorMsg={player.errorMsg}
+              onPlay={player.play}
+              onPause={player.pause}
+              onStop={player.stop}
+              disabled={!download.localAudioUri}
+            />
+          ) : download.status === 'downloading' ? (
+            <TwView className="bg-white/50 border border-zinc-200/30 gap-2 self-stretch p-4 rounded-xl items-center">
+              <ThemedText className="text-sm text-zinc-600">
+                {t('index.waitingForDownload')}
+              </ThemedText>
+            </TwView>
+          ) : null}
+
+          {/* Manual feedback button (when feedbackTrigger is 'manual') */}
+          {trip.feedbackTrigger === 'manual' && (
+            <TwView className="self-stretch">
+              <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+                <TwPressable
+                  accessibilityLabel={t('feedback.form.title')}
+                  testID="feedback-manual-button"
+                  className="py-3 items-center active:opacity-80"
+                  onPress={() => setShowManualFeedback(true)}
+                >
+                  <ThemedText className="text-white font-extrabold text-sm">
+                    {t('feedback.form.title')}
+                  </ThemedText>
+                </TwPressable>
+              </TwView>
+            </TwView>
+          )}
         </TwView>
-      )}
+      </TwView>
     </TwView>
   );
 
   return (
     <TwView className="flex-1">
       <Stack.Screen options={{ title: trip.title }} />
-      {isWeb ? <TwView className={`${CONTENT_PADDING} flex-1`}>{innerView}</TwView> : innerView}
+      {isWeb ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       {/* Feedback form modal */}
       <FeedbackForm

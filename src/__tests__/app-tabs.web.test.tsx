@@ -6,6 +6,32 @@ import AppTabsWeb from '@/components/app-tabs.web';
 
 // Mock expo-router/ui Tabs components for isolated testing.
 // Uses require() inside factory because jest.mock is hoisted above imports.
+jest.mock('@/constants/tabs', () => ({
+  TABS: [
+    {
+      name: 'index',
+      label: 'Home',
+      ioniconsName: 'home-outline',
+      symbolViewName: { ios: 'house', android: 'home', web: 'home' },
+      hidden: false,
+    },
+    {
+      name: 'explore',
+      label: 'Explore',
+      ioniconsName: 'compass-outline',
+      symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
+      hidden: true,
+    },
+    {
+      name: 'settings',
+      label: 'Settings',
+      ioniconsName: 'settings-outline',
+      symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
+      hidden: true,
+    },
+  ],
+}));
+
 jest.mock('expo-router/ui', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView } = require('react-native');

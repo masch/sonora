@@ -89,6 +89,31 @@
     --font-serif: serif;
     --font-mono: monospace;
   }
+
+  .font-medium {
+    font-family: Caveat-Medium;
+    font-weight: normal;
+  }
+
+  .font-semibold {
+    font-family: Caveat-SemiBold;
+    font-weight: normal;
+  }
+
+  .font-bold {
+    font-family: Caveat-Bold;
+    font-weight: normal;
+  }
+
+  .font-extrabold {
+    font-family: Caveat-Bold;
+    font-weight: normal;
+  }
+
+  .font-black {
+    font-family: Caveat-Bold;
+    font-weight: normal;
+  }
 }
 
 @variant dark {
