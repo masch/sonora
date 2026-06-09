@@ -27,6 +27,7 @@ MOBILE_BUNDLE_ID = com.masch.sonora
 EAS_CLI_VERSION = 20.1.0
 
 ANDROID_HOME ?= $(HOME)/dev/android/sdk
+ANDROID_NDK_HOME ?= $(ANDROID_HOME)/ndk/27.1.12297006
 ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
 ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
