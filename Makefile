@@ -5,10 +5,10 @@
 
 # ── Convenience ────────────────────────────────
 
-# Incluye el archivo .env (el guión '-' evita que falle si el archivo no existe)
+# Include .env (leading '-' prevents error if file is missing)
 -include .env
 
-# Exporta explícitamente el token para que esté disponible en todas las subshells
+# Export token explicitly so it's available in all subshells
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
 export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
 
@@ -216,8 +216,8 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 	bunx eas-cli@$(EAS_CLI_VERSION) init
 
 # production vs preview:
-#   production → APK firmado para Google Play (firma con keystore de producción)
-#   preview    → APK de prueba para instalar directo en el celu (distribución interna, sin Play Store)
+#   production → signed APK for Google Play (uses production keystore)
+#   preview    → test APK for sideloading (internal distribution, no Play Store)
 
 .PHONY: eas-build-android
 eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
@@ -245,36 +245,36 @@ eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks au
 
 # ── Firebase App Distribution ────────────
 
-# Firebase App ID del proyecto
+# Firebase project App ID
 FIREBASE_APP_ID ?= 1:967054219260:android:aad883fdf7059bec060479
-# Ruta al APK release — override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk
-FIREBASE_APK_PATH ?= ./build-1781043332034.apk
-# Testers por email (separados por coma) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
+# APK path — auto-picks the newest build-*.apk (override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk)
+FIREBASE_APK_PATH ?= $(shell ls -t build-*.apk android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+# Tester emails (comma-separated) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
 FIREBASE_TESTERS ?=
-# Grupos de Firebase App Distribution
+# Firebase App Distribution groups
 FIREBASE_GROUP_DEV     ?= dev-team
 FIREBASE_GROUP_SONORA  ?= sonora-team
-# Compone flags de tester solo si las variables no están vacías
+# Composes --testers flag only when FIREBASE_TESTERS is non-empty
 FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
 
 .PHONY: firebase-login-ci
-firebase-login-ci: ## Login Firebase para CI — genera un token para poner en FIREBASE_TOKEN del .env
+firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
 	bun run firebase login:ci
 
 .PHONY: firebase-distribute
-firebase-distribute: ## Subir APK a Firebase App Distribution (requiere FIREBASE_TOKEN en .env, opcional: FIREBASE_TESTERS)
+firebase-distribute: ## Upload APK to Firebase App Distribution (requires FIREBASE_TOKEN in .env, optional: FIREBASE_TESTERS)
 	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" $(FIREBASE_TESTER_FLAGS)
 
 .PHONY: firebase-distribute-dev-team
-firebase-distribute-dev-team: ## Subir APK solo al grupo dev-team
+firebase-distribute-dev-team: ## Upload APK to dev-team group only
 	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV)"
 
 .PHONY: firebase-distribute-sonora-team
-firebase-distribute-sonora-team: ## Subir APK solo al grupo sonora-team
+firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
 	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_SONORA)"
 
 .PHONY: firebase-distribute-all
-firebase-distribute-all: ## Subir APK a ambos grupos (dev-team + sonora-team)
+firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
 	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)"
 
 # ── Emulator ───────────────────────────────
