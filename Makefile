@@ -5,10 +5,10 @@
 
 # ── Convenience ────────────────────────────────
 
-# Incluye el archivo .env (el guión '-' evita que falle si el archivo no existe)
+# Include .env (leading '-' prevents error if file is missing)
 -include .env
 
-# Exporta explícitamente el token para que esté disponible en todas las subshells
+# Export token explicitly so it's available in all subshells
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
 export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
 
@@ -17,6 +17,9 @@ export SOCKET_SECURITY_API_KEY=$(SOCKET_SECURITY_API_KEY_CLEAN)
 
 SOCKET_CLI_ORG_SLUG_CLEAN := $(patsubst "%",%,$(SOCKET_CLI_ORG_SLUG))
 export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
+
+FIREBASE_TOKEN_CLEAN := $(patsubst "%",%,$(FIREBASE_TOKEN))
+export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 
 
 MOBILE_BUNDLE_ID = com.masch.sonora
@@ -213,8 +216,8 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 	bunx eas-cli@$(EAS_CLI_VERSION) init
 
 # production vs preview:
-#   production → APK firmado para Google Play (firma con keystore de producción)
-#   preview    → APK de prueba para instalar directo en el celu (distribución interna, sin Play Store)
+#   production → signed APK for Google Play (uses production keystore)
+#   preview    → test APK for sideloading (internal distribution, no Play Store)
 
 .PHONY: eas-build-android
 eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
@@ -239,6 +242,40 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 .PHONY: eas-build-web
 eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
 	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+
+# ── Firebase App Distribution ────────────
+
+# Firebase project App ID
+FIREBASE_APP_ID ?= 1:967054219260:android:aad883fdf7059bec060479
+# APK path — auto-picks the newest build-*.apk (override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk)
+FIREBASE_APK_PATH ?= $(shell ls -t build-*.apk android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+# Tester emails (comma-separated) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
+FIREBASE_TESTERS ?=
+# Firebase App Distribution groups
+FIREBASE_GROUP_DEV     ?= dev-team
+FIREBASE_GROUP_SONORA  ?= sonora-team
+# Composes --testers flag only when FIREBASE_TESTERS is non-empty
+FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
+
+.PHONY: firebase-login-ci
+firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
+	bun run firebase login:ci
+
+.PHONY: firebase-distribute
+firebase-distribute: ## Upload APK to Firebase App Distribution (requires FIREBASE_TOKEN in .env, optional: FIREBASE_TESTERS)
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" $(FIREBASE_TESTER_FLAGS)
+
+.PHONY: firebase-distribute-dev-team
+firebase-distribute-dev-team: ## Upload APK to dev-team group only
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV)"
+
+.PHONY: firebase-distribute-sonora-team
+firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_SONORA)"
+
+.PHONY: firebase-distribute-all
+firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)"
 
 # ── Emulator ───────────────────────────────
 
@@ -288,5 +325,5 @@ help: ## Print this help message
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-32s\033[0m %s\n", $$1, $$2}'
