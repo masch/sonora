@@ -7,6 +7,13 @@
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        // All modules used are included in Expo Go (managed workflow).
+        // No custom native modules that require a dev client.
+        // Suppressing the warning is safe — it will surface naturally
+        // if a non-Go-compatible module is added later.
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "1"
       }
     },
     "preview": {
