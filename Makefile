@@ -18,6 +18,9 @@ export SOCKET_SECURITY_API_KEY=$(SOCKET_SECURITY_API_KEY_CLEAN)
 SOCKET_CLI_ORG_SLUG_CLEAN := $(patsubst "%",%,$(SOCKET_CLI_ORG_SLUG))
 export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
 
+FIREBASE_TOKEN_CLEAN := $(patsubst "%",%,$(FIREBASE_TOKEN))
+export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
+
 
 MOBILE_BUNDLE_ID = com.masch.sonora
 
@@ -239,6 +242,40 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 .PHONY: eas-build-web
 eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
 	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+
+# ── Firebase App Distribution ────────────
+
+# Firebase App ID del proyecto
+FIREBASE_APP_ID ?= 1:967054219260:android:aad883fdf7059bec060479
+# Ruta al APK release — override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk
+FIREBASE_APK_PATH ?= ./build-1781043332034.apk
+# Testers por email (separados por coma) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
+FIREBASE_TESTERS ?=
+# Grupos de Firebase App Distribution
+FIREBASE_GROUP_DEV     ?= dev-team
+FIREBASE_GROUP_SONORA  ?= sonora-team
+# Compone flags de tester solo si las variables no están vacías
+FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
+
+.PHONY: firebase-login-ci
+firebase-login-ci: ## Login Firebase para CI — genera un token para poner en FIREBASE_TOKEN del .env
+	bun run firebase login:ci
+
+.PHONY: firebase-distribute
+firebase-distribute: ## Subir APK a Firebase App Distribution (requiere FIREBASE_TOKEN en .env, opcional: FIREBASE_TESTERS)
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" $(FIREBASE_TESTER_FLAGS)
+
+.PHONY: firebase-distribute-dev-team
+firebase-distribute-dev-team: ## Subir APK solo al grupo dev-team
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV)"
+
+.PHONY: firebase-distribute-sonora-team
+firebase-distribute-sonora-team: ## Subir APK solo al grupo sonora-team
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_SONORA)"
+
+.PHONY: firebase-distribute-all
+firebase-distribute-all: ## Subir APK a ambos grupos (dev-team + sonora-team)
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)"
 
 # ── Emulator ───────────────────────────────
 
