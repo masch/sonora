@@ -315,8 +315,9 @@ eas-clean: clean ## Clean local build artifacts — EAS cache + APKs + Podman EA
 	-podman image prune -a --filter="reference=*eas*" -f 2>/dev/null || true
 
 .PHONY: eas-clean-full
-eas-clean-full: eas-clean ## Clean EVERYTHING (including global Gradle cache) — shared across ALL Android projects
+eas-clean-full: eas-clean ## Clean EVERYTHING (including global Gradle cache + prebuild) — shared across ALL Android projects
 	rm -rf ~/.gradle/caches
+	rm -rf android/
 
 .PHONY: reset
 reset: clean install ## Full reset — clean + reinstall
