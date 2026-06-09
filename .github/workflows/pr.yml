@@ -23,3 +23,5 @@ jobs:
       - run: cd api && bun install --frozen-lockfile
       - run: make format-check test lint typecheck
       - uses: millionco/react-doctor@v1.1.1
+        with:
+          version: '0.2.14'

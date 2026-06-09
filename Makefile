@@ -61,11 +61,11 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	bunx react-doctor@latest --verbose
+	bunx react-doctor --verbose
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	bunx react-doctor@latest --verbose --diff --fail-on warning
+	bunx react-doctor --verbose --diff --fail-on warning
 
 # ── Supply Chain Security ──────────────────────
 
