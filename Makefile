@@ -24,7 +24,7 @@ export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 
 MOBILE_BUNDLE_ID = com.masch.sonora
 
-EAS_CLI_VERSION = 20.0.0
+EAS_CLI_VERSION = 20.1.0
 
 ANDROID_HOME ?= $(HOME)/dev/android/sdk
 ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
