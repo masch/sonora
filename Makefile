@@ -61,11 +61,11 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	bunx react-doctor@latest --verbose
+	bunx react-doctor --verbose
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	bunx react-doctor@latest --verbose --diff --fail-on warning
+	bunx react-doctor --verbose --diff --fail-on warning
 
 # ── Supply Chain Security ──────────────────────
 
@@ -269,6 +269,16 @@ android-kill:
 .PHONY: clean
 clean: ## Remove build artifacts and node_modules
 	rm -rf node_modules .expo web-build dist
+
+.PHONY: eas-clean
+eas-clean: clean ## Clean local build artifacts — EAS cache + APKs + Podman EAS images + Expo caches
+	rm -f *.apk *.aab *.ipa
+	rm -rf ~/.eas-build ~/.expo/expo-go ~/.expo/android-apk-cache
+	-podman image prune -a --filter="reference=*eas*" -f 2>/dev/null || true
+
+.PHONY: eas-clean-full
+eas-clean-full: eas-clean ## Clean EVERYTHING (including global Gradle cache) — shared across ALL Android projects
+	rm -rf ~/.gradle/caches
 
 .PHONY: reset
 reset: clean install ## Full reset — clean + reinstall

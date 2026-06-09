@@ -26,29 +26,27 @@ export default function GpsPrecisionBadge({
   const isReady = gpsStatus === 'ready';
 
   const statusClass = isWeak
-    ? 'from-amber-500 to-orange-600'
+    ? 'bg-amber-100 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/30'
     : isReady
-      ? 'bg-emerald-400/20 border-emerald-500/30'
-      : 'bg-zinc-700/50';
+      ? 'bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/30'
+      : 'bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/50';
 
   const statusTextClass = isWeak
-    ? 'text-amber-300'
+    ? 'text-amber-800 dark:text-amber-300'
     : isReady
-      ? 'text-emerald-400'
-      : 'text-zinc-400';
+      ? 'text-emerald-800 dark:text-emerald-300'
+      : 'text-zinc-600 dark:text-zinc-400';
 
   return (
     <TwView
       testID="gps-precision-badge"
-      className={`bg-backgroundElement gap-4 self-stretch p-4 rounded-[24px] border ${
-        isReady ? 'border-emerald-500/20' : isWeak ? 'border-amber-500/20' : 'border-zinc-700'
-      }`}
+      className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
     >
       {/* Status pill */}
       <TwView className="flex-row items-center gap-2">
-        <TwView className={`flex-1 rounded-xl overflow-hidden ${isWeak ? '' : ''}`}>
-          <TwView className={`py-2 px-4 items-center ${statusClass} ${isWeak ? '' : 'rounded-xl'}`}>
-            <TwText className={`text-sm font-bold ${statusTextClass}`}>
+        <TwView className="flex-1 rounded-xl overflow-hidden">
+          <TwView className={`py-2 px-4 items-center rounded-xl ${statusClass}`}>
+            <TwText className={`text-sm font-black text-center ${statusTextClass}`}>
               {gpsStatus === 'initializing' && t('components.gpsBadge.statusInitializing')}
               {isWeak && t('components.gpsBadge.statusWeak')}
               {isReady && t('components.gpsBadge.statusReady')}

@@ -1,4 +1,4 @@
-import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
+import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 
 export interface TabDefinition {
   /** Route name: "index", "explore", or "settings" */
