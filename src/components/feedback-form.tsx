@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
@@ -28,7 +28,7 @@ export default function FeedbackForm({
   const [message, setMessage] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     const trimmed = message.trim();
     if (trimmed.length === 0) {
       setValidationError(t('feedback.form.validation.empty'));
@@ -36,13 +36,13 @@ export default function FeedbackForm({
     }
     setValidationError(null);
     onSubmit(trimmed);
-  }, [message, onSubmit, t]);
+  };
 
-  const handleDismiss = useCallback(() => {
+  const handleDismiss = () => {
     setMessage('');
     setValidationError(null);
     onDismiss();
-  }, [onDismiss]);
+  };
 
   const isSending = status === 'sending';
   const isSent = status === 'sent';

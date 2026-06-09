@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Stack } from 'expo-router';
 
 import AudioMediaControls from '@/components/audio-media-controls';
@@ -54,55 +54,52 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   // Auto-sync feedback queue on connectivity restore
   useFeedbackSync();
 
-  const handleFeedbackSubmit = useCallback(
-    async (message: string) => {
-      setFeedbackStatus('sending');
-      setFeedbackError(null);
+  const handleFeedbackSubmit = async (message: string) => {
+    setFeedbackStatus('sending');
+    setFeedbackError(null);
 
-      // Resolve UUID inside callback to avoid capturing trip object in deps
-      const currentTrip = getTripById(tripId);
-      const tripUuid = currentTrip?.uuid ?? tripId;
+    // Resolve UUID inside callback to avoid capturing trip object in deps
+    const currentTrip = getTripById(tripId);
+    const tripUuid = currentTrip?.uuid ?? tripId;
 
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tripId: tripUuid,
-            message,
-            idempotencyKey:
-              crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-            createdAt: new Date().toISOString(),
-          }),
-        });
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: tripUuid,
+          message,
+          idempotencyKey:
+            crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+          createdAt: new Date().toISOString(),
+        }),
+      });
 
-        if (response.status === 201) {
-          setFeedbackStatus('sent');
-        } else {
-          // Server error — queue offline
-          await feedbackQueue.enqueue({ tripId: tripUuid, message });
-          setFeedbackStatus('queued');
-        }
-      } catch {
-        // Network error — queue offline
-        try {
-          await feedbackQueue.enqueue({ tripId: tripUuid, message });
-          setFeedbackStatus('queued');
-        } catch {
-          setFeedbackStatus('error');
-          setFeedbackError(t('feedback.form.error'));
-        }
+      if (response.status === 201) {
+        setFeedbackStatus('sent');
+      } else {
+        // Server error — queue offline
+        await feedbackQueue.enqueue({ tripId: tripUuid, message });
+        setFeedbackStatus('queued');
       }
-    },
-    [tripId, feedbackQueue, t],
-  );
+    } catch {
+      // Network error — queue offline
+      try {
+        await feedbackQueue.enqueue({ tripId: tripUuid, message });
+        setFeedbackStatus('queued');
+      } catch {
+        setFeedbackStatus('error');
+        setFeedbackError(t('feedback.form.error'));
+      }
+    }
+  };
 
-  const handleFeedbackDismiss = useCallback(() => {
+  const handleFeedbackDismiss = () => {
     setFeedbackStatus(undefined);
     setFeedbackError(null);
     setShowManualFeedback(false);
     feedbackTrigger.dismiss();
-  }, [feedbackTrigger]);
+  };
 
   if (!trip) {
     return (
