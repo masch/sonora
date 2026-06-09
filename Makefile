@@ -24,9 +24,10 @@ export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 
 MOBILE_BUNDLE_ID = com.masch.sonora
 
-EAS_CLI_VERSION = 20.0.0
+EAS_CLI_VERSION = 20.1.0
 
 ANDROID_HOME ?= $(HOME)/dev/android/sdk
+ANDROID_NDK_HOME ?= $(ANDROID_HOME)/ndk/27.1.12297006
 ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
 ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
@@ -314,8 +315,9 @@ eas-clean: clean ## Clean local build artifacts — EAS cache + APKs + Podman EA
 	-podman image prune -a --filter="reference=*eas*" -f 2>/dev/null || true
 
 .PHONY: eas-clean-full
-eas-clean-full: eas-clean ## Clean EVERYTHING (including global Gradle cache) — shared across ALL Android projects
+eas-clean-full: eas-clean ## Clean EVERYTHING (including global Gradle cache + prebuild) — shared across ALL Android projects
 	rm -rf ~/.gradle/caches
+	rm -rf android/
 
 .PHONY: reset
 reset: clean install ## Full reset — clean + reinstall
