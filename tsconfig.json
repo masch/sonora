@@ -14,7 +14,6 @@
   "exclude": [
     "__mocks__",
     "api",
-    "doctor.config.ts",
     "node_modules/react-native-css",
     "node_modules/react-native-worklets",
     "node_modules/react-native-reanimated/src"

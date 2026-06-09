@@ -6,8 +6,7 @@ export default {
       {
         files: ['src/app/_layout.tsx'],
         rules: ['deslop/unused-file'],
-        reason:
-          "Expo Router loads _layout.tsx by convention — not an unused file. deslop doesn't understand file-based routing.",
+        // Expo Router loads _layout.tsx by convention — not an unused file. deslop doesn't understand file-based routing.
       },
     ],
   },
