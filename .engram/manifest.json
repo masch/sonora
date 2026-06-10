@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "chunks": [
+    {
+      "id": "78e4fc27",
+      "created_by": "masch",
+      "created_at": "2026-06-10T14:46:56Z",
+      "sessions": 145,
+      "memories": 315,
+      "prompts": 906
+    },
+    {
+      "id": "dfc509e2",
+      "created_by": "masch",
+      "created_at": "2026-06-10T15:37:48Z",
+      "sessions": 0,
+      "memories": 2,
+      "prompts": 0
+    },
+    {
+      "id": "395f4953",
+      "created_by": "masch",
+      "created_at": "2026-06-10T15:40:02Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "68ed40a6",
+      "created_by": "masch",
+      "created_at": "2026-06-10T15:49:00Z",
+      "sessions": 2,
+      "memories": 1,
+      "prompts": 2
+    },
+    {
+      "id": "2c8236cd",
+      "created_by": "masch",
+      "created_at": "2026-06-10T16:14:24Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    }
+  ]
+}

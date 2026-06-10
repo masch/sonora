@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 
-import AudioMediaControls from '@/components/audio-media-controls';
-import DownloadProgressCard from '@/components/download-progress-card';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ThemedText } from '@/components/themed-text';
 import TripDetailMap from '@/components/trip-detail-map';
+import UnifiedAudioController from '@/components/unified-audio-controller';
+import { APP_CONFIG } from '@/config/app-config';
 import { getTripById } from '@/data/trips';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
@@ -38,6 +38,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showManualFeedback, setShowManualFeedback] = useState(false);
+  const userInitiatedPlayRef = useRef(false);
 
   const trip = getTripById(tripId);
 
@@ -45,6 +46,19 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   const geofence = useOfflineGeofence(trip?.startCoordinates ?? { latitude: 0, longitude: 0 });
   const download = useTripDownload(trip?.id ?? null, trip?.audioRemoteUrl ?? null);
   const player = useImmersionPlayer(download.localAudioUri);
+
+  // Auto-play when download completes if the user initiated it
+  useEffect(() => {
+    if (download.status === 'completed' && userInitiatedPlayRef.current && download.localAudioUri) {
+      userInitiatedPlayRef.current = false;
+      player.play();
+    }
+  }, [download.status, download.localAudioUri, player]);
+
+  const handlePlayAndDownload = () => {
+    userInitiatedPlayRef.current = true;
+    download.startDownload();
+  };
   const feedbackTrigger = useFeedbackTrigger(trip ?? undefined, {
     didJustFinish: player.status === 'stopped',
     isNearStart: geofence.isNearStart,
@@ -174,34 +188,26 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             requiredRadiusMeters={geofence.requiredRadiusMeters}
           />
 
-          {/* Download card */}
-          <DownloadProgressCard
-            status={download.status}
-            progress={download.progress}
-            errorMsg={download.errorMsg}
-            onDownload={download.startDownload}
-            onDelete={download.deleteTripLocal}
+          {/* Unified Audio Controller: Download & Play in one flow */}
+          <UnifiedAudioController
+            downloadStatus={download.status}
+            downloadProgress={download.progress}
+            downloadError={download.errorMsg}
+            playerStatus={player.status}
+            positionMs={player.positionMs}
+            durationMs={player.durationMs}
+            playerError={player.errorMsg}
+            onPlay={player.play}
+            onPause={player.pause}
+            onStop={player.stop}
+            onRewind={() =>
+              player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
+            }
+            onReset={() => player.seekTo(0)}
+            onDownload={handlePlayAndDownload}
+            onCancelDownload={download.deleteTripLocal}
+            disabled={!trip.audioRemoteUrl}
           />
-
-          {/* Audio player — only shown when download completed */}
-          {download.status === 'completed' ? (
-            <AudioMediaControls
-              status={player.status}
-              positionMs={player.positionMs}
-              durationMs={player.durationMs}
-              errorMsg={player.errorMsg}
-              onPlay={player.play}
-              onPause={player.pause}
-              onStop={player.stop}
-              disabled={!download.localAudioUri}
-            />
-          ) : download.status === 'downloading' ? (
-            <TwView className="bg-white/50 border border-zinc-200/30 gap-2 self-stretch p-4 rounded-xl items-center">
-              <ThemedText className="text-sm text-zinc-600">
-                {t('index.waitingForDownload')}
-              </ThemedText>
-            </TwView>
-          ) : null}
 
           {/* Manual feedback button (when feedbackTrigger is 'manual') */}
           {trip.feedbackTrigger === 'manual' && (
