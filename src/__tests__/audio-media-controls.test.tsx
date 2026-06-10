@@ -123,24 +123,6 @@ describe('AudioMediaControls', () => {
       fireEvent.press(getByTestId('audio-pause-button'));
       expect(onPause).toHaveBeenCalledTimes(1);
     });
-
-    it('calls onStop when Stop button is pressed', () => {
-      const onStop = jest.fn();
-      const { getByTestId } = render(
-        <AudioMediaControls
-          status="playing"
-          positionMs={15000}
-          durationMs={120000}
-          errorMsg={null}
-          onPlay={jest.fn()}
-          onPause={jest.fn()}
-          onStop={onStop}
-        />,
-      );
-
-      fireEvent.press(getByTestId('audio-stop-button'));
-      expect(onStop).toHaveBeenCalledTimes(1);
-    });
   });
 
   describe('disabled state', () => {
@@ -338,7 +320,7 @@ describe('AudioMediaControls', () => {
       expect(pauseButton.props.accessibilityLabel).toBe('components.mediaControls.btnPause');
     });
 
-    it('has accessibility label on stop button', () => {
+    it('has accessibility label on rewind button', () => {
       const { getByTestId } = render(
         <AudioMediaControls
           status="playing"
@@ -348,11 +330,30 @@ describe('AudioMediaControls', () => {
           onPlay={jest.fn()}
           onPause={jest.fn()}
           onStop={jest.fn()}
+          onRewind={jest.fn()}
         />,
       );
 
-      const stopButton = getByTestId('audio-stop-button');
-      expect(stopButton.props.accessibilityLabel).toBe('components.mediaControls.btnStop');
+      const rewindButton = getByTestId('audio-rewind-button');
+      expect(rewindButton.props.accessibilityLabel).toBe('components.mediaControls.btnRewind');
+    });
+
+    it('has accessibility label on reset button', () => {
+      const { getByTestId } = render(
+        <AudioMediaControls
+          status="playing"
+          positionMs={15000}
+          durationMs={120000}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+          onReset={jest.fn()}
+        />,
+      );
+
+      const resetButton = getByTestId('audio-reset-button');
+      expect(resetButton.props.accessibilityLabel).toBe('components.mediaControls.btnReset');
     });
   });
 });

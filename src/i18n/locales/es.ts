@@ -102,6 +102,11 @@ export const es = {
       statusLoading: 'Cargando…',
       position: '{{value}}s',
       duration: '{{value}}s',
+      btnPlayDownload: 'Descargar y reproducir',
+      statusDownloading: 'Descargando audio ({{value}}%)…',
+      btnCancel: 'Cancelar',
+      btnRewind: 'Retroceder 10s',
+      btnReset: 'Reiniciar',
     },
   },
   feedback: {

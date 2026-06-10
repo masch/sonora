@@ -1,5 +1,6 @@
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwText, TwView } from '@/tw';
+import { Icon } from '@/components/icon';
 
 export type MediaStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
@@ -11,6 +12,8 @@ interface AudioMediaControlsProps {
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
+  onRewind?: () => void;
+  onReset?: () => void;
   disabled?: boolean;
 }
 
@@ -29,6 +32,8 @@ export default function AudioMediaControls({
   onPlay,
   onPause,
   onStop,
+  onRewind,
+  onReset,
   disabled = false,
 }: AudioMediaControlsProps) {
   const { t } = useAppTranslation();
@@ -68,6 +73,29 @@ export default function AudioMediaControls({
 
       {/* Control buttons */}
       <TwView className="flex-row gap-4 justify-center">
+        {/* Reset button */}
+        {onReset && (
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnReset')}
+                testID="audio-reset-button"
+                className="py-3 items-center justify-center h-[44px] active:bg-zinc-300 dark:active:bg-zinc-800"
+                onPress={onReset}
+                disabled={disabled}
+              >
+                <Icon
+                  ios="arrow.counterclockwise"
+                  android="replay"
+                  web="replay"
+                  size={20}
+                  tintColor={disabled ? '#a1a1aa' : '#27272a'}
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
+        )}
+
         {/* Play/Pause button */}
         <TwView className="flex-1 max-w-[160px]">
           <TwView
@@ -86,11 +114,11 @@ export default function AudioMediaControls({
                   : t('components.mediaControls.btnPlay')
               }
               testID={isPlaying ? 'audio-pause-button' : 'audio-play-button'}
-              className="py-3 items-center active:bg-emerald-600"
+              className="py-3 items-center justify-center h-[44px] active:bg-emerald-600"
               onPress={isPlaying ? onPause : onPlay}
               disabled={disabled && !isPlaying}
             >
-              <TwText className="text-white font-extrabold text-sm">
+              <TwText className="text-white font-extrabold text-sm leading-none">
                 {isPlaying
                   ? t('components.mediaControls.btnPause')
                   : t('components.mediaControls.btnPlay')}
@@ -99,21 +127,28 @@ export default function AudioMediaControls({
           </TwView>
         </TwView>
 
-        {/* Stop button */}
-        <TwView className="flex-1 max-w-[160px]">
-          <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
-            <TwPressable
-              accessibilityLabel={t('components.mediaControls.btnStop')}
-              testID="audio-stop-button"
-              className="py-3 items-center active:bg-zinc-300 dark:active:bg-zinc-800"
-              onPress={onStop}
-            >
-              <TwText className="text-zinc-800 dark:text-zinc-200 font-extrabold text-sm">
-                {t('components.mediaControls.btnStop')}
-              </TwText>
-            </TwPressable>
+        {/* Rewind button */}
+        {onRewind && (
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnRewind')}
+                testID="audio-rewind-button"
+                className="py-3 items-center justify-center h-[44px] active:bg-zinc-300 dark:active:bg-zinc-800"
+                onPress={onRewind}
+                disabled={disabled}
+              >
+                <Icon
+                  ios="gobackward.10"
+                  android="replay_10"
+                  web="replay_10"
+                  size={20}
+                  tintColor={disabled ? '#a1a1aa' : '#27272a'}
+                />
+              </TwPressable>
+            </TwView>
           </TwView>
-        </TwView>
+        )}
       </TwView>
     </TwView>
   );

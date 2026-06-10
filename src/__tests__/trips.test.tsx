@@ -90,7 +90,7 @@ describe('TripDetailScreen', () => {
 
   it('renders download card', () => {
     const { getByTestId } = render(<TripDetailScreen />);
-    expect(getByTestId('download-progress-card')).toBeTruthy();
+    expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
   });
 
   it('renders GPS badge', () => {
