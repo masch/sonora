@@ -44,7 +44,7 @@ export default function AudioMediaControls({
   const isLoading = status === 'loading';
   const isError = status === 'error';
   const hasDuration = durationMs > 0;
-  const showTime = isPlaying || status === 'paused';
+  const showTime = durationMs > 0 || isPlaying || status === 'paused';
 
   return (
     <TwView

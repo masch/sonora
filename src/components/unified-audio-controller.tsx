@@ -1,7 +1,9 @@
 import React from 'react';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwPressable, TwText, TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import AudioMediaControls, { MediaStatus } from '@/components/audio-media-controls';
+import { Icon } from '@/components/icon';
+import { ThemedText } from '@/components/themed-text';
 import type { DownloadStatus } from '@/hooks/use-trip-download';
 
 interface UnifiedAudioControllerProps {
@@ -54,9 +56,11 @@ export default function UnifiedAudioController({
         testID="unified-audio-controller-idle"
       >
         {isError && errorMsg && (
-          <TwText className="text-xs text-rose-600 font-bold text-center">{errorMsg}</TwText>
+          <ThemedText className="text-xs text-rose-600 font-bold text-center">
+            {errorMsg}
+          </ThemedText>
         )}
-        <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm self-center w-full max-w-[240px]">
+        <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm self-center w-full max-w-[160px]">
           <TwPressable
             accessibilityLabel={t('components.mediaControls.btnPlayDownload')}
             testID="play-download-button"
@@ -64,9 +68,13 @@ export default function UnifiedAudioController({
             onPress={onDownload}
             disabled={disabled}
           >
-            <TwText className="text-white font-extrabold text-sm">
-              {t('components.mediaControls.btnPlayDownload')}
-            </TwText>
+            <Icon
+              ios="play.fill"
+              android="play_arrow"
+              web="play_arrow"
+              size={20}
+              tintColor="#ffffff"
+            />
           </TwPressable>
         </TwView>
       </TwView>
@@ -80,9 +88,9 @@ export default function UnifiedAudioController({
         className="card-container gap-4 self-stretch p-5 rounded-[24px] items-center"
         testID="unified-audio-controller-downloading"
       >
-        <TwText className="text-xs text-zinc-500 font-bold tracking-wider uppercase">
+        <ThemedText className="text-xs text-zinc-500 font-bold tracking-wider uppercase">
           {t('components.mediaControls.statusDownloading', { value: Math.round(downloadProgress) })}
-        </TwText>
+        </ThemedText>
 
         <TwView className="w-full gap-2">
           {/* Progress bar container */}
@@ -103,9 +111,9 @@ export default function UnifiedAudioController({
               className="py-2 items-center active:bg-zinc-300 dark:active:bg-zinc-800"
               onPress={onCancelDownload}
             >
-              <TwText className="text-zinc-800 dark:text-zinc-200 font-bold text-xs">
+              <ThemedText className="text-zinc-800 dark:text-zinc-200 font-bold text-xs">
                 {t('components.mediaControls.btnCancel')}
-              </TwText>
+              </ThemedText>
             </TwPressable>
           </TwView>
         )}

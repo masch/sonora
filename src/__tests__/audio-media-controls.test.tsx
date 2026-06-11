@@ -235,8 +235,24 @@ describe('AudioMediaControls', () => {
       expect(getByText('0:10')).toBeTruthy();
     });
 
-    it('does not render time when status is idle', () => {
+    it('does not render time when status is idle and duration is 0', () => {
       const { queryByText } = render(
+        <AudioMediaControls
+          status="idle"
+          positionMs={0}
+          durationMs={0}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+        />,
+      );
+
+      expect(queryByText('0:00')).toBeNull();
+    });
+
+    it('renders formatted position and duration when status is idle and duration > 0', () => {
+      const { getByText } = render(
         <AudioMediaControls
           status="idle"
           positionMs={0}
@@ -248,7 +264,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(queryByText('0:00')).toBeNull();
+      expect(getByText('0:00 / 2:00')).toBeTruthy();
     });
   });
 
