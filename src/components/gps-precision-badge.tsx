@@ -40,7 +40,7 @@ export default function GpsPrecisionBadge({
   return (
     <TwView
       testID="gps-precision-badge"
-      className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
+      className="card-container gap-4 self-stretch p-4 rounded-[24px]"
     >
       {/* Status pill */}
       <TwView className="flex-row items-center gap-2">

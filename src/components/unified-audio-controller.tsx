@@ -50,7 +50,7 @@ export default function UnifiedAudioController({
   if (!isDownloaded && !isDownloading) {
     return (
       <TwView
-        className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
+        className="card-container gap-4 self-stretch p-4 rounded-[24px]"
         testID="unified-audio-controller-idle"
       >
         {isError && errorMsg && (
@@ -77,7 +77,7 @@ export default function UnifiedAudioController({
   if (isDownloading) {
     return (
       <TwView
-        className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-5 rounded-[24px] items-center"
+        className="card-container gap-4 self-stretch p-5 rounded-[24px] items-center"
         testID="unified-audio-controller-downloading"
       >
         <TwText className="text-xs text-zinc-500 font-bold tracking-wider uppercase">

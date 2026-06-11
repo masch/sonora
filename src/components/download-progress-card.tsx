@@ -26,7 +26,7 @@ export default function DownloadProgressCard({
 
   return (
     <TwView
-      className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
+      className="card-container gap-4 self-stretch p-4 rounded-[24px]"
       testID="download-progress-card"
     >
       {/* Progress bar and percentage */}
@@ -40,7 +40,7 @@ export default function DownloadProgressCard({
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           />
         </TwView>
-        <TwText className="text-xs text-zinc-700 text-right font-bold">
+        <TwText className="text-xs text-zinc-700 dark:text-zinc-300 text-right font-bold">
           {isCompleted
             ? t('components.downloadCard.statusCompleted')
             : t('components.downloadCard.progressPercent', { value: Math.round(progress) })}

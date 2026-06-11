@@ -13,6 +13,7 @@ import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { getHaversineDistance } from '@/utils/haversine';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
@@ -44,6 +45,7 @@ function formatDistance(
 export default function TripMap() {
   const router = useRouter();
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
   const trips = getAllTrips();
   const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
   const [showInstructionsOverlay, setShowInstructionsOverlay] = useState(false);
@@ -147,9 +149,9 @@ export default function TripMap() {
       >
         <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
         {/* Instructions Card */}
-        <TwView className="relative overflow-hidden rounded-[24px] bg-white/80 shadow-md backdrop-blur-md z-10">
+        <TwView className="relative overflow-hidden rounded-[24px] card-container-solid shadow-md backdrop-blur-md z-10">
           <TwImage source={instructionsBg} className="w-full h-44" contentFit="cover" alt="" />
-          <TwView className="flex-row items-center justify-between p-4 bg-white/40">
+          <TwView className="flex-row items-center justify-between p-4 bg-white/40 dark:bg-zinc-800/40">
             <TwView className="flex-row items-center gap-4 flex-1">
               <TwView className="flex-row items-center gap-1.5">
                 <Icon
@@ -157,20 +159,26 @@ export default function TripMap() {
                   android="access_time"
                   web="access_time"
                   size={16}
-                  tintColor="#444444"
+                  tintColor={colors.textSecondary}
                 />
-                <ThemedText className="text-[12px] font-bold text-zinc-700">
+                <ThemedText className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">
                   {t('map.instructionDuration')}
                 </ThemedText>
               </TwView>
 
               <TwView className="flex-row items-center gap-1.5 flex-1">
-                <Icon ios="person" android="person" web="person" size={16} tintColor="#444444" />
+                <Icon
+                  ios="person"
+                  android="person"
+                  web="person"
+                  size={16}
+                  tintColor={colors.textSecondary}
+                />
                 <TwView className="flex-1">
-                  <ThemedText className="text-[14px] font-extrabold text-zinc-800 leading-tight">
+                  <ThemedText className="text-[14px] font-extrabold text-zinc-800 dark:text-zinc-100 leading-tight">
                     {t('map.instructionsTitle')}
                   </ThemedText>
-                  <ThemedText className="text-[10px] font-semibold text-zinc-600 leading-none">
+                  <ThemedText className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-400 leading-none">
                     {t('map.instructionsSub')}
                   </ThemedText>
                 </TwView>
@@ -190,8 +198,8 @@ export default function TripMap() {
         </TwView>
 
         {/* Recorridos List Container */}
-        <TwView className="rounded-[24px] bg-white/80 p-4 shadow-md backdrop-blur-md gap-4 z-10">
-          <ThemedText className="text-base font-black text-zinc-800 tracking-wider">
+        <TwView className="rounded-[24px] card-container-solid p-4 shadow-md backdrop-blur-md gap-4 z-10">
+          <ThemedText className="text-base font-black text-zinc-800 dark:text-zinc-100 tracking-wider">
             {t('map.tripsTitle')}
           </ThemedText>
 
@@ -212,7 +220,7 @@ export default function TripMap() {
                   onPress={() => router.push(`/trips/${trip.id}`)}
                   className="active:opacity-75 mb-1"
                 >
-                  <TwView className="flex-row items-center justify-between p-3 rounded-xl bg-white/50 border border-zinc-200/30">
+                  <TwView className="flex-row items-center justify-between p-3 rounded-xl card-container">
                     {/* Left Cover Image */}
                     <TwImage
                       source={tripImage}
@@ -227,11 +235,11 @@ export default function TripMap() {
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         minimumFontScale={0.5}
-                        className="text-[12px] font-extrabold text-zinc-800 leading-tight"
+                        className="text-[12px] font-extrabold text-zinc-800 dark:text-zinc-100 leading-tight"
                       >
                         {trip.title}
                       </ThemedText>
-                      <ThemedText className="text-[11px] font-bold text-zinc-600 mt-1">
+                      <ThemedText className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 mt-1">
                         {trip.durationMinutes} {t('trips.minAbbr')} ·{' '}
                         {trip.sectionsCount
                           ? `${t('trips.sectionsCount', { count: trip.sectionsCount })} · `
@@ -255,13 +263,13 @@ export default function TripMap() {
                     {/* Right action/price */}
                     <TwView className="flex-row items-center gap-2">
                       {trip.distanceMeters !== undefined && trip.distanceMeters === 0 && (
-                        <ThemedText className="text-[11px] font-black text-zinc-700">
+                        <ThemedText className="text-[11px] font-black text-zinc-700 dark:text-zinc-300">
                           {t('map.zeroDistance')}
                         </ThemedText>
                       )}
                       <TwView className="items-center">
                         {trip.priceLabel && (
-                          <ThemedText className="text-[9px] font-black text-zinc-800 mb-0.5 tracking-tighter">
+                          <ThemedText className="text-[9px] font-black text-zinc-800 dark:text-zinc-100 mb-0.5 tracking-tighter">
                             {trip.priceLabel}
                           </ThemedText>
                         )}

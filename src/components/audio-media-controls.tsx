@@ -1,6 +1,7 @@
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwText, TwView } from '@/tw';
 import { Icon } from '@/components/icon';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export type MediaStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
@@ -37,6 +38,7 @@ export default function AudioMediaControls({
   disabled = false,
 }: AudioMediaControlsProps) {
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
 
   const isPlaying = status === 'playing';
   const isLoading = status === 'loading';
@@ -46,7 +48,7 @@ export default function AudioMediaControls({
 
   return (
     <TwView
-      className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
+      className="card-container gap-4 self-stretch p-4 rounded-[24px]"
       testID="audio-media-controls"
     >
       {/* Status indicator */}
@@ -58,10 +60,10 @@ export default function AudioMediaControls({
 
       {/* Playback time */}
       {showTime && (
-        <TwText className="text-center text-lg font-code text-zinc-700 font-extrabold">
+        <TwText className="text-center text-lg font-code text-zinc-700 dark:text-zinc-300 font-extrabold">
           {formatTime(positionMs)}
           {hasDuration && (
-            <TwText className="text-zinc-500">{` / ${formatTime(durationMs)}`}</TwText>
+            <TwText className="text-zinc-500 dark:text-zinc-400">{` / ${formatTime(durationMs)}`}</TwText>
           )}
         </TwText>
       )}
@@ -89,7 +91,7 @@ export default function AudioMediaControls({
                   android="replay"
                   web="replay"
                   size={20}
-                  tintColor={disabled ? '#a1a1aa' : '#27272a'}
+                  tintColor={disabled ? '#a1a1aa' : colors.text}
                 />
               </TwPressable>
             </TwView>
@@ -143,7 +145,7 @@ export default function AudioMediaControls({
                   android="replay_10"
                   web="replay_10"
                   size={20}
-                  tintColor={disabled ? '#a1a1aa' : '#27272a'}
+                  tintColor={disabled ? '#a1a1aa' : colors.text}
                 />
               </TwPressable>
             </TwView>
