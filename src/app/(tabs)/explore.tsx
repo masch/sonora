@@ -103,13 +103,13 @@ export default function ExploreScreen() {
           <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
 
           {/* Main Card */}
-          <TwView className="w-full max-w-[800px] self-center bg-white/80 p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+          <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
             <TwView className="items-center justify-center gap-4 py-4">
               <AnimatedIcon />
-              <ThemedText className="text-2xl font-black text-center text-zinc-800 tracking-wider">
+              <ThemedText className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 tracking-wider">
                 {t('index.title')}
               </ThemedText>
-              <ThemedText className="text-zinc-600 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
+              <ThemedText className="text-zinc-600 dark:text-zinc-400 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
                 {t('index.getStarted')}
               </ThemedText>
             </TwView>
@@ -143,15 +143,15 @@ export default function ExploreScreen() {
                 disabled={!download.localAudioUri}
               />
             ) : download.status === 'downloading' ? (
-              <TwView className="bg-white/50 border border-zinc-200/30 gap-2 self-stretch p-4 rounded-xl items-center">
-                <ThemedText className="text-sm text-zinc-600">
+              <TwView className="card-container gap-2 self-stretch p-4 rounded-xl items-center">
+                <ThemedText className="text-sm text-zinc-600 dark:text-zinc-400">
                   {t('index.waitingForDownload')}
                 </ThemedText>
               </TwView>
             ) : null}
 
             {/* Development Hints */}
-            <TwView className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-xl">
+            <TwView className="card-container gap-4 self-stretch p-4 rounded-xl">
               <HintRow
                 title={t('index.hints.editing')}
                 hint={<ThemedText type="code">{HINT_FILE_PATH}</ThemedText>}

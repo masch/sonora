@@ -16,7 +16,7 @@ jest.mock('react-i18next', () => ({
 describe('UnifiedAudioController', () => {
   it('renders download & play initial button when undownloaded and idle', () => {
     const onDownload = jest.fn();
-    const { getByTestId, getByText } = render(
+    const { getByTestId } = render(
       <UnifiedAudioController
         downloadStatus="idle"
         downloadProgress={0}
@@ -35,10 +35,29 @@ describe('UnifiedAudioController', () => {
     expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
     const btn = getByTestId('play-download-button');
     expect(btn).toBeTruthy();
-    expect(getByText('components.mediaControls.btnPlayDownload')).toBeTruthy();
 
     fireEvent.press(btn);
     expect(onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders duration when durationMs > 0 in idle state', () => {
+    const { getByText } = render(
+      <UnifiedAudioController
+        downloadStatus="idle"
+        downloadProgress={0}
+        downloadError={null}
+        playerStatus="idle"
+        positionMs={0}
+        durationMs={120000}
+        playerError={null}
+        onPlay={jest.fn()}
+        onPause={jest.fn()}
+        onStop={jest.fn()}
+        onDownload={jest.fn()}
+      />,
+    );
+
+    expect(getByText('0:00 / 2:00')).toBeTruthy();
   });
 
   it('renders downloading state with progress bar and cancel button', () => {

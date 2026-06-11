@@ -10,7 +10,7 @@ interface HintRowProps {
 export function HintRow({ title, hint }: HintRowProps) {
   return (
     <TwView className="flex-row justify-between">
-      <ThemedText type="small" className="text-zinc-700">
+      <ThemedText type="small" className="text-zinc-700 dark:text-zinc-300">
         {title}
       </ThemedText>
       <TwView className="bg-backgroundSelected rounded-lg py-0.5 px-2">

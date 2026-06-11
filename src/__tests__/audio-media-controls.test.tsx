@@ -22,7 +22,7 @@ describe('AudioMediaControls', () => {
 
   describe('play/pause button', () => {
     it('shows Play button when status is idle', () => {
-      const { getByText } = render(
+      const { getByTestId, queryByTestId } = render(
         <AudioMediaControls
           status="idle"
           positionMs={0}
@@ -34,11 +34,12 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(getByText('components.mediaControls.btnPlay')).toBeTruthy();
+      expect(getByTestId('audio-play-button')).toBeTruthy();
+      expect(queryByTestId('audio-pause-button')).toBeNull();
     });
 
     it('shows Pause button when status is playing', () => {
-      const { getByText, queryByText } = render(
+      const { getByTestId, queryByTestId } = render(
         <AudioMediaControls
           status="playing"
           positionMs={10000}
@@ -50,12 +51,12 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(getByText('components.mediaControls.btnPause')).toBeTruthy();
-      expect(queryByText('components.mediaControls.btnPlay')).toBeNull();
+      expect(getByTestId('audio-pause-button')).toBeTruthy();
+      expect(queryByTestId('audio-play-button')).toBeNull();
     });
 
     it('shows Play button when status is paused', () => {
-      const { getByText } = render(
+      const { getByTestId, queryByTestId } = render(
         <AudioMediaControls
           status="paused"
           positionMs={30000}
@@ -67,11 +68,12 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(getByText('components.mediaControls.btnPlay')).toBeTruthy();
+      expect(getByTestId('audio-play-button')).toBeTruthy();
+      expect(queryByTestId('audio-pause-button')).toBeNull();
     });
 
     it('shows Play button when status is stopped', () => {
-      const { getByText } = render(
+      const { getByTestId, queryByTestId } = render(
         <AudioMediaControls
           status="stopped"
           positionMs={0}
@@ -83,7 +85,8 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(getByText('components.mediaControls.btnPlay')).toBeTruthy();
+      expect(getByTestId('audio-play-button')).toBeTruthy();
+      expect(queryByTestId('audio-pause-button')).toBeNull();
     });
   });
 
@@ -232,8 +235,24 @@ describe('AudioMediaControls', () => {
       expect(getByText('0:10')).toBeTruthy();
     });
 
-    it('does not render time when status is idle', () => {
+    it('does not render time when status is idle and duration is 0', () => {
       const { queryByText } = render(
+        <AudioMediaControls
+          status="idle"
+          positionMs={0}
+          durationMs={0}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+        />,
+      );
+
+      expect(queryByText('0:00')).toBeNull();
+    });
+
+    it('renders formatted position and duration when status is idle and duration > 0', () => {
+      const { getByText } = render(
         <AudioMediaControls
           status="idle"
           positionMs={0}
@@ -245,7 +264,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      expect(queryByText('0:00')).toBeNull();
+      expect(getByText('0:00 / 2:00')).toBeTruthy();
     });
   });
 

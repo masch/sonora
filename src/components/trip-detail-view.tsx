@@ -158,18 +158,18 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
         <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
 
         {/* Main Details Card */}
-        <TwView className="w-full max-w-[800px] self-center bg-white/80 p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+        <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
           {/* Trip header */}
           <TwView className="items-center gap-2 py-2">
-            <ThemedText className="text-2xl font-black text-center text-zinc-800 tracking-wider">
+            <ThemedText className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 tracking-wider">
               {trip.title}
             </ThemedText>
-            <ThemedText className="text-zinc-600 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
+            <ThemedText className="text-zinc-600 dark:text-zinc-400 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
               {t('trips.duration', { minutes: trip.durationMinutes })}
             </ThemedText>
           </TwView>
 
-          <ThemedText className="text-center text-sm font-bold text-zinc-700 leading-relaxed p-2 rounded-xl bg-white/40">
+          <ThemedText className="text-center text-sm font-bold text-zinc-700 dark:text-zinc-300 leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40">
             {trip.description}
           </ThemedText>
 
@@ -195,7 +195,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             downloadError={download.errorMsg}
             playerStatus={player.status}
             positionMs={player.positionMs}
-            durationMs={player.durationMs}
+            durationMs={player.durationMs || (trip ? trip.durationMinutes * 60 * 1000 : 0)}
             playerError={player.errorMsg}
             onPlay={player.play}
             onPause={player.pause}

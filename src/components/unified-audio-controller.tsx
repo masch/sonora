@@ -1,7 +1,10 @@
 import React from 'react';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwPressable, TwText, TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import AudioMediaControls, { MediaStatus } from '@/components/audio-media-controls';
+import { Icon } from '@/components/icon';
+import { ThemedText } from '@/components/themed-text';
+import { formatTime } from '@/utils/time';
 import type { DownloadStatus } from '@/hooks/use-trip-download';
 
 interface UnifiedAudioControllerProps {
@@ -50,24 +53,80 @@ export default function UnifiedAudioController({
   if (!isDownloaded && !isDownloading) {
     return (
       <TwView
-        className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-4 rounded-[24px]"
+        className="card-container gap-4 self-stretch p-4 rounded-[24px]"
         testID="unified-audio-controller-idle"
       >
         {isError && errorMsg && (
-          <TwText className="text-xs text-rose-600 font-bold text-center">{errorMsg}</TwText>
+          <ThemedText className="text-xs text-rose-600 font-bold text-center">
+            {errorMsg}
+          </ThemedText>
         )}
-        <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm self-center w-full max-w-[240px]">
-          <TwPressable
-            accessibilityLabel={t('components.mediaControls.btnPlayDownload')}
-            testID="play-download-button"
-            className="py-3 items-center active:bg-emerald-600 flex-row justify-center gap-2"
-            onPress={onDownload}
-            disabled={disabled}
-          >
-            <TwText className="text-white font-extrabold text-sm">
-              {t('components.mediaControls.btnPlayDownload')}
-            </TwText>
-          </TwPressable>
+        {durationMs > 0 && (
+          <ThemedText className="text-center text-lg font-code text-zinc-700 dark:text-zinc-300 font-extrabold">
+            {`0:00 / ${formatTime(durationMs)}`}
+          </ThemedText>
+        )}
+        <TwView className="flex-row gap-4 justify-center">
+          {/* Reset button (disabled) */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm opacity-50">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnReset')}
+                testID="audio-reset-button"
+                className="py-3 items-center justify-center h-[44px]"
+                disabled={true}
+              >
+                <Icon
+                  ios="arrow.counterclockwise"
+                  android="replay"
+                  web="replay"
+                  size={20}
+                  tintColor="#a1a1aa"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
+
+          {/* Play/Download button */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnPlayDownload')}
+                testID="play-download-button"
+                className="py-3 items-center active:bg-emerald-600 flex-row justify-center gap-2"
+                onPress={onDownload}
+                disabled={disabled}
+              >
+                <Icon
+                  ios="play.fill"
+                  android="play_arrow"
+                  web="play_arrow"
+                  size={20}
+                  tintColor="#ffffff"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
+
+          {/* Rewind button (disabled) */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm opacity-50">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnRewind')}
+                testID="audio-rewind-button"
+                className="py-3 items-center justify-center h-[44px]"
+                disabled={true}
+              >
+                <Icon
+                  ios="gobackward.10"
+                  android="replay_10"
+                  web="replay_10"
+                  size={20}
+                  tintColor="#a1a1aa"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
         </TwView>
       </TwView>
     );
@@ -77,12 +136,12 @@ export default function UnifiedAudioController({
   if (isDownloading) {
     return (
       <TwView
-        className="bg-white/50 border border-zinc-200/30 gap-4 self-stretch p-5 rounded-[24px] items-center"
+        className="card-container gap-4 self-stretch p-5 rounded-[24px] items-center"
         testID="unified-audio-controller-downloading"
       >
-        <TwText className="text-xs text-zinc-500 font-bold tracking-wider uppercase">
+        <ThemedText className="text-xs text-zinc-500 font-bold tracking-wider uppercase">
           {t('components.mediaControls.statusDownloading', { value: Math.round(downloadProgress) })}
-        </TwText>
+        </ThemedText>
 
         <TwView className="w-full gap-2">
           {/* Progress bar container */}
@@ -103,9 +162,9 @@ export default function UnifiedAudioController({
               className="py-2 items-center active:bg-zinc-300 dark:active:bg-zinc-800"
               onPress={onCancelDownload}
             >
-              <TwText className="text-zinc-800 dark:text-zinc-200 font-bold text-xs">
+              <ThemedText className="text-zinc-800 dark:text-zinc-200 font-bold text-xs">
                 {t('components.mediaControls.btnCancel')}
-              </TwText>
+              </ThemedText>
             </TwPressable>
           </TwView>
         )}
