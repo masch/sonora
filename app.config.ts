@@ -23,6 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     predictiveBackGestureEnabled: false,
     package: 'com.masch.sonora',
+    versionCode: 6,
   },
   web: {
     output: 'static',

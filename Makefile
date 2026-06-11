@@ -202,6 +202,10 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 
 # ── EAS Deploy ───────────────────────────────
 
+.PHONY: bump-version-code
+bump-version-code: ## Increment android.versionCode in app.config.ts
+	scripts/bump-version-code.sh
+
 EAS_CLI_VERSION ?=
 
 .PHONY: eas-whoami
@@ -233,7 +237,7 @@ eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Andro
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
-eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
+eas-build-android-preview-local: eas-whoami bump-version-code ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
 	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
@@ -257,6 +261,9 @@ FIREBASE_GROUP_DEV     ?= dev-team
 FIREBASE_GROUP_SONORA  ?= sonora-team
 # Composes --testers flag only when FIREBASE_TESTERS is non-empty
 FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
+# Release notes — auto-generates "Build <versionCode> - <date>" but can be overridden:
+#   make firebase-distribute-all FIREBASE_RELEASE_NOTES="Fix login crash"
+FIREBASE_RELEASE_NOTES ?= Build $(shell grep -oP 'versionCode:\s*\K\d+' app.config.ts) - $(shell date '+%Y-%m-%d')
 
 .PHONY: firebase-login-ci
 firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
@@ -276,7 +283,7 @@ firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
 
 .PHONY: firebase-distribute-all
 firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
-	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)"
+	bun run firebase appdistribution:distribute "$(FIREBASE_APK_PATH)" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" --release-notes "$(FIREBASE_RELEASE_NOTES)"
 
 # ── Emulator ───────────────────────────────
 
