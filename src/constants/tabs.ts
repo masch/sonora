@@ -30,13 +30,13 @@ export const TABS = [
     label: 'Explore',
     ioniconsName: 'compass-outline',
     symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
-    hidden: false,
+    hidden: true,
   },
   {
     name: 'settings',
     label: 'Settings',
     ioniconsName: 'settings-outline',
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
-    hidden: false,
+    hidden: true,
   },
 ] as const satisfies TabDefinition[];

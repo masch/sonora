@@ -120,11 +120,17 @@ export default function AudioMediaControls({
               onPress={isPlaying ? onPause : onPlay}
               disabled={disabled && !isPlaying}
             >
-              <TwText className="text-white font-extrabold text-sm leading-none">
-                {isPlaying
-                  ? t('components.mediaControls.btnPause')
-                  : t('components.mediaControls.btnPlay')}
-              </TwText>
+              {isPlaying ? (
+                <Icon ios="pause.fill" android="pause" web="pause" size={20} tintColor="#ffffff" />
+              ) : (
+                <Icon
+                  ios="play.fill"
+                  android="play_arrow"
+                  web="play_arrow"
+                  size={20}
+                  tintColor="#ffffff"
+                />
+              )}
             </TwPressable>
           </TwView>
         </TwView>
