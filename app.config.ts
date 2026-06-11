@@ -43,9 +43,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-localization',
     'expo-asset',
-    'expo-audio',
-    'expo-image',
-    'expo-sqlite',
     [
       'expo-font',
       {
