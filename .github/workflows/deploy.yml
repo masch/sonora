@@ -1,4 +1,4 @@
-name: Deploy Web
+name: Deploy App
 
 on:
   push:
@@ -25,3 +25,13 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: make eas-build-web
+      - name: Setup Java SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build Android Preview APK
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_INTERACTIVE: '1'
+        run: make eas-build-android-preview-local
