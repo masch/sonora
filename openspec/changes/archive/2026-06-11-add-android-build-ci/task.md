@@ -1,0 +1,3 @@
+- [x] Update deploy.yml to setup Java and compile Android preview
+- [x] Verify workflow configuration syntax
+- [x] Review implementation and clean up
