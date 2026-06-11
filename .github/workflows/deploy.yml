@@ -35,3 +35,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
         run: make eas-build-android-preview-local
+      - name: Distribute Android APK to Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: make firebase-distribute-all
