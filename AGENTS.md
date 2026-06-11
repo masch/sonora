@@ -79,3 +79,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 ## 10. Dependency Management
 
 - **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (which requires packages to be at least 10 days old) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
+
+## 11. GitHub CLI Sandbox Environment Overrides
+
+- **GitHub CLI Commands**: The agent sandbox environments inject a dummy `GITHUB_TOKEN` (e.g., `github_pat_antigravitydummytoken`) which overrides the user's authentic local hosts credential configuration. When invoking `gh` commands, you MUST explicitly bypass this dummy token by unsetting `GITHUB_TOKEN` and `GH_TOKEN` environment variables using `env -u GITHUB_TOKEN -u GH_TOKEN gh <command>` to allow the CLI to use the user's local keychain/helper authentication.
