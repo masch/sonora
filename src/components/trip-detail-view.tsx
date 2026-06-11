@@ -195,7 +195,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             downloadError={download.errorMsg}
             playerStatus={player.status}
             positionMs={player.positionMs}
-            durationMs={player.durationMs}
+            durationMs={player.durationMs || (trip ? trip.durationMinutes * 60 * 1000 : 0)}
             playerError={player.errorMsg}
             onPlay={player.play}
             onPause={player.pause}

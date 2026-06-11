@@ -2,6 +2,7 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwText, TwView } from '@/tw';
 import { Icon } from '@/components/icon';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatTime } from '@/utils/time';
 
 export type MediaStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
@@ -16,13 +17,6 @@ interface AudioMediaControlsProps {
   onRewind?: () => void;
   onReset?: () => void;
   disabled?: boolean;
-}
-
-function formatTime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 export default function AudioMediaControls({
@@ -78,20 +72,24 @@ export default function AudioMediaControls({
         {/* Reset button */}
         {onReset && (
           <TwView className="flex-1 max-w-[160px]">
-            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
+            <TwView
+              className={`bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm ${
+                disabled || positionMs === 0 ? 'opacity-50' : ''
+              }`}
+            >
               <TwPressable
                 accessibilityLabel={t('components.mediaControls.btnReset')}
                 testID="audio-reset-button"
                 className="py-3 items-center justify-center h-[44px] active:bg-zinc-300 dark:active:bg-zinc-800"
                 onPress={onReset}
-                disabled={disabled}
+                disabled={disabled || positionMs === 0}
               >
                 <Icon
                   ios="arrow.counterclockwise"
                   android="replay"
                   web="replay"
                   size={20}
-                  tintColor={disabled ? '#a1a1aa' : colors.text}
+                  tintColor={disabled || positionMs === 0 ? '#a1a1aa' : colors.text}
                 />
               </TwPressable>
             </TwView>
@@ -138,20 +136,24 @@ export default function AudioMediaControls({
         {/* Rewind button */}
         {onRewind && (
           <TwView className="flex-1 max-w-[160px]">
-            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm">
+            <TwView
+              className={`bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm ${
+                disabled || positionMs === 0 ? 'opacity-50' : ''
+              }`}
+            >
               <TwPressable
                 accessibilityLabel={t('components.mediaControls.btnRewind')}
                 testID="audio-rewind-button"
                 className="py-3 items-center justify-center h-[44px] active:bg-zinc-300 dark:active:bg-zinc-800"
                 onPress={onRewind}
-                disabled={disabled}
+                disabled={disabled || positionMs === 0}
               >
                 <Icon
                   ios="gobackward.10"
                   android="replay_10"
                   web="replay_10"
                   size={20}
-                  tintColor={disabled ? '#a1a1aa' : colors.text}
+                  tintColor={disabled || positionMs === 0 ? '#a1a1aa' : colors.text}
                 />
               </TwPressable>
             </TwView>

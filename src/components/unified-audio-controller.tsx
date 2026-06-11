@@ -4,6 +4,7 @@ import { TwPressable, TwView } from '@/tw';
 import AudioMediaControls, { MediaStatus } from '@/components/audio-media-controls';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
+import { formatTime } from '@/utils/time';
 import type { DownloadStatus } from '@/hooks/use-trip-download';
 
 interface UnifiedAudioControllerProps {
@@ -60,22 +61,72 @@ export default function UnifiedAudioController({
             {errorMsg}
           </ThemedText>
         )}
-        <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm self-center w-full max-w-[160px]">
-          <TwPressable
-            accessibilityLabel={t('components.mediaControls.btnPlayDownload')}
-            testID="play-download-button"
-            className="py-3 items-center active:bg-emerald-600 flex-row justify-center gap-2"
-            onPress={onDownload}
-            disabled={disabled}
-          >
-            <Icon
-              ios="play.fill"
-              android="play_arrow"
-              web="play_arrow"
-              size={20}
-              tintColor="#ffffff"
-            />
-          </TwPressable>
+        {durationMs > 0 && (
+          <ThemedText className="text-center text-lg font-code text-zinc-700 dark:text-zinc-300 font-extrabold">
+            {`0:00 / ${formatTime(durationMs)}`}
+          </ThemedText>
+        )}
+        <TwView className="flex-row gap-4 justify-center">
+          {/* Reset button (disabled) */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm opacity-50">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnReset')}
+                testID="audio-reset-button"
+                className="py-3 items-center justify-center h-[44px]"
+                disabled={true}
+              >
+                <Icon
+                  ios="arrow.counterclockwise"
+                  android="replay"
+                  web="replay"
+                  size={20}
+                  tintColor="#a1a1aa"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
+
+          {/* Play/Download button */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnPlayDownload')}
+                testID="play-download-button"
+                className="py-3 items-center active:bg-emerald-600 flex-row justify-center gap-2"
+                onPress={onDownload}
+                disabled={disabled}
+              >
+                <Icon
+                  ios="play.fill"
+                  android="play_arrow"
+                  web="play_arrow"
+                  size={20}
+                  tintColor="#ffffff"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
+
+          {/* Rewind button (disabled) */}
+          <TwView className="flex-1 max-w-[160px]">
+            <TwView className="bg-zinc-200 dark:bg-zinc-700 rounded-xl overflow-hidden shadow-sm opacity-50">
+              <TwPressable
+                accessibilityLabel={t('components.mediaControls.btnRewind')}
+                testID="audio-rewind-button"
+                className="py-3 items-center justify-center h-[44px]"
+                disabled={true}
+              >
+                <Icon
+                  ios="gobackward.10"
+                  android="replay_10"
+                  web="replay_10"
+                  size={20}
+                  tintColor="#a1a1aa"
+                />
+              </TwPressable>
+            </TwView>
+          </TwView>
         </TwView>
       </TwView>
     );

@@ -40,6 +40,26 @@ describe('UnifiedAudioController', () => {
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
+  it('renders duration when durationMs > 0 in idle state', () => {
+    const { getByText } = render(
+      <UnifiedAudioController
+        downloadStatus="idle"
+        downloadProgress={0}
+        downloadError={null}
+        playerStatus="idle"
+        positionMs={0}
+        durationMs={120000}
+        playerError={null}
+        onPlay={jest.fn()}
+        onPause={jest.fn()}
+        onStop={jest.fn()}
+        onDownload={jest.fn()}
+      />,
+    );
+
+    expect(getByText('0:00 / 2:00')).toBeTruthy();
+  });
+
   it('renders downloading state with progress bar and cancel button', () => {
     const onCancel = jest.fn();
     const { getByTestId, getByText } = render(
