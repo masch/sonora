@@ -78,7 +78,7 @@ export default function TripMap() {
           onPress={() => setShowInstructionsOverlay(true)}
           accessibilityLabel={t('map.instructionsTitle')}
           testID="show-instructions"
-          className="w-40 h-40 items-center justify-center z-10"
+          className="size-40 items-center justify-center z-10"
         >
           <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
         </TwPressable>
@@ -150,7 +150,7 @@ export default function TripMap() {
               </TwView>
             </TwView>
 
-            <TwView className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm active:opacity-80">
+            <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm active:opacity-80">
               <Icon
                 ios="play.fill"
                 android="play_arrow"
@@ -189,7 +189,7 @@ export default function TripMap() {
                     {/* Left Cover Image */}
                     <TwImage
                       source={tripImage}
-                      className="w-16 h-16 rounded-xl mr-3"
+                      className="size-16 rounded-xl mr-3"
                       contentFit="cover"
                       alt=""
                     />
@@ -238,7 +238,7 @@ export default function TripMap() {
                             {trip.priceLabel}
                           </ThemedText>
                         )}
-                        <TwView className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
+                        <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
                           {trip.isDownloadable ? (
                             <Icon
                               ios="arrow.down"
