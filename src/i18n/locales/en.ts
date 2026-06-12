@@ -20,6 +20,10 @@ export const en = {
     tripsTitle: 'RECORRIDOS',
     tripCardMeta: '{{duration}} min · {{sections}}{{type}}{{distance}}',
     zeroDistance: '0 mts',
+    destination: 'Destination',
+    userLocation: 'Your location',
+    hideLabels: 'Hide labels',
+    showLabels: 'Show labels',
   },
   trips: {
     notFound: 'Trip not found',

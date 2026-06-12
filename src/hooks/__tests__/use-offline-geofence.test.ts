@@ -30,6 +30,7 @@ describe('useOfflineGeofence hook', () => {
         gpsStatus: 'initializing',
         distanceMeters: null,
         requiredRadiusMeters: 50,
+        userCoordinates: null,
         errorMsg: null,
       },
     };
@@ -55,6 +56,7 @@ describe('useOfflineGeofence hook', () => {
         gpsStatus: 'initializing',
         distanceMeters: null,
         requiredRadiusMeters: 50,
+        userCoordinates: null,
         errorMsg: null,
       },
     };
@@ -105,6 +107,7 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.gpsStatus).toBe('ready');
     expect(result.current.isNearStart).toBe(true);
     expect(result.current.gpsAccuracy).toBe(5);
+    expect(result.current.userCoordinates).toEqual({ latitude: -31.979, longitude: -64.635 });
   });
 
   it('should flag weak status when accuracy exceeds threshold', async () => {
