@@ -9,6 +9,7 @@ export interface GeofenceState {
   gpsStatus: 'initializing' | 'weak' | 'ready';
   distanceMeters: number | null;
   requiredRadiusMeters: number;
+  userCoordinates: { latitude: number; longitude: number } | null;
   errorMsg: string | null;
 }
 
@@ -31,6 +32,7 @@ export function useOfflineGeofence(
     gpsStatus: 'initializing',
     distanceMeters: null,
     requiredRadiusMeters: GEOFENCE_RADIUS_METERS,
+    userCoordinates: null,
     errorMsg: null,
   });
 
@@ -49,6 +51,7 @@ export function useOfflineGeofence(
           setState((prev) => ({
             ...prev,
             gpsStatus: 'weak',
+            userCoordinates: null,
             errorMsg: 'Permission to access location was denied',
           }));
           return;
@@ -85,6 +88,7 @@ export function useOfflineGeofence(
               gpsStatus: isWeak ? 'weak' : 'ready',
               distanceMeters: distance,
               requiredRadiusMeters: GEOFENCE_RADIUS_METERS,
+              userCoordinates: { latitude, longitude },
               errorMsg: null,
             });
           },
@@ -94,6 +98,7 @@ export function useOfflineGeofence(
         setState((prev) => ({
           ...prev,
           gpsStatus: 'weak',
+          userCoordinates: null,
           errorMsg: message,
         }));
       }

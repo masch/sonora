@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type L from 'leaflet';
 
 import { ThemedText } from '@/components/themed-text';
@@ -23,21 +23,31 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 interface TripDetailMapProps {
   latitude: number;
   longitude: number;
+  userLatitude?: number;
+  userLongitude?: number;
+  showLabels?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TripDetailMap({ latitude, longitude }: TripDetailMapProps) {
+export default function TripDetailMap({
+  latitude,
+  longitude,
+  userLatitude,
+  userLongitude,
+  showLabels = true,
+}: TripDetailMapProps) {
   const { t } = useAppTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const destMarkerRef = useRef<L.Marker | null>(null);
+  const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!isBrowser) return;
-    if (mapRef.current) return;
 
     function init(leaflet: typeof import('leaflet')) {
       if (mapRef.current || !containerRef.current) return;
@@ -69,7 +79,28 @@ export default function TripDetailMap({ latitude, longitude }: TripDetailMapProp
           })
           .addTo(map);
 
-        leaflet.marker([latitude, longitude], { icon }).addTo(map);
+        const destMarker = leaflet.marker([latitude, longitude], { icon }).addTo(map);
+        destMarkerRef.current = destMarker;
+        destMarker.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
+
+        if (userLatitude !== undefined && userLongitude !== undefined) {
+          const userMarker = leaflet
+            .circleMarker([userLatitude, userLongitude], {
+              radius: 8,
+              color: '#ffffff',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.9,
+              weight: 2,
+            })
+            .addTo(map);
+          userMarkerRef.current = userMarker;
+          userMarker.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
+          const bounds = leaflet.latLngBounds([
+            [latitude, longitude],
+            [userLatitude, userLongitude],
+          ]);
+          map.fitBounds(bounds.pad(0.2));
+        }
 
         mapRef.current = map;
       } catch (err) {
@@ -83,33 +114,63 @@ export default function TripDetailMap({ latitude, longitude }: TripDetailMapProp
 
     if (getL()) {
       init(getL()!);
-      return;
+    } else {
+      // CSS
+      if (!document.querySelector('link[data-trip-detail-map-css]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = LEAFLET_CSS_URL;
+        link.setAttribute('data-trip-detail-map-css', '');
+        document.head.appendChild(link);
+      }
+
+      // JS
+      const script = document.createElement('script');
+      script.src = LEAFLET_JS_URL;
+      script.onload = () => {
+        const L = getL();
+        if (L) init(L);
+      };
+      script.onerror = () => setError(true);
+      document.head.appendChild(script);
     }
 
-    // CSS
-    if (!document.querySelector('link[data-trip-detail-map-css]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = LEAFLET_CSS_URL;
-      link.setAttribute('data-trip-detail-map-css', '');
-      document.head.appendChild(link);
-    }
-
-    // JS
-    const script = document.createElement('script');
-    script.src = LEAFLET_JS_URL;
-    script.onload = () => {
-      const L = getL();
-      if (L) init(L);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        destMarkerRef.current = null;
+        userMarkerRef.current = null;
+      }
     };
-    script.onerror = () => setError(true);
-    document.head.appendChild(script);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [latitude, longitude, userLatitude, userLongitude, t]);
+
+  // Sync Leaflet tooltip visibility with the external Leaflet system.
+  // useLayoutEffect is the correct pattern for synchronizing with external
+  // (non-React) systems — avoids the "event logic in effect" anti-pattern.
+  useLayoutEffect(() => {
+    const dest = destMarkerRef.current;
+    const user = userMarkerRef.current;
+    if (dest) {
+      dest.unbindTooltip();
+      if (showLabels) {
+        dest.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
+      }
+    }
+    if (user) {
+      user.unbindTooltip();
+      if (showLabels) {
+        user.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
+      }
+    }
+  }, [showLabels, t]);
 
   if (error) {
     return (
-      <TwView className="h-48 w-full items-center justify-center gap-2 rounded-xl bg-backgroundElement px-4">
+      <TwView
+        testID="trip-detail-map-error"
+        className="h-80 w-full items-center justify-center gap-2 bg-backgroundElement px-4"
+      >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {t('map.offlineDescription')}
@@ -119,7 +180,7 @@ export default function TripDetailMap({ latitude, longitude }: TripDetailMapProp
   }
 
   return (
-    <TwView className="h-48 w-full overflow-hidden rounded-xl">
+    <TwView testID="trip-detail-map" className="h-80 w-full overflow-hidden">
       <div ref={containerRef} className="h-full w-full z-0" />
     </TwView>
   );

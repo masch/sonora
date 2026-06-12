@@ -38,6 +38,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showManualFeedback, setShowManualFeedback] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
   const trip = getTripById(tripId);
@@ -158,11 +159,15 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
         <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
 
         {/* Main Details Card */}
-        <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+        <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
           {/* Trip header */}
-          <TwView className="items-center gap-2 py-2">
-            <ThemedText className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 tracking-wider">
-              {trip.title}
+          <TwView className="items-center gap-2 p-2 w-full">
+            <ThemedText
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 px-2"
+            >
+              {trip.title + ' '}
             </ThemedText>
             <ThemedText className="text-zinc-600 dark:text-zinc-400 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
               {t('trips.duration', { minutes: trip.durationMinutes })}
@@ -174,10 +179,29 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
           </ThemedText>
 
           {/* Mini map */}
-          <TripDetailMap
-            latitude={trip.startCoordinates.latitude}
-            longitude={trip.startCoordinates.longitude}
-          />
+          <TwView className="-mx-3 relative">
+            <TripDetailMap
+              latitude={trip.startCoordinates.latitude}
+              longitude={trip.startCoordinates.longitude}
+              userLatitude={geofence.userCoordinates?.latitude}
+              userLongitude={geofence.userCoordinates?.longitude}
+              showLabels={showLabels}
+            />
+            <TwPressable
+              onPress={() => setShowLabels(!showLabels)}
+              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 p-2 rounded-lg shadow-md z-20 active:opacity-80"
+              accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+              testID="toggle-map-labels"
+            >
+              <Icon
+                ios={showLabels ? 'tag.slash.fill' : 'tag.fill'}
+                android={showLabels ? 'label_off' : 'label'}
+                web={showLabels ? 'label_off' : 'label'}
+                size={16}
+                tintColor={showLabels ? '#dc2626' : '#2563eb'}
+              />
+            </TwPressable>
+          </TwView>
 
           {/* GPS precision */}
           <GpsPrecisionBadge

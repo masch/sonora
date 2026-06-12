@@ -107,6 +107,22 @@ describe('useImmersionPlayer hook', () => {
       expect(result.current.status).toBe('stopped');
     });
 
+    it('should ignore transient loading state during buffering/seek if already loaded once', () => {
+      mockStatus.isLoaded = true;
+      mockStatus.playing = true;
+
+      const { result, rerender } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      expect(result.current.status).toBe('playing');
+
+      // Simulate transient buffering
+      mockStatus.isBuffering = true;
+      mockStatus.isLoaded = false;
+      rerender();
+
+      // Should still return playing
+      expect(result.current.status).toBe('playing');
+    });
+
     it('should convert seconds to milliseconds', () => {
       mockStatus.playing = true;
       mockStatus.isLoaded = true;

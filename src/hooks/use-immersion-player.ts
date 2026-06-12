@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { logger } from '@/utils/logger';
@@ -43,6 +43,15 @@ export function useImmersionPlayer(localAudioUri: string | null) {
     timeControlStatus,
   } = useAudioPlayerStatus(player);
 
+  const [prevUri, setPrevUri] = useState<string | null>(localAudioUri);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Reset load state when URI changes
+  if (localAudioUri !== prevUri) {
+    setPrevUri(localAudioUri);
+    setHasLoaded(false);
+  }
+
   // Configure audio session once on mount
   useEffect(() => {
     setupImmersionAudioSession().catch((err: unknown) => {
@@ -50,16 +59,22 @@ export function useImmersionPlayer(localAudioUri: string | null) {
     });
   }, []);
 
+  // Sync hasLoaded when player completes its initial load
+  if (isLoaded && !hasLoaded) {
+    setHasLoaded(true);
+  }
+
   // Map expo-audio status to our PlayerStatus
-  const mappedStatus = (): PlayerStatus => {
+  const status: PlayerStatus = (() => {
     if (!localAudioUri) return 'idle';
-    if (isBuffering) return 'loading';
+    if (!hasLoaded) {
+      if (isBuffering || !isLoaded) return 'loading';
+    }
     if (playing) return 'playing';
     if (didJustFinish) return 'stopped';
     if (isLoaded && timeControlStatus === 'paused') return 'paused';
-    if (!isLoaded) return 'loading';
     return 'stopped';
-  };
+  })();
   const play = useCallback(() => {
     if (!localAudioUri) return;
     try {
@@ -99,7 +114,7 @@ export function useImmersionPlayer(localAudioUri: string | null) {
   );
 
   return {
-    status: mappedStatus(),
+    status,
     positionMs: (currentTime ?? 0) * 1000,
     durationMs: (duration ?? 0) * 1000,
     errorMsg: null,
