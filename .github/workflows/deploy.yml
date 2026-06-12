@@ -34,12 +34,12 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
-          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_CODE: ${{ github.run_number }}
         run: make eas-build-android-preview-local
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
