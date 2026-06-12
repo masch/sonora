@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type L from 'leaflet';
 
 import { ThemedText } from '@/components/themed-text';
@@ -145,8 +145,10 @@ export default function TripDetailMap({
     };
   }, [latitude, longitude, userLatitude, userLongitude, t]);
 
-  // Toggle labels dynamically in-place without re-initializing the map
-  useEffect(() => {
+  // Sync Leaflet tooltip visibility with the external Leaflet system.
+  // useLayoutEffect is the correct pattern for synchronizing with external
+  // (non-React) systems — avoids the "event logic in effect" anti-pattern.
+  useLayoutEffect(() => {
     const dest = destMarkerRef.current;
     const user = userMarkerRef.current;
     if (dest) {
@@ -165,7 +167,10 @@ export default function TripDetailMap({
 
   if (error) {
     return (
-      <TwView className="h-80 w-full items-center justify-center gap-2 bg-backgroundElement px-4">
+      <TwView
+        testID="trip-detail-map-error"
+        className="h-80 w-full items-center justify-center gap-2 bg-backgroundElement px-4"
+      >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {t('map.offlineDescription')}
@@ -175,7 +180,7 @@ export default function TripDetailMap({
   }
 
   return (
-    <TwView className="h-80 w-full overflow-hidden">
+    <TwView testID="trip-detail-map" className="h-80 w-full overflow-hidden">
       <div ref={containerRef} className="h-full w-full z-0" />
     </TwView>
   );
