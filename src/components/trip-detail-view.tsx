@@ -161,7 +161,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
         {/* Main Details Card */}
         <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
           {/* Trip header */}
-          <TwView className="items-center gap-2 py-2 w-full px-2">
+          <TwView className="items-center gap-2 p-2 w-full">
             <ThemedText
               numberOfLines={1}
               adjustsFontSizeToFit
