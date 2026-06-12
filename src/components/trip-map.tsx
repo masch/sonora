@@ -1,7 +1,7 @@
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Platform } from 'react-native';
+import { useLocationStore } from '@/store/location-store';
 
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 
@@ -19,11 +19,6 @@ const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
 const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 const instructionsBg = require('@/assets/images/sonora/cover-instrucciones-1.png');
-
-interface Coords {
-  latitude: number;
-  longitude: number;
-}
 
 function formatDistance(
   meters: number,
@@ -47,38 +42,8 @@ export default function TripMap() {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const trips = getAllTrips();
-  const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
+  const currentLocation = useLocationStore((state) => state.coords);
   const [showInstructionsOverlay, setShowInstructionsOverlay] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function getLocation() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        if (!cancelled) {
-          setCurrentLocation({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
-        }
-      } catch {
-        // Silently ignore — no location, no distance shown
-      }
-    }
-
-    getLocation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (trips.length === 0) {
     return (

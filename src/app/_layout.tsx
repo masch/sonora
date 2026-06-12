@@ -8,6 +8,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+import { useLocationStore } from '@/store/location-store';
+
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
 if (typeof document !== 'undefined') {
   const link = document.createElement('link');
@@ -23,6 +25,14 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap());
+
+  // Start location subscription on app load
+  useEffect(() => {
+    const unsubscribe = useLocationStore.getState().startWatching();
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
