@@ -83,25 +83,6 @@ export default function TripDetailMap({
         destMarkerRef.current = destMarker;
         destMarker.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
 
-        if (userLatitude !== undefined && userLongitude !== undefined) {
-          const userMarker = leaflet
-            .circleMarker([userLatitude, userLongitude], {
-              radius: 8,
-              color: '#ffffff',
-              fillColor: '#3b82f6',
-              fillOpacity: 0.9,
-              weight: 2,
-            })
-            .addTo(map);
-          userMarkerRef.current = userMarker;
-          userMarker.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
-          const bounds = leaflet.latLngBounds([
-            [latitude, longitude],
-            [userLatitude, userLongitude],
-          ]);
-          map.fitBounds(bounds.pad(0.2));
-        }
-
         mapRef.current = map;
       } catch (err) {
         logger.error('TripDetailMap init failed:', err);
@@ -143,11 +124,43 @@ export default function TripDetailMap({
         userMarkerRef.current = null;
       }
     };
-  }, [latitude, longitude, userLatitude, userLongitude, t]);
+  }, [latitude, longitude, t]);
+
+  // Handle user coordinates changes dynamically (no reload, smooth transition)
+  useLayoutEffect(() => {
+    if (!mapRef.current) return;
+    const leaflet = (window as unknown as Record<string, unknown>).L as
+      | typeof import('leaflet')
+      | undefined;
+    if (!leaflet) return;
+
+    if (userLatitude !== undefined && userLongitude !== undefined) {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([userLatitude, userLongitude]);
+      } else {
+        const userMarker = leaflet
+          .circleMarker([userLatitude, userLongitude], {
+            radius: 8,
+            color: '#ffffff',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.9,
+            weight: 2,
+          })
+          .addTo(mapRef.current);
+        userMarkerRef.current = userMarker;
+        if (showLabels) {
+          userMarker.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
+        }
+      }
+      const bounds = leaflet.latLngBounds([
+        [latitude, longitude],
+        [userLatitude, userLongitude],
+      ]);
+      mapRef.current.fitBounds(bounds.pad(0.2), { animate: true });
+    }
+  }, [userLatitude, userLongitude, latitude, longitude, showLabels, t]);
 
   // Sync Leaflet tooltip visibility with the external Leaflet system.
-  // useLayoutEffect is the correct pattern for synchronizing with external
-  // (non-React) systems — avoids the "event logic in effect" anti-pattern.
   useLayoutEffect(() => {
     const dest = destMarkerRef.current;
     const user = userMarkerRef.current;
@@ -180,7 +193,14 @@ export default function TripDetailMap({
   }
 
   return (
-    <TwView testID="trip-detail-map" className="h-80 w-full overflow-hidden">
+    <TwView testID="trip-detail-map" className="relative h-80 w-full overflow-hidden">
+      {userLatitude === undefined && (
+        <TwView className="absolute bottom-4 left-4 z-10 rounded-full bg-black/70 px-4 py-2">
+          <ThemedText className="text-sm font-semibold text-white">
+            {t('map.fetchingLocation')}
+          </ThemedText>
+        </TwView>
+      )}
       <div ref={containerRef} className="h-full w-full z-0" />
     </TwView>
   );

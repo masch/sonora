@@ -22,14 +22,7 @@ interface TripDetailMapProps {
 // Build Leaflet HTML → base64 data URI
 // ---------------------------------------------------------------------------
 
-function buildDataUri(
-  lat: number,
-  lng: number,
-  destLabel: string,
-  userLocationLabel: string,
-  userLat?: number,
-  userLng?: number,
-): string {
+function buildDataUri(lat: number, lng: number, destLabel: string): string {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -51,23 +44,11 @@ iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
 shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 iconSize:[25,41],iconAnchor:[12,41],popupAnchor:[1,-34],shadowSize:[41,41]});
 var map=L.map('map',{center:[${lat},${lng}],zoom:15,zoomControl:false,scrollWheelZoom:false});
+window.map=map;
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM contributors',maxZoom:19}).addTo(map);
 var destMarker = L.marker([${lat},${lng}],{icon}).addTo(map);
 window.destMarker = destMarker;
 destMarker.bindTooltip("${destLabel}",{permanent:true,direction:'top'});
-if (${userLat !== undefined} && ${userLng !== undefined}) {
-  var userMarker = L.circleMarker([${userLat ?? 0},${userLng ?? 0}], {
-    radius: 8,
-    color: '#ffffff',
-    fillColor: '#3b82f6',
-    fillOpacity: 0.9,
-    weight: 2
-  }).addTo(map);
-  window.userMarker = userMarker;
-  userMarker.bindTooltip("${userLocationLabel}",{permanent:true,direction:'top'});
-  var bounds = L.latLngBounds([[${lat},${lng}], [${userLat ?? 0},${userLng ?? 0}]]);
-  map.fitBounds(bounds.pad(0.2));
-}
 }catch(e){document.body.innerHTML='<p style="padding:20px;color:#666">'+e.message+'</p>'}
 <\/script>
 </body>
@@ -108,7 +89,7 @@ export default function TripDetailMap({
 
   const uri = fallback
     ? buildEmbedUrl(latitude, longitude)
-    : buildDataUri(latitude, longitude, destLabel, userLocLabel, userLatitude, userLongitude);
+    : buildDataUri(latitude, longitude, destLabel);
 
   // Toggle labels dynamically without reloading the WebView
   useEffect(() => {
@@ -132,6 +113,40 @@ export default function TripDetailMap({
     }
   }, [showLabels, destLabel, userLocLabel, loading]);
 
+  // Handle coordinates changes dynamically (no reload, smooth transition)
+  useEffect(() => {
+    if (
+      webviewRef.current &&
+      !loading &&
+      userLatitude !== undefined &&
+      userLongitude !== undefined
+    ) {
+      const js = `
+        if (window.map) {
+          if (window.userMarker) {
+            window.userMarker.setLatLng([${userLatitude}, ${userLongitude}]);
+          } else {
+            var userMarker = L.circleMarker([${userLatitude}, ${userLongitude}], {
+              radius: 8,
+              color: '#ffffff',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.9,
+              weight: 2
+            }).addTo(window.map);
+            window.userMarker = userMarker;
+            if (${showLabels}) {
+              userMarker.bindTooltip("${userLocLabel}", { permanent: true, direction: 'top' });
+            }
+          }
+          var bounds = L.latLngBounds([[${latitude}, ${longitude}], [${userLatitude}, ${userLongitude}]]);
+          window.map.fitBounds(bounds.pad(0.2), { animate: true });
+        }
+        true;
+      `;
+      webviewRef.current.injectJavaScript(js);
+    }
+  }, [userLatitude, userLongitude, latitude, longitude, showLabels, userLocLabel, loading]);
+
   const handleError = () => {
     if (!fallback) {
       // First failure → try OSM embed fallback
@@ -152,8 +167,15 @@ export default function TripDetailMap({
   }
 
   return (
-    <TwView className="h-80 w-full overflow-hidden bg-backgroundElement">
+    <TwView className="relative h-80 w-full overflow-hidden bg-backgroundElement">
       {loading && <LoadingView message={t('map.loadingMap')} />}
+      {!loading && userLatitude === undefined && (
+        <TwView className="absolute bottom-4 left-4 z-10 rounded-full bg-black/70 px-4 py-2">
+          <ThemedText className="text-sm font-semibold text-white">
+            {t('map.fetchingLocation')}
+          </ThemedText>
+        </TwView>
+      )}
       <WebView
         ref={webviewRef}
         source={{ uri }}

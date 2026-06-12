@@ -24,6 +24,7 @@ export const es = {
     userLocation: 'Tu ubicación',
     hideLabels: 'Ocultar etiquetas',
     showLabels: 'Mostrar etiquetas',
+    fetchingLocation: 'Obteniendo ubicación…',
   },
   trips: {
     notFound: 'Viaje no encontrado',
