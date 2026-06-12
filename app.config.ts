@@ -23,7 +23,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     predictiveBackGestureEnabled: false,
     package: 'com.masch.sonora',
-    versionCode: 6,
+    versionCode: process.env.ANDROID_VERSION_CODE
+      ? parseInt(process.env.ANDROID_VERSION_CODE, 10)
+      : 6,
   },
   web: {
     output: 'static',
