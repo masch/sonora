@@ -13,7 +13,7 @@ env:
 
 concurrency:
   group: deploy-main
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
