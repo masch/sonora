@@ -83,6 +83,14 @@ jest.mock('expo-location', () => ({
 import * as Location from 'expo-location';
 
 // ---------------------------------------------------------------------------
+// Mock useLocationStore
+// ---------------------------------------------------------------------------
+import { useLocationStore } from '@/store/location-store';
+jest.mock('@/store/location-store', () => ({
+  useLocationStore: jest.fn(),
+}));
+
+// ---------------------------------------------------------------------------
 // Mock useAppTranslation
 // ---------------------------------------------------------------------------
 jest.mock('@/hooks/use-translation', () => ({
@@ -99,6 +107,15 @@ import TripMap from '@/components/trip-map';
 // Tests
 // ---------------------------------------------------------------------------
 describe('TripMap native component', () => {
+  beforeEach(() => {
+    mockTripsData = DEFAULT_TRIPS;
+    jest.clearAllMocks();
+    (useLocationStore as unknown as jest.Mock).mockImplementation((selector) => {
+      const state = { coords: null, accuracy: null, status: 'initializing', errorMsg: null };
+      return selector ? selector(state) : state;
+    });
+  });
+
   it('renders trip cards when trips exist', () => {
     const { getByText } = render(<TripMap />);
 
@@ -132,22 +149,14 @@ describe('TripMap native component', () => {
   // -----------------------------------------------------------------------
 
   it('shows distance when location permission is granted', async () => {
-    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
-      status: 'granted',
-      granted: true,
-      canAskAgain: true,
-    });
-    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
-      coords: {
-        latitude: -32.0,
-        longitude: -64.0,
-        altitude: null,
-        accuracy: null,
-        altitudeAccuracy: null,
-        heading: null,
-        speed: null,
-      },
-      timestamp: Date.now(),
+    (useLocationStore as unknown as jest.Mock).mockImplementation((selector) => {
+      const state = {
+        coords: { latitude: -32.0, longitude: -64.0 },
+        accuracy: 5,
+        status: 'ready',
+        errorMsg: null,
+      };
+      return selector ? selector(state) : state;
     });
 
     const { getAllByText } = render(<TripMap />);

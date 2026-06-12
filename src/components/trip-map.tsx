@@ -1,7 +1,7 @@
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Platform } from 'react-native';
+import { useLocationStore } from '@/store/location-store';
 
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 
@@ -19,11 +19,6 @@ const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
 const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 const instructionsBg = require('@/assets/images/sonora/cover-instrucciones-1.png');
-
-interface Coords {
-  latitude: number;
-  longitude: number;
-}
 
 function formatDistance(
   meters: number,
@@ -47,38 +42,8 @@ export default function TripMap() {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const trips = getAllTrips();
-  const [currentLocation, setCurrentLocation] = useState<Coords | null>(null);
+  const currentLocation = useLocationStore((state) => state.coords);
   const [showInstructionsOverlay, setShowInstructionsOverlay] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function getLocation() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        if (!cancelled) {
-          setCurrentLocation({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
-        }
-      } catch {
-        // Silently ignore — no location, no distance shown
-      }
-    }
-
-    getLocation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (trips.length === 0) {
     return (
@@ -113,7 +78,7 @@ export default function TripMap() {
           onPress={() => setShowInstructionsOverlay(true)}
           accessibilityLabel={t('map.instructionsTitle')}
           testID="show-instructions"
-          className="w-40 h-40 items-center justify-center z-10"
+          className="size-40 items-center justify-center z-10"
         >
           <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
         </TwPressable>
@@ -185,7 +150,7 @@ export default function TripMap() {
               </TwView>
             </TwView>
 
-            <TwView className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm active:opacity-80">
+            <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm active:opacity-80">
               <Icon
                 ios="play.fill"
                 android="play_arrow"
@@ -224,7 +189,7 @@ export default function TripMap() {
                     {/* Left Cover Image */}
                     <TwImage
                       source={tripImage}
-                      className="w-16 h-16 rounded-xl mr-3"
+                      className="size-16 rounded-xl mr-3"
                       contentFit="cover"
                       alt=""
                     />
@@ -273,7 +238,7 @@ export default function TripMap() {
                             {trip.priceLabel}
                           </ThemedText>
                         )}
-                        <TwView className="w-10 h-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
+                        <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
                           {trip.isDownloadable ? (
                             <Icon
                               ios="arrow.down"

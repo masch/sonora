@@ -81,7 +81,7 @@ export default function ExploreScreen() {
             contentFit="cover"
             alt=""
           />
-          <TwView className="w-40 h-40 items-center justify-center z-10">
+          <TwView className="size-40 items-center justify-center z-10">
             <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
           </TwView>
           <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">

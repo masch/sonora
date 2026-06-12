@@ -29,7 +29,7 @@ export default function SettingsScreen() {
             contentFit="cover"
             alt=""
           />
-          <TwView className="w-40 h-40 items-center justify-center z-10">
+          <TwView className="size-40 items-center justify-center z-10">
             <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
           </TwView>
           <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
@@ -91,7 +91,7 @@ export default function SettingsScreen() {
                   {t('settings.preferences.notifications')}
                 </ThemedText>
                 <TwView className="w-10 h-6 rounded-full bg-emerald-500 items-end justify-center px-1">
-                  <TwView className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                  <TwView className="size-4 rounded-full bg-white shadow-sm" />
                 </TwView>
               </TwView>
 
