@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Storage from '@/storage/feedback-storage';
 import type { FeedbackEntry } from '@/types/feedback';
+import { generateUUID } from '@/utils/uuid';
 
 const QUEUE_KEY = Storage.QUEUE_KEY;
 
 function generateId(): string {
-  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return generateUUID();
 }
 
 interface EnqueueInput {
