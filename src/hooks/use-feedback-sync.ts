@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import Storage from 'expo-sqlite/kv-store';
 import NetInfo from '@react-native-community/netinfo';
+import { APP_CONFIG } from '@/config/app-config';
 import type { FeedbackEntry } from '@/types/feedback';
 
 const QUEUE_KEY = 'feedback_queue';
-const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
+const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 /**
  * Listens for offline→online transitions and flushes all pending

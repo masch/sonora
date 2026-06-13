@@ -11,13 +11,19 @@ const pool = new Pool({
 const db = createDbClient('pg', pool);
 setDbClient(db);
 
-console.log('Server running on http://localhost:3000');
-const server = serve({ fetch: app.fetch, port: 3000 });
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+console.log(`Server running on http://localhost:${port}`);
+const server = serve({ fetch: app.fetch, port });
 
-function shutdown() {
+async function shutdown() {
   console.log('Shutting down gracefully...');
   server.close();
-  pool.end().catch((err) => console.error('Error closing pool:', err));
+  try {
+    await pool.end();
+  } catch (err) {
+    console.error('Error closing pool:', err);
+  }
+  process.exit(0);
 }
 
 process.on('SIGTERM', shutdown);

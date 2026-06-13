@@ -22,7 +22,7 @@ import type { FeedbackStatus } from '@/types/feedback';
 
 const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 
-const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
+const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TripDetailViewProps {
   tripId: string;

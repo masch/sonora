@@ -1,3 +1,5 @@
 .dev.vars
-# migrations are committed (Drizzle migrations are source of truth for production)
-# migrations/
+.env
+node_modules/
+.wrangler/
+dist/

@@ -146,7 +146,11 @@ api-db-generate: ## Generate Drizzle migration from schema changes
 
 .PHONY: api-db-migrate
 api-db-migrate: api-db-generate ## Apply pending Drizzle migrations
-	cd $(API_DIR) && DATABASE_URL="postgres://sonora:sonora@localhost:5432/sonora" bun run db:migrate
+	cd $(API_DIR) && bun run db:migrate
+
+.PHONY: api-db-seed
+api-db-seed: ## Seed default trips data in Postgres
+	cd $(API_DIR) && bun run db:seed
 
 .PHONY: api-db-studio
 api-db-studio: ## Launch Drizzle Studio (GUI for local DB)
@@ -158,7 +162,7 @@ api-db-shell: ## Open psql shell to local Postgres
 
 .PHONY: api-dev-local
 api-dev-local: ## Run Hono API locally with Docker Postgres
-	cd $(API_DIR) && DATABASE_URL="postgres://sonora:sonora@localhost:5432/sonora" bun run dev:local
+	cd $(API_DIR) && bun run dev:local
 
 # ── Test ──────────────────────────────────────
 

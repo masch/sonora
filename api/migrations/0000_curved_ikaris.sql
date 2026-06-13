@@ -1,4 +1,4 @@
-CREATE SCHEMA "sonora";
+CREATE SCHEMA IF NOT EXISTS "sonora";
 --> statement-breakpoint
 CREATE TABLE "sonora"."feedback" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
