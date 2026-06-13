@@ -6,7 +6,7 @@
  * - GIVEN production (__DEV__ is false) → THEN debug/info suppressed, warn/error still output
  */
 
-import { logger } from '@/utils/logger';
+import { logger } from '../logger';
 
 describe('logger', () => {
   const G = globalThis as { __DEV__?: boolean };

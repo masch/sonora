@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import app, { setDbClient } from '../index';
+import app, { setDbClient, isUniqueViolation } from '../index';
 
 interface MockDb {
   insert: () => {
@@ -56,6 +56,18 @@ describe('POST /feedback', () => {
     const body = (await res.json()) as { status: string; errors: string[] };
     expect(body.status).toBe('error');
     expect(body.errors.length).toBeGreaterThan(0);
+  });
+
+  it('returns 422 for malformed JSON body', async () => {
+    const res = await app.request('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"invalid-json',
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { status: string; errors: string[] };
+    expect(body.status).toBe('error');
+    expect(body.errors).toContain('Request body must be a JSON object');
   });
 
   it('returns 422 for missing required fields', async () => {

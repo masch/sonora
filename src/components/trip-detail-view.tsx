@@ -19,10 +19,12 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import type { FeedbackStatus } from '@/types/feedback';
+import { generateUUID } from '@/utils/uuid';
+import { logger } from '@/utils/logger';
 
 const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 
-const API_URL = 'https://sonora-api.YOUR-WORKER.workers.dev/feedback';
+const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TripDetailViewProps {
   tripId: string;
@@ -84,8 +86,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
         body: JSON.stringify({
           tripId: tripUuid,
           message,
-          idempotencyKey:
-            crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+          idempotencyKey: generateUUID(),
           createdAt: new Date().toISOString(),
         }),
       });
@@ -93,16 +94,19 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
       if (response.status === 201) {
         setFeedbackStatus('sent');
       } else {
+        logger.error('[API_ERROR] Server returned status:', response.status);
         // Server error — queue offline
         await feedbackQueue.enqueue({ tripId: tripUuid, message });
         setFeedbackStatus('queued');
       }
-    } catch {
+    } catch (err) {
+      logger.error('[NETWORK_ERROR] Fetch failed:', err);
       // Network error — queue offline
       try {
         await feedbackQueue.enqueue({ tripId: tripUuid, message });
         setFeedbackStatus('queued');
-      } catch {
+      } catch (enqueueErr) {
+        logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);
         setFeedbackStatus('error');
         setFeedbackError(t('feedback.form.error'));
       }
@@ -163,18 +167,25 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
           {/* Trip header */}
           <TwView className="items-center gap-2 p-2 w-full">
             <ThemedText
+              themeColor="text"
               numberOfLines={1}
               adjustsFontSizeToFit
-              className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 px-2"
+              className="text-2xl font-black text-center px-2"
             >
               {trip.title + ' '}
             </ThemedText>
-            <ThemedText className="text-zinc-600 dark:text-zinc-400 font-bold text-[10px] leading-relaxed uppercase tracking-wider">
+            <ThemedText
+              themeColor="textSecondary"
+              className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
+            >
               {t('trips.duration', { minutes: trip.durationMinutes })}
             </ThemedText>
           </TwView>
 
-          <ThemedText className="text-center text-sm font-bold text-zinc-700 dark:text-zinc-300 leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40">
+          <ThemedText
+            themeColor="text"
+            className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
+          >
             {trip.description}
           </ThemedText>
 
@@ -243,7 +254,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
                   className="py-3 items-center active:opacity-80"
                   onPress={() => setShowManualFeedback(true)}
                 >
-                  <ThemedText className="text-white font-extrabold text-sm">
+                  <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
                     {t('feedback.form.title')}
                   </ThemedText>
                 </TwPressable>
