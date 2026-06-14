@@ -120,7 +120,7 @@ export const en = {
       placeholder: 'Tell us about your experience…',
       submit: 'Send',
       sending: 'Sending…',
-      sent: 'Sent!',
+      sent: 'Thank you for your feedback!',
       queued: 'Saved offline — will send when connected',
       error: 'Something went wrong',
       retry: 'Retry',

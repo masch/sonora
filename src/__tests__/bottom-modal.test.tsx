@@ -1,0 +1,57 @@
+import React from 'react';
+import { render, fireEvent } from '@testing-library/react-native';
+import { TwText } from '@/tw';
+import { BottomModal } from '@/components/ui/bottom-modal';
+
+describe('BottomModal', () => {
+  it('renders children when visible is true', () => {
+    const { getByText } = render(
+      <BottomModal visible={true} onDismiss={jest.fn()}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    expect(getByText('Modal Content')).toBeTruthy();
+  });
+
+  it('does not render children when visible is false', () => {
+    const { queryByText } = render(
+      <BottomModal visible={false} onDismiss={jest.fn()}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    expect(queryByText('Modal Content')).toBeNull();
+  });
+
+  it('calls onDismiss when backdrop is pressed', () => {
+    const onDismiss = jest.fn();
+    const { getByTestId } = render(
+      <BottomModal visible={true} onDismiss={onDismiss}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    const backdrop = getByTestId('bottom-modal-backdrop');
+    fireEvent.press(backdrop);
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onDismiss automatically when autoDismissTrigger is true', () => {
+    jest.useFakeTimers();
+    const onDismiss = jest.fn();
+    render(
+      <BottomModal visible={true} onDismiss={onDismiss} autoDismissTrigger={true}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(2000);
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+});

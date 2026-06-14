@@ -10,7 +10,6 @@ import { APP_CONFIG } from '@/config/app-config';
 import { getTripById } from '@/data/trips';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
-import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -67,9 +66,6 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
     isNearStart: geofence.isNearStart,
   });
   const feedbackQueue = useFeedbackQueue();
-
-  // Auto-sync feedback queue on connectivity restore
-  useFeedbackSync();
 
   const handleFeedbackSubmit = async (message: string) => {
     setFeedbackStatus('sending');

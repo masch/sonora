@@ -13,6 +13,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.masch.sonora',
+    infoPlist: {
+      UIBackgroundModes: ['fetch'],
+    },
   },
   android: {
     adaptiveIcon: {
