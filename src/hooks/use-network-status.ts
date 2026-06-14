@@ -1,5 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import NetInfo from '@react-native-community/netinfo';
+import { APP_CONFIG } from '../config/app-config';
+
+/**
+ * On web, NetInfo checks connectivity by sending a HEAD request to a
+ * reachability URL. Default is the page origin, which gets aborted during
+ * initial page load (causing harmless NS_BINDING_ABORTED in Firefox,
+ * net::ERR_ABORTED in Chrome). Point it to the API health endpoint instead,
+ * which responds quickly and has CORS HEAD support.
+ */
+NetInfo.configure({
+  reachabilityUrl: `${APP_CONFIG.apiBaseUrl}/health`,
+  reachabilityMethod: 'HEAD',
+});
 
 export interface NetworkStatusState {
   isOnline: boolean;

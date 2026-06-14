@@ -35,6 +35,7 @@ const mockNetInfoState = {
   details: {},
 };
 jest.mock('@react-native-community/netinfo', () => ({
+  configure: jest.fn(),
   addEventListener: jest.fn((handler: (state: typeof mockNetInfoState) => void) => {
     handler(mockNetInfoState);
     return jest.fn();
