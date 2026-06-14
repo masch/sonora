@@ -5,8 +5,9 @@
 
 # ── Convenience ────────────────────────────────
 
-# Include .env (leading '-' prevents error if file is missing)
+# Include .env files (leading '-' prevents error if file is missing)
 -include .env
+-include api/.env
 
 # Export token explicitly so it's available in all subshells
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
@@ -127,8 +128,84 @@ api-typecheck: ## Run TypeScript type check for the API
 	cd $(API_DIR) && bun run typecheck
 
 .PHONY: api-deploy
-api-deploy: ## Deploy Hono API to Cloudflare Workers
-	cd $(API_DIR) && bun run deploy
+api-deploy: api-deploy-production ## Deploy Hono API to Cloudflare Workers (default = production, alias for api-deploy-production)
+
+.PHONY: api-login
+api-login: ## Authenticate wrangler with Cloudflare (opens browser)
+	cd $(API_DIR) && bunx wrangler login
+
+.PHONY: api-deploy-production
+api-deploy-production: ## Deploy production Worker to Cloudflare (name: sonora-api, config: wrangler.toml)
+	cd $(API_DIR) && bunx wrangler deploy
+	@echo ""
+	@echo "=== Next step ==="
+	@echo "  make api-deploy-production-secrets"
+	@echo ""
+
+.PHONY: api-deploy-production-secrets
+api-deploy-production-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN secrets on the production Worker
+	@echo "Setting DATABASE_URL secret on production Worker..."
+	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_PRODUCTION_CLEAN)' | bunx wrangler secret put DATABASE_URL
+	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
+	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN
+	@echo "Secrets set."
+
+.PHONY: api-deploy-staging
+api-deploy-staging: ## Deploy staging Worker to Cloudflare (name: sonora-api-staging, config: wrangler.staging.toml)
+	cd $(API_DIR) && bunx wrangler deploy --config wrangler.staging.toml
+	@echo ""
+	@echo "=== Next step ==="
+	@echo "  make api-deploy-staging-secrets"
+	@echo ""
+
+.PHONY: api-deploy-staging-secrets
+api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN secrets on the staging Worker
+	@echo "Setting DATABASE_URL secret on staging Worker..."
+	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_STAGING_CLEAN)' | bunx wrangler secret put DATABASE_URL --config wrangler.staging.toml
+	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
+	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
+	@echo "Secrets set."
+
+# ── Backend API — Test deployed Workers ─────────────
+
+API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev
+API_PRODUCTION_URL ?= https://sonora-api.sonora-api.workers.dev
+
+.PHONY: api-test-staging
+api-test-staging: ## Test staging Worker health (GET /health)
+	curl -s -o /dev/null -w "HTTP %{http_code} — %{time_total}s\n" '$(API_STAGING_URL)/health'
+
+.PHONY: api-test-staging-verbose
+api-test-staging-verbose: ## Test staging Worker with full response (GET /health)
+	curl -i '$(API_STAGING_URL)/health'
+
+.PHONY: api-test-production
+api-test-production: ## Test production Worker health (GET /health)
+	curl -s -o /dev/null -w "HTTP %{http_code} — %{time_total}s\n" '$(API_PRODUCTION_URL)/health'
+
+.PHONY: api-logs-staging
+api-logs-staging: ## Tail staging Worker logs (Ctrl+C to stop)
+	cd $(API_DIR) && bunx wrangler tail --config wrangler.staging.toml
+
+.PHONY: api-logs-production
+api-logs-production: ## Tail production Worker logs (Ctrl+C to stop)
+	cd $(API_DIR) && bunx wrangler tail
+
+.PHONY: api-secrets-staging
+api-secrets-staging: ## List staging Worker secrets (names only)
+	cd $(API_DIR) && bunx wrangler secret list --config wrangler.staging.toml
+
+.PHONY: api-secrets-production
+api-secrets-production: ## List production Worker secrets (names only)
+	cd $(API_DIR) && bunx wrangler secret list
+
+.PHONY: api-test-staging-db
+api-test-staging-db: ## Test staging DB connection (GET /health/db)
+	curl -s '$(API_STAGING_URL)/health/db' | jq .
+
+.PHONY: api-test-production-db
+api-test-production-db: ## Test production DB connection (GET /health/db)
+	curl -s '$(API_PRODUCTION_URL)/health/db' | jq .
 
 # ── Backend API — Database ──────────────────────
 
@@ -149,8 +226,36 @@ api-db-migrate: api-db-generate ## Apply pending Drizzle migrations
 	cd $(API_DIR) && bun run db:migrate
 
 .PHONY: api-db-seed
-api-db-seed: ## Seed default trips data in Postgres
+api-db-seed: ## Seed default trips data in local Postgres
 	cd $(API_DIR) && bun run db:seed
+
+# ── Neon cloud DB (requires DATABASE_URL_STAGING / DATABASE_URL_PRODUCTION in api/.env) ──
+# Values are unquoted via patsubst to prevent shell interpretation of special chars (&, etc.)
+
+DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
+DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
+
+.PHONY: api-db-migrate-staging
+api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bunx drizzle-kit migrate
+
+.PHONY: api-db-migrate-production
+api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bunx drizzle-kit migrate
+
+.PHONY: api-db-seed-staging
+api-db-seed-staging: ## Seed staging Neon DB
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun src/db/seed.ts
+
+.PHONY: api-db-seed-production
+api-db-seed-production: ## Seed production Neon DB
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun src/db/seed.ts
+
+.PHONY: api-deploy-staging-full
+api-deploy-staging-full: api-db-migrate-staging api-db-seed-staging api-deploy-staging api-deploy-staging-secrets ## All-in-one: migrate → seed → deploy → secrets staging
+
+.PHONY: api-deploy-production-full
+api-deploy-production-full: api-db-migrate-production api-db-seed-production api-deploy-production api-deploy-production-secrets ## All-in-one: migrate → seed → deploy → secrets production
 
 .PHONY: api-db-studio
 api-db-studio: ## Launch Drizzle Studio (GUI for local DB)
@@ -159,6 +264,14 @@ api-db-studio: ## Launch Drizzle Studio (GUI for local DB)
 .PHONY: api-db-shell
 api-db-shell: ## Open psql shell to local Postgres
 	podman compose -f $(API_DIR)/docker-compose.yml exec postgres psql -U sonora -d sonora
+
+.PHONY: api-db-shell-staging
+api-db-shell-staging: ## Open psql shell to Neon staging DB
+	podman run -it --rm postgres:17-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
+
+.PHONY: api-db-shell-production
+api-db-shell-production: ## Open psql shell to Neon production DB
+	podman run -it --rm postgres:17-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
 
 .PHONY: api-dev-local
 api-dev-local: ## Run Hono API locally with Docker Postgres

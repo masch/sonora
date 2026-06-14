@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { sql } from 'drizzle-orm';
 import { type DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
@@ -28,6 +29,24 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 // Mount Middlewares
 app.use('*', configureCors());
 app.use('*', injectDb());
+
+// Health check
+app.get('/health', (c) => {
+  return c.json({ status: 'ok', environment: c.env?.ENVIRONMENT || 'unknown' });
+});
+
+app.get('/health/db', async (c) => {
+  const db = c.var.db;
+  if (!db) {
+    return c.json({ status: 'error', message: 'No database client configured' }, 503);
+  }
+  try {
+    const result = await db.execute(sql`SELECT 1 AS alive`);
+    return c.json({ status: 'ok', db: 'connected', alive: result.rows?.[0]?.alive === 1 });
+  } catch (err) {
+    return c.json({ status: 'error', message: String(err) }, 503);
+  }
+});
 
 // Mount Routes
 app.route('/feedback', feedbackRouter);

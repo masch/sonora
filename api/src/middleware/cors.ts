@@ -22,7 +22,22 @@ export const configureCors = (): MiddlewareHandler => {
       : ['Content-Type', 'Authorization'];
 
     const corsMiddleware = cors({
-      origin: (origin) => (origin === allowedOrigin ? origin : undefined),
+      origin: (origin) => {
+        // Allow missing/empty origin (native HTTP clients — no ACAO needed)
+        if (!origin) {
+          return null;
+        }
+        // Allow Origin: null (mobile WebView, SFSafariViewController)
+        if (origin === 'null') {
+          return 'null';
+        }
+        // If ALLOWED_ORIGIN is not configured, allow all origins (permissive)
+        if (!allowedOrigin) {
+          return origin;
+        }
+        // Strict check against configured origin
+        return origin === allowedOrigin ? origin : null;
+      },
       allowMethods: methods,
       allowHeaders: headers,
     });
