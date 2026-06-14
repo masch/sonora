@@ -166,6 +166,14 @@ api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN secrets on the 
 	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
 	@echo "Secrets set."
 
+.PHONY: api-deploy-staging-set-origin
+api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: make api-deploy-staging-set-origin ORIGIN="https://example.com"
+	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
+
+.PHONY: api-deploy-production-set-origin
+api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker. Usage: make api-deploy-production-set-origin ORIGIN="https://example.com"
+	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN
+
 # ── Backend API — Test deployed Workers ─────────────
 
 API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev
