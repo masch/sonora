@@ -112,8 +112,8 @@ typecheck: ## Run TypeScript type check
 API_DIR = api
 
 .PHONY: api-install
-api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest)
-	cd $(API_DIR) && bun install
+api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest) — uses --frozen-lockfile for reproducibility
+	cd $(API_DIR) && bun install --frozen-lockfile
 
 .PHONY: api-dev
 api-dev: ## Run Hono API locally with wrangler dev
