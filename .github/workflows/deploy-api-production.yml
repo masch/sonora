@@ -10,18 +10,16 @@ on:
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run test
-      - run: bun run typecheck
+      - run: make api-install
+      - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
-        run: DATABASE_URL='${{ secrets.DATABASE_URL_PRODUCTION }}' bunx drizzle-kit migrate
+        run: make api-db-migrate-ci
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
       - name: Deploy to production Worker
-        run: bunx wrangler deploy
+        run: make api-deploy-production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

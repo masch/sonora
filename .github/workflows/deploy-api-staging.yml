@@ -15,18 +15,16 @@ concurrency:
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run test
-      - run: bun run typecheck
+      - run: make api-install
+      - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
-        run: DATABASE_URL='${{ secrets.DATABASE_URL_STAGING }}' bunx drizzle-kit migrate
+        run: make api-db-migrate-ci
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
       - name: Deploy to staging Worker
-        run: bunx wrangler deploy --config wrangler.staging.toml
+        run: make api-deploy-staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

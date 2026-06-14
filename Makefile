@@ -251,6 +251,10 @@ api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
 api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
 	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bunx drizzle-kit migrate
 
+.PHONY: api-db-migrate-ci
+api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL)' bunx drizzle-kit migrate
+
 .PHONY: api-db-seed-staging
 api-db-seed-staging: ## Seed staging Neon DB
 	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun src/db/seed.ts
