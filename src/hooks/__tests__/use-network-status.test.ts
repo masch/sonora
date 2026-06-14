@@ -22,6 +22,16 @@ function simulateNetInfoState(state: NetInfoState): void {
   }
 }
 
+describe('NetInfo configuration', () => {
+  // Separate describe with no beforeEach to preserve module-level import calls
+  it('should configure reachability to API health endpoint', () => {
+    expect(NetInfo.configure).toHaveBeenCalledWith({
+      reachabilityUrl: expect.stringContaining('/health'),
+      reachabilityMethod: 'HEAD',
+    });
+  });
+});
+
 describe('useNetworkStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks();

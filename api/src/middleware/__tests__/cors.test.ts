@@ -155,6 +155,19 @@ describe('CORS behavior', () => {
     });
   });
 
+  it('default allow-methods includes HEAD', async () => {
+    const req = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'HEAD',
+      },
+    });
+    const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+    const methods = res.headers.get('access-control-allow-methods')?.split(',') || [];
+    expect(methods).toContain('HEAD');
+  });
+
   describe('permissive mode (no ALLOWED_ORIGIN configured)', () => {
     it('allows any origin when ALLOWED_ORIGIN is not set', async () => {
       const req = new Request('http://localhost/feedback', {
