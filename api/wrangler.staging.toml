@@ -1,4 +1,4 @@
-name = "sonora-api"
+name = "sonora-api-staging"
 main = "src/index.ts"
 compatibility_date = "2026-06-03"
 compatibility_flags = [ "nodejs_compat" ]
@@ -16,4 +16,4 @@ compatibility_flags = [ "nodejs_compat" ]
 [vars]
 FEEDBACK_MAX_LENGTH = "1000"
 DB_ADAPTER = "neon"
-ENVIRONMENT = "production"
+ENVIRONMENT = "staging"

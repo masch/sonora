@@ -3,6 +3,7 @@ import { type DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
 import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
+import { healthRouter } from './routes/health';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -30,6 +31,7 @@ app.use('*', configureCors());
 app.use('*', injectDb());
 
 // Mount Routes
+app.route('/health', healthRouter);
 app.route('/feedback', feedbackRouter);
 
 // Global Error Handler

@@ -92,4 +92,93 @@ describe('CORS behavior', () => {
       }
     }
   });
+
+  describe('mobile and native client support', () => {
+    it('allows request with Origin: null (mobile WebView) and returns ACAO: null', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'null',
+        },
+        body: JSON.stringify({
+          tripId: 'test',
+          message: 'null origin test',
+          idempotencyKey: 'cors-null-origin',
+          createdAt: new Date().toISOString(),
+        }),
+      });
+      const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+      expect(res.headers.get('access-control-allow-origin')).toBe('null');
+    });
+
+    it('allows preflight OPTIONS with Origin: null', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'null',
+          'Access-Control-Request-Method': 'POST',
+        },
+      });
+      const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+      expect(res.status).toBe(204);
+      expect(res.headers.get('access-control-allow-origin')).toBe('null');
+    });
+
+    it('handles request with no Origin header (native HTTP clients)', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: 'test',
+          message: 'no origin test',
+          idempotencyKey: 'cors-no-origin',
+          createdAt: new Date().toISOString(),
+        }),
+      });
+      const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+      // No Origin → no ACAO header set, but request should pass through
+      expect(res.headers.get('access-control-allow-origin')).toBeNull();
+      expect(res.status).toBe(201);
+    });
+
+    it('handles preflight OPTIONS with no Origin header', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'OPTIONS',
+        headers: { 'Access-Control-Request-Method': 'POST' },
+      });
+      const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+      // OPTIONS without Origin should still return proper CORS headers
+      expect(res.status).toBe(204);
+      expect(res.headers.get('access-control-allow-methods')).toBeTruthy();
+      expect(res.headers.get('access-control-allow-headers')).toBeTruthy();
+    });
+  });
+
+  describe('permissive mode (no ALLOWED_ORIGIN configured)', () => {
+    it('allows any origin when ALLOWED_ORIGIN is not set', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://any-origin.com',
+          'Access-Control-Request-Method': 'POST',
+        },
+      });
+      const res = await app.fetch(req, {} as never);
+      expect(res.headers.get('access-control-allow-origin')).toBe('https://any-origin.com');
+    });
+
+    it('allows Origin: null in permissive mode', async () => {
+      const req = new Request('http://localhost/feedback', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'null',
+          'Access-Control-Request-Method': 'POST',
+        },
+      });
+      const res = await app.fetch(req, {} as never);
+      expect(res.status).toBe(204);
+      expect(res.headers.get('access-control-allow-origin')).toBe('null');
+    });
+  });
 });

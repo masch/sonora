@@ -14,6 +14,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPO_PUBLIC_API_URL: https://sonora-api.sonora-api.workers.dev
 
 concurrency:
   group: deploy-main
