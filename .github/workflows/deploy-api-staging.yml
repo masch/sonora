@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # Cancel previous runs for the same PR when new commits are pushed
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
