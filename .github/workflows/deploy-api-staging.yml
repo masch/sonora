@@ -1,0 +1,30 @@
+name: Deploy API Staging
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+    branches:
+      - main
+
+# Cancel previous runs for the same PR when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+      - run: bun run typecheck
+      - name: Deploy to staging Worker
+        run: bunx wrangler deploy --config wrangler.staging.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
