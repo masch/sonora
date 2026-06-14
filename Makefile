@@ -253,7 +253,7 @@ api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
 
 .PHONY: api-db-migrate-ci
 api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL)' bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bunx drizzle-kit migrate
 
 .PHONY: api-db-seed-staging
 api-db-seed-staging: ## Seed staging Neon DB
