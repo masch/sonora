@@ -1,6 +1,7 @@
 name: Deploy API Production
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'api/**'
