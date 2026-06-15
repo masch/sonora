@@ -38,7 +38,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
+      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
+      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
+      - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make format-check
 
   validate-mobile:
@@ -48,7 +51,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
+      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
+      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
+      - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make test-front
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
@@ -64,7 +70,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
+      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
+      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
+      - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make api-test
       - run: make test-shared
       - run: bun --filter @sonora/api typecheck
