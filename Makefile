@@ -307,8 +307,12 @@ test-front: ## Run frontend tests (Jest with jest-expo preset, one-shot)
 test-back: ## Run backend API tests (Vitest, alias for api-test)
 	$(MAKE) api-test
 
+.PHONY: test-shared
+test-shared: ## Run shared package tests (Vitest)
+	cd packages/shared && bunx vitest run
+
 .PHONY: test
-test: test-front test-back ## Run all tests (frontend + backend)
+test: test-front test-back test-shared ## Run all tests (frontend + backend + shared)
 
 # ── CI ────────────────────────────────────────
 
@@ -338,10 +342,6 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 	exit $$EXIT_CODE
 
 # ── EAS Deploy ───────────────────────────────
-
-.PHONY: bump-version-code
-bump-version-code: ## Increment android.versionCode in app.config.ts
-	scripts/bump-version-code.sh
 
 EAS_CLI_VERSION ?=
 
@@ -374,8 +374,9 @@ eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Andro
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
-eas-build-android-preview-local: eas-whoami bump-version-code ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
+eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
+	@read -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
+	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
