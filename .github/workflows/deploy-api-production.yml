@@ -18,7 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: rm -f tsconfig.json
+      - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
+        run: rm -f tsconfig.json
       - run: make api-install
       - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
