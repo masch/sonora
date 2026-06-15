@@ -30,7 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
+      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
+      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
+      - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make check
       - name: Deploy to EAS Hosting
         env:
@@ -46,7 +49,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
           APP_VERSION_CODE: ${{ github.run_number }}
-        run: make eas-build-android-preview-local
+        run: make eas-build-android-preview-ci
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
