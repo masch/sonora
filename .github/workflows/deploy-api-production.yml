@@ -17,11 +17,8 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            api
-            Makefile
       - uses: oven-sh/setup-bun@v2
+      - run: rm -f tsconfig.json
       - run: make api-install
       - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
