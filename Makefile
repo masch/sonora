@@ -6,8 +6,8 @@
 # ── Convenience ────────────────────────────────
 
 # Include .env files (leading '-' prevents error if file is missing)
--include .env
--include api/.env
+-include apps/mobile/.env
+-include apps/api/.env
 
 # Export token explicitly so it's available in all subshells
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
@@ -36,19 +36,19 @@ ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
 .PHONY: start
 start: ## Launch Expo dev server (default)
-	bun run start
+	bun --filter @sonora/mobile start
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
-	bun run web
+	bun --filter @sonora/mobile web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android
-	bun run android
+	bun --filter @sonora/mobile android
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	bun run ios
+	bun --filter @sonora/mobile ios
 
 # ── Native ─────────────────────────────────────
 
@@ -66,15 +66,15 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	bunx react-doctor --verbose
+	cd apps/mobile && bunx react-doctor --verbose
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	bunx react-doctor --verbose --diff --fail-on warning
+	cd apps/mobile && bunx react-doctor --verbose --diff --fail-on warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
-	bunx expo-doctor
+	cd apps/mobile && bunx expo-doctor
 
 # ── Supply Chain Security ──────────────────────
 
@@ -90,30 +90,30 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
-install: ## Install project + backend API dependencies and configure git hooks
+install: ## Install all workspace dependencies and configure git hooks
 	bun install
-	cd $(API_DIR) && bun install 2>/dev/null || true
 	git config core.hooksPath .githooks
 
 .PHONY: lint
-lint: ## Run linter (expo lint)
-	bun run lint
+lint: ## Run linters across workspaces
+	bun --filter @sonora/mobile lint
 
 .PHONY: format
 format: ## Run prettier to format code
-	bun run format
+	bunx prettier --write .
 
 .PHONY: format-check
 format-check: ## Check code formatting using prettier
-	bun run format:check
+	bunx prettier --check .
 
 .PHONY: typecheck
-typecheck: ## Run TypeScript type check
-	tsc --noEmit
+typecheck: ## Run TypeScript type checks across workspaces
+	bun --filter @sonora/mobile typecheck
+	bun --filter @sonora/api typecheck
 
 # ── Backend API ───────────────────────────────
 
-API_DIR = api
+API_DIR = apps/api
 
 .PHONY: api-install
 api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest) — uses --frozen-lockfile for reproducibility
@@ -301,7 +301,7 @@ api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
 
 .PHONY: test-front
 test-front: ## Run frontend tests (Jest with jest-expo preset, one-shot)
-	bunx jest --passWithNoTests
+	cd apps/mobile && bunx jest --passWithNoTests --watchAll=false
 
 .PHONY: test-back
 test-back: ## Run backend API tests (Vitest, alias for api-test)
@@ -351,7 +351,7 @@ eas-whoami: ## Verify EAS authentication (uses EXPO_TOKEN from .env)
 
 .PHONY: eas-list
 eas-list: ## List recent EAS builds
-	bunx eas-cli@$(EAS_CLI_VERSION) build:list
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build:list
 
 .PHONY: eas-init
 eas-init: ## Initialize EAS for this project (first-time setup)
@@ -363,27 +363,27 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 
 .PHONY: eas-build-android
 eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
 
 .PHONY: eas-build-android-preview
 eas-build-android-preview: eas-whoami ## Build test APK for sideload via EAS cloud (internal distribution)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
 
 .PHONY: eas-build-android-local
 eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Android SDK + production keystore)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
 eas-build-android-preview-local: eas-whoami bump-version-code ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
-	bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
 
 .PHONY: eas-build-web
 eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
-	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 # ── Firebase App Distribution ────────────
 

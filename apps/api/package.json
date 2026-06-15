@@ -1,5 +1,5 @@
 {
-  "name": "sonora-api",
+  "name": "@sonora/api",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sonora/shared": "workspace:*",
     "hono": "^4.7.5",
     "drizzle-orm": "*",
     "pg": "*",

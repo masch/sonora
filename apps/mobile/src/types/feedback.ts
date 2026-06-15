@@ -1,6 +1,7 @@
 import type { FeedbackTriggerMode } from '@/data/trips';
+import type { FeedbackPostBody, FeedbackResponse as FeedbackApiResponse } from '@sonora/shared';
 
-export type { FeedbackTriggerMode };
+export type { FeedbackTriggerMode, FeedbackPostBody, FeedbackApiResponse };
 
 export type FeedbackStatus = 'sending' | 'sent' | 'queued' | 'error';
 
@@ -11,16 +12,4 @@ export interface FeedbackEntry {
   createdAt: string;
   retryCount: number;
   lastError: string | null;
-}
-
-export interface FeedbackPostBody {
-  tripId: string;
-  message: string;
-  idempotencyKey: string;
-  createdAt: string;
-}
-
-export interface FeedbackApiResponse {
-  status: 'ok' | 'duplicate' | 'error';
-  errors?: string[];
 }

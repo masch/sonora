@@ -3,52 +3,28 @@ import { feedback } from '../db/schema';
 import { isUniqueViolation } from '../utils/db-errors';
 import { type Env, type Variables } from '../index';
 
-interface FeedbackPostBody {
-  tripId: string;
-  message: string;
-  idempotencyKey: string;
-  createdAt: string;
-}
-
-interface FeedbackResponse {
-  status: 'ok' | 'duplicate' | 'error';
-  errors?: string[];
-}
+import {
+  FeedbackPostBodySchema,
+  type FeedbackPostBody,
+  type FeedbackResponse,
+} from '@sonora/shared';
 
 function validateBody(
   body: unknown,
 ): { valid: false; errors: string[] } | { valid: true; data: FeedbackPostBody } {
-  const errors: string[] = [];
-
   if (!body || typeof body !== 'object') {
     return { valid: false, errors: ['Request body must be a JSON object'] };
   }
 
-  const b = body as Record<string, unknown>;
-
-  if (typeof b.tripId !== 'string' || b.tripId.trim().length === 0) {
-    errors.push('tripId is required and must be a non-empty string');
-  }
-
-  if (typeof b.message !== 'string' || b.message.trim().length === 0) {
-    errors.push('message is required and must be a non-empty string');
-  }
-
-  if (typeof b.idempotencyKey !== 'string' || b.idempotencyKey.trim().length === 0) {
-    errors.push('idempotencyKey is required and must be a non-empty string');
-  }
-
-  if (typeof b.createdAt !== 'string' || b.createdAt.trim().length === 0) {
-    errors.push('createdAt is required and must be a non-empty string');
-  }
-
-  if (errors.length > 0) {
+  const result = FeedbackPostBodySchema.safeParse(body);
+  if (!result.success) {
+    const errors = result.error.errors.map((err) => err.message);
     return { valid: false, errors };
   }
 
   return {
     valid: true,
-    data: b as unknown as FeedbackPostBody,
+    data: result.data,
   };
 }
 

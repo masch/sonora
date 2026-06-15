@@ -3,10 +3,11 @@ set -euo pipefail  # -e: exit on error | -u: error on undefined vars | -o pipefa
 
 APP_CONFIG="app.config.ts"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_CONFIG_PATH="$PROJECT_ROOT/$APP_CONFIG"
+# In monorepo, app.config.ts lives inside apps/mobile/
+APP_CONFIG_PATH="$PROJECT_ROOT/apps/mobile/$APP_CONFIG"
 
 if [[ ! -f "$APP_CONFIG_PATH" ]]; then
-  echo "Error: $APP_CONFIG not found in project root" >&2
+  echo "Error: $APP_CONFIG not found at $APP_CONFIG_PATH" >&2
   exit 1
 fi
 
@@ -28,7 +29,7 @@ else
   sed -i "/^[[:space:]]*package:/a\    versionCode: $NEW," "$APP_CONFIG_PATH"
 fi
 
-# Stage the change
-git -C "$PROJECT_ROOT" add "$APP_CONFIG"
+# Stage the change (in monorepo: apps/mobile/app.config.ts)
+git -C "$PROJECT_ROOT" add "apps/mobile/$APP_CONFIG"
 
 echo "versionCode bumped: $CURRENT → $NEW"
