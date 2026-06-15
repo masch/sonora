@@ -1,2 +1,2 @@
 [install]
-minimumReleaseAge = 864000  # 10 days in seconds — blocks recently-published malicious packages
+minimumReleaseAge = 345600 # 4 days in seconds — blocks recently-published malicious packages

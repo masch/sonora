@@ -53,18 +53,14 @@ export function BottomModal({
         className="flex-1 justify-end bg-black/50"
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <TwPressable
-            onPress={() => {}} // Catch taps inside content to avoid backdrop dismiss
-            testID="bottom-modal-content-container"
-            accessibilityLabel="Modal content container" // eslint-disable-line i18next/no-literal-string
-          >
+          <TwView onStartShouldSetResponder={() => true} testID="bottom-modal-content-container">
             <TwView
               className="bg-background rounded-t-3xl p-6 gap-4"
               style={{ paddingBottom: 24 + insets.bottom }}
             >
               {children}
             </TwView>
-          </TwPressable>
+          </TwView>
         </KeyboardAvoidingView>
       </TwPressable>
     </Modal>

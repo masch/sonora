@@ -72,6 +72,10 @@ doctor: ## Run React Doctor audit (full verbose scan)
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 	bunx react-doctor --verbose --diff --fail-on warning
 
+.PHONY: expo-doctor
+expo-doctor: ## Run Expo Doctor to verify dependency compatibility
+	bunx expo-doctor
+
 # ── Supply Chain Security ──────────────────────
 
 .PHONY: socket-login socket-scan
@@ -315,7 +319,7 @@ validate: format test lint typecheck api-typecheck gga ## Run full development g
 api-validate: api-test api-typecheck ## Run API tests + typecheck
 
 .PHONY: check
-check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
+check: format-check test lint typecheck expo-doctor ## Run CI verification gate (format-check → test → lint → typecheck → expo-doctor)
 
 # ── Review ─────────────────────────────────────
 

@@ -60,6 +60,7 @@ make test   || STATUS=$?
 make lint   || STATUS=$?
 make typecheck || STATUS=$?
 make doctor-diff || STATUS=$?
+make expo-doctor || STATUS=$?
 if git diff --cached --name-only -- 'api/*' | grep -q .; then
   make api-validate || STATUS=$?
 fi
