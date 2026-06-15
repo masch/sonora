@@ -133,6 +133,8 @@ export const en = {
     invalidDownloadConfig: 'Invalid trip or download configuration',
     insufficientSpace: 'Insufficient storage space. Free: {{free}}MB, Required: {{required}}MB',
     downloadWriteFailed: 'Download failed to write target path',
+    downloadFailed: 'Audio download failed',
+    deleteFailed: 'Failed to delete audio file',
   },
   explore: {
     title: 'Explore',

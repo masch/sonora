@@ -21,10 +21,12 @@ const getTargetUri = (tripId: string | null) => {
   return `${FileSystem.documentDirectory}trips/${tripId}/audio.mp3`;
 };
 
+const DEFAULT_ESTIMATED_SIZE = 30 * 1024 * 1024; // default ~30MB
+
 export function useTripDownload(
   tripId: string | null,
   remoteAudioUrl: string | null,
-  estimatedSizeBytes: number = 30 * 1024 * 1024, // default ~30MB
+  estimatedSizeBytes: number = DEFAULT_ESTIMATED_SIZE,
 ) {
   const { t } = useAppTranslation();
   const [state, setState] = useState<TripDownloadState>({
@@ -108,17 +110,20 @@ export function useTripDownload(
       try {
         const freeSpace = await FileSystem.getFreeDiskStorageAsync();
         const requiredSpace = estimatedSizeBytes * SIZE_MULTIPLIER;
+        const freeMb = freeSpace / 1024 / 1024;
+        const requiredMb = requiredSpace / 1024 / 1024;
         if (freeSpace < requiredSpace) {
           throw new Error(
             t('errors.insufficientSpace', {
-              free: (freeSpace / 1024 / 1024).toFixed(1),
-              required: (requiredSpace / 1024 / 1024).toFixed(1),
+              free: freeMb.toFixed(1),
+              required: requiredMb.toFixed(1),
             }),
           );
         }
       } catch (storageErr: unknown) {
         // On web, getFreeDiskStorageAsync is not available — skip the check
-        if (Platform.OS !== 'web') throw storageErr;
+        const isNotWeb = Platform.OS !== 'web';
+        if (isNotWeb) throw storageErr;
       }
 
       // 2. Download — on web, use the remote URL directly (streaming via expo-audio)
@@ -136,7 +141,7 @@ export function useTripDownload(
         await nativeDownload(remoteAudioUrl, targetUri, tripId);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error downloading trip';
+      const msg = err instanceof Error ? err.message : t('errors.downloadFailed');
       setState({
         status: 'error',
         progress: 0,
@@ -210,7 +215,7 @@ export function useTripDownload(
         errorMsg: null,
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error removing local file';
+      const msg = err instanceof Error ? err.message : t('errors.deleteFailed');
       setState((prev) => ({ ...prev, errorMsg: msg }));
       logger.error(msg);
     }

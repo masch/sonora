@@ -134,6 +134,8 @@ export const es = {
     insufficientSpace:
       'Espacio de almacenamiento insuficiente. Libre: {{free}}MB, Requerido: {{required}}MB',
     downloadWriteFailed: 'La descarga no pudo escribirse en la ruta destino',
+    downloadFailed: 'Error al descargar el audio',
+    deleteFailed: 'Error al borrar el archivo de audio',
   },
   explore: {
     title: 'Explorar',
