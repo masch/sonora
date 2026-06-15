@@ -21,7 +21,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: cd api && bun install --frozen-lockfile
-      - run: make format-check test lint typecheck
+      - run: make check
       - uses: millionco/react-doctor@v1.1.1
         with:
           version: '0.2.14'

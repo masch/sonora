@@ -22,4 +22,11 @@ export const APP_CONFIG = {
      */
     rewindOffsetMs: 10000,
   },
+  feedback: {
+    /**
+     * Feedback queue sync interval in seconds (used on Web and Mobile background sync).
+     * Note: iOS caps background execution to a minimum of 15 minutes (900 seconds).
+     */
+    syncIntervalSec: 30,
+  },
 } as const;

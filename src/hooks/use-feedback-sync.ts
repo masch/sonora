@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import Storage from 'expo-sqlite/kv-store';
 import NetInfo from '@react-native-community/netinfo';
+import * as Storage from '@/storage/feedback-storage';
 import { APP_CONFIG } from '@/config/app-config';
 import type { FeedbackEntry } from '@/types/feedback';
 
-const QUEUE_KEY = 'feedback_queue';
+const QUEUE_KEY = Storage.QUEUE_KEY;
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 /**
@@ -26,13 +26,25 @@ export function useFeedbackSync(): void {
       }
     });
 
+    const interval = setInterval(async () => {
+      const state = await NetInfo.fetch();
+      const isOnline = state.isConnected ?? false;
+      if (isOnline && !flushingRef.current) {
+        flushingRef.current = true;
+        flushQueue().finally(() => {
+          flushingRef.current = false;
+        });
+      }
+    }, APP_CONFIG.feedback.syncIntervalSec * 1000);
+
     return () => {
       unsubscribe();
+      clearInterval(interval);
     };
   }, []);
 }
 
-async function flushQueue(): Promise<void> {
+export async function flushQueue(): Promise<void> {
   try {
     const raw = await Storage.getItem(QUEUE_KEY);
     if (!raw) return; // Empty queue — nothing to flush

@@ -186,4 +186,24 @@ describe('useFeedbackSync', () => {
     // Should only have flushed ONCE (flushingRef prevented concurrent)
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
+
+  it('should start a periodic interval on all platforms', async () => {
+    jest.useFakeTimers();
+
+    seedQueue([{ id: 'key-1', tripId: 'trip-1', message: 'Periodic test' }]);
+    const mockFetch = jest.fn().mockResolvedValue({ status: 201, json: () => ({ status: 'ok' }) });
+    globalThis.fetch = mockFetch;
+
+    renderHook(() => useFeedbackSync());
+
+    expect(mockFetch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(30000);
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    jest.useRealTimers();
+  });
 });

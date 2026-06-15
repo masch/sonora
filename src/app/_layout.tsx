@@ -9,6 +9,8 @@ import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { useLocationStore } from '@/store/location-store';
+import { useFeedbackSync } from '@/hooks/use-feedback-sync';
+import { useBackgroundSync } from '@/hooks/use-background-sync';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
 if (typeof document !== 'undefined') {
@@ -25,6 +27,10 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap());
+
+  // Initialize sync hooks on app load
+  useFeedbackSync();
+  useBackgroundSync();
 
   // Start location subscription on app load
   useEffect(() => {

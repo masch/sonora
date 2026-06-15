@@ -28,7 +28,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: cd api && bun install --frozen-lockfile
-      - run: make format-check test lint typecheck
+      - run: make check
       - name: Deploy to EAS Hosting
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

@@ -12,8 +12,8 @@ const db = createDbClient('pg', pool);
 setDbClient(db);
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-console.log(`Server running on http://localhost:${port}`);
-const server = serve({ fetch: app.fetch, port });
+console.log(`Server running on http://0.0.0.0:${port}`);
+const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
 
 async function shutdown() {
   console.log('Shutting down gracefully...');

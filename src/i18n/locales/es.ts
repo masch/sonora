@@ -120,7 +120,7 @@ export const es = {
       placeholder: 'Contanos sobre tu experiencia…',
       submit: 'Enviar',
       sending: 'Enviando…',
-      sent: '¡Enviado!',
+      sent: '¡Muchas gracias por tu opinión!',
       queued: 'Guardado sin conexión — se enviará cuando te conectes',
       error: 'Algo salió mal',
       retry: 'Reintentar',

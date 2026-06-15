@@ -72,6 +72,10 @@ doctor: ## Run React Doctor audit (full verbose scan)
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 	bunx react-doctor --verbose --diff --fail-on warning
 
+.PHONY: expo-doctor
+expo-doctor: ## Run Expo Doctor to verify dependency compatibility
+	bunx expo-doctor
+
 # ── Supply Chain Security ──────────────────────
 
 .PHONY: socket-login socket-scan
@@ -289,6 +293,10 @@ api-db-shell-production: ## Open psql shell to Neon production DB
 api-dev-local: ## Run Hono API locally with Docker Postgres
 	cd $(API_DIR) && bun run dev:local
 
+.PHONY: api-dev-full
+api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
+
+
 # ── Test ──────────────────────────────────────
 
 .PHONY: test-front
@@ -311,7 +319,7 @@ validate: format test lint typecheck api-typecheck gga ## Run full development g
 api-validate: api-test api-typecheck ## Run API tests + typecheck
 
 .PHONY: check
-check: format-check test lint typecheck ## Run CI verification gate (format-check → test → lint → typecheck)
+check: format-check test lint typecheck expo-doctor ## Run CI verification gate (format-check → test → lint → typecheck → expo-doctor)
 
 # ── Review ─────────────────────────────────────
 
@@ -416,10 +424,37 @@ firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
 
 # ── Emulator ───────────────────────────────
 
-.PHONY: android-app-top
-android-app-stop:
+.PHONY: android-stop
+android-stop: ## Stop the standalone app on the emulator
 	@echo "🛑 Stopping app ($(MOBILE_BUNDLE_ID))..."
 	adb shell am force-stop $(MOBILE_BUNDLE_ID)
+
+.PHONY: android-stop-go
+android-stop-go: ## Stop Expo Go on the emulator
+	@echo "🛑 Stopping Expo Go..."
+	adb shell am force-stop host.exp.exponent
+
+.PHONY: android-trigger-bg-go
+android-trigger-bg-go: ## Trigger background fetch task in Expo Go on the emulator (replaces 999 with the job ID if needed)
+	@echo "🔔 Triggering background fetch task in Expo Go..."
+	@JOB_ID=$$(adb shell dumpsys jobscheduler | grep "host.exp.exponent" | grep -oE "JOB #[a-zA-Z0-9_/]+/[0-9]+" | head -n 1 | cut -d/ -f2); \
+	if [ -n "$$JOB_ID" ]; then \
+		echo "Found Expo Go background job ID: $$JOB_ID"; \
+		adb shell cmd jobscheduler run --force host.exp.exponent $$JOB_ID; \
+	else \
+		echo "No active background job found for host.exp.exponent. Make sure the app ran at least once and is minimized."; \
+	fi
+
+.PHONY: android-trigger-bg
+android-trigger-bg: ## Trigger background fetch task for the standalone app on the emulator
+	@echo "🔔 Triggering background fetch task for standalone app..."
+	@JOB_ID=$$(adb shell dumpsys jobscheduler | grep "$(MOBILE_BUNDLE_ID)" | grep -oE "JOB #[a-zA-Z0-9_/]+/[0-9]+" | head -n 1 | cut -d/ -f2); \
+	if [ -n "$$JOB_ID" ]; then \
+		echo "Found standalone background job ID: $$JOB_ID"; \
+		adb shell cmd jobscheduler run --force $(MOBILE_BUNDLE_ID) $$JOB_ID; \
+	else \
+		echo "No active background job found for $(MOBILE_BUNDLE_ID)."; \
+	fi
 
 .PHONY: android-reset
 android-reset:
