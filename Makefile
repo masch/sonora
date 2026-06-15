@@ -409,9 +409,13 @@ eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Andro
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
-eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
+eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (interactive, prompts for APP_VERSION_CODE)
 	@read -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
 	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
+
+.PHONY: eas-build-android-preview-ci
+eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (uses APP_VERSION_CODE from env)
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
