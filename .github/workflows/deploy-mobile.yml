@@ -1,13 +1,16 @@
-name: Deploy App
+name: Deploy Mobile
 
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'apps/api/**'
-      - 'openspec/**'
-      - 'README.md'
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
+      - 'Makefile'
 
 permissions:
   contents: read
