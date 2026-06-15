@@ -1,13 +1,17 @@
-name: Deploy App
+name: Deploy Mobile
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'api/**'
-      - 'openspec/**'
-      - 'README.md'
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
+      - 'Makefile'
 
 permissions:
   contents: read
@@ -27,7 +31,6 @@ jobs:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: cd api && bun install --frozen-lockfile
       - run: make check
       - name: Deploy to EAS Hosting
         env:

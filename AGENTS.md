@@ -78,7 +78,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 
 ## 10. Dependency Management
 
-- **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (which requires packages to be at least 10 days old) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
+- **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (currently 345600s = 4 days) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
 
 ## 11. GitHub CLI Sandbox Environment Overrides
 

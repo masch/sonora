@@ -1,0 +1,104 @@
+{
+  "name": "@sonora/mobile",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "dependencies": {
+    "@expo-google-fonts/caveat": "^0.4.2",
+    "@expo/ui": "56.0.18",
+    "@expo/vector-icons": "15.1.1",
+    "@react-native-community/netinfo": "12.0.1",
+    "@sonora/shared": "workspace:*",
+    "@tailwindcss/postcss": "4.3.0",
+    "expo": "56.0.12",
+    "expo-asset": "56.0.17",
+    "expo-audio": "56.0.12",
+    "expo-background-fetch": "56.0.19",
+    "expo-constants": "56.0.18",
+    "expo-device": "56.0.4",
+    "expo-file-system": "56.0.8",
+    "expo-font": "56.0.7",
+    "expo-glass-effect": "56.0.4",
+    "expo-image": "56.0.11",
+    "expo-linear-gradient": "56.0.4",
+    "expo-linking": "56.0.14",
+    "expo-localization": "56.0.6",
+    "expo-location": "56.0.18",
+    "expo-router": "56.2.11",
+    "expo-splash-screen": "56.0.10",
+    "expo-sqlite": "56.0.5",
+    "expo-status-bar": "56.0.4",
+    "expo-symbols": "56.0.6",
+    "expo-system-ui": "56.0.5",
+    "expo-task-manager": "56.0.19",
+    "expo-web-browser": "56.0.5",
+    "i18next": "26.3.0",
+    "nativewind": "5.0.0-preview.4",
+    "postcss": "8.5.15",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-i18next": "17.0.8",
+    "react-native": "0.85.3",
+    "react-native-css": "3.0.7",
+    "react-native-gesture-handler": "2.31.2",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-web": "0.21.2",
+    "react-native-webview": "^13.16.1",
+    "react-native-worklets": "0.8.3",
+    "tailwindcss": "4.3.0",
+    "zustand": "^5.0.14"
+  },
+  "overrides": {
+    "lightningcss": "1.30.1"
+  },
+  "devDependencies": {
+    "@babel/runtime": "7.29.7",
+    "@testing-library/react-hooks": "^8.0.1",
+    "@testing-library/react-native": "13.3.3",
+    "@types/jest": "29.5.14",
+    "@types/leaflet": "^1.9.21",
+    "@types/react": "19.2.15",
+    "eslint": "9.39.4",
+    "eslint-config-expo": "56.0.4",
+    "eslint-plugin-i18next": "6.1.4",
+    "firebase-tools": "^15.19.0",
+    "jest": "29.7.0",
+    "jest-expo": "~56.0.5",
+    "prettier": "3.8.3",
+    "react-doctor": "^0.2.14",
+    "typescript": "6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --watchAll",
+    "doctor": "npx react-doctor@latest",
+    "firebase-cli": "bunx firebase-tools"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFiles": [
+      "./jest.setup.ts"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|png|jpg|jpeg|gif|svg)$": "<rootDir>/__mocks__/styleMock.ts",
+      "^@/assets/(.*)$": "<rootDir>/assets/$1",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "testPathIgnorePatterns": [
+      "/api/",
+      "/node_modules/"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(\\.bun/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage/async-storage|@react-native-community/.*))"
+    ]
+  },
+  "private": true
+}

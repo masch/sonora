@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'api/**'
+      - 'apps/api/**'
+      - 'packages/shared/**'
     branches:
       - main
 
@@ -20,7 +21,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
         run: rm -f tsconfig.json
-      - run: make api-install
+      - run: bun install --frozen-lockfile
       - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
         run: make api-db-migrate-ci

@@ -6,8 +6,8 @@
 # ── Convenience ────────────────────────────────
 
 # Include .env files (leading '-' prevents error if file is missing)
--include .env
--include api/.env
+-include apps/mobile/.env
+-include apps/api/.env
 
 # Export token explicitly so it's available in all subshells
 EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
@@ -36,19 +36,19 @@ ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
 .PHONY: start
 start: ## Launch Expo dev server (default)
-	bun run start
+	bun --filter @sonora/mobile start
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
-	bun run web
+	bun --filter @sonora/mobile web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android
-	bun run android
+	bun --filter @sonora/mobile android
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	bun run ios
+	bun --filter @sonora/mobile ios
 
 # ── Native ─────────────────────────────────────
 
@@ -66,15 +66,49 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	bunx react-doctor --verbose
+	cd apps/mobile && bunx react-doctor --verbose
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	bunx react-doctor --verbose --diff --fail-on warning
+	cd apps/mobile && bunx react-doctor --verbose --diff --fail-on warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
-	bunx expo-doctor
+	cd apps/mobile && bunx expo-doctor
+
+.PHONY: expo-upgrade
+expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
+	@ROOT=$$(pwd); \
+	read -p "Minimum release age in days (0 = immediate, default 4): " DAYS; \
+	DAYS=$${DAYS:-4}; \
+	SECONDS=$$(( DAYS * 86400 )); \
+	MOBILE="$$ROOT/apps/mobile"; \
+	echo "Checking recommended versions..."; \
+	OUTPUT=$$(cd "$$MOBILE" && npx expo install --check 2>&1); \
+	PACKAGES=$$(echo "$$OUTPUT" | sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
+	if [ -n "$$PACKAGES" ]; then \
+		echo "Upgrading: $$PACKAGES"; \
+		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PACKAGES; \
+	elif echo "$$OUTPUT" | grep -qE 'ERR_MODULE_NOT_FOUND|command not found'; then \
+		echo "Packages not installed. Installing from package.json specs..."; \
+		PKGSPECS=$$(node -e "const p=require('$$ROOT/apps/mobile/package.json').dependencies; \
+			['@expo/ui','expo','expo-background-fetch','expo-font', \
+			 'expo-location','expo-router','expo-task-manager'] \
+			.forEach(d=>process.stdout.write(d+'@'+p[d]+' '))"); \
+		echo "Installing: $$PKGSPECS"; \
+		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PKGSPECS; \
+		echo "Re-checking recommended versions..."; \
+		cd "$$ROOT" && PACKAGES=$$(cd "$$MOBILE" && npx expo install --check 2>&1 | \
+			sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
+		if [ -n "$$PACKAGES" ]; then \
+			echo "Upgrading: $$PACKAGES"; \
+			cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PACKAGES; \
+		else \
+			echo "All Expo packages up to date!"; \
+		fi \
+	else \
+		echo "All Expo packages up to date!"; \
+	fi
 
 # ── Supply Chain Security ──────────────────────
 
@@ -90,30 +124,30 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
-install: ## Install project + backend API dependencies and configure git hooks
+install: ## Install all workspace dependencies and configure git hooks
 	bun install
-	cd $(API_DIR) && bun install 2>/dev/null || true
 	git config core.hooksPath .githooks
 
 .PHONY: lint
-lint: ## Run linter (expo lint)
-	bun run lint
+lint: ## Run linters across workspaces
+	bun --filter @sonora/mobile lint
 
 .PHONY: format
 format: ## Run prettier to format code
-	bun run format
+	bunx prettier --write .
 
 .PHONY: format-check
 format-check: ## Check code formatting using prettier
-	bun run format:check
+	bunx prettier --check .
 
 .PHONY: typecheck
-typecheck: ## Run TypeScript type check
-	tsc --noEmit
+typecheck: ## Run TypeScript type checks across workspaces
+	bun --filter @sonora/mobile typecheck
+	bun --filter @sonora/api typecheck
 
 # ── Backend API ───────────────────────────────
 
-API_DIR = api
+API_DIR = apps/api
 
 .PHONY: api-install
 api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest) — uses --frozen-lockfile for reproducibility
@@ -301,14 +335,18 @@ api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
 
 .PHONY: test-front
 test-front: ## Run frontend tests (Jest with jest-expo preset, one-shot)
-	bunx jest --passWithNoTests
+	cd apps/mobile && bunx jest --passWithNoTests --watchAll=false
 
 .PHONY: test-back
 test-back: ## Run backend API tests (Vitest, alias for api-test)
 	$(MAKE) api-test
 
+.PHONY: test-shared
+test-shared: ## Run shared package tests (Vitest)
+	cd packages/shared && bunx vitest run
+
 .PHONY: test
-test: test-front test-back ## Run all tests (frontend + backend)
+test: test-front test-back test-shared ## Run all tests (frontend + backend + shared)
 
 # ── CI ────────────────────────────────────────
 
@@ -339,10 +377,6 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 
 # ── EAS Deploy ───────────────────────────────
 
-.PHONY: bump-version-code
-bump-version-code: ## Increment android.versionCode in app.config.ts
-	scripts/bump-version-code.sh
-
 EAS_CLI_VERSION ?=
 
 .PHONY: eas-whoami
@@ -351,7 +385,7 @@ eas-whoami: ## Verify EAS authentication (uses EXPO_TOKEN from .env)
 
 .PHONY: eas-list
 eas-list: ## List recent EAS builds
-	bunx eas-cli@$(EAS_CLI_VERSION) build:list
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build:list
 
 .PHONY: eas-init
 eas-init: ## Initialize EAS for this project (first-time setup)
@@ -363,27 +397,28 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 
 .PHONY: eas-build-android
 eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
 
 .PHONY: eas-build-android-preview
 eas-build-android-preview: eas-whoami ## Build test APK for sideload via EAS cloud (internal distribution)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
 
 .PHONY: eas-build-android-local
 eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Android SDK + production keystore)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
-eas-build-android-preview-local: eas-whoami bump-version-code ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
-	bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
+eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (needs Android SDK, no keystore needed)
+	@read -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
+	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
-	bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
 
 .PHONY: eas-build-web
 eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
-	bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 # ── Firebase App Distribution ────────────
 
