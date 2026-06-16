@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
@@ -39,10 +39,40 @@ export default function FeedbackForm({
     onSubmit(trimmed);
   };
 
-  const handleDismiss = () => {
+  const discardAndClose = () => {
     setMessage('');
     setValidationError(null);
     onDismiss();
+  };
+
+  const handleDismiss = () => {
+    if (message.trim().length > 0) {
+      if (Platform.OS === 'web') {
+        // eslint-disable-next-line no-alert
+        if (window.confirm(t('feedback.form.confirm.body'))) {
+          discardAndClose();
+        }
+      } else {
+        Alert.alert(
+          t('feedback.form.confirm.title'),
+          t('feedback.form.confirm.body'),
+          [
+            {
+              text: t('feedback.form.confirm.cancel'),
+              style: 'cancel',
+            },
+            {
+              text: t('feedback.form.confirm.discard'),
+              style: 'destructive',
+              onPress: discardAndClose,
+            },
+          ],
+          { cancelable: true },
+        );
+      }
+    } else {
+      discardAndClose();
+    }
   };
 
   const isSending = status === 'sending';
@@ -99,6 +129,7 @@ export default function FeedbackForm({
             onChangeText={setMessage}
             multiline
             editable={!isSending}
+            autoFocus
             testID="feedback-input"
             accessibilityLabel={t('feedback.form.placeholder')}
           />

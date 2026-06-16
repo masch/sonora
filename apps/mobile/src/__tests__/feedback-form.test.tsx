@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import FeedbackForm from '@/components/feedback-form';
@@ -109,6 +110,34 @@ describe('FeedbackForm', () => {
     fireEvent.press(getByTestId('feedback-dismiss-button'));
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('has autoFocus enabled on TextInput', () => {
+    const { getByTestId } = render(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} />,
+    );
+    const input = getByTestId('feedback-input');
+    expect(input.props.autoFocus).toBe(true);
+  });
+
+  it('prompts confirmation Alert when dismissing with text', () => {
+    const onDismiss = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByTestId } = render(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    fireEvent.changeText(input, 'Unsaved feedback text');
+
+    fireEvent.press(getByTestId('feedback-dismiss-button'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    // Clean up
+    alertSpy.mockRestore();
   });
 
   it('does not render when visible is false', () => {

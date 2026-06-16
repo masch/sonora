@@ -46,14 +46,15 @@ export function BottomModal({
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onDismiss}>
-      <TwPressable
-        onPress={onDismiss}
-        testID="bottom-modal-backdrop"
-        accessibilityLabel={accessibilityLabel ?? t('common.dismiss')}
-        className="flex-1 justify-end bg-black/50"
-      >
+      <TwView className="flex-1 justify-end">
+        <TwPressable
+          onPress={onDismiss}
+          testID="bottom-modal-backdrop"
+          accessibilityLabel={accessibilityLabel ?? t('common.dismiss')}
+          className="absolute inset-0 bg-black/50"
+        />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <TwView onStartShouldSetResponder={() => true} testID="bottom-modal-content-container">
+          <TwView testID="bottom-modal-content-container">
             <TwView
               className="bg-background rounded-t-3xl p-6 gap-4"
               style={{ paddingBottom: 24 + insets.bottom }}
@@ -62,7 +63,7 @@ export function BottomModal({
             </TwView>
           </TwView>
         </KeyboardAvoidingView>
-      </TwPressable>
+      </TwView>
     </Modal>
   );
 }

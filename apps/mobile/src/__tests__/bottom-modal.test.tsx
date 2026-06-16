@@ -38,6 +38,20 @@ describe('BottomModal', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  it('does not call onDismiss when modal content is pressed', () => {
+    const onDismiss = jest.fn();
+    const { getByTestId } = render(
+      <BottomModal visible={true} onDismiss={onDismiss}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    const contentContainer = getByTestId('bottom-modal-content-container');
+    fireEvent.press(contentContainer);
+
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it('calls onDismiss automatically when autoDismissTrigger is true', () => {
     jest.useFakeTimers();
     const onDismiss = jest.fn();
