@@ -22,6 +22,9 @@ export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
 FIREBASE_TOKEN_CLEAN := $(patsubst "%",%,$(FIREBASE_TOKEN))
 export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 
+# Bypass expo-doctor during EAS local builds to prevent crashes from Bun workspace false positives
+export EXPO_NO_DOCTOR = 1
+
 
 MOBILE_BUNDLE_ID = com.masch.sonora
 
