@@ -430,7 +430,7 @@ eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks au
 # Firebase project App ID
 FIREBASE_APP_ID ?= 1:967054219260:android:aad883fdf7059bec060479
 # APK path — auto-picks the newest build-*.apk (override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk)
-FIREBASE_APK_PATH ?= $(shell ls -t build-*.apk android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+FIREBASE_APK_PATH ?= $(shell ls -t apps/mobile/build-*.apk apps/mobile/android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
 # Tester emails (comma-separated) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
 FIREBASE_TESTERS ?=
 # Firebase App Distribution groups
