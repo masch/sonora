@@ -64,11 +64,13 @@
     "jest-expo": "~56.0.5",
     "prettier": "3.8.3",
     "react-doctor": "^0.2.14",
+    "lightningcss": "1.30.1",
     "typescript": "6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android-dev": "expo start --android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "format": "prettier --write .",
@@ -96,6 +98,12 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(\\.bun/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage/async-storage|@react-native-community/.*))"
     ]
+  },
+  "overrides": {
+    "lightningcss": "1.30.1"
+  },
+  "resolutions": {
+    "lightningcss": "1.30.1"
   },
   "private": true
 }

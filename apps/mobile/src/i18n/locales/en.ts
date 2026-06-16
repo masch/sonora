@@ -127,6 +127,12 @@ export const en = {
       validation: {
         empty: 'Message cannot be empty',
       },
+      confirm: {
+        title: 'Discard feedback?',
+        body: 'You have unsaved changes. Are you sure you want to discard them?',
+        cancel: 'Keep Editing',
+        discard: 'Discard',
+      },
     },
   },
   errors: {

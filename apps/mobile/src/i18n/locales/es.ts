@@ -127,6 +127,12 @@ export const es = {
       validation: {
         empty: 'El mensaje no puede estar vacío',
       },
+      confirm: {
+        title: '¿Descartar opinión?',
+        body: 'Tenés cambios sin guardar. ¿De verdad querés descartarlos?',
+        cancel: 'Seguir editando',
+        discard: 'Descartar',
+      },
     },
   },
   errors: {

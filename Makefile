@@ -46,8 +46,8 @@ dev-web: ## Launch Expo dev server for web
 	bun --filter @sonora/mobile web
 
 .PHONY: dev-android
-dev-android: ## Launch Expo dev server for Android
-	bun --filter @sonora/mobile android
+dev-android: ## Launch Expo dev server for Android (Expo Go)
+	bun --filter @sonora/mobile android-dev
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
