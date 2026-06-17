@@ -45,7 +45,13 @@ export function BottomModal({
   }, [visible, autoDismissTrigger, autoDismissDelay]);
 
   return (
-    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onDismiss}>
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onDismiss}
+      statusBarTranslucent={true}
+    >
       <TwView className="flex-1 justify-end">
         <TwPressable
           onPress={onDismiss}
@@ -53,7 +59,7 @@ export function BottomModal({
           accessibilityLabel={accessibilityLabel ?? t('common.dismiss')}
           className="absolute inset-0 bg-black/50"
         />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TwView testID="bottom-modal-content-container">
             <TwView
               className="bg-background rounded-t-3xl p-6 gap-4"
