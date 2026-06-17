@@ -1,4 +1,9 @@
 import React from 'react';
+import {
+  Modal as RNModal,
+  KeyboardAvoidingView as RNKeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { TwText } from '@/tw';
 import { BottomModal } from '@/components/ui/bottom-modal';
@@ -67,5 +72,21 @@ describe('BottomModal', () => {
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
+  });
+
+  it('renders Modal with statusBarTranslucent and correct KeyboardAvoidingView behavior', () => {
+    const { UNSAFE_getByType } = render(
+      <BottomModal visible={true} onDismiss={jest.fn()}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    const modalInstance = UNSAFE_getByType(RNModal);
+    const keyboardAvoidingViewInstance = UNSAFE_getByType(RNKeyboardAvoidingView);
+
+    expect(modalInstance.props.statusBarTranslucent).toBe(true);
+    expect(keyboardAvoidingViewInstance.props.behavior).toBe(
+      Platform.OS === 'ios' ? 'padding' : 'height',
+    );
   });
 });
