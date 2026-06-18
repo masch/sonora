@@ -40,12 +40,21 @@ jest.mock('@/hooks/use-translation', () => ({
 // Import after mocks
 import HomeScreen from '@/app/(tabs)/index';
 
-describe('Home screen (now TripMap)', () => {
-  it('renders trip data from TripMap component', () => {
-    const { getByText } = render(<HomeScreen />);
+describe('Home screen (Redesigned)', () => {
+  it('renders home layout elements and menu items', () => {
+    const { getByText, getByTestId } = render(<HomeScreen />);
 
-    expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
-    expect(getByText('map.tripsTitle')).toBeTruthy();
+    expect(getByText('home.title')).toBeTruthy();
+    expect(getByText('home.poetic')).toBeTruthy();
+    expect(getByText('home.continueListening')).toBeTruthy();
+    expect(getByText('home.exploreTrips')).toBeTruthy();
+    expect(getByText('home.exploreTracks')).toBeTruthy();
+    expect(getByText('home.localMessages')).toBeTruthy();
+
+    expect(getByTestId('continue-listening-card')).toBeTruthy();
+    expect(getByTestId('explore-trips-menu')).toBeTruthy();
+    expect(getByTestId('explore-tracks-menu')).toBeTruthy();
+    expect(getByTestId('local-messages-menu')).toBeTruthy();
   });
 
   it('renders without crashing', () => {

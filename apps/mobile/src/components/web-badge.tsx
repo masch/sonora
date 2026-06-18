@@ -1,25 +1,26 @@
 import { version } from 'expo/package.json';
-import { Image } from 'expo-image';
-import { useColorScheme } from 'react-native';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';
+import { TwImage } from '@/tw/image';
 
 const expoBadgeWhite = require('@/assets/images/expo-badge-white.png');
 const expoBadge = require('@/assets/images/expo-badge.png');
 
 export function WebBadge() {
-  const scheme = useColorScheme();
+  const { isDark } = useColorScheme();
 
   return (
     <TwView className="items-center gap-2 p-8">
-      <ThemedText type="code" themeColor="textSecondary" style={{ textAlign: 'center' }}>
+      <ThemedText type="code" themeColor="textSecondary" className="text-center">
         {'v'}
         {version}
       </ThemedText>
-      <Image
-        source={scheme === 'dark' ? expoBadgeWhite : expoBadge}
-        style={{ width: 123, aspectRatio: 123 / 24 }}
+      <TwImage
+        source={isDark ? expoBadgeWhite : expoBadge}
+        className="w-[123px] aspect-[123/24]"
+        alt=""
       />
     </TwView>
   );

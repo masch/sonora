@@ -7,6 +7,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { RuntimeColors } from '@/constants/theme';
 
 import { useLocationStore } from '@/store/location-store';
 import { useFeedbackSync } from '@/hooks/use-feedback-sync';
@@ -24,7 +25,7 @@ if (typeof document !== 'undefined') {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { isDark } = useColorScheme();
 
   const [fontsLoaded, fontError] = useFonts(fontConfig.expoFontMap());
 
@@ -50,8 +51,22 @@ export default function RootLayout() {
     return null;
   }
 
+  const themeColors = isDark ? RuntimeColors.dark : RuntimeColors.light;
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+
+  const navTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      background: themeColors.background,
+      card: themeColors.background,
+      text: themeColors.text,
+      border: themeColors.border,
+    },
+  };
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="trips/[id]" options={{ headerShown: true }} />

@@ -15,11 +15,11 @@ export function useColorScheme() {
     () => false,
   );
 
-  const colorScheme = useRNColorScheme();
+  const colorScheme = useRNColorScheme() ?? 'light';
+  const scheme = isClient ? colorScheme : 'light';
 
-  if (isClient) {
-    return colorScheme;
-  }
-
-  return 'light';
+  return {
+    scheme,
+    isDark: scheme === 'dark',
+  };
 }

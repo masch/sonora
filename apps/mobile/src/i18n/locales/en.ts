@@ -36,8 +36,23 @@ export const en = {
   },
   tabs: {
     index: 'Home',
+    tracks: 'Tracks',
     explore: 'Explore',
     settings: 'Settings',
+  },
+  home: {
+    title: 'SONORA',
+    bannerAlt: 'SONORA poetic drift',
+    poetic: 'poetic drift',
+    continueListening: 'Continue listening',
+    remainingTime: '{{time}} remaining',
+    riverPath: 'River path',
+    exploreTrips: 'Explore routes',
+    exploreTripsSub: 'Paths and stations',
+    exploreTracks: 'Explore tracks',
+    exploreTracksSub: 'Sound library',
+    localMessages: 'Local messages',
+    localMessagesSub: 'Community voices',
   },
   index: {
     title: 'Welcome to Expo',

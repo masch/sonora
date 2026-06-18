@@ -21,8 +21,6 @@ import type { FeedbackStatus } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
 import { logger } from '@/utils/logger';
 
-const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
-
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TripDetailViewProps {
@@ -156,8 +154,6 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
 
       {/* Main Content Area */}
       <TwView className="relative flex-1 gap-4 p-4">
-        <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
-
         {/* Main Details Card */}
         <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
           {/* Trip header */}

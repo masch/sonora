@@ -9,12 +9,12 @@
   --font-rounded: var(--font-rounded);
   --font-mono: var(--font-mono);
 
-  --color-text: #000000;
-  --color-background: #ffffff;
-  --color-backgroundElement: #f0f0f3;
-  --color-backgroundSelected: #e0e1e6;
-  --color-textSecondary: #60646c;
-  --color-link: #3c87f7;
+  --color-text: #2b2826;
+  --color-background: #f4ede2;
+  --color-backgroundElement: #ebe4d8;
+  --color-backgroundSelected: #dfd7c8;
+  --color-textSecondary: #76706b;
+  --color-link: #8a6e53;
 
   --text-xs: 1.125rem; /* 18px ↑ from 12px */
   --text-sm: 1.25rem; /* 20px ↑ from 14px */
@@ -61,6 +61,18 @@
 /* Font-family override — var() no resuelve en react-native-css, */
 /* así que pisamos la utility class con el nombre directo.      */
 .font-sans {
+  font-family:
+    System,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+.font-cursive {
   font-family: Caveat;
 }
 
@@ -68,8 +80,7 @@
 /* Font family name MUST match src/config/font.ts → fontConfig.cssFamily */
 :root {
   --font-sans:
-    Caveat, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
+    System, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
@@ -90,27 +101,27 @@
     --font-mono: monospace;
   }
 
-  .font-medium {
+  .font-cursive.font-medium {
     font-family: Caveat-Medium;
     font-weight: normal;
   }
 
-  .font-semibold {
+  .font-cursive.font-semibold {
     font-family: Caveat-SemiBold;
     font-weight: normal;
   }
 
-  .font-bold {
+  .font-cursive.font-bold {
     font-family: Caveat-Bold;
     font-weight: normal;
   }
 
-  .font-extrabold {
+  .font-cursive.font-extrabold {
     font-family: Caveat-Bold;
     font-weight: normal;
   }
 
-  .font-black {
+  .font-cursive.font-black {
     font-family: Caveat-Bold;
     font-weight: normal;
   }
@@ -118,36 +129,36 @@
 
 @variant dark {
   :root {
-    --color-text: #ffffff;
-    --color-background: #000000;
-    --color-backgroundElement: #212225;
-    --color-backgroundSelected: #2e3135;
-    --color-textSecondary: #b0b4ba;
-    --color-link: #3c87f7;
+    --color-text: #f4ede2;
+    --color-background: #1a1817;
+    --color-backgroundElement: #2b2826;
+    --color-backgroundSelected: #3d3936;
+    --color-textSecondary: #a59e99;
+    --color-link: #c6b29c;
   }
 }
 
 .card-container {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(235, 228, 216, 0.5);
   border-width: 1px;
   border-style: solid;
-  border-color: rgba(228, 228, 231, 0.3);
+  border-color: rgba(43, 40, 38, 0.15);
 }
 
 .card-container-solid {
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(235, 228, 216, 0.85);
   border-width: 1px;
   border-style: solid;
-  border-color: rgba(228, 228, 231, 0.3);
+  border-color: rgba(43, 40, 38, 0.15);
 }
 
 @variant dark {
   .card-container {
-    background-color: rgba(24, 24, 27, 0.5);
-    border-color: rgba(39, 39, 42, 0.3);
+    background-color: rgba(43, 40, 38, 0.5);
+    border-color: rgba(244, 237, 226, 0.15);
   }
   .card-container-solid {
-    background-color: rgba(24, 24, 27, 0.8);
-    border-color: rgba(39, 39, 42, 0.3);
+    background-color: rgba(43, 40, 38, 0.85);
+    border-color: rgba(244, 237, 226, 0.15);
   }
 }
