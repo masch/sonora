@@ -17,7 +17,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
-const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 const instructionsBg = require('@/assets/images/sonora/cover-instrucciones-1.png');
 
 function formatDistance(
@@ -112,7 +111,6 @@ export default function TripMap() {
         className="relative flex-1 gap-3 p-4"
         style={Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
       >
-        <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
         {/* Instructions Card */}
         <TwView className="relative overflow-hidden rounded-[24px] card-container-solid shadow-md backdrop-blur-md z-10">
           <TwImage source={instructionsBg} className="w-full h-44" contentFit="cover" alt="" />

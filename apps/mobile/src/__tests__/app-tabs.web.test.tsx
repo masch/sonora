@@ -16,6 +16,13 @@ jest.mock('@/constants/tabs', () => ({
       hidden: false,
     },
     {
+      name: 'tracks',
+      label: 'Tracks',
+      ioniconsName: 'musical-notes-outline',
+      symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
+      hidden: false,
+    },
+    {
       name: 'explore',
       label: 'Explore',
       ioniconsName: 'compass-outline',
@@ -52,8 +59,12 @@ jest.mock('expo-router/ui', () => {
 beforeAll(() => {
   (useTranslation().t as unknown as jest.Mock).mockImplementation(
     (key: string) =>
-      ({ 'tabs.index': 'Home', 'tabs.explore': 'Explore', 'tabs.settings': 'Settings' })[key] ??
-      key,
+      ({
+        'tabs.index': 'Home',
+        'tabs.tracks': 'Tracks',
+        'tabs.explore': 'Explore',
+        'tabs.settings': 'Settings',
+      })[key] ?? key,
   );
 });
 
@@ -63,9 +74,10 @@ describe('Web app-tabs', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders TabTrigger for visible (index) tab', () => {
+  it('renders TabTrigger for visible (index and tracks) tabs', () => {
     const { getByTestId } = render(<AppTabsWeb />);
     expect(getByTestId('tab-trigger-index')).toBeTruthy();
+    expect(getByTestId('tab-trigger-tracks')).toBeTruthy();
   });
 
   it('does NOT render TabTrigger for hidden (explore) tab', () => {

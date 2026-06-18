@@ -12,18 +12,20 @@ import { Platform } from 'react-native';
 
 export const RuntimeColors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#2b2826',
+    background: '#f4ede2',
+    backgroundElement: '#ebe4d8',
+    backgroundSelected: '#dfd7c8',
+    textSecondary: '#76706b',
+    border: 'rgba(43, 40, 38, 0.15)',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#f4ede2',
+    background: '#1a1817',
+    backgroundElement: '#2b2826',
+    backgroundSelected: '#3d3936',
+    textSecondary: '#a59e99',
+    border: 'rgba(244, 237, 226, 0.15)',
   },
 } as const;
 

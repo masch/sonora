@@ -36,8 +36,23 @@ export const es = {
   },
   tabs: {
     index: 'Inicio',
+    tracks: 'Tracks',
     explore: 'Explorar',
     settings: 'Ajustes',
+  },
+  home: {
+    title: 'SONORA',
+    bannerAlt: 'SONORA deriva poética',
+    poetic: 'deriva poética',
+    continueListening: 'Continuar escuchando',
+    remainingTime: '{{time}} restantes',
+    riverPath: 'Sendero del río',
+    exploreTrips: 'Explorar recorridos',
+    exploreTripsSub: 'Caminos y estaciones',
+    exploreTracks: 'Explorar tracks',
+    exploreTracksSub: 'Biblioteca sonora',
+    localMessages: 'Mensajes del lugar',
+    localMessagesSub: 'Voces de la comunidad',
   },
   index: {
     title: 'Bienvenido a Expo',

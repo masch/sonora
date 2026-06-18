@@ -1,5 +1,5 @@
 import { useAppTranslation } from '@/hooks/use-translation';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 
 import { TwView, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
@@ -7,6 +7,7 @@ import { ScrollScreenWrapper, TAB_BAR_INSET } from '@/components/screen-wrapper'
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
@@ -14,9 +15,8 @@ const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 
 export default function SettingsScreen() {
   const { t } = useAppTranslation();
-  const colorScheme = useColorScheme();
+  const { isDark } = useColorScheme();
   const colors = useThemeColors();
-  const isDark = colorScheme === 'dark';
 
   return (
     <ScrollScreenWrapper disableBottomPadding contentContainerClassName="pb-6">
