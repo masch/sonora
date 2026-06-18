@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  Modal as RNModal,
-  KeyboardAvoidingView as RNKeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { Modal as RNModal, KeyboardAvoidingView as RNKeyboardAvoidingView } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { TwText } from '@/tw';
 import { BottomModal } from '@/components/ui/bottom-modal';
@@ -85,8 +81,6 @@ describe('BottomModal', () => {
     const keyboardAvoidingViewInstance = UNSAFE_getByType(RNKeyboardAvoidingView);
 
     expect(modalInstance.props.statusBarTranslucent).toBe(true);
-    expect(keyboardAvoidingViewInstance.props.behavior).toBe(
-      Platform.OS === 'ios' ? 'padding' : 'height',
-    );
+    expect(keyboardAvoidingViewInstance.props.behavior).toBe('padding');
   });
 });
