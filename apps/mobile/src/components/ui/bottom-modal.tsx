@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef } from 'react';
-import { Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAvoidingView, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -52,14 +52,14 @@ export function BottomModal({
       onRequestClose={onDismiss}
       statusBarTranslucent={true}
     >
-      <TwView className="flex-1 justify-end">
-        <TwPressable
-          onPress={onDismiss}
-          testID="bottom-modal-backdrop"
-          accessibilityLabel={accessibilityLabel ?? t('common.dismiss')}
-          className="absolute inset-0 bg-black/50"
-        />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <TwView className="flex-1 justify-end">
+          <TwPressable
+            onPress={onDismiss}
+            testID="bottom-modal-backdrop"
+            accessibilityLabel={accessibilityLabel ?? t('common.dismiss')}
+            className="absolute inset-0 bg-black/50"
+          />
           <TwView testID="bottom-modal-content-container">
             <TwView
               className="bg-background rounded-t-3xl p-6 gap-4"
@@ -68,8 +68,8 @@ export function BottomModal({
               {children}
             </TwView>
           </TwView>
-        </KeyboardAvoidingView>
-      </TwView>
+        </TwView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
