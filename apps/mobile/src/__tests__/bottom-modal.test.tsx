@@ -1,12 +1,7 @@
-import React from 'react';
-import {
-  Modal as RNModal,
-  KeyboardAvoidingView as RNKeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
-import { TwText } from '@/tw';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { TwText } from '@/tw';
+import { fireEvent, render } from '@testing-library/react-native';
+import { KeyboardAvoidingView as RNKeyboardAvoidingView, Modal as RNModal } from 'react-native';
 
 describe('BottomModal', () => {
   it('renders children when visible is true', () => {
@@ -85,8 +80,6 @@ describe('BottomModal', () => {
     const keyboardAvoidingViewInstance = UNSAFE_getByType(RNKeyboardAvoidingView);
 
     expect(modalInstance.props.statusBarTranslucent).toBe(true);
-    expect(keyboardAvoidingViewInstance.props.behavior).toBe(
-      Platform.OS === 'ios' ? 'padding' : 'height',
-    );
+    expect(keyboardAvoidingViewInstance.props.behavior).toBe('padding');
   });
 });
