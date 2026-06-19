@@ -15,14 +15,14 @@ jest.mock('@/hooks/use-offline-geofence', () => ({
     errorMsg: null,
   }),
 }));
-jest.mock('@/hooks/use-trip-download', () => ({
-  useTripDownload: () => ({
+jest.mock('@/hooks/use-track-download', () => ({
+  useTrackDownload: () => ({
     status: 'idle',
     progress: 0,
     localAudioUri: null,
     errorMsg: null,
     startDownload: jest.fn(),
-    deleteTripLocal: jest.fn(),
+    deleteTrackLocal: jest.fn(),
   }),
 }));
 jest.mock('@/hooks/use-immersion-player', () => ({

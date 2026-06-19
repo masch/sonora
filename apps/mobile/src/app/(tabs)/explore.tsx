@@ -14,7 +14,8 @@ import { WebBadge } from '@/components/web-badge';
 import { Icon } from '@/components/icon';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
-import { useTripDownload } from '@/hooks/use-trip-download';
+import { useTrackDownload } from '@/hooks/use-track-download';
+import { getTrackById } from '@/data/tracks';
 import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 
@@ -63,10 +64,9 @@ export default function ExploreScreen() {
     longitude: -64.73809012343702,
   });
 
-  const download = useTripDownload(
-    'umepay-bosque',
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  );
+  const track = getTrackById('umepay-bosque');
+
+  const download = useTrackDownload(track?.id ?? 'umepay-bosque', track?.audioRemoteUrl ?? '');
 
   const player = useImmersionPlayer(download.localAudioUri);
 
@@ -127,7 +127,7 @@ export default function ExploreScreen() {
               progress={download.progress}
               errorMsg={download.errorMsg}
               onDownload={download.startDownload}
-              onDelete={download.deleteTripLocal}
+              onDelete={download.deleteTrackLocal}
             />
 
             {/* Audio player — only shown when download completed */}

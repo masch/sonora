@@ -2,16 +2,16 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 // ---------------------------------------------------------------------------
-// Mock modules required by TripMap (now rendered in index.tsx)
+// Mock modules required by TrackMap (now rendered in index.tsx)
 // ---------------------------------------------------------------------------
 
-jest.mock('@/data/trips', () => ({
-  getAllTrips: jest.fn(() => [
+jest.mock('@/data/tracks', () => ({
+  getAllTracks: jest.fn(() => [
     {
       id: 'umepay-bosque',
       title: 'Umepay Bosque Antiguo',
       description: 'A meditative walk through the ancient forest.',
-      durationMinutes: 45,
+      durationSeconds: 2700,
       startCoordinates: { latitude: -32.212, longitude: -64.738 },
       audioRemoteUrl: 'https://example.com/audio.mp3',
     },
@@ -47,12 +47,12 @@ describe('Home screen (Redesigned)', () => {
     expect(getByText('home.title')).toBeTruthy();
     expect(getByText('home.poetic')).toBeTruthy();
     expect(getByText('home.continueListening')).toBeTruthy();
-    expect(getByText('home.exploreTrips')).toBeTruthy();
+    expect(getByText('home.exploreRoutes')).toBeTruthy();
     expect(getByText('home.exploreTracks')).toBeTruthy();
     expect(getByText('home.localMessages')).toBeTruthy();
 
     expect(getByTestId('continue-listening-card')).toBeTruthy();
-    expect(getByTestId('explore-trips-menu')).toBeTruthy();
+    expect(getByTestId('explore-routes-menu')).toBeTruthy();
     expect(getByTestId('explore-tracks-menu')).toBeTruthy();
     expect(getByTestId('local-messages-menu')).toBeTruthy();
   });

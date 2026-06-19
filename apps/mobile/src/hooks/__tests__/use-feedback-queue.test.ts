@@ -47,7 +47,7 @@ describe('useFeedbackQueue', () => {
     let entryId: string | undefined;
     await act(async () => {
       entryId = await result.current.enqueue({
-        tripId: 'trip-1',
+        trackId: 'track-1',
         message: 'Great trail!',
       });
     });
@@ -63,11 +63,11 @@ describe('useFeedbackQueue', () => {
     await waitForQueueLoaded(result);
 
     await act(async () => {
-      await result.current.enqueue({ tripId: 'trip-1', message: 'First' });
+      await result.current.enqueue({ trackId: 'track-1', message: 'First' });
     });
 
     await act(async () => {
-      await result.current.enqueue({ tripId: 'trip-2', message: 'Second' });
+      await result.current.enqueue({ trackId: 'track-2', message: 'Second' });
     });
 
     const allEntries = result.current.getAll();
@@ -83,7 +83,7 @@ describe('useFeedbackQueue', () => {
 
     let entryId: string | undefined;
     await act(async () => {
-      entryId = await result.current.enqueue({ tripId: 'trip-1', message: 'To remove' });
+      entryId = await result.current.enqueue({ trackId: 'track-1', message: 'To remove' });
     });
 
     await act(async () => {
@@ -110,10 +110,10 @@ describe('useFeedbackQueue', () => {
     await waitForQueueLoaded(result);
 
     await act(async () => {
-      await result.current.enqueue({ tripId: 'trip-1', message: 'A' });
+      await result.current.enqueue({ trackId: 'track-1', message: 'A' });
     });
     await act(async () => {
-      await result.current.enqueue({ tripId: 'trip-2', message: 'B' });
+      await result.current.enqueue({ trackId: 'track-2', message: 'B' });
     });
 
     await act(async () => {
@@ -141,8 +141,8 @@ describe('useFeedbackQueue', () => {
     let firstId: string | undefined;
     let secondId: string | undefined;
     await act(async () => {
-      firstId = await result.current.enqueue({ tripId: 'trip-1', message: 'Same key' });
-      secondId = await result.current.enqueue({ tripId: 'trip-1', message: 'Same key' }, firstId);
+      firstId = await result.current.enqueue({ trackId: 'track-1', message: 'Same key' });
+      secondId = await result.current.enqueue({ trackId: 'track-1', message: 'Same key' }, firstId);
     });
 
     await act(async () => {

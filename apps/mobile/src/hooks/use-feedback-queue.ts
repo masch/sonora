@@ -10,7 +10,7 @@ function generateId(): string {
 }
 
 interface EnqueueInput {
-  tripId: string;
+  trackId: string;
   message: string;
 }
 
@@ -60,7 +60,7 @@ export function useFeedbackQueue() {
 
       const entry: FeedbackEntry = {
         id,
-        tripId: input.tripId,
+        trackId: input.trackId,
         message: input.message,
         createdAt: new Date().toISOString(),
         retryCount: 0,

@@ -60,7 +60,7 @@ export async function flushQueue(): Promise<void> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tripId: entry.tripId,
+            trackId: entry.trackId,
             message: entry.message,
             idempotencyKey: entry.id,
             createdAt: entry.createdAt,

@@ -38,7 +38,11 @@ ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 .DEFAULT_GOAL := start
 
 .PHONY: start
-start: ## Launch Expo dev server (default)
+start: ## Launch Expo dev server
+	cd apps/mobile && bunx expo start
+
+.PHONY: start-headless
+start-headless: ## Launch Expo dev server without interactive TTY
 	bun --filter @sonora/mobile start
 
 .PHONY: dev-web

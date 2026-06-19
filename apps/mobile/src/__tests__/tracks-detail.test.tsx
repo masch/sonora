@@ -2,8 +2,8 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
-import { getTripById } from '@/data/trips';
-import TripDetailScreen from '@/app/trips/[id]';
+import { getTrackById } from '@/data/tracks';
+import TrackDetailScreen from '@/app/tracks/[id]';
 
 // Mock expo-router (Stack and useLocalSearchParams)
 const mockParams: Record<string, string> = {};
@@ -25,14 +25,14 @@ jest.mock('@/hooks/use-offline-geofence', () => ({
   }),
 }));
 
-jest.mock('@/hooks/use-trip-download', () => ({
-  useTripDownload: () => ({
+jest.mock('@/hooks/use-track-download', () => ({
+  useTrackDownload: () => ({
     status: 'idle',
     progress: 0,
     localAudioUri: null,
     errorMsg: null,
     startDownload: jest.fn(),
-    deleteTripLocal: jest.fn(),
+    deleteTrackLocal: jest.fn(),
   }),
 }));
 
@@ -56,8 +56,8 @@ jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
 
 const mockMap: Record<string, string> = {
-  'trips.notFound': 'Trip not found',
-  'trips.duration': '45 min walk',
+  'tracks.notFound': 'Track not found',
+  'tracks.duration': '45 min walk',
   'index.waitingForDownload': 'Download audio first to play it',
 };
 
@@ -66,47 +66,47 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  // Default to a valid trip
+  // Default to a valid track
   mockParams.id = 'umepay-bosque';
 });
 
-describe('TripDetailScreen', () => {
-  it('renders the trip title from metadata', () => {
-    const { getByText } = render(<TripDetailScreen />);
-    const trip = getTripById('umepay-bosque')!;
-    expect(getByText(trip.title)).toBeTruthy();
+describe('TrackDetailScreen', () => {
+  it('renders the track title from metadata', () => {
+    const { getByText } = render(<TrackDetailScreen />);
+    const track = getTrackById('umepay-bosque')!;
+    expect(getByText(track.title)).toBeTruthy();
   });
 
-  it('renders the trip description', () => {
-    const { getByText } = render(<TripDetailScreen />);
-    const trip = getTripById('umepay-bosque')!;
-    expect(getByText(trip.description)).toBeTruthy();
+  it('renders the track description', () => {
+    const { getByText } = render(<TrackDetailScreen />);
+    const track = getTrackById('umepay-bosque')!;
+    expect(getByText(track.description)).toBeTruthy();
   });
 
   it('renders the duration from translation', () => {
-    const { getByText } = render(<TripDetailScreen />);
+    const { getByText } = render(<TrackDetailScreen />);
     expect(getByText('45 min walk')).toBeTruthy();
   });
 
   it('renders download card', () => {
-    const { getByTestId } = render(<TripDetailScreen />);
+    const { getByTestId } = render(<TrackDetailScreen />);
     expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
   });
 
   it('renders GPS badge', () => {
-    const { getByTestId } = render(<TripDetailScreen />);
+    const { getByTestId } = render(<TrackDetailScreen />);
     expect(getByTestId('gps-precision-badge')).toBeTruthy();
   });
 
-  it('shows not-found for unknown trip id', () => {
-    mockParams.id = 'unknown-trip';
-    const { getByText } = render(<TripDetailScreen />);
-    expect(getByText('Trip not found')).toBeTruthy();
+  it('shows not-found for unknown track id', () => {
+    mockParams.id = 'unknown-track';
+    const { getByText } = render(<TrackDetailScreen />);
+    expect(getByText('Track not found')).toBeTruthy();
   });
 
   it('handles empty id gracefully', () => {
     mockParams.id = '';
-    const { getByText } = render(<TripDetailScreen />);
-    expect(getByText('Trip not found')).toBeTruthy();
+    const { getByText } = render(<TrackDetailScreen />);
+    expect(getByText('Track not found')).toBeTruthy();
   });
 });

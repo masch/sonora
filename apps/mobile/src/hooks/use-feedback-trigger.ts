@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LocalTripMetadata } from '@/data/trips';
+import type { LocalTrackMetadata } from '@/data/tracks';
 
 export interface FeedbackTriggerSources {
   /** From useImmersionPlayer: true when audio playback just finished */
@@ -16,7 +16,7 @@ export interface FeedbackTriggerResult {
 }
 
 /**
- * Reads the trip's `feedbackTrigger` field and wires the appropriate source.
+ * Reads the track's `feedbackTrigger` field and wires the appropriate source.
  *
  * - `audio_end`: triggers when `didJustFinish` transitions to true
  * - `geofence`: triggers when `isNearStart` transitions to true
@@ -25,14 +25,14 @@ export interface FeedbackTriggerResult {
  * - undefined: never triggers
  */
 export function useFeedbackTrigger(
-  trip: LocalTripMetadata | undefined,
+  track: LocalTrackMetadata | undefined,
   sources: FeedbackTriggerSources,
 ): FeedbackTriggerResult {
   const [showFeedback, setShowFeedback] = useState(false);
   const prevDidJustFinish = useRef(sources.didJustFinish ?? false);
   const prevIsNearStart = useRef(sources.isNearStart ?? false);
 
-  const triggerMode = trip?.feedbackTrigger;
+  const triggerMode = track?.feedbackTrigger;
 
   useEffect(() => {
     if (!triggerMode || triggerMode === 'manual') {

@@ -10,7 +10,7 @@ import { TwView } from '@/tw';
 // Props
 // ---------------------------------------------------------------------------
 
-interface TripDetailMapProps {
+interface TrackDetailMapProps {
   latitude: number;
   longitude: number;
   userLatitude?: number;
@@ -71,13 +71,13 @@ function buildEmbedUrl(lat: number, lng: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TripDetailMap({
+export default function TrackDetailMap({
   latitude,
   longitude,
   userLatitude,
   userLongitude,
   showLabels = true,
-}: TripDetailMapProps) {
+}: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const webviewRef = useRef<WebView>(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +181,7 @@ export default function TripDetailMap({
         source={{ uri }}
         className="flex-1 bg-transparent"
         accessibilityLabel={t('map.loadingMap')}
-        testID="trip-detail-map"
+        testID="track-detail-map"
         scrollEnabled={false}
         bounces={false}
         overScrollMode="never"

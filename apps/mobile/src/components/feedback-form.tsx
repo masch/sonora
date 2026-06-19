@@ -14,7 +14,7 @@ interface FeedbackFormProps {
 }
 
 /**
- * Modal feedback form for post-trip feedback.
+ * Modal feedback form for post-track feedback.
  * Displays a text input, submit button, and status indicators.
  * Supports sending, sent, queued (offline), and error states.
  */
@@ -48,7 +48,6 @@ export default function FeedbackForm({
   const handleDismiss = () => {
     if (message.trim().length > 0) {
       if (Platform.OS === 'web') {
-        // eslint-disable-next-line no-alert
         if (window.confirm(t('feedback.form.confirm.body'))) {
           discardAndClose();
         }
