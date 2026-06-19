@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { createDbClient } from './index';
-import { trips } from './schema';
+import { tracks } from './schema';
+import { TRACKS } from '@sonora/shared';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -19,39 +20,28 @@ async function main() {
   const db = createDbClient('pg', pool);
 
   try {
-    const defaultTrips = [
-      {
-        id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
-        slug: 'umepay-bosque',
-        title: 'DERIVA POR EL CENTRO',
-        description: 'Deriva por el centro, 3 secciones, 600mts',
-        durationMinutes: 45,
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-        feedbackTrigger: 'manual',
-      },
-      {
-        id: '5a9463ce-daba-4756-892e-4dd4cb862309',
-        slug: 'rio-claro',
-        title: 'BONUS TRACK',
-        description: 'Mindfulness',
-        durationMinutes: 10,
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-        feedbackTrigger: null,
-      },
-    ];
+    const defaultTracks = Object.values(TRACKS).map((track) => ({
+      id: track.uuid,
+      slug: track.id,
+      title: track.title,
+      description: track.description,
+      durationSeconds: track.durationSeconds,
+      audioUrl: track.audioRemoteUrl,
+      feedbackTrigger: track.feedbackTrigger ?? null,
+    }));
 
-    for (const trip of defaultTrips) {
+    for (const track of defaultTracks) {
       await db
-        .insert(trips)
-        .values(trip)
+        .insert(tracks)
+        .values(track)
         .onConflictDoUpdate({
-          target: trips.slug,
+          target: tracks.slug,
           set: {
-            title: trip.title,
-            description: trip.description,
-            durationMinutes: trip.durationMinutes,
-            audioUrl: trip.audioUrl,
-            feedbackTrigger: trip.feedbackTrigger,
+            title: track.title,
+            description: track.description,
+            durationSeconds: track.durationSeconds,
+            audioUrl: track.audioUrl,
+            feedbackTrigger: track.feedbackTrigger,
           },
         });
     }

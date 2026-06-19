@@ -6,7 +6,7 @@ import { logger } from '@/utils/logger';
 
 export type DownloadStatus = 'idle' | 'downloading' | 'completed' | 'error';
 
-export interface TripDownloadState {
+export interface TrackDownloadState {
   status: DownloadStatus;
   progress: number;
   localAudioUri: string | null;
@@ -16,20 +16,20 @@ export interface TripDownloadState {
 // 50MB safety multiplier constraint
 const SIZE_MULTIPLIER = 1.5;
 
-const getTargetUri = (tripId: string | null) => {
-  if (!tripId) return null;
-  return `${FileSystem.documentDirectory}trips/${tripId}/audio.mp3`;
+const getTargetUri = (trackId: string | null) => {
+  if (!trackId) return null;
+  return `${FileSystem.documentDirectory}tracks/${trackId}/audio.mp3`;
 };
 
 const DEFAULT_ESTIMATED_SIZE = 30 * 1024 * 1024; // default ~30MB
 
-export function useTripDownload(
-  tripId: string | null,
+export function useTrackDownload(
+  trackId: string | null,
   remoteAudioUrl: string | null,
   estimatedSizeBytes: number = DEFAULT_ESTIMATED_SIZE,
 ) {
   const { t } = useAppTranslation();
-  const [state, setState] = useState<TripDownloadState>({
+  const [state, setState] = useState<TrackDownloadState>({
     status: 'idle',
     progress: 0,
     localAudioUri: null,
@@ -39,7 +39,7 @@ export function useTripDownload(
   const downloadResumableRef = useRef<FileSystem.DownloadResumable | null>(null);
 
   useEffect(() => {
-    if (!tripId || !remoteAudioUrl) {
+    if (!trackId || !remoteAudioUrl) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState({
         status: 'idle',
@@ -55,7 +55,7 @@ export function useTripDownload(
       if (Platform.OS === 'web') return;
 
       try {
-        const targetUri = getTargetUri(tripId);
+        const targetUri = getTargetUri(trackId);
         if (!targetUri) return;
 
         const info = await FileSystem.getInfoAsync(targetUri);
@@ -89,11 +89,11 @@ export function useTripDownload(
         });
       }
     };
-  }, [tripId, remoteAudioUrl]);
+  }, [trackId, remoteAudioUrl]);
 
   const startDownload = async () => {
-    const targetUri = getTargetUri(tripId);
-    if (!tripId || !remoteAudioUrl || !targetUri) {
+    const targetUri = getTargetUri(trackId);
+    if (!trackId || !remoteAudioUrl || !targetUri) {
       setState((prev) => ({ ...prev, errorMsg: t('errors.invalidDownloadConfig') }));
       return;
     }
@@ -138,7 +138,7 @@ export function useTripDownload(
           errorMsg: null,
         });
       } else {
-        await nativeDownload(remoteAudioUrl, targetUri, tripId);
+        await nativeDownload(remoteAudioUrl, targetUri, trackId);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('errors.downloadFailed');
@@ -152,9 +152,9 @@ export function useTripDownload(
     }
   };
 
-  async function nativeDownload(url: string, targetUri: string, tripId: string) {
+  async function nativeDownload(url: string, targetUri: string, trackId: string) {
     // 2. Ensure parent directory exists
-    const parentDir = `${FileSystem.documentDirectory}trips/${tripId}/`;
+    const parentDir = `${FileSystem.documentDirectory}tracks/${trackId}/`;
     const dirInfo = await FileSystem.getInfoAsync(parentDir);
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(parentDir, { intermediates: true });
@@ -188,7 +188,7 @@ export function useTripDownload(
     }
   }
 
-  const deleteTripLocal = async () => {
+  const deleteTrackLocal = async () => {
     // On web, there's no persistent local file — just reset state
     if (Platform.OS === 'web') {
       setState({
@@ -200,7 +200,7 @@ export function useTripDownload(
       return;
     }
 
-    const targetUri = getTargetUri(tripId);
+    const targetUri = getTargetUri(trackId);
     if (!targetUri) return;
 
     try {
@@ -224,6 +224,6 @@ export function useTripDownload(
   return {
     ...state,
     startDownload,
-    deleteTripLocal,
+    deleteTrackLocal,
   };
 }

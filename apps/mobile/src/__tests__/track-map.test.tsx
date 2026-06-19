@@ -2,23 +2,23 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 
 // ---------------------------------------------------------------------------
-// Mutable trip data — allows per-test override without jest.clearAllMocks issues
+// Mutable track data — allows per-test override without jest.clearAllMocks issues
 // ---------------------------------------------------------------------------
-let mockTripsData: {
+let mockTracksData: {
   id: string;
   title: string;
   description: string;
-  durationMinutes: number;
+  durationSeconds: number;
   startCoordinates: { latitude: number; longitude: number };
   audioRemoteUrl: string;
 }[];
 
-const DEFAULT_TRIPS = [
+const DEFAULT_TRACKS = [
   {
     id: 'umepay-bosque',
     title: 'Umepay Bosque Antiguo',
     description: 'A meditative walk through the ancient forest.',
-    durationMinutes: 45,
+    durationSeconds: 2700,
     startCoordinates: { latitude: -32.212, longitude: -64.738 },
     audioRemoteUrl: 'https://example.com/audio.mp3',
   },
@@ -26,22 +26,22 @@ const DEFAULT_TRIPS = [
     id: 'rio-claro',
     title: 'Rio Claro Trail',
     description: 'A walk along the clear river.',
-    durationMinutes: 30,
+    durationSeconds: 1800,
     startCoordinates: { latitude: -33.123, longitude: -65.456 },
     audioRemoteUrl: 'https://example.com/audio2.mp3',
   },
 ];
 
 beforeEach(() => {
-  mockTripsData = DEFAULT_TRIPS;
+  mockTracksData = DEFAULT_TRACKS;
   jest.clearAllMocks();
 });
 
 // ---------------------------------------------------------------------------
-// Mock trips data
+// Mock tracks data
 // ---------------------------------------------------------------------------
-jest.mock('@/data/trips', () => ({
-  getAllTrips: jest.fn(() => mockTripsData),
+jest.mock('@/data/tracks', () => ({
+  getAllTracks: jest.fn(() => mockTracksData),
 }));
 
 // ---------------------------------------------------------------------------
@@ -101,14 +101,14 @@ jest.mock('@/hooks/use-translation', () => ({
 }));
 
 // Import after mocks
-import TripMap from '@/components/trip-map';
+import TrackMap from '@/components/track-map';
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe('TripMap native component', () => {
+describe('TrackMap native component', () => {
   beforeEach(() => {
-    mockTripsData = DEFAULT_TRIPS;
+    mockTracksData = DEFAULT_TRACKS;
     jest.clearAllMocks();
     (useLocationStore as unknown as jest.Mock).mockImplementation((selector) => {
       const state = { coords: null, accuracy: null, status: 'initializing', errorMsg: null };
@@ -116,30 +116,30 @@ describe('TripMap native component', () => {
     });
   });
 
-  it('renders trip cards when trips exist', () => {
-    const { getByText } = render(<TripMap />);
+  it('renders track cards when tracks exist', () => {
+    const { getByText } = render(<TrackMap />);
 
     expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     expect(getByText('Rio Claro Trail')).toBeTruthy();
   });
 
-  it('renders view trip link per trip', () => {
-    const { getByTestId } = render(<TripMap />);
+  it('renders view track link per track', () => {
+    const { getByTestId } = render(<TrackMap />);
 
-    expect(getByTestId('view-trip-umepay-bosque')).toBeTruthy();
-    expect(getByTestId('view-trip-rio-claro')).toBeTruthy();
+    expect(getByTestId('view-track-umepay-bosque')).toBeTruthy();
+    expect(getByTestId('view-track-rio-claro')).toBeTruthy();
   });
 
-  it('renders empty state when no trips', () => {
-    mockTripsData = [];
+  it('renders empty state when no tracks', () => {
+    mockTracksData = [];
 
-    const { getByText } = render(<TripMap />);
+    const { getByText } = render(<TrackMap />);
 
-    expect(getByText('map.noTripsTitle')).toBeTruthy();
+    expect(getByText('map.noTracksTitle')).toBeTruthy();
   });
 
   it('renders instructions card', () => {
-    const { getByText } = render(<TripMap />);
+    const { getByText } = render(<TrackMap />);
 
     expect(getByText('map.instructionsTitle')).toBeTruthy();
   });
@@ -159,10 +159,10 @@ describe('TripMap native component', () => {
       return selector ? selector(state) : state;
     });
 
-    const { getAllByText } = render(<TripMap />);
+    const { getAllByText } = render(<TrackMap />);
 
     await waitFor(() => {
-      expect(getAllByText(/map\.distanceFromYou/).length).toBe(2); // 2 trips
+      expect(getAllByText(/map\.distanceFromYou/).length).toBe(2); // 2 tracks
     });
   });
 
@@ -173,7 +173,7 @@ describe('TripMap native component', () => {
       canAskAgain: true,
     });
 
-    const { queryByText, getByText } = render(<TripMap />);
+    const { queryByText, getByText } = render(<TrackMap />);
 
     // Wait for effects to settle
     await waitFor(() => {
@@ -194,7 +194,7 @@ describe('TripMap native component', () => {
       .mocked(Location.getCurrentPositionAsync)
       .mockRejectedValue(new Error('Location unavailable'));
 
-    const { queryByText, getByText } = render(<TripMap />);
+    const { queryByText, getByText } = render(<TrackMap />);
 
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();

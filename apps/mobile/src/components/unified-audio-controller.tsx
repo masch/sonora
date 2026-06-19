@@ -5,7 +5,7 @@ import AudioMediaControls, { MediaStatus } from '@/components/audio-media-contro
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { formatTime } from '@/utils/time';
-import type { DownloadStatus } from '@/hooks/use-trip-download';
+import type { DownloadStatus } from '@/hooks/use-track-download';
 
 interface UnifiedAudioControllerProps {
   downloadStatus: DownloadStatus;

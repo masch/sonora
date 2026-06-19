@@ -1,25 +1,28 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useFeedbackTrigger } from '../use-feedback-trigger';
-import type { LocalTripMetadata } from '@/data/trips';
+import type { LocalTrackMetadata } from '@/data/tracks';
 
 describe('useFeedbackTrigger', () => {
   describe('audio_end mode', () => {
     it('should show feedback form when audio finishes (transition from false to true)', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'audio_end',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
       // Start with audio playing (not finished)
       const { result, rerender } = renderHook(
         ({ didJustFinish }: { didJustFinish: boolean }) =>
-          useFeedbackTrigger(trip, { didJustFinish }),
+          useFeedbackTrigger(track, { didJustFinish }),
         { initialProps: { didJustFinish: false } },
       );
 
@@ -33,18 +36,21 @@ describe('useFeedbackTrigger', () => {
     });
 
     it('should NOT show feedback form when audio is still playing', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'audio_end',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
-      const { result } = renderHook(() => useFeedbackTrigger(trip, { didJustFinish: false }));
+      const { result } = renderHook(() => useFeedbackTrigger(track, { didJustFinish: false }));
 
       expect(result.current.showFeedback).toBe(false);
     });
@@ -52,20 +58,23 @@ describe('useFeedbackTrigger', () => {
 
   describe('geofence mode', () => {
     it('should show feedback form when GPS detects arrival', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'geofence',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
       // Simulate geofence arrival: was not near, now is near
       const { result, rerender } = renderHook(
-        ({ isNearStart }: { isNearStart: boolean }) => useFeedbackTrigger(trip, { isNearStart }),
+        ({ isNearStart }: { isNearStart: boolean }) => useFeedbackTrigger(track, { isNearStart }),
         { initialProps: { isNearStart: false } },
       );
 
@@ -79,18 +88,21 @@ describe('useFeedbackTrigger', () => {
     });
 
     it('should NOT show feedback form when not near geofence', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'geofence',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
-      const { result } = renderHook(() => useFeedbackTrigger(trip, { isNearStart: false }));
+      const { result } = renderHook(() => useFeedbackTrigger(track, { isNearStart: false }));
 
       expect(result.current.showFeedback).toBe(false);
     });
@@ -98,18 +110,21 @@ describe('useFeedbackTrigger', () => {
 
   describe('manual mode', () => {
     it('should not auto-show feedback form (view manages button)', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'manual',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
-      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+      const { result } = renderHook(() => useFeedbackTrigger(track, {}));
 
       // Manual mode does NOT auto-show — the view renders a button
       expect(result.current.showFeedback).toBe(false);
@@ -118,18 +133,21 @@ describe('useFeedbackTrigger', () => {
 
   describe('no trigger defined', () => {
     it('should not show feedback form', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
         // No feedbackTrigger
       };
 
-      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+      const { result } = renderHook(() => useFeedbackTrigger(track, {}));
 
       expect(result.current.showFeedback).toBe(false);
     });
@@ -137,21 +155,24 @@ describe('useFeedbackTrigger', () => {
 
   describe('dismiss', () => {
     it('should reset showFeedback to false when dismiss is called', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'audio_end',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
       // Start with audio playing, then finish to trigger
       const { result, rerender } = renderHook(
         ({ didJustFinish }: { didJustFinish: boolean }) =>
-          useFeedbackTrigger(trip, { didJustFinish }),
+          useFeedbackTrigger(track, { didJustFinish }),
         { initialProps: { didJustFinish: false } },
       );
 
@@ -167,18 +188,21 @@ describe('useFeedbackTrigger', () => {
     });
 
     it('dismiss on manual mode is a no-op (stays false)', () => {
-      const trip: LocalTripMetadata = {
-        id: 'trip-1',
+      const track: LocalTrackMetadata = {
+        id: 'track-1',
         uuid: '00000000-0000-0000-0000-000000000000',
-        title: 'Test Trip',
+        title: 'Test Track',
         description: 'Test',
-        durationMinutes: 30,
+        durationSeconds: 1800,
         startCoordinates: { latitude: 0, longitude: 0 },
         audioRemoteUrl: 'https://example.com/audio.mp3',
         feedbackTrigger: 'manual',
+        category: 'landscapes',
+        subLabel: 'Test',
+        imageKey: 'deriva-centro',
       };
 
-      const { result } = renderHook(() => useFeedbackTrigger(trip, {}));
+      const { result } = renderHook(() => useFeedbackTrigger(track, {}));
 
       expect(result.current.showFeedback).toBe(false);
 

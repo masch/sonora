@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const FeedbackPostBodySchema = z.object({
-  tripId: z
-    .string({ required_error: 'tripId is required and must be a non-empty string' })
-    .min(1, 'tripId is required and must be a non-empty string'),
+  trackId: z
+    .string({ required_error: 'trackId is required and must be a non-empty string' })
+    .min(1, 'trackId is required and must be a non-empty string'),
   message: z
     .string({ required_error: 'message is required and must be a non-empty string' })
     .min(1, 'message is required and must be a non-empty string'),

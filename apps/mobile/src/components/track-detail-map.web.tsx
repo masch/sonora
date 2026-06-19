@@ -20,7 +20,7 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 // Props
 // ---------------------------------------------------------------------------
 
-interface TripDetailMapProps {
+interface TrackDetailMapProps {
   latitude: number;
   longitude: number;
   userLatitude?: number;
@@ -32,13 +32,13 @@ interface TripDetailMapProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TripDetailMap({
+export default function TrackDetailMap({
   latitude,
   longitude,
   userLatitude,
   userLongitude,
   showLabels = true,
-}: TripDetailMapProps) {
+}: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -85,7 +85,7 @@ export default function TripDetailMap({
 
         mapRef.current = map;
       } catch (err) {
-        logger.error('TripDetailMap init failed:', err);
+        logger.error('TrackDetailMap init failed:', err);
         setError(true);
       }
     }
@@ -97,11 +97,11 @@ export default function TripDetailMap({
       init(getL()!);
     } else {
       // CSS
-      if (!document.querySelector('link[data-trip-detail-map-css]')) {
+      if (!document.querySelector('link[data-track-detail-map-css]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = LEAFLET_CSS_URL;
-        link.setAttribute('data-trip-detail-map-css', '');
+        link.setAttribute('data-track-detail-map-css', '');
         document.head.appendChild(link);
       }
 
@@ -181,7 +181,7 @@ export default function TripDetailMap({
   if (error) {
     return (
       <TwView
-        testID="trip-detail-map-error"
+        testID="track-detail-map-error"
         className="h-80 w-full items-center justify-center gap-2 bg-backgroundElement px-4"
       >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
@@ -193,7 +193,7 @@ export default function TripDetailMap({
   }
 
   return (
-    <TwView testID="trip-detail-map" className="relative h-80 w-full overflow-hidden">
+    <TwView testID="track-detail-map" className="relative h-80 w-full overflow-hidden">
       {userLatitude === undefined && (
         <TwView className="absolute bottom-4 left-4 z-10 rounded-full bg-black/70 px-4 py-2">
           <ThemedText className="text-sm font-semibold text-white">

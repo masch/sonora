@@ -76,18 +76,18 @@ export default function HomeScreen() {
           {/* Explorar Recorridos */}
           <TwPressable
             onPress={() => router.push('/tracks')}
-            accessibilityLabel={t('home.exploreTrips')}
-            testID="explore-trips-menu"
+            accessibilityLabel={t('home.exploreRoutes')}
+            testID="explore-routes-menu"
             className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
           >
             <TwView className="flex-row items-center gap-4 flex-1">
               <Icon ios="map" android="map" web="map" size={24} tintColor={colors.text} />
               <TwView className="flex-1">
                 <ThemedText className="text-lg font-bold text-text">
-                  {t('home.exploreTrips')}
+                  {t('home.exploreRoutes')}
                 </ThemedText>
                 <ThemedText className="text-sm text-textSecondary mt-0.5">
-                  {t('home.exploreTripsSub')}
+                  {t('home.exploreRoutesSub')}
                 </ThemedText>
               </TwView>
             </TwView>
@@ -102,7 +102,7 @@ export default function HomeScreen() {
 
           {/* Explorar Tracks */}
           <TwPressable
-            onPress={() => router.push('/explore')}
+            onPress={() => router.push('/tracks')}
             accessibilityLabel={t('home.exploreTracks')}
             testID="explore-tracks-menu"
             className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
@@ -135,7 +135,7 @@ export default function HomeScreen() {
 
           {/* Mensajes del Lugar */}
           <TwPressable
-            onPress={() => router.push('/explore')}
+            onPress={() => router.push('/tracks')}
             accessibilityLabel={t('home.localMessages')}
             testID="local-messages-menu"
             className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"

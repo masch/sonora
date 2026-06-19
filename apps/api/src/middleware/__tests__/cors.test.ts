@@ -102,7 +102,7 @@ describe('CORS behavior', () => {
           Origin: 'null',
         },
         body: JSON.stringify({
-          tripId: 'test',
+          trackId: 'test',
           message: 'null origin test',
           idempotencyKey: 'cors-null-origin',
           createdAt: new Date().toISOString(),
@@ -130,7 +130,7 @@ describe('CORS behavior', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tripId: 'test',
+          trackId: 'test',
           message: 'no origin test',
           idempotencyKey: 'cors-no-origin',
           createdAt: new Date().toISOString(),

@@ -3,7 +3,7 @@ import { FeedbackPostBodySchema, type FeedbackPostBody, type FeedbackResponse } 
 
 describe('FeedbackPostBodySchema', () => {
   const validPayload: FeedbackPostBody = {
-    tripId: 'trip_123',
+    trackId: 'track_123',
     message: 'La app funciona muy bien!',
     idempotencyKey: 'uuid-abc-123',
     createdAt: '2026-06-15T10:00:00Z',
@@ -21,15 +21,15 @@ describe('FeedbackPostBodySchema', () => {
     });
   });
 
-  describe('tripId', () => {
-    it('rejects missing tripId', () => {
-      const { tripId, ...rest } = validPayload;
+  describe('trackId', () => {
+    it('rejects missing trackId', () => {
+      const { trackId, ...rest } = validPayload;
       const result = FeedbackPostBodySchema.safeParse(rest);
       expect(result.success).toBe(false);
     });
 
-    it('rejects empty tripId', () => {
-      const result = FeedbackPostBodySchema.safeParse({ ...validPayload, tripId: '' });
+    it('rejects empty trackId', () => {
+      const result = FeedbackPostBodySchema.safeParse({ ...validPayload, trackId: '' });
       expect(result.success).toBe(false);
     });
   });
@@ -74,8 +74,8 @@ describe('FeedbackPostBodySchema', () => {
   });
 
   describe('type coercion', () => {
-    it('rejects non-string tripId', () => {
-      const result = FeedbackPostBodySchema.safeParse({ ...validPayload, tripId: 123 });
+    it('rejects non-string trackId', () => {
+      const result = FeedbackPostBodySchema.safeParse({ ...validPayload, trackId: 123 });
       expect(result.success).toBe(false);
     });
   });
@@ -85,7 +85,7 @@ describe('FeedbackPostBodySchema', () => {
       const result = FeedbackPostBodySchema.safeParse({});
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues.some((i) => i.path.includes('tripId'))).toBe(true);
+        expect(result.error.issues.some((i) => i.path.includes('trackId'))).toBe(true);
         expect(result.error.issues.some((i) => i.path.includes('message'))).toBe(true);
         expect(result.error.issues.some((i) => i.path.includes('idempotencyKey'))).toBe(true);
         expect(result.error.issues.some((i) => i.path.includes('createdAt'))).toBe(true);

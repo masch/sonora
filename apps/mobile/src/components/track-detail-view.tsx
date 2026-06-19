@@ -4,16 +4,16 @@ import { Stack } from 'expo-router';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ThemedText } from '@/components/themed-text';
-import TripDetailMap from '@/components/trip-detail-map';
+import TrackDetailMap from '@/components/track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
-import { getTripById } from '@/data/trips';
+import { getTrackById } from '@/data/tracks';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { useTripDownload } from '@/hooks/use-trip-download';
+import { useTrackDownload } from '@/hooks/use-track-download';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
@@ -23,16 +23,16 @@ import { logger } from '@/utils/logger';
 
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
-interface TripDetailViewProps {
-  tripId: string;
+interface TrackDetailViewProps {
+  trackId: string;
   isWeb: boolean;
 }
 
 /**
- * Shared trip detail view used by trips/[id].tsx (dynamic route).
- * Receives a concrete tripId instead of reading from route params.
+ * Shared track detail view used by tracks/[id].tsx (dynamic route).
+ * Receives a concrete trackId instead of reading from route params.
  */
-export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
+export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
@@ -40,11 +40,11 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
   const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
-  const trip = getTripById(tripId);
+  const track = getTrackById(trackId);
 
   // Hooks MUST be called unconditionally (rules-of-hooks)
-  const geofence = useOfflineGeofence(trip?.startCoordinates ?? { latitude: 0, longitude: 0 });
-  const download = useTripDownload(trip?.id ?? null, trip?.audioRemoteUrl ?? null);
+  const geofence = useOfflineGeofence(track?.startCoordinates ?? { latitude: 0, longitude: 0 });
+  const download = useTrackDownload(track?.id ?? null, track?.audioRemoteUrl ?? null);
   const player = useImmersionPlayer(download.localAudioUri);
 
   // Auto-play when download completes if the user initiated it
@@ -59,7 +59,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
     userInitiatedPlayRef.current = true;
     download.startDownload();
   };
-  const feedbackTrigger = useFeedbackTrigger(trip ?? undefined, {
+  const feedbackTrigger = useFeedbackTrigger(track ?? undefined, {
     didJustFinish: player.status === 'stopped',
     isNearStart: geofence.isNearStart,
   });
@@ -69,16 +69,16 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
     setFeedbackStatus('sending');
     setFeedbackError(null);
 
-    // Resolve UUID inside callback to avoid capturing trip object in deps
-    const currentTrip = getTripById(tripId);
-    const tripUuid = currentTrip?.uuid ?? tripId;
+    // Resolve UUID inside callback to avoid capturing track object in deps
+    const currentTrack = getTrackById(trackId);
+    const trackUuid = currentTrack?.uuid ?? trackId;
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tripId: tripUuid,
+          trackId: trackUuid,
           message,
           idempotencyKey: generateUUID(),
           createdAt: new Date().toISOString(),
@@ -90,14 +90,14 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
       } else {
         logger.error('[API_ERROR] Server returned status:', response.status);
         // Server error — queue offline
-        await feedbackQueue.enqueue({ tripId: tripUuid, message });
+        await feedbackQueue.enqueue({ trackId: trackUuid, message });
         setFeedbackStatus('queued');
       }
     } catch (err) {
       logger.error('[NETWORK_ERROR] Fetch failed:', err);
       // Network error — queue offline
       try {
-        await feedbackQueue.enqueue({ tripId: tripUuid, message });
+        await feedbackQueue.enqueue({ trackId: trackUuid, message });
         setFeedbackStatus('queued');
       } catch (enqueueErr) {
         logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);
@@ -114,17 +114,17 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
     feedbackTrigger.dismiss();
   };
 
-  if (!trip) {
+  if (!track) {
     return (
       <TwView className="flex-grow items-center justify-center px-6">
-        <Stack.Screen options={{ title: t('trips.notFound') }} />
-        <ThemedText themeColor="text">{t('trips.notFound')}</ThemedText>
+        <Stack.Screen options={{ title: t('tracks.notFound') }} />
+        <ThemedText themeColor="text">{t('tracks.notFound')}</ThemedText>
       </TwView>
     );
   }
 
-  const tripImage =
-    trip.imageKey === 'deriva-centro'
+  const trackImage =
+    track.imageKey === 'deriva-centro'
       ? require('@/assets/images/sonora/deriva-centro.png')
       : require('@/assets/images/sonora/bonus-track.png');
 
@@ -136,7 +136,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
       {/* Top Banner */}
       <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
         <TwImage
-          source={tripImage}
+          source={trackImage}
           className="absolute inset-0 w-full h-full"
           contentFit="cover"
           alt=""
@@ -156,7 +156,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
       <TwView className="relative flex-1 gap-4 p-4">
         {/* Main Details Card */}
         <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
-          {/* Trip header */}
+          {/* Track header */}
           <TwView className="items-center gap-2 p-2 w-full">
             <ThemedText
               themeColor="text"
@@ -164,13 +164,13 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
               adjustsFontSizeToFit
               className="text-2xl font-black text-center px-2"
             >
-              {trip.title + ' '}
+              {track.title + ' '}
             </ThemedText>
             <ThemedText
               themeColor="textSecondary"
               className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
             >
-              {t('trips.duration', { minutes: trip.durationMinutes })}
+              {t('tracks.duration', { minutes: Math.round(track.durationSeconds / 60) })}
             </ThemedText>
           </TwView>
 
@@ -178,14 +178,14 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             themeColor="text"
             className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
           >
-            {trip.description}
+            {track.description}
           </ThemedText>
 
           {/* Mini map */}
           <TwView className="-mx-3 relative">
-            <TripDetailMap
-              latitude={trip.startCoordinates.latitude}
-              longitude={trip.startCoordinates.longitude}
+            <TrackDetailMap
+              latitude={track.startCoordinates.latitude}
+              longitude={track.startCoordinates.longitude}
               userLatitude={geofence.userCoordinates?.latitude}
               userLongitude={geofence.userCoordinates?.longitude}
               showLabels={showLabels}
@@ -222,7 +222,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             downloadError={download.errorMsg}
             playerStatus={player.status}
             positionMs={player.positionMs}
-            durationMs={player.durationMs || (trip ? trip.durationMinutes * 60 * 1000 : 0)}
+            durationMs={player.durationMs || (track ? track.durationSeconds * 1000 : 0)}
             playerError={player.errorMsg}
             onPlay={player.play}
             onPause={player.pause}
@@ -232,12 +232,12 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
             }
             onReset={() => player.seekTo(0)}
             onDownload={handlePlayAndDownload}
-            onCancelDownload={download.deleteTripLocal}
-            disabled={!trip.audioRemoteUrl}
+            onCancelDownload={download.deleteTrackLocal}
+            disabled={!track.audioRemoteUrl}
           />
 
           {/* Manual feedback button (when feedbackTrigger is 'manual') */}
-          {trip.feedbackTrigger === 'manual' && (
+          {track.feedbackTrigger === 'manual' && (
             <TwView className="self-stretch">
               <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
                 <TwPressable
@@ -260,7 +260,7 @@ export default function TripDetailView({ tripId, isWeb }: TripDetailViewProps) {
 
   return (
     <TwView className="flex-1">
-      <Stack.Screen options={{ title: trip.title }} />
+      <Stack.Screen options={{ title: track.title }} />
       {isWeb ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       {/* Feedback form modal */}

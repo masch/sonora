@@ -7,7 +7,7 @@ import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { getAllTrips } from '@/data/trips';
+import { getAllTracks } from '@/data/tracks';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
@@ -34,31 +34,31 @@ function formatDistance(
  *
  * react-native-maps (MapView) requires a Google Maps API key on Android.
  * Since the map experience lives on the web version with Leaflet (free, no
- * API key), this native version shows a clean trip list with distances.
+ * API key), this native version shows a clean track list with distances.
  */
-export default function TripMap() {
+export default function TrackMap() {
   const router = useRouter();
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const trips = getAllTrips();
+  const tracks = getAllTracks();
   const currentLocation = useLocationStore((state) => state.coords);
   const [showInstructionsOverlay, setShowInstructionsOverlay] = useState(false);
 
-  if (trips.length === 0) {
+  if (tracks.length === 0) {
     return (
       <TwView className="flex-grow items-center justify-center p-6">
-        <ThemedText>{t('map.noTripsTitle')}</ThemedText>
+        <ThemedText>{t('map.noTracksTitle')}</ThemedText>
       </TwView>
     );
   }
 
-  const cardDistance = (trip: (typeof trips)[number]): string | null => {
+  const cardDistance = (track: (typeof tracks)[number]): string | null => {
     if (!currentLocation) return null;
     const dist = getHaversineDistance(
       currentLocation.latitude,
       currentLocation.longitude,
-      trip.startCoordinates.latitude,
-      trip.startCoordinates.longitude,
+      track.startCoordinates.latitude,
+      track.startCoordinates.longitude,
     );
     return formatDistance(dist, t);
   };
@@ -163,30 +163,30 @@ export default function TripMap() {
         {/* Recorridos List Container */}
         <TwView className="rounded-[24px] card-container-solid p-4 shadow-md backdrop-blur-md gap-4 z-10">
           <ThemedText className="text-base font-black text-zinc-800 dark:text-zinc-100 tracking-wider">
-            {t('map.tripsTitle')}
+            {t('map.tracksTitle')}
           </ThemedText>
 
           <TwView className="flex-col gap-3">
-            {trips.map((trip, idx) => {
-              const tripImage =
-                trip.imageKey === 'deriva-centro'
+            {tracks.map((track, idx) => {
+              const trackImage =
+                track.imageKey === 'deriva-centro'
                   ? require('@/assets/images/sonora/deriva-centro.png')
                   : require('@/assets/images/sonora/bonus-track.png');
 
-              const dist = cardDistance(trip);
+              const dist = cardDistance(track);
 
               return (
                 <TwPressable
-                  key={trip.id}
-                  testID={`view-trip-${trip.id}`}
-                  accessibilityLabel={t('map.viewTrip', { title: trip.title })}
-                  onPress={() => router.push(`/trips/${trip.id}`)}
+                  key={track.id}
+                  testID={`view-track-${track.id}`}
+                  accessibilityLabel={t('map.viewTrack', { title: track.title })}
+                  onPress={() => router.push(`/tracks/${track.id}`)}
                   className="active:opacity-75 mb-1"
                 >
                   <TwView className="flex-row items-center justify-between p-3 rounded-xl card-container">
                     {/* Left Cover Image */}
                     <TwImage
-                      source={tripImage}
+                      source={trackImage}
                       className="size-16 rounded-xl mr-3"
                       contentFit="cover"
                       alt=""
@@ -200,16 +200,16 @@ export default function TripMap() {
                         minimumFontScale={0.5}
                         className="text-[12px] font-extrabold text-zinc-800 dark:text-zinc-100 leading-tight"
                       >
-                        {trip.title}
+                        {track.title}
                       </ThemedText>
                       <ThemedText className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 mt-1">
-                        {trip.durationMinutes} {t('trips.minAbbr')} ·{' '}
-                        {trip.sectionsCount
-                          ? `${t('trips.sectionsCount', { count: trip.sectionsCount })} · `
+                        {Math.round(track.durationSeconds / 60)} {t('tracks.minAbbr')} ·{' '}
+                        {track.sectionsCount
+                          ? `${t('tracks.sectionsCount', { count: track.sectionsCount })} · `
                           : ''}
-                        {trip.typeLabel ? `${trip.typeLabel}` : ''}
-                        {trip.distanceMeters && trip.distanceMeters > 0
-                          ? `${trip.distanceMeters}${t('trips.metersAbbr')}`
+                        {track.typeLabel ? `${track.typeLabel}` : ''}
+                        {track.distanceMeters && track.distanceMeters > 0
+                          ? `${track.distanceMeters}${t('tracks.metersAbbr')}`
                           : ''}
                       </ThemedText>
                       {dist && (
@@ -225,19 +225,19 @@ export default function TripMap() {
 
                     {/* Right action/price */}
                     <TwView className="flex-row items-center gap-2">
-                      {trip.distanceMeters !== undefined && trip.distanceMeters === 0 && (
+                      {track.distanceMeters !== undefined && track.distanceMeters === 0 && (
                         <ThemedText className="text-[11px] font-black text-zinc-700 dark:text-zinc-300">
                           {t('map.zeroDistance')}
                         </ThemedText>
                       )}
                       <TwView className="items-center">
-                        {trip.priceLabel && (
+                        {track.priceLabel && (
                           <ThemedText className="text-[9px] font-black text-zinc-800 dark:text-zinc-100 mb-0.5 tracking-tighter">
-                            {trip.priceLabel}
+                            {track.priceLabel}
                           </ThemedText>
                         )}
                         <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
-                          {trip.isDownloadable ? (
+                          {track.isDownloadable ? (
                             <Icon
                               ios="arrow.down"
                               android="arrow_downward"

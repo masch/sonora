@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useTripDownload } from '../use-trip-download';
+import { useTrackDownload } from '../use-track-download';
 
 jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///mock-docs/',
@@ -11,8 +11,8 @@ jest.mock('expo-file-system/legacy', () => ({
   deleteAsync: jest.fn(),
 }));
 
-describe('useTripDownload hook', () => {
-  const tripId = 'umepay-bosque';
+describe('useTrackDownload hook', () => {
+  const trackId = 'umepay-bosque';
   const remoteAudioUrl = 'https://mock.com/audio.mp3';
 
   beforeEach(() => {
@@ -22,9 +22,9 @@ describe('useTripDownload hook', () => {
   it('should initialize with idle status when file does not exist locally', async () => {
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
 
-    let result: { readonly current: ReturnType<typeof useTripDownload> };
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTripDownload(tripId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
@@ -37,19 +37,19 @@ describe('useTripDownload hook', () => {
   it('should initialize with completed status if file exists locally', async () => {
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
       exists: true,
-      uri: 'file:///mock-docs/trips/umepay-bosque/audio.mp3',
+      uri: 'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
     });
 
-    let result: { readonly current: ReturnType<typeof useTripDownload> };
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTripDownload(tripId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
 
     expect(result!.current.status).toBe('completed');
     expect(result!.current.progress).toBe(100);
-    expect(result!.current.localAudioUri).toBe('file:///mock-docs/trips/umepay-bosque/audio.mp3');
+    expect(result!.current.localAudioUri).toBe('file:///mock-docs/tracks/umepay-bosque/audio.mp3');
   });
 
   it('should fail download if disk space is insufficient', async () => {
@@ -57,9 +57,9 @@ describe('useTripDownload hook', () => {
     // Simulate low disk space (10MB free vs 30MB * 1.5 multiplier required)
     (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(10 * 1024 * 1024);
 
-    let result: { readonly current: ReturnType<typeof useTripDownload> };
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTripDownload(tripId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -77,7 +77,7 @@ describe('useTripDownload hook', () => {
     (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(100 * 1024 * 1024); // 100MB free
 
     const mockDownloadAsync = jest.fn().mockResolvedValue({
-      uri: 'file:///mock-docs/trips/umepay-bosque/audio.mp3',
+      uri: 'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
     });
 
     (FileSystem.createDownloadResumable as jest.Mock).mockReturnValue({
@@ -85,9 +85,9 @@ describe('useTripDownload hook', () => {
       pauseAsync: jest.fn().mockResolvedValue({}),
     });
 
-    let result: { readonly current: ReturnType<typeof useTripDownload> };
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTripDownload(tripId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -98,7 +98,7 @@ describe('useTripDownload hook', () => {
 
     expect(result!.current.status).toBe('completed');
     expect(result!.current.progress).toBe(100);
-    expect(result!.current.localAudioUri).toBe('file:///mock-docs/trips/umepay-bosque/audio.mp3');
+    expect(result!.current.localAudioUri).toBe('file:///mock-docs/tracks/umepay-bosque/audio.mp3');
     expect(FileSystem.makeDirectoryAsync).toHaveBeenCalled();
   });
 });

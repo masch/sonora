@@ -1,5 +1,5 @@
 {
-  "id": "ef4f99c6-676c-4999-a0e5-dde1b1477f50",
+  "id": "c628cf07-5187-42f6-859a-2ce2edd0d378",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -15,8 +15,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "trip_id": {
-          "name": "trip_id",
+        "track_id": {
+          "name": "track_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -43,12 +43,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "feedback_trip_id_trips_id_fk": {
-          "name": "feedback_trip_id_trips_id_fk",
+        "feedback_track_id_tracks_id_fk": {
+          "name": "feedback_track_id_tracks_id_fk",
           "tableFrom": "feedback",
-          "tableTo": "trips",
+          "tableTo": "tracks",
           "schemaTo": "sonora",
-          "columnsFrom": ["trip_id"],
+          "columnsFrom": ["track_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -66,8 +66,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "sonora.trips": {
-      "name": "trips",
+    "sonora.tracks": {
+      "name": "tracks",
       "schema": "sonora",
       "columns": {
         "id": {
@@ -95,8 +95,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "duration_minutes": {
-          "name": "duration_minutes",
+        "duration_seconds": {
+          "name": "duration_seconds",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -118,8 +118,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "trips_slug_unique": {
-          "name": "trips_slug_unique",
+        "tracks_slug_unique": {
+          "name": "tracks_slug_unique",
           "nullsNotDistinct": false,
           "columns": ["slug"]
         }

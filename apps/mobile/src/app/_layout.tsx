@@ -69,7 +69,7 @@ export default function RootLayout() {
     <ThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="trips/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
       </Stack>
     </ThemeProvider>
   );
