@@ -15,9 +15,11 @@ import { Icon } from '@/components/icon';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { getTrackById } from '@/data/tracks';
+import { fetchExperiences, type Experience } from '@/data/experiences';
 import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
+import { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
@@ -59,14 +61,31 @@ export default function ExploreScreen() {
     );
   };
 
+  const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const exps = await fetchExperiences();
+        if (exps.length > 0) {
+          setActiveExperience(exps[0]);
+        }
+      } catch (e) {
+        logger.error(e);
+      }
+    }
+    load();
+  }, []);
+
   const geofence = useOfflineGeofence({
-    latitude: -32.21218267316605,
-    longitude: -64.73809012343702,
+    latitude: activeExperience?.latitude ?? -32.21218267316605,
+    longitude: activeExperience?.longitude ?? -64.73809012343702,
   });
 
-  const track = getTrackById('umepay-bosque');
-
-  const download = useTrackDownload(track?.id ?? 'umepay-bosque', track?.audioRemoteUrl ?? '');
+  const download = useTrackDownload(
+    activeExperience?.slug || null,
+    activeExperience?.audioUrl || null,
+  );
 
   const player = useImmersionPlayer(download.localAudioUri);
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
 import ExploreScreen from '@/app/(tabs)/explore';
@@ -37,6 +37,13 @@ jest.mock('@/hooks/use-immersion-player', () => ({
     seekTo: jest.fn(),
   }),
 }));
+jest.mock('@/data/experiences', () => ({
+  fetchExperiences: jest.fn(() =>
+    Promise.resolve([
+      { id: 'umepay-bosque', slug: 'umepay-bosque', audioUrl: 'https://example.com/audio.mp3' },
+    ]),
+  ),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',
@@ -55,25 +62,33 @@ beforeAll(() => {
 });
 
 describe('Explore screen (now Home content)', () => {
-  it('renders the title', () => {
+  it('renders the title', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('Welcome to Expo')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Welcome to Expo')).toBeTruthy();
+    });
   });
 
-  it('renders the get started badge', () => {
+  it('renders the get started badge', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('get started')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('get started')).toBeTruthy();
+    });
   });
 
-  it('renders all HintRow titles', () => {
+  it('renders all HintRow titles', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('Try editing')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Try editing')).toBeTruthy();
+    });
     expect(getByText('Dev tools')).toBeTruthy();
     expect(getByText('Fresh start')).toBeTruthy();
   });
 
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     const { toJSON } = render(<ExploreScreen />);
-    expect(toJSON()).not.toBeNull();
+    await waitFor(() => {
+      expect(toJSON()).not.toBeNull();
+    });
   });
 });

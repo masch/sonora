@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
+import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from '@/components/track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
-import { getTrackById } from '@/data/tracks';
+import { TRACK_IMAGES } from '@/constants/images';
+import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
@@ -20,6 +22,7 @@ import { Icon } from '@/components/icon';
 import type { FeedbackStatus } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
 import { logger } from '@/utils/logger';
+import type { TranslationKeys } from '@/i18n/types';
 
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
@@ -40,11 +43,45 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
-  const track = getTrackById(trackId);
+  const [track, setTrack] = useState<Experience | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const loadTrack = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await fetchExperiences();
+      const found = list.find((e: Experience) => e.slug === trackId || e.id === trackId);
+      setTrack(found ?? null);
+      setError(false);
+    } catch (err) {
+      logger.error('[DETAIL] Failed to fetch experience:', err);
+      setError(true);
+    }
+    setLoading(false);
+  }, [trackId]);
+
+  useEffect(() => {
+    // Initial data load — setState in .then/.catch callbacks is async, not synchronous
+    fetchExperiences()
+      .then((list) => {
+        const found = list.find((e) => e.slug === trackId || e.id === trackId);
+        setTrack(found ?? null);
+        setError(false);
+      })
+      .catch((err) => {
+        logger.error('[DETAIL] Failed to fetch experience:', err);
+        setError(true);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [trackId]);
 
   // Hooks MUST be called unconditionally (rules-of-hooks)
-  const geofence = useOfflineGeofence(track?.startCoordinates ?? { latitude: 0, longitude: 0 });
-  const download = useTrackDownload(track?.id ?? null, track?.audioRemoteUrl ?? null);
+  const startCoordinates = track ? { latitude: track.latitude, longitude: track.longitude } : null;
+  const geofence = useOfflineGeofence(startCoordinates);
+  const download = useTrackDownload(track?.id ?? null, track?.audioUrl ?? null);
   const player = useImmersionPlayer(download.localAudioUri);
 
   // Auto-play when download completes if the user initiated it
@@ -59,7 +96,24 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     userInitiatedPlayRef.current = true;
     download.startDownload();
   };
-  const feedbackTrigger = useFeedbackTrigger(track ?? undefined, {
+
+  // Map Experience to simple track for useFeedbackTrigger if needed
+  const mappedTrackForFeedback = track
+    ? {
+        id: track.slug,
+        uuid: track.id,
+        title: track.title,
+        description: track.description,
+        durationSeconds: track.durationSeconds,
+        startCoordinates: { latitude: track.latitude, longitude: track.longitude },
+        audioRemoteUrl: track.audioUrl ?? '',
+        category: track.themeKey as TranslationKeys,
+        subLabel: track.description,
+        imageKey: track.imageKey as keyof typeof TRACK_IMAGES,
+      }
+    : undefined;
+
+  const feedbackTrigger = useFeedbackTrigger(mappedTrackForFeedback, {
     didJustFinish: player.status === 'stopped',
     isNearStart: geofence.isNearStart,
   });
@@ -69,9 +123,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     setFeedbackStatus('sending');
     setFeedbackError(null);
 
-    // Resolve UUID inside callback to avoid capturing track object in deps
-    const currentTrack = getTrackById(trackId);
-    const trackUuid = currentTrack?.uuid ?? trackId;
+    const trackUuid = track?.id ?? trackId;
 
     try {
       const response = await fetch(API_URL, {
@@ -89,13 +141,11 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
         setFeedbackStatus('sent');
       } else {
         logger.error('[API_ERROR] Server returned status:', response.status);
-        // Server error — queue offline
         await feedbackQueue.enqueue({ trackId: trackUuid, message });
         setFeedbackStatus('queued');
       }
     } catch (err) {
       logger.error('[NETWORK_ERROR] Fetch failed:', err);
-      // Network error — queue offline
       try {
         await feedbackQueue.enqueue({ trackId: trackUuid, message });
         setFeedbackStatus('queued');
@@ -114,22 +164,46 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     feedbackTrigger.dismiss();
   };
 
-  if (!track) {
+  if (error) {
     return (
-      <TwView className="flex-grow items-center justify-center px-6">
-        <Stack.Screen options={{ title: t('tracks.notFound') }} />
-        <ThemedText themeColor="text">{t('tracks.notFound')}</ThemedText>
+      <TwView className="flex-grow items-center justify-center p-6 bg-background">
+        <ThemedText className="text-base font-bold text-text mb-4 text-center">
+          {t('experiences.errorLoading')}
+        </ThemedText>
+        <TwPressable
+          onPress={loadTrack}
+          className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
+          testID="track-detail-retry-button"
+          accessibilityLabel={t('experiences.retry')}
+        >
+          <ThemedText themeColor="background" className="font-semibold">
+            {t('experiences.retry')}
+          </ThemedText>
+        </TwPressable>
       </TwView>
     );
   }
 
-  const trackImage =
-    track.imageKey === 'deriva-centro'
-      ? require('@/assets/images/sonora/deriva-centro.png')
-      : require('@/assets/images/sonora/bonus-track.png');
+  if (loading) {
+    return <LoadingView message={t('map.loadingMap')} />;
+  }
+
+  if (!track) {
+    return (
+      <TwView className="flex-grow items-center justify-center px-6">
+        <Stack.Screen options={{ title: t('experiences.notFound') }} />
+        <ThemedText themeColor="text">{t('experiences.notFound')}</ThemedText>
+      </TwView>
+    );
+  }
+
+  const trackImage = TRACK_IMAGES[track.imageKey] || TRACK_IMAGES['bonus-track'];
 
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
+
+  // Enforce starting geofence coordinates only if format is 'trip'
+  const isPlaybackBlocked = track.format === 'trip' && !geofence.isNearStart;
 
   const innerView = (
     <TwView className="flex-1">
@@ -170,7 +244,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
               themeColor="textSecondary"
               className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
             >
-              {t('tracks.duration', { minutes: Math.round(track.durationSeconds / 60) })}
+              {t('experiences.duration', { minutes: Math.round(track.durationSeconds / 60) })}
             </ThemedText>
           </TwView>
 
@@ -184,11 +258,12 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
           {/* Mini map */}
           <TwView className="-mx-3 relative">
             <TrackDetailMap
-              latitude={track.startCoordinates.latitude}
-              longitude={track.startCoordinates.longitude}
+              latitude={track.latitude}
+              longitude={track.longitude}
               userLatitude={geofence.userCoordinates?.latitude}
               userLongitude={geofence.userCoordinates?.longitude}
               showLabels={showLabels}
+              waypoints={track.waypoints}
             />
             <TwPressable
               onPress={() => setShowLabels(!showLabels)}
@@ -215,6 +290,16 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
             requiredRadiusMeters={geofence.requiredRadiusMeters}
           />
 
+          {/* Block playback warning message if blocked */}
+          {isPlaybackBlocked && (
+            <ThemedText
+              className="text-xs text-rose-600 font-bold text-center mt-2 px-4"
+              testID="geofence-error-msg"
+            >
+              {t('experiences.errors.mustBeOnSite' as TranslationKeys)}
+            </ThemedText>
+          )}
+
           {/* Unified Audio Controller: Download & Play in one flow */}
           <UnifiedAudioController
             downloadStatus={download.status}
@@ -233,26 +318,24 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
             onReset={() => player.seekTo(0)}
             onDownload={handlePlayAndDownload}
             onCancelDownload={download.deleteTrackLocal}
-            disabled={!track.audioRemoteUrl}
+            disabled={!track.audioUrl || isPlaybackBlocked}
           />
 
-          {/* Manual feedback button (when feedbackTrigger is 'manual') */}
-          {track.feedbackTrigger === 'manual' && (
-            <TwView className="self-stretch">
-              <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-                <TwPressable
-                  accessibilityLabel={t('feedback.form.title')}
-                  testID="feedback-manual-button"
-                  className="py-3 items-center active:opacity-80"
-                  onPress={() => setShowManualFeedback(true)}
-                >
-                  <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                    {t('feedback.form.title')}
-                  </ThemedText>
-                </TwPressable>
-              </TwView>
+          {/* Manual feedback button (when type is track/has feedback trigger) */}
+          <TwView className="self-stretch">
+            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('feedback.form.title')}
+                testID="feedback-manual-button"
+                className="py-3 items-center active:opacity-80"
+                onPress={() => setShowManualFeedback(true)}
+              >
+                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
+                  {t('feedback.form.title')}
+                </ThemedText>
+              </TwPressable>
             </TwView>
-          )}
+          </TwView>
         </TwView>
       </TwView>
     </TwView>

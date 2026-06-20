@@ -14,9 +14,9 @@ describe('Tab definitions', () => {
     expect(tab.symbolViewName.web).toBe('home');
   });
 
-  it('has correct second entry (tracks)', () => {
+  it('has correct second entry (experiences)', () => {
     const tab = TABS[1];
-    expect(tab.name).toBe('tracks');
+    expect(tab.name).toBe('experiences');
     expect(tab.ioniconsName).toBe('musical-notes-outline');
     expect(tab.symbolViewName.ios).toBe('music.note.list');
     expect(tab.symbolViewName.android).toBe('library_music');

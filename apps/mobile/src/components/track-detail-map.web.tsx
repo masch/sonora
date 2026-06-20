@@ -26,6 +26,7 @@ interface TrackDetailMapProps {
   userLatitude?: number;
   userLongitude?: number;
   showLabels?: boolean;
+  waypoints?: { latitude: number; longitude: number }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -38,12 +39,15 @@ export default function TrackDetailMap({
   userLatitude,
   userLongitude,
   showLabels = true,
+  waypoints = [],
 }: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const destMarkerRef = useRef<L.Marker | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const polylineRef = useRef<L.Polyline | null>(null);
+  const waypointMarkersRef = useRef<L.CircleMarker[]>([]);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -83,6 +87,36 @@ export default function TrackDetailMap({
         destMarkerRef.current = destMarker;
         destMarker.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
 
+        // Draw path polyline and waypoints if available
+        if (waypoints && waypoints.length > 0) {
+          const latlngs: [number, number][] = waypoints.map((wp) => [wp.latitude, wp.longitude]);
+          latlngs.unshift([latitude, longitude]);
+
+          const polyline = leaflet
+            .polyline(latlngs, { color: '#10b981', weight: 4, opacity: 0.8 })
+            .addTo(map);
+          polylineRef.current = polyline;
+
+          const markers: L.CircleMarker[] = [];
+          waypoints.forEach((wp, idx) => {
+            const marker = leaflet
+              .circleMarker([wp.latitude, wp.longitude], {
+                radius: 6,
+                color: '#10b981',
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                weight: 3,
+              })
+              .addTo(map);
+            marker.bindTooltip('Pt ' + (idx + 1), { permanent: true, direction: 'top' });
+            markers.push(marker);
+          });
+          waypointMarkersRef.current = markers;
+
+          const bounds = leaflet.latLngBounds(latlngs);
+          map.fitBounds(bounds.pad(0.2));
+        }
+
         mapRef.current = map;
       } catch (err) {
         logger.error('TrackDetailMap init failed:', err);
@@ -96,7 +130,6 @@ export default function TrackDetailMap({
     if (getL()) {
       init(getL()!);
     } else {
-      // CSS
       if (!document.querySelector('link[data-track-detail-map-css]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -105,7 +138,6 @@ export default function TrackDetailMap({
         document.head.appendChild(link);
       }
 
-      // JS
       const script = document.createElement('script');
       script.src = LEAFLET_JS_URL;
       script.onload = () => {
@@ -122,9 +154,11 @@ export default function TrackDetailMap({
         mapRef.current = null;
         destMarkerRef.current = null;
         userMarkerRef.current = null;
+        polylineRef.current = null;
+        waypointMarkersRef.current = [];
       }
     };
-  }, [latitude, longitude, t]);
+  }, [latitude, longitude, t, waypoints]);
 
   // Handle user coordinates changes dynamically (no reload, smooth transition)
   useLayoutEffect(() => {
@@ -152,13 +186,17 @@ export default function TrackDetailMap({
           userMarker.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
         }
       }
-      const bounds = leaflet.latLngBounds([
+      const points: [number, number][] = [
         [latitude, longitude],
         [userLatitude, userLongitude],
-      ]);
+      ];
+      if (waypoints && waypoints.length > 0) {
+        waypoints.forEach((wp) => points.push([wp.latitude, wp.longitude]));
+      }
+      const bounds = leaflet.latLngBounds(points);
       mapRef.current.fitBounds(bounds.pad(0.2), { animate: true });
     }
-  }, [userLatitude, userLongitude, latitude, longitude, showLabels, t]);
+  }, [userLatitude, userLongitude, latitude, longitude, showLabels, t, waypoints]);
 
   // Sync Leaflet tooltip visibility with the external Leaflet system.
   useLayoutEffect(() => {

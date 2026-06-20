@@ -1,4 +1,4 @@
-import type { FeedbackTriggerMode } from '@/data/tracks';
+import type { FeedbackTriggerMode } from '@/data/experiences';
 import type { FeedbackPostBody, FeedbackResponse as FeedbackApiResponse } from '@sonora/shared';
 
 export type { FeedbackTriggerMode, FeedbackPostBody, FeedbackApiResponse };

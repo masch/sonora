@@ -67,7 +67,7 @@ The `validate` target runs on every commit via a **git pre-commit hook** (`.gith
 5. **typecheck** — TypeScript compiler check
 6. **gga** — AI code review on staged files
 
-If any step fails, the commit is blocked. Use `git commit --no-verify` to bypass.
+If any step fails, the commit is blocked.
 
 ## Project structure
 

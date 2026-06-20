@@ -1,73 +1,11 @@
 {
-  "id": "c628cf07-5187-42f6-859a-2ce2edd0d378",
+  "id": "8f7eca33-7a0c-492a-be92-f4b53abd5771",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "sonora.feedback": {
-      "name": "feedback",
-      "schema": "sonora",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "track_id": {
-          "name": "track_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message": {
-          "name": "message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "feedback_track_id_tracks_id_fk": {
-          "name": "feedback_track_id_tracks_id_fk",
-          "tableFrom": "feedback",
-          "tableTo": "tracks",
-          "schemaTo": "sonora",
-          "columnsFrom": ["track_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "feedback_idempotency_key_unique": {
-          "name": "feedback_idempotency_key_unique",
-          "nullsNotDistinct": false,
-          "columns": ["idempotency_key"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "sonora.tracks": {
-      "name": "tracks",
+    "sonora.experiences": {
+      "name": "experiences",
       "schema": "sonora",
       "columns": {
         "id": {
@@ -95,9 +33,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "duration_seconds": {
-          "name": "duration_seconds",
-          "type": "integer",
+        "format": {
+          "name": "format",
+          "type": "experience_format",
+          "typeSchema": "sonora",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme_key": {
+          "name": "theme_key",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -105,21 +50,69 @@
           "name": "audio_url",
           "type": "text",
           "primaryKey": false,
+          "notNull": false
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
           "notNull": true
         },
-        "feedback_trigger": {
-          "name": "feedback_trigger",
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_label": {
+          "name": "price_label",
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "image_key": {
+          "name": "image_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_downloadable": {
+          "name": "is_downloadable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "experiences_theme_key_themes_key_fk": {
+          "name": "experiences_theme_key_themes_key_fk",
+          "tableFrom": "experiences",
+          "tableTo": "themes",
+          "schemaTo": "sonora",
+          "columnsFrom": ["theme_key"],
+          "columnsTo": ["key"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "tracks_slug_unique": {
-          "name": "tracks_slug_unique",
+        "experiences_slug_unique": {
+          "name": "experiences_slug_unique",
           "nullsNotDistinct": false,
           "columns": ["slug"]
         }
@@ -127,9 +120,183 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "sonora.feedback": {
+      "name": "feedback",
+      "schema": "sonora",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "experience_id": {
+          "name": "experience_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedback_experience_id_experiences_id_fk": {
+          "name": "feedback_experience_id_experiences_id_fk",
+          "tableFrom": "feedback",
+          "tableTo": "experiences",
+          "schemaTo": "sonora",
+          "columnsFrom": ["experience_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "feedback_idempotency_key_unique": {
+          "name": "feedback_idempotency_key_unique",
+          "nullsNotDistinct": false,
+          "columns": ["idempotency_key"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "sonora.themes": {
+      "name": "themes",
+      "schema": "sonora",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "label_key": {
+          "name": "label_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applicable_format": {
+          "name": "applicable_format",
+          "type": "experience_format",
+          "typeSchema": "sonora",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "sonora.waypoints": {
+      "name": "waypoints",
+      "schema": "sonora",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "experience_id": {
+          "name": "experience_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audio_url": {
+          "name": "audio_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_meters": {
+          "name": "radius_meters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 50
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "waypoints_experience_id_experiences_id_fk": {
+          "name": "waypoints_experience_id_experiences_id_fk",
+          "tableFrom": "waypoints",
+          "tableTo": "experiences",
+          "schemaTo": "sonora",
+          "columnsFrom": ["experience_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "sonora.experience_format": {
+      "name": "experience_format",
+      "schema": "sonora",
+      "values": ["track", "trip"]
+    }
+  },
   "schemas": {
     "sonora": "sonora"
   },

@@ -1,0 +1,48 @@
+export const EXPERIENCE_FORMATS = ['track', 'trip'] as const;
+export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
+
+export const TRACK_IMAGE_KEYS = [
+  'deriva-centro',
+  'bonus-track',
+  'tacuarita-azul',
+  'el-arroyo',
+  'la-piedra-antigua',
+  'viento-chanares',
+  'voces-monte',
+] as const;
+export type TrackImageKey = (typeof TRACK_IMAGE_KEYS)[number];
+
+export interface Theme {
+  key: string;
+  labelKey: string;
+  order: number;
+  applicableFormat?: ExperienceFormat | null;
+}
+
+export interface Waypoint {
+  id: string;
+  experienceId: string;
+  order: number;
+  latitude: number;
+  longitude: number;
+  audioUrl?: string | null;
+  radiusMeters: number;
+}
+
+export interface Experience {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  format: ExperienceFormat;
+  themeKey: string;
+  audioUrl?: string | null;
+  durationSeconds: number;
+  latitude: number;
+  longitude: number;
+  recordedAt?: string | null;
+  priceLabel?: string | null;
+  imageKey: TrackImageKey;
+  isDownloadable: boolean;
+  waypoints?: Waypoint[];
+}

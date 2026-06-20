@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LocalTrackMetadata } from '@/data/tracks';
+import type { LocalTrackMetadata } from '@/data/experiences';
 
 export interface FeedbackTriggerSources {
   /** From useImmersionPlayer: true when audio playback just finished */
