@@ -1,4 +1,4 @@
-CREATE SCHEMA "sonora";
+CREATE SCHEMA IF NOT EXISTS "sonora";
 --> statement-breakpoint
 CREATE TYPE "sonora"."experience_format" AS ENUM('track', 'trip');--> statement-breakpoint
 CREATE TABLE "sonora"."experiences" (
