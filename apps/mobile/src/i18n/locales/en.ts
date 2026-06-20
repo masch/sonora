@@ -46,6 +46,7 @@ export const en = {
     coordinates: '{{lat}}, {{lng}}',
     rowAccessibilityLabel: '{{title}}, {{subLabel}}, {{duration}} {{minAbbr}}',
     actionsMenu: 'Experience actions menu',
+    loading: 'Loading experiences…',
     errorLoading: 'Failed to load experiences. Please try again.',
     retry: 'Retry',
     categories: {
@@ -80,6 +81,10 @@ export const en = {
     localMessagesSub: 'Community voices',
   },
   index: {
+    loading: 'Loading…',
+    errorLoading: 'Failed to load featured experience.',
+    retry: 'Retry',
+    empty: 'No experiences available yet.',
     title: 'Welcome to Expo',
     getStarted: 'get started',
     hints: {

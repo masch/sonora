@@ -142,7 +142,10 @@ describe('useFeedbackQueue', () => {
     let secondId: string | undefined;
     await act(async () => {
       firstId = await result.current.enqueue({ experienceId: 'track-1', message: 'Same key' });
-      secondId = await result.current.enqueue({ experienceId: 'track-1', message: 'Same key' }, firstId);
+      secondId = await result.current.enqueue(
+        { experienceId: 'track-1', message: 'Same key' },
+        firstId,
+      );
     });
 
     await act(async () => {

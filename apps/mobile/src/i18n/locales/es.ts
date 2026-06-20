@@ -46,6 +46,7 @@ export const es = {
     coordinates: '{{lat}}, {{lng}}',
     rowAccessibilityLabel: '{{title}}, {{subLabel}}, {{duration}} {{minAbbr}}',
     actionsMenu: 'Menú de acciones de la experiencia',
+    loading: 'Cargando experiencias…',
     errorLoading: 'Error al cargar las experiencias. Por favor reintentá.',
     retry: 'Reintentar',
     categories: {
@@ -80,6 +81,10 @@ export const es = {
     localMessagesSub: 'Voces de la comunidad',
   },
   index: {
+    loading: 'Cargando…',
+    errorLoading: 'Error al cargar la experiencia destacada.',
+    retry: 'Reintentar',
+    empty: 'No hay experiencias disponibles todavía.',
     title: 'Bienvenido a Expo',
     getStarted: 'empezar',
     hints: {

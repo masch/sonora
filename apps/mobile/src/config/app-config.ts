@@ -1,15 +1,48 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const getApiBaseUrl = (): string => {
+/**
+ * Extract the machine's local IP from the Expo Go debugger host.
+ *
+ * When a physical device (or emulator) connects to the dev server,
+ * Constants.expoGoConfig.debuggerHost contains the host:port of Metro,
+ * e.g. "192.168.1.42:8081" (physical) or "10.0.2.2:8081" (emulator).
+ * We extract the host part and re-use it for the API on port 3000.
+ */
+function detectHostFromExpo(): string | null {
+  try {
+    const debuggerHost = Constants.expoGoConfig?.debuggerHost;
+    if (!debuggerHost) return null;
+
+    const host = debuggerHost.split(':')[0];
+    // Skip loopback addresses — they wouldn't work on a physical device
+    if (!host || host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+      return null;
+    }
+    return host;
+  } catch {
+    return null;
+  }
+}
+
+function getApiBaseUrl(): string {
+  // 1. Explicit env var wins
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // Local development fallback depending on platform
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
+
+  // 2. Auto-detect from Expo's bundler connection
+  const host = detectHostFromExpo();
+  if (host) {
+    return `http://${host}:3000`;
   }
-  return 'http://localhost:3000';
-};
+
+  // 3. Platform fallback
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000'; // emulator → host loopback
+  }
+  return 'http://localhost:3000'; // web, iOS simulator, etc.
+}
 
 /**
  * Sonora Global App Configuration

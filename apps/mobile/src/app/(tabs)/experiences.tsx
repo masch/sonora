@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
@@ -10,10 +10,13 @@ import { TwImage } from '@/tw/image';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { fetchThemes, fetchExperiences, EXPERIENCE_FORMATS } from '@/data/experiences';
+import { APP_CONFIG } from '@/config/app-config';
 import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
 import type { TranslationKeys } from '@/i18n/types';
 import { TRACK_IMAGES } from '@/constants/images';
 import { logger } from '@/utils/logger';
+
+const FETCH_TIMEOUT_MS = 10_000;
 
 export default function ExperiencesScreen() {
   const params = useLocalSearchParams<{ format?: string }>();
@@ -32,7 +35,11 @@ export default function ExperiencesScreen() {
 
   const loadData = async () => {
     try {
-      const [fetchedThemes, fetchedExps] = await Promise.all([fetchThemes(), fetchExperiences()]);
+      const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+      const [fetchedThemes, fetchedExps] = await Promise.all([
+        fetchThemes(signal),
+        fetchExperiences(signal),
+      ]);
       setThemesList(fetchedThemes);
       setExperiences(fetchedExps);
       setError(false);
@@ -44,19 +51,37 @@ export default function ExperiencesScreen() {
   };
 
   useEffect(() => {
-    Promise.all([fetchThemes(), fetchExperiences()])
+    const abort = new AbortController();
+
+    // Timeout: abort the request and show error if it takes too long
+    const timeoutId = setTimeout(() => {
+      abort.abort();
+      logger.error('Failed to load dynamic data: Request timed out');
+      setError(true);
+      setLoading(false);
+    }, FETCH_TIMEOUT_MS);
+
+    Promise.all([fetchThemes(abort.signal), fetchExperiences(abort.signal)])
       .then(([fetchedThemes, fetchedExps]) => {
+        clearTimeout(timeoutId);
+        if (abort.signal.aborted) return;
         setThemesList(fetchedThemes);
         setExperiences(fetchedExps);
         setError(false);
+        setLoading(false);
       })
       .catch((err) => {
+        clearTimeout(timeoutId);
+        if (abort.signal.aborted) return;
         logger.error('Failed to load dynamic data:', err);
         setError(true);
-      })
-      .finally(() => {
         setLoading(false);
       });
+
+    return () => {
+      clearTimeout(timeoutId);
+      abort.abort();
+    };
   }, []);
 
   if (error) {
@@ -64,6 +89,19 @@ export default function ExperiencesScreen() {
       <TwView className="flex-grow items-center justify-center p-6 bg-background">
         <ThemedText className="text-base font-bold text-text mb-4 text-center">
           {t('experiences.errorLoading')}
+        </ThemedText>
+        {/* eslint-disable i18next/no-literal-string -- dev-facing instruction */}
+        {!process.env.EXPO_PUBLIC_API_URL && Platform.OS === 'android' && (
+          <ThemedText className="text-xs text-zinc-500 dark:text-zinc-400 text-center mb-4 px-4 leading-relaxed">
+            On a physical Android device, set{' '}
+            <ThemedText type="code">EXPO_PUBLIC_API_URL</ThemedText> to your {"machine's"} local IP,
+            e.g. <ThemedText type="code">http://192.168.1.42:3000</ThemedText>.
+          </ThemedText>
+        )}
+        {/* eslint-enable i18next/no-literal-string */}
+        {/* eslint-disable-next-line i18next/no-literal-string -- dev-facing debug label */}
+        <ThemedText className="text-xs text-zinc-400 dark:text-zinc-500 text-center mb-4">
+          API: {APP_CONFIG.apiBaseUrl}
         </ThemedText>
         <TwPressable
           onPress={loadData}
@@ -80,7 +118,7 @@ export default function ExperiencesScreen() {
   }
 
   if (loading) {
-    return <LoadingView message={t('map.fetchingLocation')} />;
+    return <LoadingView message={t('experiences.loading')} />;
   }
 
   return (

@@ -20,16 +20,16 @@ export interface LocalTrackMetadata {
   imageKey: string;
 }
 
-export async function fetchThemes(): Promise<Theme[]> {
-  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/themes`);
+export async function fetchThemes(signal?: AbortSignal): Promise<Theme[]> {
+  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/themes`, { signal });
   if (!response.ok) {
     throw new Error('Failed to fetch themes');
   }
   return response.json();
 }
 
-export async function fetchExperiences(): Promise<Experience[]> {
-  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/experiences`);
+export async function fetchExperiences(signal?: AbortSignal): Promise<Experience[]> {
+  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/experiences`, { signal });
   if (!response.ok) {
     throw new Error('Failed to fetch experiences');
   }

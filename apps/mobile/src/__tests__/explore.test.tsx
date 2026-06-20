@@ -3,6 +3,7 @@ import { render, waitFor } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
 import ExploreScreen from '@/app/(tabs)/explore';
+import { fetchExperiences } from '@/data/experiences';
 
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/hooks/use-offline-geofence', () => ({
@@ -55,6 +56,10 @@ const mockMap: Record<string, string> = {
   'index.hints.devtoolsDevice': 'shake device or press m in terminal',
   'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
   'index.hints.devtoolsIos': 'press cmd+d',
+  'index.loading': 'Loading…',
+  'index.errorLoading': 'Failed to load featured experience.',
+  'index.retry': 'Retry',
+  'index.empty': 'No experiences available yet.',
 };
 
 beforeAll(() => {
@@ -90,5 +95,25 @@ describe('Explore screen (now Home content)', () => {
     await waitFor(() => {
       expect(toJSON()).not.toBeNull();
     });
+  });
+
+  it('shows empty state when experiences API returns empty', async () => {
+    (fetchExperiences as jest.Mock).mockResolvedValueOnce([]);
+    const { getByText } = render(<ExploreScreen />);
+    await waitFor(() => {
+      expect(getByText('No experiences available yet.')).toBeTruthy();
+    });
+    // Title still visible in empty state
+    expect(getByText('Welcome to Expo')).toBeTruthy();
+  });
+
+  it('shows error state when experiences API fails', async () => {
+    (fetchExperiences as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+    const { getByText } = render(<ExploreScreen />);
+    await waitFor(() => {
+      expect(getByText('Failed to load featured experience.')).toBeTruthy();
+    });
+    // Retry button is rendered
+    expect(getByText('Retry')).toBeTruthy();
   });
 });
