@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useReducer } from 'react';
 import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
@@ -31,6 +31,30 @@ interface TrackDetailViewProps {
   isWeb: boolean;
 }
 
+interface TrackDetailState {
+  track: Experience | null;
+  loading: boolean;
+  error: boolean;
+}
+
+type TrackDetailAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; track: Experience | null }
+  | { type: 'FETCH_ERROR' };
+
+function trackDetailReducer(state: TrackDetailState, action: TrackDetailAction): TrackDetailState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, loading: true, error: false };
+    case 'FETCH_SUCCESS':
+      return { track: action.track, loading: false, error: false };
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: true };
+  }
+}
+
+const initialTrackState: TrackDetailState = { track: null, loading: true, error: false };
+
 /**
  * Shared track detail view used by tracks/[id].tsx (dynamic route).
  * Receives a concrete trackId instead of reading from route params.
@@ -43,38 +67,29 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
-  const [track, setTrack] = useState<Experience | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [{ track, loading, error }, dispatch] = useReducer(trackDetailReducer, initialTrackState);
 
   const loadTrack = async () => {
-    setLoading(true);
-    setError(false);
+    dispatch({ type: 'FETCH_START' });
     try {
       const list = await fetchExperiences();
       const found = list.find((e: Experience) => e.slug === trackId || e.id === trackId);
-      setTrack(found ?? null);
+      dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
     } catch (err) {
       logger.error('[DETAIL] Failed to fetch experience:', err);
-      setError(true);
+      dispatch({ type: 'FETCH_ERROR' });
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    // Initial data load — setState in .then/.catch callbacks is async, not synchronous
     fetchExperiences()
       .then((list) => {
         const found = list.find((e) => e.slug === trackId || e.id === trackId);
-        setTrack(found ?? null);
-        setError(false);
+        dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
       })
       .catch((err) => {
         logger.error('[DETAIL] Failed to fetch experience:', err);
-        setError(true);
-      })
-      .finally(() => {
-        setLoading(false);
+        dispatch({ type: 'FETCH_ERROR' });
       });
   }, [trackId]);
 

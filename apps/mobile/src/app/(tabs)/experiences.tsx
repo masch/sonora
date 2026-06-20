@@ -9,20 +9,13 @@ import { TwView, TwTextInput, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import {
-  fetchThemes,
-  fetchExperiences,
-  EXPERIENCE_FORMATS,
-  type Theme,
-  type Experience,
-  type ExperienceFormat,
-} from '@/data/experiences';
+import { fetchThemes, fetchExperiences, EXPERIENCE_FORMATS } from '@/data/experiences';
+import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
 import type { TranslationKeys } from '@/i18n/types';
 import { TRACK_IMAGES } from '@/constants/images';
 import { logger } from '@/utils/logger';
 
 export default function ExperiencesScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ format?: string }>();
   const isFormatLocked = params.format
     ? (EXPERIENCE_FORMATS as readonly string[]).includes(params.format)
@@ -32,27 +25,10 @@ export default function ExperiencesScreen() {
     : 'track';
 
   const { t } = useAppTranslation();
-  const colors = useThemeColors();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTheme, setSelectedTheme] = useState<string>('all');
-  const [selectedFormat, setSelectedFormat] = useState<ExperienceFormat>(initialFormat);
   const [themesList, setThemesList] = useState<Theme[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  const effectiveFormat: ExperienceFormat =
-    params.format && (EXPERIENCE_FORMATS as readonly string[]).includes(params.format)
-      ? (params.format as ExperienceFormat)
-      : selectedFormat;
-
-  // Reset theme when format changes
-  const [lastFormat, setLastFormat] = useState<ExperienceFormat>(effectiveFormat);
-  if (effectiveFormat !== lastFormat) {
-    setLastFormat(effectiveFormat);
-    setSelectedFormat(effectiveFormat);
-    setSelectedTheme('all');
-  }
 
   const loadData = async () => {
     try {
@@ -68,7 +44,6 @@ export default function ExperiencesScreen() {
   };
 
   useEffect(() => {
-    // Initial data load — setState in .then/.catch callbacks is async, not synchronous
     Promise.all([fetchThemes(), fetchExperiences()])
       .then(([fetchedThemes, fetchedExps]) => {
         setThemesList(fetchedThemes);
@@ -108,7 +83,40 @@ export default function ExperiencesScreen() {
     return <LoadingView message={t('map.fetchingLocation')} />;
   }
 
-  // Prepend 'All' theme option and filter by applicableFormat
+  return (
+    <ExperiencesContent
+      key={params.format}
+      experiences={experiences}
+      themesList={themesList}
+      isFormatLocked={isFormatLocked}
+      initialFormat={initialFormat}
+    />
+  );
+}
+
+/**
+ * Format-dependent UI extracted so `key={params.format}` resets all
+ * local state (format, theme, search) when the deep-link param changes.
+ */
+function ExperiencesContent({
+  experiences,
+  themesList,
+  isFormatLocked,
+  initialFormat,
+}: {
+  experiences: Experience[];
+  themesList: Theme[];
+  isFormatLocked: boolean;
+  initialFormat: ExperienceFormat;
+}) {
+  const router = useRouter();
+  const colors = useThemeColors();
+  const { t } = useAppTranslation();
+  const [selectedFormat, setSelectedFormat] = useState<ExperienceFormat>(initialFormat);
+  const [selectedTheme, setSelectedTheme] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Prepend 'All' theme option and filter by applicableFormat (single pass)
   const themeOptions = [
     {
       key: 'all',
@@ -116,20 +124,23 @@ export default function ExperiencesScreen() {
       order: 0,
       applicableFormat: null,
     },
-    ...themesList
-      .filter((theme) => {
-        return (
-          theme.applicableFormat === null ||
-          theme.applicableFormat === undefined ||
-          theme.applicableFormat === selectedFormat
-        );
-      })
-      .map((theme) => ({
-        key: theme.key,
-        labelKey: theme.labelKey as TranslationKeys,
-        order: theme.order,
-        applicableFormat: theme.applicableFormat,
-      })),
+    ...themesList.reduce<
+      { key: string; labelKey: TranslationKeys; order: number; applicableFormat: string | null }[]
+    >((acc, theme) => {
+      if (
+        theme.applicableFormat === null ||
+        theme.applicableFormat === undefined ||
+        theme.applicableFormat === selectedFormat
+      ) {
+        acc.push({
+          key: theme.key,
+          labelKey: theme.labelKey as TranslationKeys,
+          order: theme.order,
+          applicableFormat: theme.applicableFormat as string | null,
+        });
+      }
+      return acc;
+    }, []),
   ];
 
   // Filtering Logic
@@ -163,7 +174,10 @@ export default function ExperiencesScreen() {
             return (
               <TwPressable
                 key={format}
-                onPress={() => setSelectedFormat(format)}
+                onPress={() => {
+                  setSelectedFormat(format);
+                  setSelectedTheme('all');
+                }}
                 className={`px-4 py-1.5 rounded-lg border ${
                   isSelected
                     ? 'bg-text border-text'

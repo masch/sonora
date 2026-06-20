@@ -61,7 +61,7 @@ jobs:
       - run: bun --filter @sonora/mobile typecheck
       - uses: millionco/react-doctor@v1.1.1
         with:
-          version: '0.2.14'
+          version: '0.2.16'
 
   validate-api:
     needs: changes

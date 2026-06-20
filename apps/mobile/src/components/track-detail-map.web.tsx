@@ -14,6 +14,7 @@ const LEAFLET_VERSION = '1.9.4';
 const LEAFLET_CSS_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`;
 const LEAFLET_JS_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`;
 
+const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ export default function TrackDetailMap({
   userLatitude,
   userLongitude,
   showLabels = true,
-  waypoints = [],
+  waypoints = EMPTY_WAYPOINTS,
 }: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const containerRef = useRef<HTMLDivElement>(null);

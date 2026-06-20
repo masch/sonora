@@ -7,6 +7,12 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -101,7 +107,7 @@ export default function TrackDetailMap({
   userLatitude,
   userLongitude,
   showLabels = true,
-  waypoints = [],
+  waypoints = EMPTY_WAYPOINTS,
 }: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const webviewRef = useRef<WebView>(null);

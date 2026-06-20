@@ -27,7 +27,12 @@ export default {
         ],
       },
       {
-        files: ['**/experiences.tsx', '**/track-detail-view.tsx', '**/track-map.tsx'],
+        files: [
+          '**/experiences.tsx',
+          '**/explore.tsx',
+          '**/track-detail-view.tsx',
+          '**/track-map.tsx',
+        ],
         rules: [
           'react-compiler',
           'react-doctor/react-compiler',
@@ -35,6 +40,10 @@ export default {
           'react-doctor/prefer-useReducer',
           'set-state-in-effect',
           'react-doctor/set-state-in-effect',
+          'no-initialize-state',
+          'react-doctor/no-initialize-state',
+          'no-giant-component',
+          'react-doctor/no-giant-component',
         ],
         // try/finally in async data-fetching functions is correct error-handling
         // and a known React Compiler limitation (BuildHIR::lowerStatement TryStatement).
