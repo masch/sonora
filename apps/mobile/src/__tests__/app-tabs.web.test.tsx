@@ -16,8 +16,8 @@ jest.mock('@/constants/tabs', () => ({
       hidden: false,
     },
     {
-      name: 'tracks',
-      label: 'Tracks',
+      name: 'experiences',
+      label: 'Experiences',
       ioniconsName: 'musical-notes-outline',
       symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
       hidden: false,
@@ -61,7 +61,7 @@ beforeAll(() => {
     (key: string) =>
       ({
         'tabs.index': 'Home',
-        'tabs.tracks': 'Tracks',
+        'tabs.experiences': 'Experiences',
         'tabs.explore': 'Explore',
         'tabs.settings': 'Settings',
       })[key] ?? key,
@@ -74,10 +74,10 @@ describe('Web app-tabs', () => {
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders TabTrigger for visible (index and tracks) tabs', () => {
+  it('renders TabTrigger for visible (index and experiences) tabs', () => {
     const { getByTestId } = render(<AppTabsWeb />);
     expect(getByTestId('tab-trigger-index')).toBeTruthy();
-    expect(getByTestId('tab-trigger-tracks')).toBeTruthy();
+    expect(getByTestId('tab-trigger-experiences')).toBeTruthy();
   });
 
   it('does NOT render TabTrigger for hidden (explore) tab', () => {

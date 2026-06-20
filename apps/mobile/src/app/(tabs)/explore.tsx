@@ -8,6 +8,7 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
+import LoadingView from '@/components/loading-view';
 import { ScrollScreenWrapper, TAB_BAR_INSET } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
@@ -15,9 +16,11 @@ import { Icon } from '@/components/icon';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { getTrackById } from '@/data/tracks';
-import { TwView } from '@/tw';
+import { fetchExperiences, type Experience } from '@/data/experiences';
+import { TwView, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
+import { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
@@ -32,6 +35,85 @@ const RESET_PROJECT_COMMAND = 'npm run reset-project';
 
 export default function ExploreScreen() {
   const { t } = useAppTranslation();
+
+  const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  // Hooks must be called unconditionally at the top, before any early return.
+  // They accept null params gracefully when there's no active experience.
+  const geofence = useOfflineGeofence(
+    activeExperience
+      ? { latitude: activeExperience.latitude, longitude: activeExperience.longitude }
+      : null,
+  );
+  const download = useTrackDownload(
+    activeExperience?.slug || null,
+    activeExperience?.audioUrl || null,
+  );
+  const player = useImmersionPlayer(download.localAudioUri);
+
+  // ---
+
+  const loadExperience = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const exps = await fetchExperiences();
+      if (exps.length > 0) {
+        setActiveExperience(exps[0]);
+      }
+      setError(false);
+    } catch (e) {
+      logger.error(e);
+      setError(true);
+    }
+    setLoading(false);
+  };
+
+  // Initial fetch — no setState in the effect body itself, only in async callbacks
+  useEffect(() => {
+    fetchExperiences()
+      .then((exps) => {
+        if (exps.length > 0) setActiveExperience(exps[0]);
+        setError(false);
+      })
+      .catch((e) => {
+        logger.error(e);
+        setError(true);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <ScrollScreenWrapper disableBottomPadding>
+        <LoadingView message={t('index.loading')} />
+      </ScrollScreenWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <ScrollScreenWrapper disableBottomPadding contentContainerClassName="grow">
+        <TwView className="flex-grow items-center justify-center p-6">
+          <ThemedText className="text-base font-bold text-text mb-4 text-center">
+            {t('index.errorLoading')}
+          </ThemedText>
+          <TwPressable
+            onPress={loadExperience}
+            className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
+            testID="explore-retry-button"
+            accessibilityLabel={t('index.retry')}
+          >
+            <ThemedText themeColor="background" className="font-semibold">
+              {t('index.retry')}
+            </ThemedText>
+          </TwPressable>
+        </TwView>
+      </ScrollScreenWrapper>
+    );
+  }
 
   const getDevMenuHint = () => {
     if (Platform.OS === 'web') {
@@ -58,17 +140,6 @@ export default function ExploreScreen() {
       </ThemedText>
     );
   };
-
-  const geofence = useOfflineGeofence({
-    latitude: -32.21218267316605,
-    longitude: -64.73809012343702,
-  });
-
-  const track = getTrackById('umepay-bosque');
-
-  const download = useTrackDownload(track?.id ?? 'umepay-bosque', track?.audioRemoteUrl ?? '');
-
-  const player = useImmersionPlayer(download.localAudioUri);
 
   return (
     <ScrollScreenWrapper disableBottomPadding contentContainerClassName={CONTENT_PADDING}>
@@ -114,41 +185,53 @@ export default function ExploreScreen() {
               </ThemedText>
             </TwView>
 
-            <GpsPrecisionBadge
-              gpsStatus={geofence.gpsStatus}
-              gpsAccuracy={geofence.gpsAccuracy}
-              distanceMeters={geofence.distanceMeters}
-              isNearStart={geofence.isNearStart}
-              requiredRadiusMeters={geofence.requiredRadiusMeters}
-            />
-
-            <DownloadProgressCard
-              status={download.status}
-              progress={download.progress}
-              errorMsg={download.errorMsg}
-              onDownload={download.startDownload}
-              onDelete={download.deleteTrackLocal}
-            />
-
-            {/* Audio player — only shown when download completed */}
-            {download.status === 'completed' ? (
-              <AudioMediaControls
-                status={player.status}
-                positionMs={player.positionMs}
-                durationMs={player.durationMs}
-                errorMsg={player.errorMsg}
-                onPlay={player.play}
-                onPause={player.pause}
-                onStop={player.stop}
-                disabled={!download.localAudioUri}
-              />
-            ) : download.status === 'downloading' ? (
-              <TwView className="card-container gap-2 self-stretch p-4 rounded-xl items-center">
-                <ThemedText className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t('index.waitingForDownload')}
+            {!activeExperience && (
+              <TwView className="items-center py-4">
+                <ThemedText className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                  {t('index.empty')}
                 </ThemedText>
               </TwView>
-            ) : null}
+            )}
+
+            {activeExperience && (
+              <>
+                <GpsPrecisionBadge
+                  gpsStatus={geofence.gpsStatus}
+                  gpsAccuracy={geofence.gpsAccuracy}
+                  distanceMeters={geofence.distanceMeters}
+                  isNearStart={geofence.isNearStart}
+                  requiredRadiusMeters={geofence.requiredRadiusMeters}
+                />
+
+                <DownloadProgressCard
+                  status={download.status}
+                  progress={download.progress}
+                  errorMsg={download.errorMsg}
+                  onDownload={download.startDownload}
+                  onDelete={download.deleteTrackLocal}
+                />
+
+                {/* Audio player — only shown when download completed */}
+                {download.status === 'completed' ? (
+                  <AudioMediaControls
+                    status={player.status}
+                    positionMs={player.positionMs}
+                    durationMs={player.durationMs}
+                    errorMsg={player.errorMsg}
+                    onPlay={player.play}
+                    onPause={player.pause}
+                    onStop={player.stop}
+                    disabled={!download.localAudioUri}
+                  />
+                ) : download.status === 'downloading' ? (
+                  <TwView className="card-container gap-2 self-stretch p-4 rounded-xl items-center">
+                    <ThemedText className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {t('index.waitingForDownload')}
+                    </ThemedText>
+                  </TwView>
+                ) : null}
+              </>
+            )}
 
             {/* Development Hints */}
             <TwView className="card-container gap-4 self-stretch p-4 rounded-xl">

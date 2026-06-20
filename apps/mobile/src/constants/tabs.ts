@@ -26,8 +26,8 @@ export const TABS = [
     hidden: false,
   },
   {
-    name: 'tracks',
-    label: 'Tracks',
+    name: 'experiences',
+    label: 'Experiences',
     ioniconsName: 'musical-notes-outline',
     symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
     hidden: false,

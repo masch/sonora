@@ -1,14 +1,11 @@
-# Tracks Library Specification
+# Delta for Tracks Library
 
-## Purpose
-
-Definir los requerimientos de interfaz y comportamiento para la biblioteca de experiencias (tracks y trips) en la aplicación móvil, garantizando que el usuario pueda buscar, filtrar pistas y recorridos por sus categorías correspondientes y tipo de experiencia.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: SearchAndFilter
 
 La interfaz debe permitir al usuario buscar y filtrar la lista unificada de experiencias (Tracks y Trips) ingresando texto en un campo de búsqueda, tocando un tag de categoría, o filtrando por tipo de experiencia.
+(Previously: La interfaz debe permitir al usuario buscar tracks ingresando texto en un campo de búsqueda, o tocando un tag de categoría.)
 
 #### Scenario: Filter by Category
 

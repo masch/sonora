@@ -74,7 +74,7 @@ describe('POST /feedback', () => {
     const res = await app.request('/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trackId: 'track-1' }),
+      body: JSON.stringify({ experienceId: 'track-1' }),
     });
     expect(res.status).toBe(422);
     const body = (await res.json()) as { status: string; errors: string[] };
@@ -87,7 +87,7 @@ describe('POST /feedback', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        trackId: 'track-1',
+        experienceId: 'track-1',
         message: '',
         idempotencyKey: 'key-1',
         createdAt: new Date().toISOString(),
@@ -103,7 +103,7 @@ describe('POST /feedback', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        trackId: 'track-1',
+        experienceId: 'track-1',
         message: 'Great trail!',
         idempotencyKey: 'test-key-1',
         createdAt: new Date().toISOString(),
@@ -117,7 +117,7 @@ describe('POST /feedback', () => {
   it('returns 201 for duplicate idempotencyKey (no KV binding = no dedup)', async () => {
     // Without a KV binding, the server cannot dedup — it returns 201 both times
     const payload = {
-      trackId: 'track-1',
+      experienceId: 'track-1',
       message: 'Duplicate test',
       idempotencyKey: 'test-key-duplicate',
       createdAt: new Date().toISOString(),
@@ -156,7 +156,7 @@ describe('POST /feedback', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: 'track-1',
+          experienceId: 'track-1',
           message: 'First attempt',
           idempotencyKey,
           createdAt: new Date().toISOString(),
@@ -180,7 +180,7 @@ describe('POST /feedback', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        trackId: 'track-1',
+        experienceId: 'track-1',
         message: longMessage,
         idempotencyKey: 'test-key-long',
         createdAt: new Date().toISOString(),
@@ -210,7 +210,7 @@ describe('POST /feedback', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: 'track-2',
+          experienceId: 'track-2',
           message: 'Amazing hike!',
           idempotencyKey: 'db-test-key-1',
           createdAt: new Date().toISOString(),
@@ -224,7 +224,7 @@ describe('POST /feedback', () => {
 
     it('returns 409 for duplicate via UNIQUE constraint (no KV)', async () => {
       const payload = {
-        trackId: 'track-2',
+        experienceId: 'track-2',
         message: 'Double post test',
         idempotencyKey: 'unique-dup-key',
         createdAt: new Date().toISOString(),
@@ -256,7 +256,7 @@ describe('POST /feedback', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: 'track-2',
+          experienceId: 'track-2',
           message: 'KV misses but DB has it',
           idempotencyKey: 'kv-miss-db-hit',
           createdAt: new Date().toISOString(),
@@ -283,7 +283,7 @@ describe('POST /feedback', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: 'track-3',
+          experienceId: 'track-3',
           message: 'This will blow up',
           idempotencyKey: 'db-error-key',
           createdAt: new Date().toISOString(),
@@ -312,7 +312,7 @@ describe('POST /feedback', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            trackId: 'track-2',
+            experienceId: 'track-2',
             message: 'KV already has this',
             idempotencyKey,
             createdAt: new Date().toISOString(),

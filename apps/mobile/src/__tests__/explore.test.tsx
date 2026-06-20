@@ -1,8 +1,9 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
 import ExploreScreen from '@/app/(tabs)/explore';
+import { fetchExperiences } from '@/data/experiences';
 
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/hooks/use-offline-geofence', () => ({
@@ -37,6 +38,13 @@ jest.mock('@/hooks/use-immersion-player', () => ({
     seekTo: jest.fn(),
   }),
 }));
+jest.mock('@/data/experiences', () => ({
+  fetchExperiences: jest.fn(() =>
+    Promise.resolve([
+      { id: 'umepay-bosque', slug: 'umepay-bosque', audioUrl: 'https://example.com/audio.mp3' },
+    ]),
+  ),
+}));
 
 const mockMap: Record<string, string> = {
   'index.title': 'Welcome to Expo',
@@ -48,6 +56,10 @@ const mockMap: Record<string, string> = {
   'index.hints.devtoolsDevice': 'shake device or press m in terminal',
   'index.hints.devtoolsAndroid': 'press cmd+m (or ctrl+m)',
   'index.hints.devtoolsIos': 'press cmd+d',
+  'index.loading': 'Loading…',
+  'index.errorLoading': 'Failed to load featured experience.',
+  'index.retry': 'Retry',
+  'index.empty': 'No experiences available yet.',
 };
 
 beforeAll(() => {
@@ -55,25 +67,53 @@ beforeAll(() => {
 });
 
 describe('Explore screen (now Home content)', () => {
-  it('renders the title', () => {
+  it('renders the title', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('Welcome to Expo')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Welcome to Expo')).toBeTruthy();
+    });
   });
 
-  it('renders the get started badge', () => {
+  it('renders the get started badge', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('get started')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('get started')).toBeTruthy();
+    });
   });
 
-  it('renders all HintRow titles', () => {
+  it('renders all HintRow titles', async () => {
     const { getByText } = render(<ExploreScreen />);
-    expect(getByText('Try editing')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Try editing')).toBeTruthy();
+    });
     expect(getByText('Dev tools')).toBeTruthy();
     expect(getByText('Fresh start')).toBeTruthy();
   });
 
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     const { toJSON } = render(<ExploreScreen />);
-    expect(toJSON()).not.toBeNull();
+    await waitFor(() => {
+      expect(toJSON()).not.toBeNull();
+    });
+  });
+
+  it('shows empty state when experiences API returns empty', async () => {
+    (fetchExperiences as jest.Mock).mockResolvedValueOnce([]);
+    const { getByText } = render(<ExploreScreen />);
+    await waitFor(() => {
+      expect(getByText('No experiences available yet.')).toBeTruthy();
+    });
+    // Title still visible in empty state
+    expect(getByText('Welcome to Expo')).toBeTruthy();
+  });
+
+  it('shows error state when experiences API fails', async () => {
+    (fetchExperiences as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+    const { getByText } = render(<ExploreScreen />);
+    await waitFor(() => {
+      expect(getByText('Failed to load featured experience.')).toBeTruthy();
+    });
+    // Retry button is rendered
+    expect(getByText('Retry')).toBeTruthy();
   });
 });

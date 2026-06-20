@@ -28,22 +28,27 @@ export const en = {
   },
   tabs: {
     index: 'Home',
-    tracks: 'Tracks',
+    experiences: 'Experiences',
     explore: 'Explore',
     settings: 'Settings',
   },
-  tracks: {
-    title: 'TRACKS',
-    searchPlaceholder: 'Search tracks...',
-    notFound: 'Track not found',
+  experiences: {
+    title: 'Experiences',
+    searchPlaceholder: {
+      track: 'Search tracks...',
+      trip: 'Search trips...',
+    },
+    notFound: 'Experience not found',
     duration: '{{minutes}} min walk',
     minAbbr: 'min',
-    sectionsCount: '{{count}} SECCIONES',
+    sectionsCount: '{{count}} SECTIONS',
     metersAbbr: 'mts',
     coordinates: '{{lat}}, {{lng}}',
     rowAccessibilityLabel: '{{title}}, {{subLabel}}, {{duration}} {{minAbbr}}',
-    filterSettings: 'Filter settings',
-    actionsMenu: 'Track actions menu',
+    actionsMenu: 'Experience actions menu',
+    loading: 'Loading experiences…',
+    errorLoading: 'Failed to load experiences. Please try again.',
+    retry: 'Retry',
     categories: {
       all: 'All',
       birds: 'Birds',
@@ -52,6 +57,13 @@ export const en = {
       poems: 'Poems',
       community: 'Community',
       children: 'Children',
+    },
+    types: {
+      track: 'Tracks',
+      trip: 'Trips',
+    },
+    errors: {
+      mustBeOnSite: 'You must be at the starting point to begin the trip.',
     },
   },
   home: {
@@ -69,6 +81,10 @@ export const en = {
     localMessagesSub: 'Community voices',
   },
   index: {
+    loading: 'Loading…',
+    errorLoading: 'Failed to load featured experience.',
+    retry: 'Retry',
+    empty: 'No experiences available yet.',
     title: 'Welcome to Expo',
     getStarted: 'get started',
     hints: {

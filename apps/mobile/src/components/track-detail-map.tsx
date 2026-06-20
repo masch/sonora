@@ -7,6 +7,12 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -16,13 +22,14 @@ interface TrackDetailMapProps {
   userLatitude?: number;
   userLongitude?: number;
   showLabels?: boolean;
+  waypoints?: { latitude: number; longitude: number }[];
 }
 
 // ---------------------------------------------------------------------------
 // Build Leaflet HTML → base64 data URI
 // ---------------------------------------------------------------------------
 
-function buildDataUri(lat: number, lng: number, destLabel: string): string {
+function buildDataUri(lat: number, lng: number, destLabel: string, waypointsJson: string): string {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -49,6 +56,29 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&
 var destMarker = L.marker([${lat},${lng}],{icon}).addTo(map);
 window.destMarker = destMarker;
 destMarker.bindTooltip("${destLabel}",{permanent:true,direction:'top'});
+
+// Render waypoints and path polyline if available
+var wps = ${waypointsJson};
+if (wps && wps.length > 0) {
+  var latlngs = wps.map(function(wp) { return [wp.latitude, wp.longitude]; });
+  // Add start coordinate as the first point of the polyline
+  latlngs.unshift([${lat}, ${lng}]);
+  
+  L.polyline(latlngs, {color: '#10b981', weight: 4, opacity: 0.8}).addTo(map);
+  
+  wps.forEach(function(wp, idx) {
+    L.circleMarker([wp.latitude, wp.longitude], {
+      radius: 6,
+      color: '#10b981',
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+      weight: 3
+    }).addTo(map).bindTooltip("Pt " + (idx + 1), {permanent: true, direction: 'top'});
+  });
+  
+  var bounds = L.latLngBounds(latlngs);
+  map.fitBounds(bounds.pad(0.2));
+}
 }catch(e){document.body.innerHTML='<p style="padding:20px;color:#666">'+e.message+'</p>'}
 <\/script>
 </body>
@@ -77,6 +107,7 @@ export default function TrackDetailMap({
   userLatitude,
   userLongitude,
   showLabels = true,
+  waypoints = EMPTY_WAYPOINTS,
 }: TrackDetailMapProps) {
   const { t } = useAppTranslation();
   const webviewRef = useRef<WebView>(null);
@@ -86,10 +117,11 @@ export default function TrackDetailMap({
 
   const destLabel = t('map.destination');
   const userLocLabel = t('map.userLocation');
+  const waypointsJson = JSON.stringify(waypoints);
 
   const uri = fallback
     ? buildEmbedUrl(latitude, longitude)
-    : buildDataUri(latitude, longitude, destLabel);
+    : buildDataUri(latitude, longitude, destLabel, waypointsJson);
 
   // Toggle labels dynamically without reloading the WebView
   useEffect(() => {
@@ -138,21 +170,33 @@ export default function TrackDetailMap({
               userMarker.bindTooltip("${userLocLabel}", { permanent: true, direction: 'top' });
             }
           }
-          var bounds = L.latLngBounds([[${latitude}, ${longitude}], [${userLatitude}, ${userLongitude}]]);
+          var points = [[${latitude}, ${longitude}], [${userLatitude}, ${userLongitude}]];
+          var wps = ${waypointsJson};
+          if (wps && wps.length > 0) {
+            wps.forEach(function(wp) { points.push([wp.latitude, wp.longitude]); });
+          }
+          var bounds = L.latLngBounds(points);
           window.map.fitBounds(bounds.pad(0.2), { animate: true });
         }
         true;
       `;
       webviewRef.current.injectJavaScript(js);
     }
-  }, [userLatitude, userLongitude, latitude, longitude, showLabels, userLocLabel, loading]);
+  }, [
+    userLatitude,
+    userLongitude,
+    latitude,
+    longitude,
+    showLabels,
+    userLocLabel,
+    loading,
+    waypointsJson,
+  ]);
 
   const handleError = () => {
     if (!fallback) {
-      // First failure → try OSM embed fallback
       setFallback(true);
     } else {
-      // Both sources failed → show error state
       setLoading(false);
       setError(true);
     }

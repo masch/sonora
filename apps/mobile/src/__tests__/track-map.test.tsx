@@ -1,34 +1,37 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
+import type { Experience } from '@/data/experiences';
 
-// ---------------------------------------------------------------------------
-// Mutable track data — allows per-test override without jest.clearAllMocks issues
-// ---------------------------------------------------------------------------
-let mockTracksData: {
-  id: string;
-  title: string;
-  description: string;
-  durationSeconds: number;
-  startCoordinates: { latitude: number; longitude: number };
-  audioRemoteUrl: string;
-}[];
+let mockTracksData: Experience[];
 
-const DEFAULT_TRACKS = [
+const DEFAULT_TRACKS: Experience[] = [
   {
-    id: 'umepay-bosque',
+    id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
+    slug: 'umepay-bosque',
     title: 'Umepay Bosque Antiguo',
     description: 'A meditative walk through the ancient forest.',
+    format: 'track',
+    themeKey: 'landscapes',
     durationSeconds: 2700,
-    startCoordinates: { latitude: -32.212, longitude: -64.738 },
-    audioRemoteUrl: 'https://example.com/audio.mp3',
+    latitude: -32.212,
+    longitude: -64.738,
+    audioUrl: 'https://example.com/audio.mp3',
+    imageKey: 'deriva-centro',
+    isDownloadable: true,
   },
   {
-    id: 'rio-claro',
+    id: '5a9463ce-daba-4756-892e-4dd4cb862309',
+    slug: 'rio-claro',
     title: 'Rio Claro Trail',
     description: 'A walk along the clear river.',
+    format: 'track',
+    themeKey: 'community',
     durationSeconds: 1800,
-    startCoordinates: { latitude: -33.123, longitude: -65.456 },
-    audioRemoteUrl: 'https://example.com/audio2.mp3',
+    latitude: -33.123,
+    longitude: -65.456,
+    audioUrl: 'https://example.com/audio2.mp3',
+    imageKey: 'bonus-track',
+    isDownloadable: false,
   },
 ];
 
@@ -37,20 +40,14 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ---------------------------------------------------------------------------
-// Mock tracks data
-// ---------------------------------------------------------------------------
-jest.mock('@/data/tracks', () => ({
-  getAllTracks: jest.fn(() => mockTracksData),
+jest.mock('@/data/experiences', () => ({
+  fetchThemes: jest.fn(() => Promise.resolve([])),
+  fetchExperiences: jest.fn(() => Promise.resolve(mockTracksData)),
 }));
 
-// ---------------------------------------------------------------------------
-// Mock expo-router
-// ---------------------------------------------------------------------------
 const mockPush = jest.fn();
 jest.mock('expo-router', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react');
+  const React = jest.requireActual('react');
   const MockLink = (props: Record<string, unknown>) => {
     if (props.asChild && React.Children.count(props.children as React.ReactNode) > 0) {
       const child = React.Children.only(props.children as React.ReactNode);
@@ -71,9 +68,6 @@ jest.mock('expo-router', () => {
   return { Link: MockLink, useRouter: () => ({ push: mockPush }) };
 });
 
-// ---------------------------------------------------------------------------
-// Mock expo-location
-// ---------------------------------------------------------------------------
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
@@ -81,18 +75,12 @@ jest.mock('expo-location', () => ({
 }));
 
 import * as Location from 'expo-location';
-
-// ---------------------------------------------------------------------------
-// Mock useLocationStore
-// ---------------------------------------------------------------------------
 import { useLocationStore } from '@/store/location-store';
+
 jest.mock('@/store/location-store', () => ({
   useLocationStore: jest.fn(),
 }));
 
-// ---------------------------------------------------------------------------
-// Mock useAppTranslation
-// ---------------------------------------------------------------------------
 jest.mock('@/hooks/use-translation', () => ({
   useAppTranslation: () => ({
     t: (k: string, params?: Record<string, unknown>) =>
@@ -100,12 +88,8 @@ jest.mock('@/hooks/use-translation', () => ({
   }),
 }));
 
-// Import after mocks
 import TrackMap from '@/components/track-map';
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 describe('TrackMap native component', () => {
   beforeEach(() => {
     mockTracksData = DEFAULT_TRACKS;
@@ -116,37 +100,36 @@ describe('TrackMap native component', () => {
     });
   });
 
-  it('renders track cards when tracks exist', () => {
+  it('renders track cards when tracks exist', async () => {
     const { getByText } = render(<TrackMap />);
-
-    expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
+    });
     expect(getByText('Rio Claro Trail')).toBeTruthy();
   });
 
-  it('renders view track link per track', () => {
+  it('renders view track link per track', async () => {
     const { getByTestId } = render(<TrackMap />);
-
-    expect(getByTestId('view-track-umepay-bosque')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByTestId('view-track-umepay-bosque')).toBeTruthy();
+    });
     expect(getByTestId('view-track-rio-claro')).toBeTruthy();
   });
 
-  it('renders empty state when no tracks', () => {
+  it('renders empty state when no tracks', async () => {
     mockTracksData = [];
-
     const { getByText } = render(<TrackMap />);
-
-    expect(getByText('map.noTracksTitle')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('map.noTracksTitle')).toBeTruthy();
+    });
   });
 
-  it('renders instructions card', () => {
+  it('renders instructions card', async () => {
     const { getByText } = render(<TrackMap />);
-
-    expect(getByText('map.instructionsTitle')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('map.instructionsTitle')).toBeTruthy();
+    });
   });
-
-  // -----------------------------------------------------------------------
-  // FR2 — Location-Based Distance
-  // -----------------------------------------------------------------------
 
   it('shows distance when location permission is granted', async () => {
     (useLocationStore as unknown as jest.Mock).mockImplementation((selector) => {
@@ -160,9 +143,8 @@ describe('TrackMap native component', () => {
     });
 
     const { getAllByText } = render(<TrackMap />);
-
     await waitFor(() => {
-      expect(getAllByText(/map\.distanceFromYou/).length).toBe(2); // 2 tracks
+      expect(getAllByText(/map\.distanceFromYou/).length).toBe(2);
     });
   });
 
@@ -174,13 +156,9 @@ describe('TrackMap native component', () => {
     });
 
     const { queryByText, getByText } = render(<TrackMap />);
-
-    // Wait for effects to settle
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     });
-
-    // Distance text must NOT be present
     expect(queryByText(/map\.distanceFromYou/)).toBeNull();
   });
 
@@ -195,11 +173,9 @@ describe('TrackMap native component', () => {
       .mockRejectedValue(new Error('Location unavailable'));
 
     const { queryByText, getByText } = render(<TrackMap />);
-
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     });
-
     expect(queryByText(/map\.distanceFromYou/)).toBeNull();
   });
 });

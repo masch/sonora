@@ -28,22 +28,27 @@ export const es = {
   },
   tabs: {
     index: 'Inicio',
-    tracks: 'Tracks',
+    experiences: 'Experiencias',
     explore: 'Explorar',
     settings: 'Ajustes',
   },
-  tracks: {
-    title: 'TRACKS',
-    searchPlaceholder: 'Buscar tracks...',
-    notFound: 'Track no encontrado',
+  experiences: {
+    title: 'Experiencias',
+    searchPlaceholder: {
+      track: 'Buscar tracks...',
+      trip: 'Buscar recorridos...',
+    },
+    notFound: 'Experiencia no encontrada',
     duration: 'Caminata de {{minutes}} min',
     minAbbr: 'min',
     sectionsCount: '{{count}} SECCIONES',
     metersAbbr: 'mts',
     coordinates: '{{lat}}, {{lng}}',
     rowAccessibilityLabel: '{{title}}, {{subLabel}}, {{duration}} {{minAbbr}}',
-    filterSettings: 'Ajustes de filtro',
-    actionsMenu: 'Menú de acciones del track',
+    actionsMenu: 'Menú de acciones de la experiencia',
+    loading: 'Cargando experiencias…',
+    errorLoading: 'Error al cargar las experiencias. Por favor reintentá.',
+    retry: 'Reintentar',
     categories: {
       all: 'Todas',
       birds: 'Aves',
@@ -52,6 +57,13 @@ export const es = {
       poems: 'Poemas',
       community: 'Comunidad',
       children: 'Infancias',
+    },
+    types: {
+      track: 'Tracks',
+      trip: 'Recorridos',
+    },
+    errors: {
+      mustBeOnSite: 'Debés estar en el punto de partida para comenzar el recorrido.',
     },
   },
   home: {
@@ -69,6 +81,10 @@ export const es = {
     localMessagesSub: 'Voces de la comunidad',
   },
   index: {
+    loading: 'Cargando…',
+    errorLoading: 'Error al cargar la experiencia destacada.',
+    retry: 'Reintentar',
+    empty: 'No hay experiencias disponibles todavía.',
     title: 'Bienvenido a Expo',
     getStarted: 'empezar',
     hints: {

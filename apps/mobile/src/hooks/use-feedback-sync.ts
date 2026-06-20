@@ -3,6 +3,7 @@ import NetInfo from '@react-native-community/netinfo';
 import * as Storage from '@/storage/feedback-storage';
 import { APP_CONFIG } from '@/config/app-config';
 import type { FeedbackEntry } from '@/types/feedback';
+import { logger } from '@/utils/logger';
 
 const QUEUE_KEY = Storage.QUEUE_KEY;
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
@@ -60,7 +61,7 @@ export async function flushQueue(): Promise<void> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            trackId: entry.trackId,
+            experienceId: entry.experienceId,
             message: entry.message,
             idempotencyKey: entry.id,
             createdAt: entry.createdAt,
@@ -88,7 +89,6 @@ export async function flushQueue(): Promise<void> {
     await Storage.setItem(QUEUE_KEY, JSON.stringify(remaining));
   } catch {
     // If we can't even read the queue, log and move on
-    // eslint-disable-next-line no-console
-    console.warn('useFeedbackSync: Failed to flush queue');
+    logger.warn('useFeedbackSync: Failed to flush queue');
   }
 }

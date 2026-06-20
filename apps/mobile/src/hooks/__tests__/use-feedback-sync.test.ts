@@ -40,10 +40,10 @@ beforeEach(() => {
   );
 });
 
-function seedQueue(entries: { id: string; trackId: string; message: string }[]): void {
+function seedQueue(entries: { id: string; experienceId: string; message: string }[]): void {
   const data = entries.map((e) => ({
     id: e.id,
-    trackId: e.trackId,
+    experienceId: e.experienceId,
     message: e.message,
     createdAt: new Date().toISOString(),
     retryCount: 0,
@@ -61,8 +61,8 @@ async function tick(): Promise<void> {
 describe('useFeedbackSync', () => {
   it('should flush all pending entries on online transition', async () => {
     seedQueue([
-      { id: 'key-1', trackId: 'track-1', message: 'First' },
-      { id: 'key-2', trackId: 'track-1', message: 'Second' },
+      { id: 'key-1', experienceId: 'track-1', message: 'First' },
+      { id: 'key-2', experienceId: 'track-1', message: 'Second' },
     ]);
 
     // Mock fetch to succeed on all POSTs
@@ -90,9 +90,9 @@ describe('useFeedbackSync', () => {
 
   it('should handle partial failure — remove succeeded, keep failed', async () => {
     seedQueue([
-      { id: 'key-1', trackId: 'track-1', message: 'First' },
-      { id: 'key-2', trackId: 'track-1', message: 'Second' },
-      { id: 'key-3', trackId: 'track-1', message: 'Third' },
+      { id: 'key-1', experienceId: 'track-1', message: 'First' },
+      { id: 'key-2', experienceId: 'track-1', message: 'Second' },
+      { id: 'key-3', experienceId: 'track-1', message: 'Third' },
     ]);
 
     let callCount = 0;
@@ -150,7 +150,7 @@ describe('useFeedbackSync', () => {
   });
 
   it('should not double-flush on rapid online/offline toggle', async () => {
-    seedQueue([{ id: 'key-1', trackId: 'track-1', message: 'Only one' }]);
+    seedQueue([{ id: 'key-1', experienceId: 'track-1', message: 'Only one' }]);
 
     const mockFetch = jest.fn().mockImplementation(
       () =>
@@ -190,7 +190,7 @@ describe('useFeedbackSync', () => {
   it('should start a periodic interval on all platforms', async () => {
     jest.useFakeTimers();
 
-    seedQueue([{ id: 'key-1', trackId: 'track-1', message: 'Periodic test' }]);
+    seedQueue([{ id: 'key-1', experienceId: 'track-1', message: 'Periodic test' }]);
     const mockFetch = jest.fn().mockResolvedValue({ status: 201, json: () => ({ status: 'ok' }) });
     globalThis.fetch = mockFetch;
 

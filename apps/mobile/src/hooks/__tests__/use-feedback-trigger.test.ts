@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useFeedbackTrigger } from '../use-feedback-trigger';
-import type { LocalTrackMetadata } from '@/data/tracks';
+import type { LocalTrackMetadata } from '@/data/experiences';
 
 describe('useFeedbackTrigger', () => {
   describe('audio_end mode', () => {

@@ -9,6 +9,8 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const unifiedHeaderImg = require('@/assets/images/sonora/home-unified-header.png');
 
+export const SHOW_LOCAL_MESSAGES = false;
+
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useAppTranslation();
@@ -41,7 +43,7 @@ export default function HomeScreen() {
 
           {/* Clean Player Row (No card borders) */}
           <TwPressable
-            onPress={() => router.push('/tracks')}
+            onPress={() => router.push('/experiences?format=trip')}
             accessibilityLabel={t('home.continueListening')}
             testID="continue-listening-card"
             className="flex-row items-start gap-4 active:opacity-75 pb-6 border-b border-zinc-800/10"
@@ -75,7 +77,7 @@ export default function HomeScreen() {
         <TwView className="gap-1">
           {/* Explorar Recorridos */}
           <TwPressable
-            onPress={() => router.push('/tracks')}
+            onPress={() => router.push('/experiences?format=trip')}
             accessibilityLabel={t('home.exploreRoutes')}
             testID="explore-routes-menu"
             className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
@@ -102,7 +104,7 @@ export default function HomeScreen() {
 
           {/* Explorar Tracks */}
           <TwPressable
-            onPress={() => router.push('/tracks')}
+            onPress={() => router.push('/experiences?format=track')}
             accessibilityLabel={t('home.exploreTracks')}
             testID="explore-tracks-menu"
             className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
@@ -134,37 +136,39 @@ export default function HomeScreen() {
           </TwPressable>
 
           {/* Mensajes del Lugar */}
-          <TwPressable
-            onPress={() => router.push('/tracks')}
-            accessibilityLabel={t('home.localMessages')}
-            testID="local-messages-menu"
-            className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
-          >
-            <TwView className="flex-row items-center gap-4 flex-1">
-              <Icon
-                ios="bubble.left"
-                android="forum"
-                web="forum"
-                size={24}
-                tintColor={colors.text}
-              />
-              <TwView className="flex-1">
-                <ThemedText className="text-lg font-bold text-text">
-                  {t('home.localMessages')}
-                </ThemedText>
-                <ThemedText className="text-sm text-textSecondary mt-0.5">
-                  {t('home.localMessagesSub')}
-                </ThemedText>
+          {SHOW_LOCAL_MESSAGES && (
+            <TwPressable
+              onPress={() => router.push('/experiences?format=track')}
+              accessibilityLabel={t('home.localMessages')}
+              testID="local-messages-menu"
+              className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
+            >
+              <TwView className="flex-row items-center gap-4 flex-1">
+                <Icon
+                  ios="bubble.left"
+                  android="forum"
+                  web="forum"
+                  size={24}
+                  tintColor={colors.text}
+                />
+                <TwView className="flex-1">
+                  <ThemedText className="text-lg font-bold text-text">
+                    {t('home.localMessages')}
+                  </ThemedText>
+                  <ThemedText className="text-sm text-textSecondary mt-0.5">
+                    {t('home.localMessagesSub')}
+                  </ThemedText>
+                </TwView>
               </TwView>
-            </TwView>
-            <Icon
-              ios="chevron.right"
-              android="chevron_right"
-              web="chevron_right"
-              size={20}
-              tintColor={colors.textSecondary}
-            />
-          </TwPressable>
+              <Icon
+                ios="chevron.right"
+                android="chevron_right"
+                web="chevron_right"
+                size={20}
+                tintColor={colors.textSecondary}
+              />
+            </TwPressable>
+          )}
         </TwView>
       </TwView>
     </ScrollScreenWrapper>

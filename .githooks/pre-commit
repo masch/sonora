@@ -67,6 +67,6 @@ fi
 make gga    || STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
-  echo "pre-commit: validation failed (exit $STATUS). Use 'git commit --no-verify' to skip."
+  echo "pre-commit: validation failed (exit $STATUS)."
 fi
 exit $STATUS

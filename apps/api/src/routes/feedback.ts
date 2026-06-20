@@ -64,7 +64,7 @@ feedbackRouter.post('/', async (c) => {
   if (db) {
     try {
       await db.insert(feedback).values({
-        trackId: validation.data.trackId,
+        experienceId: validation.data.experienceId,
         message: validation.data.message,
         idempotencyKey: validation.data.idempotencyKey,
         createdAt: new Date(createdAt),

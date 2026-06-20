@@ -10,7 +10,7 @@ function generateId(): string {
 }
 
 interface EnqueueInput {
-  trackId: string;
+  experienceId: string;
   message: string;
 }
 
@@ -60,7 +60,7 @@ export function useFeedbackQueue() {
 
       const entry: FeedbackEntry = {
         id,
-        trackId: input.trackId,
+        experienceId: input.experienceId,
         message: input.message,
         createdAt: new Date().toISOString(),
         retryCount: 0,

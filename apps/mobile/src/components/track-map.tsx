@@ -1,19 +1,21 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useLocationStore } from '@/store/location-store';
 
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
-
+import LoadingView from '@/components/loading-view';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { getAllTracks } from '@/data/tracks';
+import { TRACK_IMAGES } from '@/constants/images';
+import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { getHaversineDistance } from '@/utils/haversine';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { logger } from '@/utils/logger';
 
 const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 const logoImg = require('@/assets/images/sonora/logo.png');
@@ -29,20 +31,67 @@ function formatDistance(
   return t('map.distanceMeters', { value: Math.round(meters) });
 }
 
-/**
- * Native fallback for the explore map.
- *
- * react-native-maps (MapView) requires a Google Maps API key on Android.
- * Since the map experience lives on the web version with Leaflet (free, no
- * API key), this native version shows a clean track list with distances.
- */
 export default function TrackMap() {
   const router = useRouter();
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const tracks = getAllTracks();
+  const [tracks, setTracks] = useState<Experience[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const currentLocation = useLocationStore((state) => state.coords);
   const [showInstructionsOverlay, setShowInstructionsOverlay] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const list = await fetchExperiences();
+      setTracks(list);
+      setError(false);
+    } catch (err) {
+      logger.error('[MAP] Failed to fetch experiences:', err);
+      setError(true);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    // Initial data load — setState in .then/.catch callbacks is async, not synchronous
+    fetchExperiences()
+      .then((list) => {
+        setTracks(list);
+        setError(false);
+      })
+      .catch((err) => {
+        logger.error('[MAP] Failed to fetch experiences:', err);
+        setError(true);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (error) {
+    return (
+      <TwView className="flex-grow items-center justify-center p-6 bg-background">
+        <ThemedText className="text-base font-bold text-text mb-4 text-center">
+          {t('experiences.errorLoading')}
+        </ThemedText>
+        <TwPressable
+          onPress={loadData}
+          className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
+          testID="track-map-retry-button"
+          accessibilityLabel={t('experiences.retry')}
+        >
+          <ThemedText themeColor="background" className="font-semibold">
+            {t('experiences.retry')}
+          </ThemedText>
+        </TwPressable>
+      </TwView>
+    );
+  }
+
+  if (loading) {
+    return <LoadingView message={t('map.loadingMap')} />;
+  }
 
   if (tracks.length === 0) {
     return (
@@ -52,13 +101,13 @@ export default function TrackMap() {
     );
   }
 
-  const cardDistance = (track: (typeof tracks)[number]): string | null => {
+  const cardDistance = (track: Experience): string | null => {
     if (!currentLocation) return null;
     const dist = getHaversineDistance(
       currentLocation.latitude,
       currentLocation.longitude,
-      track.startCoordinates.latitude,
-      track.startCoordinates.longitude,
+      track.latitude,
+      track.longitude,
     );
     return formatDistance(dist, t);
   };
@@ -167,24 +216,19 @@ export default function TrackMap() {
           </ThemedText>
 
           <TwView className="flex-col gap-3">
-            {tracks.map((track, idx) => {
-              const trackImage =
-                track.imageKey === 'deriva-centro'
-                  ? require('@/assets/images/sonora/deriva-centro.png')
-                  : require('@/assets/images/sonora/bonus-track.png');
-
+            {tracks.map((track) => {
+              const trackImage = TRACK_IMAGES[track.imageKey] || TRACK_IMAGES['bonus-track'];
               const dist = cardDistance(track);
 
               return (
                 <TwPressable
                   key={track.id}
-                  testID={`view-track-${track.id}`}
+                  testID={`view-track-${track.slug}`}
                   accessibilityLabel={t('map.viewTrack', { title: track.title })}
                   onPress={() => router.push(`/tracks/${track.id}`)}
                   className="active:opacity-75 mb-1"
                 >
                   <TwView className="flex-row items-center justify-between p-3 rounded-xl card-container">
-                    {/* Left Cover Image */}
                     <TwImage
                       source={trackImage}
                       className="size-16 rounded-xl mr-3"
@@ -192,7 +236,6 @@ export default function TrackMap() {
                       alt=""
                     />
 
-                    {/* Center details */}
                     <TwView className="flex-1 justify-center mr-1">
                       <ThemedText
                         numberOfLines={1}
@@ -203,13 +246,9 @@ export default function TrackMap() {
                         {track.title}
                       </ThemedText>
                       <ThemedText className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 mt-1">
-                        {Math.round(track.durationSeconds / 60)} {t('tracks.minAbbr')} ·{' '}
-                        {track.sectionsCount
-                          ? `${t('tracks.sectionsCount', { count: track.sectionsCount })} · `
-                          : ''}
-                        {track.typeLabel ? `${track.typeLabel}` : ''}
-                        {track.distanceMeters && track.distanceMeters > 0
-                          ? `${track.distanceMeters}${t('tracks.metersAbbr')}`
+                        {Math.round(track.durationSeconds / 60)} {t('experiences.minAbbr')}
+                        {track.format === 'trip' && track.waypoints
+                          ? ` · ${t('experiences.sectionsCount', { count: track.waypoints.length })}`
                           : ''}
                       </ThemedText>
                       {dist && (
@@ -223,13 +262,7 @@ export default function TrackMap() {
                       )}
                     </TwView>
 
-                    {/* Right action/price */}
                     <TwView className="flex-row items-center gap-2">
-                      {track.distanceMeters !== undefined && track.distanceMeters === 0 && (
-                        <ThemedText className="text-[11px] font-black text-zinc-700 dark:text-zinc-300">
-                          {t('map.zeroDistance')}
-                        </ThemedText>
-                      )}
                       <TwView className="items-center">
                         {track.priceLabel && (
                           <ThemedText className="text-[9px] font-black text-zinc-800 dark:text-zinc-100 mb-0.5 tracking-tighter">
