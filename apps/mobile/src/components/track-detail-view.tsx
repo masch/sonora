@@ -145,7 +145,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: trackUuid,
+          experienceId: trackUuid,
           message,
           idempotencyKey: generateUUID(),
           createdAt: new Date().toISOString(),
@@ -156,13 +156,13 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
         setFeedbackStatus('sent');
       } else {
         logger.error('[API_ERROR] Server returned status:', response.status);
-        await feedbackQueue.enqueue({ trackId: trackUuid, message });
+        await feedbackQueue.enqueue({ experienceId: trackUuid, message });
         setFeedbackStatus('queued');
       }
     } catch (err) {
       logger.error('[NETWORK_ERROR] Fetch failed:', err);
       try {
-        await feedbackQueue.enqueue({ trackId: trackUuid, message });
+        await feedbackQueue.enqueue({ experienceId: trackUuid, message });
         setFeedbackStatus('queued');
       } catch (enqueueErr) {
         logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);

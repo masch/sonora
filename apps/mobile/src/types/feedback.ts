@@ -7,7 +7,7 @@ export type FeedbackStatus = 'sending' | 'sent' | 'queued' | 'error';
 
 export interface FeedbackEntry {
   id: string;
-  trackId: string;
+  experienceId: string;
   message: string;
   createdAt: string;
   retryCount: number;
