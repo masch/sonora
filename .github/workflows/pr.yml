@@ -59,6 +59,9 @@ jobs:
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
       - run: bun --filter @sonora/mobile typecheck
+      - name: Fetch base for diff scan
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
       - name: React Doctor
         working-directory: apps/mobile
         run: bunx react-doctor --verbose --diff --fail-on error
