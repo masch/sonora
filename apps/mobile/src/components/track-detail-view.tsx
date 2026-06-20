@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
@@ -47,19 +47,19 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const loadTrack = useCallback(async () => {
+  const loadTrack = async () => {
     setLoading(true);
+    setError(false);
     try {
       const list = await fetchExperiences();
       const found = list.find((e: Experience) => e.slug === trackId || e.id === trackId);
       setTrack(found ?? null);
-      setError(false);
     } catch (err) {
       logger.error('[DETAIL] Failed to fetch experience:', err);
       setError(true);
     }
     setLoading(false);
-  }, [trackId]);
+  };
 
   useEffect(() => {
     // Initial data load — setState in .then/.catch callbacks is async, not synchronous
