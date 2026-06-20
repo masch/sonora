@@ -59,9 +59,9 @@ jobs:
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
       - run: bun --filter @sonora/mobile typecheck
-      - uses: millionco/react-doctor@v1.1.1
-        with:
-          version: '0.2.16'
+      - name: React Doctor
+        working-directory: apps/mobile
+        run: bunx react-doctor --verbose --scope changed --blocking error
 
   validate-api:
     needs: changes
