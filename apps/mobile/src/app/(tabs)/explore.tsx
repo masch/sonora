@@ -51,10 +51,9 @@ export default function ExploreScreen() {
     activeExperience?.slug || null,
     activeExperience?.audioUrl || null,
   );
-  const player = useImmersionPlayer(download.localAudioUri, {
-    title: activeExperience?.title ?? 'Sonora',
-    artist: 'Sonora',
-  });
+  const player = useImmersionPlayer(download.localAudioUri,
+    activeExperience ? { title: activeExperience.title } : {},
+  );
 
   // ---
 

@@ -18,7 +18,6 @@ export function HomeAudioPlayer() {
   const download = useTrackDownload('instructions', instructionsUrl);
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
-    artist: 'Sonora',
   });
 
   // Auto-play when download completes if requested by user
