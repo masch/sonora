@@ -322,17 +322,29 @@ api-deploy-production-full: api-db-migrate-production api-db-seed-production api
 api-db-studio: ## Launch Drizzle Studio (GUI for local DB)
 	cd $(API_DIR) && bun run db:studio
 
+# ── psql shell targets (amigables) ──
+# Uses .psqlrc-sonora for \x auto, null display, cleaner prompt, etc.
+
+PSQLRC_SONORA := $(CURDIR)/$(API_DIR)/.psqlrc-sonora
+
 .PHONY: api-db-shell
-api-db-shell: ## Open psql shell to local Postgres
-	podman compose -f $(API_DIR)/docker-compose.yml exec postgres psql -U sonora -d sonora
+api-db-shell: ## Open psql shell to local Postgres (amigable)
+	podman cp $(PSQLRC_SONORA) sonora-postgres:/tmp/.psqlrc-sonora && \
+		podman compose -f $(API_DIR)/docker-compose.yml exec \
+			-e PSQLRC=/tmp/.psqlrc-sonora \
+			postgres psql -U sonora -d sonora
 
 .PHONY: api-db-shell-staging
-api-db-shell-staging: ## Open psql shell to Neon staging DB
-	podman run -it --rm postgres:18-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
+api-db-shell-staging: ## Open psql shell to Neon staging DB (amigable)
+	podman run -it --rm \
+		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
+		postgres:18-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
 
 .PHONY: api-db-shell-production
-api-db-shell-production: ## Open psql shell to Neon production DB
-	podman run -it --rm postgres:18-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
+api-db-shell-production: ## Open psql shell to Neon production DB (amigable)
+	podman run -it --rm \
+		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
+		postgres:18-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
 
 .PHONY: api-dev-local
 api-dev-local: ## Run Hono API locally with Docker Postgres
