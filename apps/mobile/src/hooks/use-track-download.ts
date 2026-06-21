@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -20,17 +20,27 @@ const getTargetUri = (trackId: string | null) => {
   return `${FileSystem.documentDirectory}tracks/${trackId}/audio.mp3`;
 };
 
+interface LocalCache {
+  trackId: string;
+  localUri: string;
+}
+
 /**
  * Maps a store download entry to the hook's TrackDownloadState interface.
  */
 function mapStoreEntry(
   entry: StoreDownloadEntry | undefined,
-  cachedLocalUri: string | null,
+  localCache: LocalCache | null,
+  currentTrackId: string | null,
 ): TrackDownloadState {
-  // If we have a cached local URI from an earlier file-system check, show
-  // completed regardless of store state (file was already downloaded before).
-  if (cachedLocalUri) {
-    return { status: 'completed', progress: 100, localAudioUri: cachedLocalUri, errorMsg: null };
+  // Use cached local URI only if it belongs to the current track
+  if (localCache && localCache.trackId === currentTrackId) {
+    return {
+      status: 'completed',
+      progress: 100,
+      localAudioUri: localCache.localUri,
+      errorMsg: null,
+    };
   }
 
   if (!entry) {
@@ -87,19 +97,16 @@ export function useTrackDownload(
   const storeEntry = useDownloadManagerStore((s) => (trackId ? s.downloads[trackId] : undefined));
 
   // Cached local URI from filesystem check — survives across renders
-  const [cachedLocalUri, setCachedLocalUri] = useState<string | null>(null);
+  const [localCache, setLocalCache] = useState<LocalCache | null>(null);
 
   // One-time check for pre-existing local file
   useEffect(() => {
-    if (!trackId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCachedLocalUri(null);
-      return;
-    }
+    if (!trackId) return;
 
     // If the store already has a completed entry, no need to check FS
     if (storeEntry?.status === 'completed') {
-      setCachedLocalUri(storeEntry.localUri);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalCache({ trackId: trackId as string, localUri: storeEntry.localUri as string });
       return;
     }
 
@@ -115,7 +122,7 @@ export function useTrackDownload(
       try {
         const info = await FileSystem.getInfoAsync(targetUri as string);
         if (!cancelled && info.exists) {
-          setCachedLocalUri(info.uri);
+          setLocalCache({ trackId: trackId as string, localUri: info.uri });
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Error validating local cache';
@@ -133,20 +140,20 @@ export function useTrackDownload(
   // Derive state from store entry + cached local file
   const state = !trackId
     ? { status: 'idle' as DownloadStatus, progress: 0, localAudioUri: null, errorMsg: null }
-    : mapStoreEntry(storeEntry, cachedLocalUri);
+    : mapStoreEntry(storeEntry, localCache, trackId);
 
-  const startDownload = useCallback(() => {
+  function startDownload() {
     if (!trackId || !remoteAudioUrl) {
       logger.warn('useTrackDownload: cannot start download — missing trackId or URL');
       return;
     }
 
     useDownloadManagerStore.getState().enqueue(trackId, remoteAudioUrl);
-  }, [trackId, remoteAudioUrl]);
+  }
 
-  const deleteTrackLocal = useCallback(async () => {
+  async function deleteTrackLocal() {
     if (Platform.OS === 'web') {
-      setCachedLocalUri(null);
+      setLocalCache(null);
       return;
     }
 
@@ -158,12 +165,12 @@ export function useTrackDownload(
       if (info.exists) {
         await FileSystem.deleteAsync(targetUri);
       }
-      setCachedLocalUri(null);
+      setLocalCache(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('errors.deleteFailed');
       logger.error(msg);
     }
-  }, [trackId, t]);
+  }
 
   return {
     ...state,
