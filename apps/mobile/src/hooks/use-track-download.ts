@@ -33,20 +33,20 @@ function mapStoreEntry(
   localCache: LocalCache | null,
   currentTrackId: string | null,
 ): TrackDownloadState {
-  // Use cached local URI only if it belongs to the current track
-  if (localCache && localCache.trackId === currentTrackId) {
-    return {
-      status: 'completed',
-      progress: 100,
-      localAudioUri: localCache.localUri,
-      errorMsg: null,
-    };
-  }
-
   if (!entry) {
+    // No store entry — use cached local URI from FS check if it belongs to current track
+    if (localCache && localCache.trackId === currentTrackId) {
+      return {
+        status: 'completed',
+        progress: 100,
+        localAudioUri: localCache.localUri,
+        errorMsg: null,
+      };
+    }
     return { status: 'idle', progress: 0, localAudioUri: null, errorMsg: null };
   }
 
+  // Store entry is the source of truth when available
   switch (entry.status) {
     case 'queued':
     case 'downloading':
@@ -103,13 +103,6 @@ export function useTrackDownload(
   useEffect(() => {
     if (!trackId) return;
 
-    // If the store already has a completed entry, no need to check FS
-    if (storeEntry?.status === 'completed') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalCache({ trackId: trackId as string, localUri: storeEntry.localUri as string });
-      return;
-    }
-
     // Skip filesystem check on web
     if (Platform.OS === 'web') return;
 
@@ -135,7 +128,7 @@ export function useTrackDownload(
     return () => {
       cancelled = true;
     };
-  }, [trackId, storeEntry?.status, storeEntry?.localUri]);
+  }, [trackId]);
 
   // Derive state from store entry + cached local file
   const state = !trackId

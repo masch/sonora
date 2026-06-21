@@ -34,6 +34,7 @@ interface TrackDetailMapProps {
 // Component
 // ---------------------------------------------------------------------------
 
+// react-doctor-disable-next-line deslop/unused-export — false positive: used by track-detail-view.tsx via relative import. deslop can't resolve Metro platform extension resolution.
 export default function TrackDetailMap({
   latitude,
   longitude,

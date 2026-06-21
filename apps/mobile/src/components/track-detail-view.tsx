@@ -5,7 +5,7 @@ import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
-import TrackDetailMap from '@/components/track-detail-map';
+import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
 import { TRACK_IMAGES } from '@/constants/images';
