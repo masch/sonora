@@ -50,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
       # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
