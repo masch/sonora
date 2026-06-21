@@ -70,7 +70,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 - **Branch naming**: `feat/description`, `fix/description`, `chore/description`, `docs/description`, `refactor/description` (kebab-case).
 - **PR body**: must include summary of changes, reasoning (why), and test plan.
 - **No direct pushes to `main`** — all changes go through PRs.
-- **No `--no-verify`** — except for emergencies (document in commit message).
+- **No `--no-verify`**: Bypassing commit validation hooks via `--no-verify` is strictly forbidden. There are no exceptions.
 - **No `--amend`** on shared branches.
 - **Post-Merge** ("mergeado"):
   1. Confirm PR and issue closed
