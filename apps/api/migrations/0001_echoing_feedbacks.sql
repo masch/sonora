@@ -1,5 +1,5 @@
 --> statement-breakpoint
-ALTER TABLE "sonora"."feedback" RENAME TO "sonora"."feedbacks";
+ALTER TABLE "sonora"."feedback" RENAME TO "feedbacks";
 --> statement-breakpoint
 ALTER TABLE "sonora"."feedbacks" RENAME CONSTRAINT "feedback_idempotency_key_unique" TO "feedbacks_idempotency_key_unique";
 --> statement-breakpoint
