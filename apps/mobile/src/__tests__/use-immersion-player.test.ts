@@ -54,7 +54,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
   });
 
   it('returns idle status when localAudioUri is null', () => {
-    const { result } = renderHook(() => useImmersionPlayer(null));
+    const { result } = renderHook(() => useImmersionPlayer(null, {}));
 
     expect(result.current.status).toBe('idle');
     expect(result.current.positionMs).toBe(0);
@@ -73,7 +73,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
       durationMs: 120000,
     });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     expect(result.current.status).toBe('playing');
     expect(result.current.positionMs).toBe(15000);
@@ -81,7 +81,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
   });
 
   it('forwards idle status from store when URI is set but store is idle', () => {
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     expect(result.current.status).toBe('idle');
   });
@@ -91,7 +91,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     const originalPlay = useAudioPlayerStore.getState().play;
     useAudioPlayerStore.setState({ play: storePlay as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.play();
 
     expect(storePlay).toHaveBeenCalledWith('file://audio.mp3');
@@ -107,7 +107,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     const originalPlay = useAudioPlayerStore.getState().play;
     useAudioPlayerStore.setState({ play: storePlay as never });
 
-    const { result } = renderHook(() => useImmersionPlayer(null));
+    const { result } = renderHook(() => useImmersionPlayer(null, {}));
     result.current.play();
 
     expect(storePlay).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     const originalPause = useAudioPlayerStore.getState().pause;
     useAudioPlayerStore.setState({ pause: storePause as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.pause();
 
     expect(storePause).toHaveBeenCalledTimes(1);
@@ -137,7 +137,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     const originalStop = useAudioPlayerStore.getState().stop;
     useAudioPlayerStore.setState({ stop: storeStop as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.stop();
 
     expect(storeStop).toHaveBeenCalledTimes(1);
@@ -152,7 +152,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     const originalSeekTo = useAudioPlayerStore.getState().seekTo;
     useAudioPlayerStore.setState({ seekTo: storeSeekTo as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.seekTo(30000);
 
     expect(storeSeekTo).toHaveBeenCalledWith(30000);
@@ -163,7 +163,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
   });
 
   it('returns same interface shape as original ImmersionPlayerState', () => {
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3'));
+    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     const keys = Object.keys(result.current).sort();
     expect(keys).toEqual(

@@ -14,6 +14,7 @@ let mockStoreState: {
   pause: jest.Mock;
   stop: jest.Mock;
   seekTo: jest.Mock;
+  setNowPlayingMetadata: jest.Mock;
 };
 
 jest.mock('@/store/audio-player-store', () => ({
@@ -46,12 +47,13 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
       pause: jest.fn(),
       stop: jest.fn(),
       seekTo: jest.fn(),
+      setNowPlayingMetadata: jest.fn(),
     };
   });
 
   describe('status mapping', () => {
     it('should return idle when uri is null', () => {
-      const { result } = renderHook(() => useImmersionPlayer(null));
+      const { result } = renderHook(() => useImmersionPlayer(null, {}));
 
       expect(result.current.status).toBe('idle');
       expect(result.current.positionMs).toBe(0);
@@ -62,7 +64,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
     it('should return loading when store status is loading', () => {
       mockStoreState.status = 'loading';
 
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       expect(result.current.status).toBe('loading');
     });
@@ -72,7 +74,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
       mockStoreState.positionMs = 5000;
       mockStoreState.durationMs = 120000;
 
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       expect(result.current.status).toBe('playing');
     });
@@ -81,7 +83,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
       mockStoreState.status = 'paused';
       mockStoreState.positionMs = 30000;
 
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       expect(result.current.status).toBe('paused');
     });
@@ -89,7 +91,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
     it('should return stopped when store status is stopped', () => {
       mockStoreState.status = 'stopped';
 
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       expect(result.current.status).toBe('stopped');
     });
@@ -98,7 +100,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
       mockStoreState.status = 'error';
       mockStoreState.errorMsg = 'Playback failed';
 
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       expect(result.current.status).toBe('error');
       expect(result.current.errorMsg).toBe('Playback failed');
@@ -107,7 +109,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
 
   describe('play action', () => {
     it('should call store play() with uri when uri is set', () => {
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       act(() => {
         result.current.play();
@@ -118,7 +120,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
     });
 
     it('should not call store play() when uri is null', () => {
-      const { result } = renderHook(() => useImmersionPlayer(null));
+      const { result } = renderHook(() => useImmersionPlayer(null, {}));
 
       act(() => {
         result.current.play();
@@ -130,7 +132,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
 
   describe('pause action', () => {
     it('should call store pause()', () => {
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       act(() => {
         result.current.pause();
@@ -142,7 +144,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
 
   describe('stop action', () => {
     it('should call store stop()', () => {
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       act(() => {
         result.current.stop();
@@ -154,7 +156,7 @@ describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
 
   describe('seekTo action', () => {
     it('should call store seekTo with seconds', () => {
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
+      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3', {}));
 
       act(() => {
         result.current.seekTo(45000); // 45 seconds in ms

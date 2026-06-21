@@ -33,7 +33,7 @@ export interface ImmersionPlayerState {
  */
 export function useImmersionPlayer(
   localAudioUri: string | null,
-  mediaMetadata?: AudioMetadata | null,
+  mediaMetadata: AudioMetadata,
 ): ImmersionPlayerState {
   const storeStatus = useAudioPlayerStore((s) => s.status);
   const positionMs = useAudioPlayerStore((s) => s.positionMs);
@@ -48,7 +48,7 @@ export function useImmersionPlayer(
   const status: PlayerStatus = localAudioUri ? storeStatus : 'idle';
 
   // Sync metadata to the store directly (no effect needed — zustand updates batch with render)
-  if (mediaMetadata) {
+  if (mediaMetadata && Object.keys(mediaMetadata).length > 0) {
     setNowPlayingMetadata(mediaMetadata);
   }
 
