@@ -6,6 +6,8 @@ on:
     paths:
       - 'apps/api/**'
       - 'packages/shared/**'
+      - '.github/workflows/**'
+      - 'Makefile'
     branches:
       - main
 
@@ -30,6 +32,10 @@ jobs:
       - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
         run: make api-db-migrate-ci
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Seed default data (idempotent — upserts only)
+        run: make api-db-seed-ci
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Deploy to staging Worker
