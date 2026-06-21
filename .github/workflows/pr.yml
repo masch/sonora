@@ -50,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
       # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
@@ -64,9 +66,7 @@ jobs:
         run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
       - name: React Doctor (diff scan)
         working-directory: apps/mobile
-        run: |
-          git switch --create ci-branch
-          bunx react-doctor --verbose --diff --fail-on error
+        run: bunx react-doctor --verbose --diff origin/${{ github.event.pull_request.base.ref }} --fail-on error
       - name: React Doctor (full scan — informational)
         working-directory: apps/mobile
         run: bunx react-doctor --verbose || true

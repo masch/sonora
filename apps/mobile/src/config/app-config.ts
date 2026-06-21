@@ -54,6 +54,12 @@ export const APP_CONFIG = {
      * Duration in milliseconds to rewind the audio player.
      */
     rewindOffsetMs: 10000,
+    /**
+     * Default instructions audio URL.
+     */
+    instructionsUrl:
+      process.env.EXPO_PUBLIC_INSTRUCTIONS_AUDIO_URL ||
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
   },
   feedback: {
     /**

@@ -65,10 +65,12 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 
 ## 9. Git Workflow
 
+- **No Commits on Main**: Never make commits directly on the `main` branch. Committing to `main` is strictly forbidden.
+- **Early Branch Creation**: Always checkout a new feature/fix branch (`git checkout -b <branch-name>`) BEFORE making the first commit.
 - **Branch naming**: `feat/description`, `fix/description`, `chore/description`, `docs/description`, `refactor/description` (kebab-case).
 - **PR body**: must include summary of changes, reasoning (why), and test plan.
 - **No direct pushes to `main`** — all changes go through PRs.
-- **No `--no-verify`** — except for emergencies (document in commit message).
+- **No `--no-verify`**: Bypassing commit validation hooks via `--no-verify` is strictly forbidden. There are no exceptions.
 - **No `--amend`** on shared branches.
 - **Post-Merge** ("mergeado"):
   1. Confirm PR and issue closed

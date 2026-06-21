@@ -105,27 +105,47 @@ export function useTrackDownload(
       errorMsg: null,
     });
 
-    try {
-      // 1. Verify Storage Space (not available on web)
-      try {
-        const freeSpace = await FileSystem.getFreeDiskStorageAsync();
-        const requiredSpace = estimatedSizeBytes * SIZE_MULTIPLIER;
-        const freeMb = freeSpace / 1024 / 1024;
-        const requiredMb = requiredSpace / 1024 / 1024;
-        if (freeSpace < requiredSpace) {
-          throw new Error(
-            t('errors.insufficientSpace', {
-              free: freeMb.toFixed(1),
-              required: requiredMb.toFixed(1),
-            }),
-          );
-        }
-      } catch (storageErr: unknown) {
-        // On web, getFreeDiskStorageAsync is not available — skip the check
-        const isNotWeb = Platform.OS !== 'web';
-        if (isNotWeb) throw storageErr;
-      }
+    // 1. Verify Storage Space (not available on web)
+    let spaceCheckFailed = false;
+    let spaceErrorMessage = '';
 
+    try {
+      const freeSpace = await FileSystem.getFreeDiskStorageAsync();
+      const requiredSpace = estimatedSizeBytes * SIZE_MULTIPLIER;
+      const freeMb = freeSpace / 1024 / 1024;
+      const requiredMb = requiredSpace / 1024 / 1024;
+      if (freeSpace < requiredSpace) {
+        spaceCheckFailed = true;
+        spaceErrorMessage = t('errors.insufficientSpace', {
+          free: freeMb.toFixed(1),
+          required: requiredMb.toFixed(1),
+        });
+      }
+    } catch (storageErr: unknown) {
+      // On web, getFreeDiskStorageAsync is not available — skip the check
+      const isNotWeb = Platform.OS !== 'web';
+      if (isNotWeb) {
+        setState({
+          status: 'error',
+          progress: 0,
+          localAudioUri: null,
+          errorMsg: storageErr instanceof Error ? storageErr.message : t('errors.downloadFailed'),
+        });
+        return;
+      }
+    }
+
+    if (spaceCheckFailed) {
+      setState({
+        status: 'error',
+        progress: 0,
+        localAudioUri: null,
+        errorMsg: spaceErrorMessage,
+      });
+      return;
+    }
+
+    try {
       // 2. Download — on web, use the remote URL directly (streaming via expo-audio)
       if (Platform.OS === 'web') {
         // Web doesn't have a persistent filesystem. The player streams the

@@ -5,6 +5,36 @@ import { render } from '@testing-library/react-native';
 // Mock modules required by TrackMap (now rendered in index.tsx)
 // ---------------------------------------------------------------------------
 
+jest.mock('expo-audio', () => ({
+  useAudioPlayer: jest.fn(),
+  useAudioPlayerStatus: jest.fn(() => ({})),
+  setAudioModeAsync: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('@/hooks/use-track-download', () => ({
+  useTrackDownload: () => ({
+    status: 'idle',
+    progress: 0,
+    localAudioUri: null,
+    errorMsg: null,
+    startDownload: jest.fn(),
+    deleteTrackLocal: jest.fn(),
+  }),
+}));
+
+jest.mock('@/hooks/use-immersion-player', () => ({
+  useImmersionPlayer: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    errorMsg: null,
+    play: jest.fn(),
+    pause: jest.fn(),
+    stop: jest.fn(),
+    seekTo: jest.fn(),
+  }),
+}));
+
 jest.mock('@/data/experiences', () => ({
   getAllTracks: jest.fn(() => [
     {
@@ -37,6 +67,10 @@ jest.mock('@/hooks/use-translation', () => ({
   useAppTranslation: () => ({ t: (k: string) => k }),
 }));
 
+jest.mock('expo-symbols', () => ({
+  SymbolView: 'SymbolView',
+}));
+
 import HomeScreen, { SHOW_LOCAL_MESSAGES } from '@/app/(tabs)/index';
 
 describe('Home screen (Redesigned)', () => {
@@ -45,11 +79,11 @@ describe('Home screen (Redesigned)', () => {
 
     expect(getByText('home.title')).toBeTruthy();
     expect(getByText('home.poetic')).toBeTruthy();
-    expect(getByText('home.continueListening')).toBeTruthy();
+    expect(getByText('home.instructionsTitle')).toBeTruthy();
     expect(getByText('home.exploreRoutes')).toBeTruthy();
     expect(getByText('home.exploreTracks')).toBeTruthy();
 
-    expect(getByTestId('continue-listening-card')).toBeTruthy();
+    expect(getByTestId('home-audio-player')).toBeTruthy();
     expect(getByTestId('explore-routes-menu')).toBeTruthy();
     expect(getByTestId('explore-tracks-menu')).toBeTruthy();
 

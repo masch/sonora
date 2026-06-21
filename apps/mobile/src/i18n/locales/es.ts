@@ -79,6 +79,9 @@ export const es = {
     exploreTracksSub: 'Biblioteca sonora',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',
+    instructionsTitle: 'Instrucciones',
+    instructionsName: 'Cómo usar Sonora',
+    instructionsSubtitle: 'Cargá las instrucciones para escuchar',
   },
   index: {
     loading: 'Cargando…',
