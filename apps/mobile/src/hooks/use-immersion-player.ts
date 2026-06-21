@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { logger } from '@/utils/logger';
@@ -75,7 +75,8 @@ export function useImmersionPlayer(localAudioUri: string | null) {
     if (isLoaded && timeControlStatus === 'paused') return 'paused';
     return 'stopped';
   })();
-  const play = useCallback(() => {
+
+  const play = () => {
     if (!localAudioUri) return;
     try {
       player.play();
@@ -83,35 +84,32 @@ export function useImmersionPlayer(localAudioUri: string | null) {
       const msg = err instanceof Error ? err.message : 'Error playing audio';
       logger.error('ImmersionPlayer play error:', msg);
     }
-  }, [localAudioUri, player]);
+  };
 
-  const pause = useCallback(() => {
+  const pause = () => {
     try {
       player.pause();
     } catch (err: unknown) {
       logger.warn('Failed to pause audio', err);
     }
-  }, [player]);
+  };
 
-  const stop = useCallback(() => {
+  const stop = () => {
     try {
       player.pause();
       player.seekTo(0);
     } catch (err: unknown) {
       logger.warn('Failed to stop audio', err);
     }
-  }, [player]);
+  };
 
-  const seekTo = useCallback(
-    (positionMs: number) => {
-      try {
-        player.seekTo(positionMs / 1000);
-      } catch (err: unknown) {
-        logger.warn('Failed to seek audio', err);
-      }
-    },
-    [player],
-  );
+  const seekTo = (positionMs: number) => {
+    try {
+      player.seekTo(positionMs / 1000);
+    } catch (err: unknown) {
+      logger.warn('Failed to seek audio', err);
+    }
+  };
 
   return {
     status,

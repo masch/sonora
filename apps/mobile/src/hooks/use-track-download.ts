@@ -36,19 +36,30 @@ export function useTrackDownload(
     errorMsg: null,
   });
 
-  const downloadResumableRef = useRef<FileSystem.DownloadResumable | null>(null);
+  const [prevTrackId, setPrevTrackId] = useState<string | null>(trackId);
+  const [prevRemoteAudioUrl, setPrevRemoteAudioUrl] = useState<string | null>(remoteAudioUrl);
 
-  useEffect(() => {
+  if (trackId !== prevTrackId || remoteAudioUrl !== prevRemoteAudioUrl) {
+    setPrevTrackId(trackId);
+    setPrevRemoteAudioUrl(remoteAudioUrl);
     if (!trackId || !remoteAudioUrl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState({
         status: 'idle',
         progress: 0,
         localAudioUri: null,
         errorMsg: null,
       });
+    }
+  }
+
+  const downloadResumableRef = useRef<FileSystem.DownloadResumable | null>(null);
+
+  useEffect(() => {
+    if (!trackId || !remoteAudioUrl) {
       return;
     }
+
+    const currentDownload = downloadResumableRef;
 
     async function checkLocalFile() {
       // On web there's no persistent local file system — start idle
@@ -83,8 +94,8 @@ export function useTrackDownload(
     checkLocalFile();
 
     return () => {
-      if (downloadResumableRef.current) {
-        downloadResumableRef.current.pauseAsync().catch((err: unknown) => {
+      if (currentDownload.current) {
+        currentDownload.current.pauseAsync().catch((err: unknown) => {
           logger.warn('Failed to auto-pause download on unmount', err);
         });
       }

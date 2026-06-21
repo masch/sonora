@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import type { LocalTrackMetadata } from '@/data/experiences';
 
 export interface FeedbackTriggerSources {
@@ -29,43 +29,30 @@ export function useFeedbackTrigger(
   sources: FeedbackTriggerSources,
 ): FeedbackTriggerResult {
   const [showFeedback, setShowFeedback] = useState(false);
-  const prevDidJustFinish = useRef(sources.didJustFinish ?? false);
-  const prevIsNearStart = useRef(sources.isNearStart ?? false);
+  const [prevDidJustFinish, setPrevDidJustFinish] = useState(sources.didJustFinish ?? false);
+  const [prevIsNearStart, setPrevIsNearStart] = useState(sources.isNearStart ?? false);
 
   const triggerMode = track?.feedbackTrigger;
 
-  useEffect(() => {
-    if (!triggerMode || triggerMode === 'manual') {
-      // No auto-trigger for undefined or manual mode (state already false by default)
-      return;
+  const currentDidJustFinish = sources.didJustFinish ?? false;
+  if (currentDidJustFinish !== prevDidJustFinish) {
+    setPrevDidJustFinish(currentDidJustFinish);
+    if (triggerMode === 'audio_end' && currentDidJustFinish) {
+      setShowFeedback(true);
     }
+  }
 
-    if (triggerMode === 'audio_end') {
-      const current = sources.didJustFinish ?? false;
-      const prev = prevDidJustFinish.current;
-      prevDidJustFinish.current = current;
-
-      // Trigger on transition from false→true (edge-triggered)
-      if (current && !prev) {
-        setShowFeedback(true);
-      }
+  const currentIsNearStart = sources.isNearStart ?? false;
+  if (currentIsNearStart !== prevIsNearStart) {
+    setPrevIsNearStart(currentIsNearStart);
+    if (triggerMode === 'geofence' && currentIsNearStart) {
+      setShowFeedback(true);
     }
+  }
 
-    if (triggerMode === 'geofence') {
-      const current = sources.isNearStart ?? false;
-      const prev = prevIsNearStart.current;
-      prevIsNearStart.current = current;
-
-      // Trigger on transition from false→true (edge-triggered)
-      if (current && !prev) {
-        setShowFeedback(true);
-      }
-    }
-  }, [triggerMode, sources.didJustFinish, sources.isNearStart]);
-
-  const dismiss = useCallback(() => {
+  const dismiss = () => {
     setShowFeedback(false);
-  }, []);
+  };
 
   return { showFeedback, dismiss };
 }

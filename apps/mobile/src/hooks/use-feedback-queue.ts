@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import * as Storage from '@/storage/feedback-storage';
+import { useState, useEffect, useRef } from 'react';
+import { getItem, setItem, removeItem, QUEUE_KEY } from '@/storage/feedback-storage';
 import type { FeedbackEntry } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
-
-const QUEUE_KEY = Storage.QUEUE_KEY;
 
 function generateId(): string {
   return generateUUID();
@@ -29,7 +27,7 @@ export function useFeedbackQueue() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    Storage.getItem(QUEUE_KEY)
+    getItem(QUEUE_KEY)
       .then((raw) => {
         const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
         setQueue(entries);
@@ -42,57 +40,51 @@ export function useFeedbackQueue() {
       });
   }, []);
 
-  const saveToStorage = useCallback(async (entries: FeedbackEntry[]): Promise<void> => {
-    await Storage.setItem(QUEUE_KEY, JSON.stringify(entries));
+  const saveToStorage = async (entries: FeedbackEntry[]): Promise<void> => {
+    await setItem(QUEUE_KEY, JSON.stringify(entries));
     setQueue(entries);
-  }, []);
+  };
 
-  const enqueue = useCallback(
-    async (input: EnqueueInput, existingKey?: string): Promise<string> => {
-      // Always read fresh from storage to avoid race conditions
-      const raw = await Storage.getItem(QUEUE_KEY);
-      const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
-      const id = existingKey ?? generateId();
+  const enqueue = async (input: EnqueueInput, existingKey?: string): Promise<string> => {
+    // Always read fresh from storage to avoid race conditions
+    const raw = await getItem(QUEUE_KEY);
+    const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
+    const id = existingKey ?? generateId();
 
-      // Dedup by id: if the same key already exists, return it
-      const existing = entries.find((e) => e.id === id);
-      if (existing) return existing.id;
+    // Dedup by id: if the same key already exists, return it
+    const existing = entries.find((e) => e.id === id);
+    if (existing) return existing.id;
 
-      const entry: FeedbackEntry = {
-        id,
-        experienceId: input.experienceId,
-        message: input.message,
-        createdAt: new Date().toISOString(),
-        retryCount: 0,
-        lastError: null,
-      };
+    const entry: FeedbackEntry = {
+      id,
+      experienceId: input.experienceId,
+      message: input.message,
+      createdAt: new Date().toISOString(),
+      retryCount: 0,
+      lastError: null,
+    };
 
-      entries.push(entry);
-      await saveToStorage(entries);
-      return entry.id;
-    },
-    [saveToStorage],
-  );
+    entries.push(entry);
+    await saveToStorage(entries);
+    return entry.id;
+  };
 
   /** Returns entries from the in-memory cache (instant, no async). */
-  const getAll = useCallback((): FeedbackEntry[] => {
+  const getAll = (): FeedbackEntry[] => {
     return queue;
-  }, [queue]);
+  };
 
-  const remove = useCallback(
-    async (id: string): Promise<void> => {
-      const raw = await Storage.getItem(QUEUE_KEY);
-      const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
-      const filtered = entries.filter((e) => e.id !== id);
-      await saveToStorage(filtered);
-    },
-    [saveToStorage],
-  );
+  const remove = async (id: string): Promise<void> => {
+    const raw = await getItem(QUEUE_KEY);
+    const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
+    const filtered = entries.filter((e) => e.id !== id);
+    await saveToStorage(filtered);
+  };
 
-  const clear = useCallback(async (): Promise<void> => {
-    await Storage.removeItem(QUEUE_KEY);
+  const clear = async (): Promise<void> => {
+    await removeItem(QUEUE_KEY);
     setQueue([]);
-  }, []);
+  };
 
   return { enqueue, getAll, remove, clear, loaded: _loaded };
 }
