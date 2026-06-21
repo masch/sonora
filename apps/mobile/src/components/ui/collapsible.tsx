@@ -1,4 +1,3 @@
-import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
 import { FadeIn } from 'react-native-reanimated';
 
@@ -6,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { TwView, TwPressable } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { Icon } from '@/components/icon';
 
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,10 +16,12 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
       <TwPressable
         className="flex-row items-center gap-2 active:opacity-70"
         onPress={() => setIsOpen((value) => !value)}
+        accessibilityLabel={title}
+        testID="collapsible-trigger"
       >
         <TwView className="bg-backgroundElement size-6 rounded-xl justify-center items-center">
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          <Icon
+            name="chevronRight"
             size={14}
             weight="bold"
             tintColor={colors.text}

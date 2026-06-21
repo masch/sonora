@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: sonora
       POSTGRES_DB: sonora
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
 
 volumes:
   postgres_data:

@@ -21,6 +21,22 @@ const Reanimated: Record<string, unknown> = {
     }
   },
   useSharedValue: (init: unknown) => ({ value: init }),
+  FadeIn: {
+    duration: function () {
+      return this;
+    },
+    delay: function () {
+      return this;
+    },
+  },
+  FadeOut: {
+    duration: function () {
+      return this;
+    },
+    delay: function () {
+      return this;
+    },
+  },
   useAnimatedStyle: (callback: () => unknown) => callback(),
   useDerivedValue: (callback: () => unknown) => ({ value: callback() }),
   withTiming: (toValue: unknown) => toValue,

@@ -6,6 +6,7 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { HomeAudioPlayer } from '@/components/home-audio-player';
 
 const unifiedHeaderImg = require('@/assets/images/sonora/home-unified-header.png');
 
@@ -35,43 +36,8 @@ export default function HomeScreen() {
 
       {/* Main Content Area */}
       <TwView className="px-8 pt-6">
-        {/* Continue Listening Section */}
-        <TwView className="mb-6">
-          <ThemedText className="text-base font-extrabold text-text mb-4">
-            {t('home.continueListening')}
-          </ThemedText>
-
-          {/* Clean Player Row (No card borders) */}
-          <TwPressable
-            onPress={() => router.push('/experiences?format=trip')}
-            accessibilityLabel={t('home.continueListening')}
-            testID="continue-listening-card"
-            className="flex-row items-start gap-4 active:opacity-75 pb-6 border-b border-zinc-800/10"
-          >
-            <TwView className="pt-1">
-              <Icon
-                ios="play.fill"
-                android="play_arrow"
-                web="play_arrow"
-                size={28}
-                tintColor={colors.text}
-              />
-            </TwView>
-            <TwView className="flex-1">
-              <ThemedText className="text-lg font-extrabold text-text leading-tight">
-                {t('home.riverPath')}
-              </ThemedText>
-              <ThemedText className="text-sm font-semibold text-textSecondary mt-0.5">
-                {t('home.remainingTime', { time: '7 min' })}
-              </ThemedText>
-
-              {/* Progress Bar */}
-              <TwView className="h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mt-4 w-full overflow-hidden">
-                <TwView className="h-full bg-text w-[45%]" />
-              </TwView>
-            </TwView>
-          </TwPressable>
-        </TwView>
+        {/* Interactive Home Audio Player */}
+        <HomeAudioPlayer />
 
         {/* Navigation List Menu */}
         <TwView className="gap-1">
