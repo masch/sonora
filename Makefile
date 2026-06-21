@@ -73,7 +73,7 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	cd apps/mobile && bunx react-doctor --verbose
+	cd apps/mobile && bunx react-doctor --verbose --scope full -y
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
