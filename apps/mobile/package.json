@@ -63,7 +63,7 @@
     "jest": "29.7.0",
     "jest-expo": "~56.0.5",
     "prettier": "3.8.3",
-    "react-doctor": "^0.2.14",
+    "react-doctor": "^0.5.8",
     "lightningcss": "1.30.1",
     "typescript": "6.0.3"
   },
