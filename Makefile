@@ -60,8 +60,8 @@ dev-ios: ## Launch Expo dev server for iOS
 # ── Native ─────────────────────────────────────
 
 .PHONY: rebuild-android
-rebuild-android: ## Rebuild native Android project (after adding native modules like expo-av)
-	bunx expo run:android
+rebuild-android: ## Rebuild native Android project (after adding native modules like expo-audio)
+	cd apps/mobile && bunx expo run:android
 
 .PHONY: rebuild-ios
 rebuild-ios: ## Rebuild native iOS project (after adding native modules)

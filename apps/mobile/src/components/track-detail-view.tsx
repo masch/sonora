@@ -97,7 +97,10 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   const startCoordinates = track ? { latitude: track.latitude, longitude: track.longitude } : null;
   const geofence = useOfflineGeofence(startCoordinates);
   const download = useTrackDownload(track?.id ?? null, track?.audioUrl ?? null);
-  const player = useImmersionPlayer(download.localAudioUri);
+  const player = useImmersionPlayer(download.localAudioUri, {
+    title: track?.title ?? 'Sonora',
+    artist: 'Sonora',
+  });
 
   // Auto-play when download completes if the user initiated it
   useEffect(() => {

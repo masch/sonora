@@ -1,29 +1,24 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useImmersionPlayer } from '../use-immersion-player';
+import type { PlayerStatus } from '@/store/audio-player-store';
 
 // ---------------------------------------------------------------------------
-// Mock expo-audio — reactive audio player hooks
+// Mock the centralized store — the refactored hook is a thin wrapper over it
 // ---------------------------------------------------------------------------
-const mockPlayer = {
-  play: jest.fn(),
-  pause: jest.fn(),
-  seekTo: jest.fn(),
+let mockStoreState: {
+  status: PlayerStatus;
+  positionMs: number;
+  durationMs: number;
+  errorMsg: string | null;
+  play: jest.Mock;
+  pause: jest.Mock;
+  stop: jest.Mock;
+  seekTo: jest.Mock;
 };
 
-let mockStatus: {
-  playing: boolean;
-  currentTime: number;
-  duration: number;
-  isBuffering: boolean;
-  isLoaded: boolean;
-  didJustFinish: boolean;
-  timeControlStatus: string;
-};
-
-jest.mock('expo-audio', () => ({
-  useAudioPlayer: jest.fn(() => mockPlayer),
-  useAudioPlayerStatus: jest.fn(() => mockStatus),
-  setAudioModeAsync: jest.fn(() => Promise.resolve()),
+jest.mock('@/store/audio-player-store', () => ({
+  useAudioPlayerStore: (selector: (s: typeof mockStoreState) => unknown) =>
+    selector(mockStoreState),
 }));
 
 // ---------------------------------------------------------------------------
@@ -39,17 +34,18 @@ jest.mock('@/utils/logger', () => ({
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe('useImmersionPlayer hook', () => {
+describe('useImmersionPlayer hook (refactored — store wrapper)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStatus = {
-      playing: false,
-      currentTime: 0,
-      duration: 0,
-      isBuffering: false,
-      isLoaded: false,
-      didJustFinish: false,
-      timeControlStatus: 'paused',
+    mockStoreState = {
+      status: 'idle',
+      positionMs: 0,
+      durationMs: 0,
+      errorMsg: null,
+      play: jest.fn(),
+      pause: jest.fn(),
+      stop: jest.fn(),
+      seekTo: jest.fn(),
     };
   });
 
@@ -63,135 +59,108 @@ describe('useImmersionPlayer hook', () => {
       expect(result.current.errorMsg).toBeNull();
     });
 
-    it('should return loading when player is buffering', () => {
-      mockStatus.isBuffering = true;
+    it('should return loading when store status is loading', () => {
+      mockStoreState.status = 'loading';
 
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       expect(result.current.status).toBe('loading');
     });
 
-    it('should return loading when not yet loaded', () => {
-      const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
-
-      expect(result.current.status).toBe('loading');
-    });
-
-    it('should return playing when status.playing is true', () => {
-      mockStatus.playing = true;
-      mockStatus.isLoaded = true;
-      mockStatus.currentTime = 5;
-      mockStatus.duration = 120;
+    it('should return playing when store status is playing', () => {
+      mockStoreState.status = 'playing';
+      mockStoreState.positionMs = 5000;
+      mockStoreState.durationMs = 120000;
 
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       expect(result.current.status).toBe('playing');
     });
 
-    it('should return paused when timeControlStatus is paused', () => {
-      mockStatus.isLoaded = true;
-      mockStatus.timeControlStatus = 'paused';
-      mockStatus.currentTime = 30;
+    it('should return paused when store status is paused', () => {
+      mockStoreState.status = 'paused';
+      mockStoreState.positionMs = 30000;
 
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       expect(result.current.status).toBe('paused');
     });
 
-    it('should return stopped when didJustFinish is true', () => {
-      mockStatus.isLoaded = true;
-      mockStatus.didJustFinish = true;
+    it('should return stopped when store status is stopped', () => {
+      mockStoreState.status = 'stopped';
 
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       expect(result.current.status).toBe('stopped');
     });
 
-    it('should ignore transient loading state during buffering/seek if already loaded once', () => {
-      mockStatus.isLoaded = true;
-      mockStatus.playing = true;
-
-      const { result, rerender } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
-      expect(result.current.status).toBe('playing');
-
-      // Simulate transient buffering
-      mockStatus.isBuffering = true;
-      mockStatus.isLoaded = false;
-      rerender();
-
-      // Should still return playing
-      expect(result.current.status).toBe('playing');
-    });
-
-    it('should convert seconds to milliseconds', () => {
-      mockStatus.playing = true;
-      mockStatus.isLoaded = true;
-      mockStatus.currentTime = 42.5;
-      mockStatus.duration = 180;
+    it('should expose errorMsg from store', () => {
+      mockStoreState.status = 'error';
+      mockStoreState.errorMsg = 'Playback failed';
 
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
-      expect(result.current.positionMs).toBe(42500);
-      expect(result.current.durationMs).toBe(180000);
+      expect(result.current.status).toBe('error');
+      expect(result.current.errorMsg).toBe('Playback failed');
     });
   });
 
   describe('play action', () => {
-    it('should call player.play() when uri is set', () => {
+    it('should call store play() with uri when uri is set', () => {
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       act(() => {
         result.current.play();
       });
 
-      expect(mockPlayer.play).toHaveBeenCalledTimes(1);
+      expect(mockStoreState.play).toHaveBeenCalledTimes(1);
+      expect(mockStoreState.play).toHaveBeenCalledWith('file:///audio.mp3');
     });
 
-    it('should not call player.play() when uri is null', () => {
+    it('should not call store play() when uri is null', () => {
       const { result } = renderHook(() => useImmersionPlayer(null));
 
       act(() => {
         result.current.play();
       });
 
-      expect(mockPlayer.play).not.toHaveBeenCalled();
+      expect(mockStoreState.play).not.toHaveBeenCalled();
     });
   });
 
   describe('pause action', () => {
-    it('should call player.pause()', () => {
+    it('should call store pause()', () => {
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       act(() => {
         result.current.pause();
       });
 
-      expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
+      expect(mockStoreState.pause).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('stop action', () => {
-    it('should pause and seek to 0', () => {
+    it('should call store stop()', () => {
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       act(() => {
         result.current.stop();
       });
 
-      expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
-      expect(mockPlayer.seekTo).toHaveBeenCalledWith(0);
+      expect(mockStoreState.stop).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('seekTo action', () => {
-    it('should call player.seekTo with seconds', () => {
+    it('should call store seekTo with seconds', () => {
       const { result } = renderHook(() => useImmersionPlayer('file:///audio.mp3'));
 
       act(() => {
         result.current.seekTo(45000); // 45 seconds in ms
       });
 
-      expect(mockPlayer.seekTo).toHaveBeenCalledWith(45);
+      expect(mockStoreState.seekTo).toHaveBeenCalledWith(45000);
     });
   });
 });

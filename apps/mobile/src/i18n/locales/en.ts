@@ -2,6 +2,8 @@ export const en = {
   common: {
     learnMore: 'Learn more',
     dismiss: 'Dismiss',
+    yes: 'Yes',
+    no: 'No',
   },
   map: {
     offlineTitle: 'Map unavailable',
@@ -132,6 +134,10 @@ export const en = {
       durationValue: '{{value}}s',
     },
     waitingForDownload: 'Download audio first to play it',
+  },
+  audio: {
+    interruptModalTitle: 'Audio already playing',
+    interruptModalMessage: 'Cancel the current audio and play the new one?',
   },
   components: {
     downloadCard: {
