@@ -50,7 +50,7 @@ export const waypoints = sonoraSchema.table('waypoints', {
   radiusMeters: integer('radius_meters').default(50).notNull(),
 });
 
-export const feedback = sonoraSchema.table('feedback', {
+export const feedback = sonoraSchema.table('feedbacks', {
   id: uuid('id').defaultRandom().primaryKey(),
   experienceId: uuid('experience_id')
     .notNull()
