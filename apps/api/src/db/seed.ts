@@ -1,6 +1,7 @@
+import { inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { createDbClient } from './index';
-import { themes, experiences, waypoints } from './schema';
+import { experiences, themes, waypoints } from './schema';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -185,25 +186,28 @@ async function main() {
   const db = createDbClient('pg', pool);
 
   try {
-    // Delete existing records to seed fresh
-    await db.delete(waypoints);
-    await db.delete(experiences);
-    await db.delete(themes);
-
-    // 1. Seed Themes
+    // 1. Upsert Themes (update if exists, insert if not)
     console.log('Seeding themes...');
     for (const theme of defaultThemes) {
-      await db.insert(themes).values(theme);
+      await db.insert(themes).values(theme).onConflictDoUpdate({ target: themes.key, set: theme });
     }
 
-    // 2. Seed Experiences
+    const seededExperienceIds = defaultExperiences.map((e) => e.id!);
+
+    // 2. Upsert Experiences (update if exists, insert if not)
     console.log('Seeding experiences...');
     for (const exp of defaultExperiences) {
-      await db.insert(experiences).values(exp);
+      await db
+        .insert(experiences)
+        .values(exp)
+        .onConflictDoUpdate({ target: experiences.id, set: exp });
     }
 
-    // 3. Seed Waypoints
+    // 3. Replace waypoints only for seeded experiences (leave others untouched)
     console.log('Seeding waypoints...');
+    await db
+      .delete(waypoints)
+      .where(inArray(waypoints.experienceId, seededExperienceIds as [string, ...string[]]));
     for (const wp of defaultWaypoints) {
       await db.insert(waypoints).values(wp);
     }
