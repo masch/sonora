@@ -328,11 +328,11 @@ api-db-shell: ## Open psql shell to local Postgres
 
 .PHONY: api-db-shell-staging
 api-db-shell-staging: ## Open psql shell to Neon staging DB
-	podman run -it --rm postgres:17-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
+	podman run -it --rm postgres:18-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
 
 .PHONY: api-db-shell-production
 api-db-shell-production: ## Open psql shell to Neon production DB
-	podman run -it --rm postgres:17-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
+	podman run -it --rm postgres:18-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
 
 .PHONY: api-dev-local
 api-dev-local: ## Run Hono API locally with Docker Postgres
