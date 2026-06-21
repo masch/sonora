@@ -9,6 +9,8 @@ on:
     paths:
       - 'apps/api/**'
       - 'packages/shared/**'
+      - '.github/workflows/**'
+      - 'Makefile'
     branches:
       - main
 
