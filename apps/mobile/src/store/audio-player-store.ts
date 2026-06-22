@@ -97,7 +97,8 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     pause: () => {
       const { _player } = get();
       _player?.pause();
-      if (_player) disableLockScreenControls(_player);
+      // Keep lock screen controls active so the player shows in paused state
+      // when the phone is locked — Android shows a Play button to resume.
       set({ status: 'paused' });
     },
 
