@@ -33,27 +33,64 @@ const CONTENT_PADDING = 'pb-6';
 const HINT_FILE_PATH = 'src/app/explore.tsx';
 const RESET_PROJECT_COMMAND = 'npm run reset-project';
 
+/** Sub-component that only mounts when an active experience is selected.
+ *  All experience-dependent hooks live here — no conditional params, no fallback values. */
+function ActiveExperienceSection({ experience }: { experience: Experience }) {
+  const { t } = useAppTranslation();
+  const geofence = useOfflineGeofence({
+    latitude: experience.latitude,
+    longitude: experience.longitude,
+  });
+  const download = useTrackDownload(experience.slug, experience.audioUrl ?? null);
+  const player = useImmersionPlayer(download.localAudioUri, { title: experience.title });
+
+  return (
+    <>
+      <GpsPrecisionBadge
+        gpsStatus={geofence.gpsStatus}
+        gpsAccuracy={geofence.gpsAccuracy}
+        distanceMeters={geofence.distanceMeters}
+        isNearStart={geofence.isNearStart}
+        requiredRadiusMeters={geofence.requiredRadiusMeters}
+      />
+
+      <DownloadProgressCard
+        status={download.status}
+        progress={download.progress}
+        errorMsg={download.errorMsg}
+        onDownload={download.startDownload}
+        onDelete={download.deleteTrackLocal}
+      />
+
+      {/* Audio player — only shown when download completed */}
+      {download.status === 'completed' ? (
+        <AudioMediaControls
+          status={player.status}
+          positionMs={player.positionMs}
+          durationMs={player.durationMs}
+          errorMsg={player.errorMsg}
+          onPlay={player.play}
+          onPause={player.pause}
+          onStop={player.stop}
+          disabled={!download.localAudioUri}
+        />
+      ) : download.status === 'downloading' ? (
+        <TwView className="card-container gap-2 self-stretch p-4 rounded-xl items-center">
+          <ThemedText className="text-sm text-zinc-600 dark:text-zinc-400">
+            {t('index.waitingForDownload')}
+          </ThemedText>
+        </TwView>
+      ) : null}
+    </>
+  );
+}
+
 export default function ExploreScreen() {
   const { t } = useAppTranslation();
 
   const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-
-  // Hooks must be called unconditionally at the top, before any early return.
-  // They accept null params gracefully when there's no active experience.
-  const geofence = useOfflineGeofence(
-    activeExperience
-      ? { latitude: activeExperience.latitude, longitude: activeExperience.longitude }
-      : null,
-  );
-  const download = useTrackDownload(
-    activeExperience?.slug || null,
-    activeExperience?.audioUrl || null,
-  );
-  const player = useImmersionPlayer(download.localAudioUri);
-
-  // ---
 
   const loadExperience = async () => {
     setLoading(true);
@@ -193,45 +230,7 @@ export default function ExploreScreen() {
               </TwView>
             )}
 
-            {activeExperience && (
-              <>
-                <GpsPrecisionBadge
-                  gpsStatus={geofence.gpsStatus}
-                  gpsAccuracy={geofence.gpsAccuracy}
-                  distanceMeters={geofence.distanceMeters}
-                  isNearStart={geofence.isNearStart}
-                  requiredRadiusMeters={geofence.requiredRadiusMeters}
-                />
-
-                <DownloadProgressCard
-                  status={download.status}
-                  progress={download.progress}
-                  errorMsg={download.errorMsg}
-                  onDownload={download.startDownload}
-                  onDelete={download.deleteTrackLocal}
-                />
-
-                {/* Audio player — only shown when download completed */}
-                {download.status === 'completed' ? (
-                  <AudioMediaControls
-                    status={player.status}
-                    positionMs={player.positionMs}
-                    durationMs={player.durationMs}
-                    errorMsg={player.errorMsg}
-                    onPlay={player.play}
-                    onPause={player.pause}
-                    onStop={player.stop}
-                    disabled={!download.localAudioUri}
-                  />
-                ) : download.status === 'downloading' ? (
-                  <TwView className="card-container gap-2 self-stretch p-4 rounded-xl items-center">
-                    <ThemedText className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {t('index.waitingForDownload')}
-                    </ThemedText>
-                  </TwView>
-                ) : null}
-              </>
-            )}
+            {activeExperience && <ActiveExperienceSection experience={activeExperience} />}
 
             {/* Development Hints */}
             <TwView className="card-container gap-4 self-stretch p-4 rounded-xl">

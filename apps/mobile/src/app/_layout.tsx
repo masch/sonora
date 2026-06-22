@@ -12,6 +12,8 @@ import { RuntimeColors } from '@/constants/theme';
 import { useLocationStore } from '@/store/location-store';
 import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useBackgroundSync } from '@/hooks/use-background-sync';
+import { AudioPlayerBridge } from '@/components/audio-player-bridge';
+import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-modal';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
 if (typeof document !== 'undefined') {
@@ -67,10 +69,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={navTheme}>
+      <AudioPlayerBridge />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
       </Stack>
+      <InterruptConfirmationModal />
     </ThemeProvider>
   );
 }

@@ -63,9 +63,9 @@ if (wps && wps.length > 0) {
   var latlngs = wps.map(function(wp) { return [wp.latitude, wp.longitude]; });
   // Add start coordinate as the first point of the polyline
   latlngs.unshift([${lat}, ${lng}]);
-  
+
   L.polyline(latlngs, {color: '#10b981', weight: 4, opacity: 0.8}).addTo(map);
-  
+
   wps.forEach(function(wp, idx) {
     L.circleMarker([wp.latitude, wp.longitude], {
       radius: 6,
@@ -75,7 +75,7 @@ if (wps && wps.length > 0) {
       weight: 3
     }).addTo(map).bindTooltip("Pt " + (idx + 1), {permanent: true, direction: 'top'});
   });
-  
+
   var bounds = L.latLngBounds(latlngs);
   map.fitBounds(bounds.pad(0.2));
 }
@@ -101,6 +101,7 @@ function buildEmbedUrl(lat: number, lng: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
+// react-doctor-disable-next-line deslop/unused-export — false positive: used by track-detail-view.tsx via relative import. deslop can't resolve Metro platform extension resolution.
 export default function TrackDetailMap({
   latitude,
   longitude,

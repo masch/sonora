@@ -2,6 +2,8 @@ export const es = {
   common: {
     learnMore: 'Más información',
     dismiss: 'Cerrar',
+    yes: 'Sí',
+    no: 'No',
   },
   map: {
     offlineTitle: 'Mapa no disponible',
@@ -132,6 +134,10 @@ export const es = {
       durationValue: '{{value}}s',
     },
     waitingForDownload: 'Descargá el audio primero para reproducirlo',
+  },
+  audio: {
+    interruptModalTitle: 'Audio en reproducción',
+    interruptModalMessage: '¿Cancelar el audio actual y reproducir el nuevo?',
   },
   components: {
     downloadCard: {

@@ -1,15 +1,11 @@
-# Specification: Home Audio Player Section
+# Delta for Home Audio Player
 
-## Functional Requirements
+## MODIFIED Requirements
 
-### 1. Audio Source
-
-- Stream or download from a configurable URL (`APP_CONFIG.audio.instructionsUrl`).
-- Default mock URL: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3`.
-
-### 2. Download and Offline Support
+### Requirement: 2. Download and Offline Support
 
 Trigger download via `useDownloadManagerStore.enqueue(trackId, url)` when clicking the action button in the undownloaded state. Wait for store status to become `completed`, then play the audio using `useAudioPlayerStore.play(localAudioUri)`.
+(Previously: Used local `useTrackDownload` hook with `startDownload()` and auto-played on completion.)
 
 #### Scenario: Download triggered through centralized manager
 
@@ -31,11 +27,12 @@ Trigger download via `useDownloadManagerStore.enqueue(trackId, url)` when clicki
 - WHEN download fails
 - THEN the error is displayed and no play action is triggered
 
-### 3. Playback Controls (Downloaded State)
+### Requirement: 3. Playback Controls (Downloaded State)
 
 - **Play/Pause**: Toggle playback via `useAudioPlayerStore.play(uri)` and `useAudioPlayerStore.pause()`.
 - **Rewind 10s**: Shift current playback position by -10,000ms using `useAudioPlayerStore.seekTo(positionMs - 10000)`.
 - **Restart**: Reset current playback position to 0 using `useAudioPlayerStore.seekTo(0)`.
+  (Previously: Used local `useImmersionPlayer` hook for all controls.)
 
 #### Scenario: Play toggles through centralized store
 
@@ -64,7 +61,16 @@ Trigger download via `useDownloadManagerStore.enqueue(trackId, url)` when clicki
 - THEN `seekTo(0)` is called
 - AND playback continues from the beginning
 
-### 4. Progress Display
+## UNCHANGED Requirements
+
+The following requirements from the main spec remain unchanged and are not modified by this change:
+
+### Requirement: 1. Audio Source
+
+- Stream or download from a configurable URL (`APP_CONFIG.audio.instructionsUrl`).
+- Default mock URL: `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3`.
+
+### Requirement: 4. Progress Display
 
 - Progress bar representing:
   - Download percentage while downloading (sourced from `useDownloadManagerStore` selector).

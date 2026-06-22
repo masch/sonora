@@ -1,124 +1,71 @@
-import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { logger } from '@/utils/logger';
+import { useEffect } from 'react';
+import type { AudioMetadata } from 'expo-audio';
 
-export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
+import { useAudioPlayerStore } from '@/store/audio-player-store';
+import type { PlayerStatus } from '@/store/audio-player-store';
+
+export type { PlayerStatus };
 
 export interface ImmersionPlayerState {
   status: PlayerStatus;
   positionMs: number;
   durationMs: number;
   errorMsg: string | null;
+  play: () => void;
+  pause: () => void;
+  stop: () => void;
+  seekTo: (positionMs: number) => void;
+  setMediaMetadata: (metadata: AudioMetadata) => void;
 }
 
 /**
- * Configures the audio session for immersion mode:
- * - Background playback enabled (shouldPlayInBackground)
- * - Exclusive focus — other apps must pause (interruptionMode: 'doNotMix')
- * - Plays in silent mode on iOS
+ * Thin wrapper over the centralized `useAudioPlayerStore`.
+ *
+ * Backward-compatible with the original `useImmersionPlayer` interface.
+ * Existing consumers (`HomeAudioPlayer`, `ExploreScreen`, `TrackDetailView`)
+ * require zero prop/import changes.
+ *
+ * When `localAudioUri` is null, the returned status is forced to `'idle'`
+ * (no source available). When set, delegates all state reads and actions
+ * to the centralized store.
+ *
+ * When `mediaMetadata` is provided, it is set as the lock screen / NowPlaying
+ * metadata for the current track.
  */
-async function setupImmersionAudioSession(): Promise<void> {
-  await setAudioModeAsync({
-    playsInSilentMode: true,
-    shouldPlayInBackground: true,
-    interruptionMode: 'doNotMix',
-  });
-}
+export function useImmersionPlayer(
+  localAudioUri: string | null,
+  mediaMetadata: AudioMetadata,
+): ImmersionPlayerState {
+  const storeStatus = useAudioPlayerStore((s) => s.status);
+  const positionMs = useAudioPlayerStore((s) => s.positionMs);
+  const durationMs = useAudioPlayerStore((s) => s.durationMs);
+  const errorMsg = useAudioPlayerStore((s) => s.errorMsg);
+  const storePlay = useAudioPlayerStore((s) => s.play);
+  const pause = useAudioPlayerStore((s) => s.pause);
+  const stop = useAudioPlayerStore((s) => s.stop);
+  const seekTo = useAudioPlayerStore((s) => s.seekTo);
+  const setNowPlayingMetadata = useAudioPlayerStore((s) => s.setNowPlayingMetadata);
 
-export function useImmersionPlayer(localAudioUri: string | null) {
-  // On web, skip downloadFirst — the HTML5 Audio element can stream from
-  // cross-origin URLs directly even without CORS fetch access.
-  const player = useAudioPlayer(localAudioUri, {
-    updateInterval: 500,
-    downloadFirst: Platform.OS !== 'web',
-  });
-  const {
-    playing,
-    currentTime,
-    duration,
-    isBuffering,
-    isLoaded,
-    didJustFinish,
-    timeControlStatus,
-  } = useAudioPlayerStatus(player);
+  const status: PlayerStatus = localAudioUri ? storeStatus : 'idle';
 
-  const [prevUri, setPrevUri] = useState<string | null>(localAudioUri);
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-  // Reset load state when URI changes
-  if (localAudioUri !== prevUri) {
-    setPrevUri(localAudioUri);
-    setHasLoaded(false);
-  }
-
-  // Configure audio session once on mount
+  // Sync metadata after render — avoids "Cannot update a component while rendering" error
   useEffect(() => {
-    setupImmersionAudioSession().catch((err: unknown) => {
-      logger.warn('Failed to set audio mode', err);
-    });
-  }, []);
-
-  // Sync hasLoaded when player completes its initial load
-  if (isLoaded && !hasLoaded) {
-    setHasLoaded(true);
-  }
-
-  // Map expo-audio status to our PlayerStatus
-  const status: PlayerStatus = (() => {
-    if (!localAudioUri) return 'idle';
-    if (!hasLoaded) {
-      if (isBuffering || !isLoaded) return 'loading';
-    }
-    if (playing) return 'playing';
-    if (didJustFinish) return 'stopped';
-    if (isLoaded && timeControlStatus === 'paused') return 'paused';
-    return 'stopped';
-  })();
-
-  const play = () => {
-    if (!localAudioUri) return;
-    try {
-      player.play();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error playing audio';
-      logger.error('ImmersionPlayer play error:', msg);
-    }
-  };
-
-  const pause = () => {
-    try {
-      player.pause();
-    } catch (err: unknown) {
-      logger.warn('Failed to pause audio', err);
-    }
-  };
-
-  const stop = () => {
-    try {
-      player.pause();
-      player.seekTo(0);
-    } catch (err: unknown) {
-      logger.warn('Failed to stop audio', err);
-    }
-  };
-
-  const seekTo = (positionMs: number) => {
-    try {
-      player.seekTo(positionMs / 1000);
-    } catch (err: unknown) {
-      logger.warn('Failed to seek audio', err);
-    }
-  };
+    setNowPlayingMetadata(mediaMetadata);
+  }, [mediaMetadata, setNowPlayingMetadata]);
 
   return {
     status,
-    positionMs: (currentTime ?? 0) * 1000,
-    durationMs: (duration ?? 0) * 1000,
-    errorMsg: null,
-    play,
+    positionMs,
+    durationMs,
+    errorMsg,
+    play: () => {
+      if (localAudioUri) {
+        storePlay(localAudioUri);
+      }
+    },
     pause,
     stop,
     seekTo,
+    setMediaMetadata: setNowPlayingMetadata,
   };
 }
