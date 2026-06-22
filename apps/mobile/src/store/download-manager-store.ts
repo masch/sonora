@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { create } from 'zustand';
 
@@ -69,6 +70,12 @@ async function performFileDownload(
 }
 
 async function performDownload(trackId: string, url: string) {
+  // Web has no local filesystem — stream directly from the remote URL
+  if (Platform.OS === 'web') {
+    useDownloadManagerStore.getState()._completeDownload(trackId, url);
+    return;
+  }
+
   try {
     const { localUri } = await performFileDownload(trackId, url, (progress) => {
       useDownloadManagerStore.getState()._updateProgress(trackId, progress);

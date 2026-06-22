@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { AudioMetadata } from 'expo-audio';
 
 import { useAudioPlayerStore } from '@/store/audio-player-store';
@@ -47,10 +48,10 @@ export function useImmersionPlayer(
 
   const status: PlayerStatus = localAudioUri ? storeStatus : 'idle';
 
-  // Sync metadata to the store directly (no effect needed — zustand updates batch with render)
-  if (mediaMetadata && Object.keys(mediaMetadata).length > 0) {
+  // Sync metadata after render — avoids "Cannot update a component while rendering" error
+  useEffect(() => {
     setNowPlayingMetadata(mediaMetadata);
-  }
+  }, [mediaMetadata, setNowPlayingMetadata]);
 
   return {
     status,

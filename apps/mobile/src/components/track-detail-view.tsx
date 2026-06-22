@@ -55,11 +55,19 @@ function trackDetailReducer(state: TrackDetailState, action: TrackDetailAction):
 
 const initialTrackState: TrackDetailState = { track: null, loading: true, error: false };
 
-/**
- * Shared track detail view used by tracks/[id].tsx (dynamic route).
- * Receives a concrete trackId instead of reading from route params.
- */
-export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps) {
+/** Sub-component that only mounts when a track is loaded.
+ *  All track-dependent hooks live here — no optional params, no fallback values. */
+function TrackContent({
+  track,
+  trackId,
+  isWeb,
+  onNavigateBack,
+}: {
+  track: Experience;
+  trackId: string;
+  isWeb: boolean;
+  onNavigateBack?: () => void;
+}) {
   const { t } = useAppTranslation();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
@@ -67,39 +75,12 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
-  const [{ track, loading, error }, dispatch] = useReducer(trackDetailReducer, initialTrackState);
-
-  const loadTrack = async () => {
-    dispatch({ type: 'FETCH_START' });
-    try {
-      const list = await fetchExperiences();
-      const found = list.find((e: Experience) => e.slug === trackId || e.id === trackId);
-      dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
-    } catch (err) {
-      logger.error('[DETAIL] Failed to fetch experience:', err);
-      dispatch({ type: 'FETCH_ERROR' });
-    }
-  };
-
-  useEffect(() => {
-    fetchExperiences()
-      .then((list) => {
-        const found = list.find((e) => e.slug === trackId || e.id === trackId);
-        dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
-      })
-      .catch((err) => {
-        logger.error('[DETAIL] Failed to fetch experience:', err);
-        dispatch({ type: 'FETCH_ERROR' });
-      });
-  }, [trackId]);
-
-  // Hooks MUST be called unconditionally (rules-of-hooks)
-  const startCoordinates = track ? { latitude: track.latitude, longitude: track.longitude } : null;
-  const geofence = useOfflineGeofence(startCoordinates);
-  const download = useTrackDownload(track?.id ?? null, track?.audioUrl ?? null);
-  const player = useImmersionPlayer(download.localAudioUri,
-    track ? { title: track.title } : {},
-  );
+  const geofence = useOfflineGeofence({
+    latitude: track.latitude,
+    longitude: track.longitude,
+  });
+  const download = useTrackDownload(track.id ?? trackId, track.audioUrl ?? null);
+  const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
 
   // Auto-play when download completes if the user initiated it
   useEffect(() => {
@@ -114,21 +95,18 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     download.startDownload();
   };
 
-  // Map Experience to simple track for useFeedbackTrigger if needed
-  const mappedTrackForFeedback = track
-    ? {
-        id: track.slug,
-        uuid: track.id,
-        title: track.title,
-        description: track.description,
-        durationSeconds: track.durationSeconds,
-        startCoordinates: { latitude: track.latitude, longitude: track.longitude },
-        audioRemoteUrl: track.audioUrl ?? '',
-        category: track.themeKey as TranslationKeys,
-        subLabel: track.description,
-        imageKey: track.imageKey as keyof typeof TRACK_IMAGES,
-      }
-    : undefined;
+  const mappedTrackForFeedback = {
+    id: track.slug,
+    uuid: track.id,
+    title: track.title,
+    description: track.description,
+    durationSeconds: track.durationSeconds,
+    startCoordinates: { latitude: track.latitude, longitude: track.longitude },
+    audioRemoteUrl: track.audioUrl ?? '',
+    category: track.themeKey as TranslationKeys,
+    subLabel: track.description,
+    imageKey: track.imageKey as keyof typeof TRACK_IMAGES,
+  };
 
   const feedbackTrigger = useFeedbackTrigger(mappedTrackForFeedback, {
     didJustFinish: player.status === 'stopped',
@@ -140,7 +118,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     setFeedbackStatus('sending');
     setFeedbackError(null);
 
-    const trackUuid = track?.id ?? trackId;
+    const trackUuid = track.id ?? trackId;
 
     try {
       const response = await fetch(API_URL, {
@@ -181,45 +159,11 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     feedbackTrigger.dismiss();
   };
 
-  if (error) {
-    return (
-      <TwView className="flex-grow items-center justify-center p-6 bg-background">
-        <ThemedText className="text-base font-bold text-text mb-4 text-center">
-          {t('experiences.errorLoading')}
-        </ThemedText>
-        <TwPressable
-          onPress={loadTrack}
-          className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
-          testID="track-detail-retry-button"
-          accessibilityLabel={t('experiences.retry')}
-        >
-          <ThemedText themeColor="background" className="font-semibold">
-            {t('experiences.retry')}
-          </ThemedText>
-        </TwPressable>
-      </TwView>
-    );
-  }
-
-  if (loading) {
-    return <LoadingView message={t('map.loadingMap')} />;
-  }
-
-  if (!track) {
-    return (
-      <TwView className="flex-grow items-center justify-center px-6">
-        <Stack.Screen options={{ title: t('experiences.notFound') }} />
-        <ThemedText themeColor="text">{t('experiences.notFound')}</ThemedText>
-      </TwView>
-    );
-  }
-
   const trackImage = TRACK_IMAGES[track.imageKey] || TRACK_IMAGES['bonus-track'];
 
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
-  // Enforce starting geofence coordinates only if format is 'trip'
   const isPlaybackBlocked = track.format === 'trip' && !geofence.isNearStart;
 
   const innerView = (
@@ -324,7 +268,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
             downloadError={download.errorMsg}
             playerStatus={player.status}
             positionMs={player.positionMs}
-            durationMs={player.durationMs || (track ? track.durationSeconds * 1000 : 0)}
+            durationMs={player.durationMs || track.durationSeconds * 1000}
             playerError={player.errorMsg}
             onPlay={player.play}
             onPause={player.pause}
@@ -338,7 +282,7 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
             disabled={!track.audioUrl || isPlaybackBlocked}
           />
 
-          {/* Manual feedback button (when type is track/has feedback trigger) */}
+          {/* Manual feedback button */}
           <TwView className="self-stretch">
             <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
               <TwPressable
@@ -363,7 +307,6 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
       <Stack.Screen options={{ title: track.title }} />
       {isWeb ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
-      {/* Feedback form modal */}
       <FeedbackForm
         visible={showFeedbackForm}
         onSubmit={handleFeedbackSubmit}
@@ -373,4 +316,74 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
       />
     </TwView>
   );
+}
+
+/**
+ * Shared track detail view used by tracks/[id].tsx (dynamic route).
+ * Receives a concrete trackId instead of reading from route params.
+ * Only the data-fetching layer lives here; track-dependent hooks are in <TrackContent />.
+ */
+export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps) {
+  const { t } = useAppTranslation();
+
+  const [{ track, loading, error }, dispatch] = useReducer(trackDetailReducer, initialTrackState);
+
+  const loadTrack = async () => {
+    dispatch({ type: 'FETCH_START' });
+    try {
+      const list = await fetchExperiences();
+      const found = list.find((e: Experience) => e.slug === trackId || e.id === trackId);
+      dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
+    } catch (err) {
+      logger.error('[DETAIL] Failed to fetch experience:', err);
+      dispatch({ type: 'FETCH_ERROR' });
+    }
+  };
+
+  useEffect(() => {
+    fetchExperiences()
+      .then((list) => {
+        const found = list.find((e) => e.slug === trackId || e.id === trackId);
+        dispatch({ type: 'FETCH_SUCCESS', track: found ?? null });
+      })
+      .catch((err) => {
+        logger.error('[DETAIL] Failed to fetch experience:', err);
+        dispatch({ type: 'FETCH_ERROR' });
+      });
+  }, [trackId]);
+
+  if (error) {
+    return (
+      <TwView className="flex-grow items-center justify-center p-6 bg-background">
+        <ThemedText className="text-base font-bold text-text mb-4 text-center">
+          {t('experiences.errorLoading')}
+        </ThemedText>
+        <TwPressable
+          onPress={loadTrack}
+          className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
+          testID="track-detail-retry-button"
+          accessibilityLabel={t('experiences.retry')}
+        >
+          <ThemedText themeColor="background" className="font-semibold">
+            {t('experiences.retry')}
+          </ThemedText>
+        </TwPressable>
+      </TwView>
+    );
+  }
+
+  if (loading) {
+    return <LoadingView message={t('map.loadingMap')} />;
+  }
+
+  if (!track) {
+    return (
+      <TwView className="flex-grow items-center justify-center px-6">
+        <Stack.Screen options={{ title: t('experiences.notFound') }} />
+        <ThemedText themeColor="text">{t('experiences.notFound')}</ThemedText>
+      </TwView>
+    );
+  }
+
+  return <TrackContent track={track} trackId={trackId} isWeb={isWeb} />;
 }
