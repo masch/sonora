@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { APP_CONFIG } from '@/config/app-config';
 import { logger } from '@/utils/logger';
 import { type Experience } from '@/data/experiences';
@@ -16,57 +16,57 @@ interface FeedState {
   feed: FeedbackServerEntry[];
   experiences: Experience[];
   error: boolean;
+  loading: boolean;
+}
+
+async function fetchFeedData(
+  apiBaseUrl: string,
+): Promise<{ feed: FeedbackServerEntry[]; experiences: Experience[] }> {
+  const [feedResponse, expResponse] = await Promise.all([
+    fetch(`${apiBaseUrl}/feedback`),
+    fetch(`${apiBaseUrl}/experiences`),
+  ]);
+
+  if (!feedResponse.ok || !expResponse.ok) throw new Error('API failed');
+
+  const [feedData, expData] = await Promise.all([feedResponse.json(), expResponse.json()]);
+
+  return { feed: feedData, experiences: expData };
 }
 
 export function useFeedbackFeed() {
-  const [state, setState] = useState<FeedState | null>(null);
-
-  const fetchFeed = useCallback(() => {
-    Promise.all([
-      fetch(`${APP_CONFIG.apiBaseUrl}/feedback`),
-      fetch(`${APP_CONFIG.apiBaseUrl}/experiences`),
-    ])
-      .then(async ([feedResponse, expResponse]) => {
-        if (!feedResponse.ok || !expResponse.ok) throw new Error('API failed');
-        const [feedData, expData] = await Promise.all([feedResponse.json(), expResponse.json()]);
-        setState({ feed: feedData, experiences: expData, error: false });
-      })
-      .catch((err: unknown) => {
-        logger.error('Failed to fetch feedback feed:', err);
-        setState({ feed: [], experiences: [], error: true });
-      });
-  }, []);
+  const [state, setState] = useState<FeedState>({
+    feed: [],
+    experiences: [],
+    error: false,
+    loading: true,
+  });
 
   useEffect(() => {
-    let cancelled = false;
-
-    Promise.all([
-      fetch(`${APP_CONFIG.apiBaseUrl}/feedback`),
-      fetch(`${APP_CONFIG.apiBaseUrl}/experiences`),
-    ])
-      .then(async ([feedResponse, expResponse]) => {
-        if (cancelled) return;
-        if (!feedResponse.ok || !expResponse.ok) throw new Error('API failed');
-        const [feedData, expData] = await Promise.all([feedResponse.json(), expResponse.json()]);
-        if (!cancelled) setState({ feed: feedData, experiences: expData, error: false });
-      })
-      .catch((fetchErr) => {
-        if (cancelled) return;
-        logger.error('Failed to fetch feedback feed:', fetchErr);
-        if (!cancelled) setState({ feed: [], experiences: [], error: true });
+    fetchFeedData(APP_CONFIG.apiBaseUrl)
+      .then((data) => setState({ ...data, error: false, loading: false }))
+      .catch((err: unknown) => {
+        logger.error('Failed to fetch feedback feed:', err);
+        setState({ feed: [], experiences: [], error: true, loading: false });
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
+  const refetch = () => {
+    setState((prev) => ({ ...prev, loading: true, error: false }));
+    fetchFeedData(APP_CONFIG.apiBaseUrl)
+      .then((data) => setState({ ...data, error: false, loading: false }))
+      .catch((err: unknown) => {
+        logger.error('Failed to fetch feedback feed:', err);
+        setState({ feed: [], experiences: [], error: true, loading: false });
+      });
+  };
+
   return {
-    feed: state?.feed ?? [],
-    experiences: state?.experiences ?? [],
-    loading: state === null,
-    error: state?.error ?? false,
-    refetch: fetchFeed,
+    feed: state.feed,
+    experiences: state.experiences,
+    loading: state.loading,
+    error: state.error,
+    refetch,
   };
 }
 

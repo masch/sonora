@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useReducer } from 'react';
-import { Stack } from 'expo-router';
+import { ActivityIndicator, Platform } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
@@ -28,7 +29,6 @@ const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TrackDetailViewProps {
   trackId: string;
-  isWeb: boolean;
 }
 
 interface TrackDetailState {
@@ -60,12 +60,10 @@ const initialTrackState: TrackDetailState = { track: null, loading: true, error:
 function TrackContent({
   track,
   trackId,
-  isWeb,
   onNavigateBack,
 }: {
   track: Experience;
   trackId: string;
-  isWeb: boolean;
   onNavigateBack?: () => void;
 }) {
   const { t } = useAppTranslation();
@@ -305,7 +303,7 @@ function TrackContent({
   return (
     <TwView className="flex-1">
       <Stack.Screen options={{ title: track.title }} />
-      {isWeb ? <TwView className="flex-1">{innerView}</TwView> : innerView}
+      {Platform.OS === 'web' ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       <FeedbackForm
         visible={showFeedbackForm}
@@ -323,7 +321,8 @@ function TrackContent({
  * Receives a concrete trackId instead of reading from route params.
  * Only the data-fetching layer lives here; track-dependent hooks are in <TrackContent />.
  */
-export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps) {
+export default function TrackDetailView({ trackId }: TrackDetailViewProps) {
+  const { title: initialTitle } = useLocalSearchParams<{ title?: string }>();
   const { t } = useAppTranslation();
 
   const [{ track, loading, error }, dispatch] = useReducer(trackDetailReducer, initialTrackState);
@@ -373,7 +372,18 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
   }
 
   if (loading) {
-    return <LoadingView message={t('map.loadingMap')} />;
+    return (
+      <>
+        <Stack.Screen
+          options={
+            initialTitle
+              ? { title: initialTitle }
+              : { headerTitle: () => <ActivityIndicator size="small" /> }
+          }
+        />
+        <LoadingView message={t('map.loadingMap')} />
+      </>
+    );
   }
 
   if (!track) {
@@ -385,5 +395,5 @@ export default function TrackDetailView({ trackId, isWeb }: TrackDetailViewProps
     );
   }
 
-  return <TrackContent track={track} trackId={trackId} isWeb={isWeb} />;
+  return <TrackContent track={track} trackId={trackId} />;
 }
