@@ -150,6 +150,20 @@ const defaultExperiences = [
     imageKey: 'voces-monte',
     isDownloadable: true,
   },
+  {
+    id: '00000000-0000-0000-0000-000000000000',
+    slug: 'general-feedback',
+    title: 'Comunidad',
+    description: 'Comunidad y Feedback General',
+    format: 'general-feedback',
+    themeKey: 'community',
+    durationSeconds: 0,
+    latitude: 0,
+    longitude: 0,
+    priceLabel: 'FREE',
+    imageKey: 'bonus-track',
+    isDownloadable: false,
+  },
 ] as const;
 
 const defaultWaypoints = [

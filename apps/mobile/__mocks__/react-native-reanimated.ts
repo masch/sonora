@@ -29,6 +29,14 @@ const Reanimated: Record<string, unknown> = {
       return this;
     },
   },
+  FadeInUp: {
+    duration: function () {
+      return this;
+    },
+    delay: function () {
+      return this;
+    },
+  },
   FadeOut: {
     duration: function () {
       return this;

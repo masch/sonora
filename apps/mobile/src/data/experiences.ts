@@ -1,8 +1,15 @@
 import { APP_CONFIG } from '@/config/app-config';
 import type { Theme, Experience } from '@sonora/shared';
 
-export { EXPERIENCE_FORMATS, TRACK_IMAGE_KEYS } from '@sonora/shared';
-export type { Theme, Experience, Waypoint, ExperienceFormat, TrackImageKey } from '@sonora/shared';
+export { EXPERIENCE_FORMATS, TRACK_IMAGE_KEYS, USER_EXPERIENCE_FORMATS } from '@sonora/shared';
+export type {
+  Theme,
+  Experience,
+  Waypoint,
+  ExperienceFormat,
+  TrackImageKey,
+  UserExperienceFormat,
+} from '@sonora/shared';
 
 export type FeedbackTriggerMode = 'audio_end' | 'geofence' | 'manual';
 
@@ -33,5 +40,6 @@ export async function fetchExperiences(signal?: AbortSignal): Promise<Experience
   if (!response.ok) {
     throw new Error('Failed to fetch experiences');
   }
-  return response.json();
+  const data: Experience[] = await response.json();
+  return data.filter((exp) => exp.format === 'trip' || exp.format === 'track');
 }

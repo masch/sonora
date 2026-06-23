@@ -1,4 +1,5 @@
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
+import { getExperienceIcon } from '../utils/icons';
 
 export interface TabDefinition {
   /** Route name: "index", "explore", or "settings" */
@@ -26,10 +27,17 @@ export const TABS = [
     hidden: false,
   },
   {
-    name: 'experiences',
-    label: 'Experiences',
+    name: 'tracks',
+    label: 'Tracks',
     ioniconsName: 'musical-notes-outline',
-    symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
+    symbolViewName: getExperienceIcon('track'),
+    hidden: false,
+  },
+  {
+    name: 'trips',
+    label: 'Trips',
+    ioniconsName: 'compass-outline',
+    symbolViewName: getExperienceIcon('trip'),
     hidden: false,
   },
   {
@@ -45,5 +53,12 @@ export const TABS = [
     ioniconsName: 'settings-outline',
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
     hidden: true,
+  },
+  {
+    name: 'messages',
+    label: 'Messages',
+    ioniconsName: 'bubble-left-outline',
+    symbolViewName: getExperienceIcon('general-feedback'),
+    hidden: false,
   },
 ] as const satisfies TabDefinition[];

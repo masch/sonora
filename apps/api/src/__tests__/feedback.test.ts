@@ -331,5 +331,62 @@ describe('POST /feedback', () => {
       // Verify DB insert was NOT called — KV fast-path prevented it
       expect(mockDb._insertCalls).toBe(insertCallsBefore);
     });
+
+    it('returns 201 when coordinates are provided and valid', async () => {
+      const res = await app.request('/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          experienceId: 'track-2',
+          message: 'Hike with GPS coords!',
+          idempotencyKey: 'db-test-key-gps-1',
+          createdAt: new Date().toISOString(),
+          latitude: -32.1234,
+          longitude: -64.5678,
+        }),
+      });
+      expect(res.status).toBe(201);
+    });
+  });
+
+  describe('GET /feedback', () => {
+    let mockDb: any;
+
+    beforeEach(() => {
+      mockDb = {
+        select: () => ({
+          from: async () => [
+            {
+              id: '1',
+              experienceId: 'track-1',
+              message: 'Great track',
+              idempotencyKey: 'test-key-get-1',
+              createdAt: new Date('2026-06-22T10:00:00Z'),
+              latitude: -32.5,
+              longitude: -64.2,
+            },
+          ],
+        }),
+      };
+      setDbClient(mockDb as never);
+    });
+
+    afterEach(() => {
+      setDbClient(null);
+    });
+
+    it('returns the list of feedback entries', async () => {
+      const res = await app.request('/feedback', {
+        method: 'GET',
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any[];
+      expect(body).toHaveLength(1);
+      expect(body[0].id).toBe('test-key-get-1');
+      expect(body[0].experienceId).toBe('track-1');
+      expect(body[0].message).toBe('Great track');
+      expect(body[0].latitude).toBe(-32.5);
+      expect(body[0].longitude).toBe(-64.2);
+    });
   });
 });

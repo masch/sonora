@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { getItem, setItem, QUEUE_KEY } from '@/storage/feedback-storage';
 import { APP_CONFIG } from '@/config/app-config';
@@ -63,6 +64,8 @@ export async function flushQueue(): Promise<void> {
               message: entry.message,
               idempotencyKey: entry.id,
               createdAt: entry.createdAt,
+              latitude: entry.latitude,
+              longitude: entry.longitude,
             }),
           });
 
@@ -92,6 +95,7 @@ export async function flushQueue(): Promise<void> {
 
     // Write remaining entries back to storage
     await setItem(QUEUE_KEY, JSON.stringify(remaining));
+    DeviceEventEmitter.emit('feedback-queue-synced');
   } catch {
     // If we can't even read the queue, log and move on
     logger.warn('useFeedbackSync: Failed to flush queue');

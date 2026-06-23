@@ -140,6 +140,75 @@ describe('FeedbackForm', () => {
     alertSpy.mockRestore();
   });
 
+  it('does not prompt confirmation Alert when status is sent or queued', () => {
+    const onDismiss = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByTestId, queryByTestId, rerender } = render(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    fireEvent.changeText(input, 'Feedback text');
+
+    // Change status to sent
+    rerender(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status="sent" />,
+    );
+
+    // Verify input is unmounted/hidden
+    expect(queryByTestId('feedback-input')).toBeNull();
+
+    fireEvent.press(getByTestId('feedback-dismiss-button'));
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalled();
+
+    // Clean up
+    alertSpy.mockRestore();
+  });
+
+  it('clears message and bypasses confirmation when status changes to queued', () => {
+    const onDismiss = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByTestId, queryByTestId, rerender } = render(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    fireEvent.changeText(input, 'Feedback text offline');
+
+    // Change status to queued
+    rerender(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status="queued" />,
+    );
+
+    // Verify input is unmounted/hidden
+    expect(queryByTestId('feedback-input')).toBeNull();
+
+    fireEvent.press(getByTestId('feedback-dismiss-button'));
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalled();
+
+    // Clean up
+    alertSpy.mockRestore();
+  });
+
+  it('calls onSubmit when onSubmitEditing is triggered on TextInput', () => {
+    const onSubmit = jest.fn();
+    const { getByTestId } = render(
+      <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    fireEvent.changeText(input, 'Submitting via keyboard enter');
+    fireEvent(input, 'submitEditing');
+
+    expect(onSubmit).toHaveBeenCalledWith('Submitting via keyboard enter');
+  });
+
   it('does not render when visible is false', () => {
     const { queryByTestId } = render(
       <FeedbackForm visible={false} onSubmit={jest.fn()} onDismiss={jest.fn()} />,

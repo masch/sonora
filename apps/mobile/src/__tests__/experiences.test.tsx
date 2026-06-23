@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import ExperiencesScreen from '@/app/(tabs)/experiences';
+import ExperiencesScreen from '@/components/experiences-view';
 
 const mockThemes = [
   { key: 'birds', labelKey: 'experiences.categories.birds', order: 1 },
@@ -50,7 +50,8 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('@/data/experiences', () => ({
-  EXPERIENCE_FORMATS: ['track', 'trip'] as const,
+  EXPERIENCE_FORMATS: ['track', 'trip', 'general-feedback'] as const,
+  USER_EXPERIENCE_FORMATS: ['track', 'trip'] as const,
   fetchThemes: jest.fn(() => Promise.resolve(mockThemes)),
   fetchExperiences: jest.fn(() => Promise.resolve(mockExperiences)),
 }));

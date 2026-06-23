@@ -1,4 +1,7 @@
-export const EXPERIENCE_FORMATS = ['track', 'trip'] as const;
+export const USER_EXPERIENCE_FORMATS = ['track', 'trip'] as const;
+export type UserExperienceFormat = (typeof USER_EXPERIENCE_FORMATS)[number];
+
+export const EXPERIENCE_FORMATS = ['track', 'trip', 'general-feedback'] as const;
 export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 
 export const TRACK_IMAGE_KEYS = [

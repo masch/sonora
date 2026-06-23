@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FlatList, Platform } from 'react-native';
+import { FlatList } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
@@ -9,8 +9,7 @@ import { TwView, TwTextInput, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { fetchThemes, fetchExperiences, EXPERIENCE_FORMATS } from '@/data/experiences';
-import { APP_CONFIG } from '@/config/app-config';
+import { fetchThemes, fetchExperiences, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
 import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
 import type { TranslationKeys } from '@/i18n/types';
 import { TRACK_IMAGES } from '@/constants/images';
@@ -18,13 +17,16 @@ import { logger } from '@/utils/logger';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
-export default function ExperiencesScreen() {
+export default function ExperiencesScreen({ format }: { format?: ExperienceFormat }) {
   const params = useLocalSearchParams<{ format?: string }>();
-  const isFormatLocked = params.format
-    ? (EXPERIENCE_FORMATS as readonly string[]).includes(params.format)
-    : false;
+  const lockedFormat = format || params.format;
+  const isFormatLocked = format
+    ? true
+    : params.format
+      ? (USER_EXPERIENCE_FORMATS as readonly string[]).includes(params.format)
+      : false;
   const initialFormat: ExperienceFormat = isFormatLocked
-    ? (params.format as ExperienceFormat)
+    ? (lockedFormat as ExperienceFormat)
     : 'track';
 
   const { t } = useAppTranslation();
@@ -53,7 +55,6 @@ export default function ExperiencesScreen() {
   useEffect(() => {
     const abort = new AbortController();
 
-    // Timeout: abort the request and show error if it takes too long
     const timeoutId = setTimeout(() => {
       abort.abort();
       logger.error('Failed to load dynamic data: Request timed out');
@@ -90,19 +91,7 @@ export default function ExperiencesScreen() {
         <ThemedText className="text-base font-bold text-text mb-4 text-center">
           {t('experiences.errorLoading')}
         </ThemedText>
-        {/* eslint-disable i18next/no-literal-string -- dev-facing instruction */}
-        {!process.env.EXPO_PUBLIC_API_URL && Platform.OS === 'android' && (
-          <ThemedText className="text-xs text-zinc-500 dark:text-zinc-400 text-center mb-4 px-4 leading-relaxed">
-            On a physical Android device, set{' '}
-            <ThemedText type="code">EXPO_PUBLIC_API_URL</ThemedText> to your {"machine's"} local IP,
-            e.g. <ThemedText type="code">http://192.168.1.42:3000</ThemedText>.
-          </ThemedText>
-        )}
-        {/* eslint-enable i18next/no-literal-string */}
-        {/* eslint-disable-next-line i18next/no-literal-string -- dev-facing debug label */}
-        <ThemedText className="text-xs text-zinc-400 dark:text-zinc-500 text-center mb-4">
-          API: {APP_CONFIG.apiBaseUrl}
-        </ThemedText>
+
         <TwPressable
           onPress={loadData}
           className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
@@ -123,7 +112,7 @@ export default function ExperiencesScreen() {
 
   return (
     <ExperiencesContent
-      key={params.format}
+      key={lockedFormat}
       experiences={experiences}
       themesList={themesList}
       isFormatLocked={isFormatLocked}
@@ -132,10 +121,6 @@ export default function ExperiencesScreen() {
   );
 }
 
-/**
- * Format-dependent UI extracted so `key={params.format}` resets all
- * local state (format, theme, search) when the deep-link param changes.
- */
 function ExperiencesContent({
   experiences,
   themesList,
@@ -154,7 +139,6 @@ function ExperiencesContent({
   const [selectedTheme, setSelectedTheme] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Prepend 'All' theme option and filter by applicableFormat (single pass)
   const themeOptions = [
     {
       key: 'all',
@@ -181,7 +165,6 @@ function ExperiencesContent({
     }, []),
   ];
 
-  // Filtering Logic
   const filteredExperiences = experiences.filter((exp) => {
     const matchesTheme = selectedTheme === 'all' || exp.themeKey === selectedTheme;
     const matchesFormat = exp.format === selectedFormat;
@@ -196,17 +179,15 @@ function ExperiencesContent({
       disableBottomPadding
       contentContainerClassName="grow pb-8 bg-background px-6 pt-4"
     >
-      {/* Centered Header */}
       <TwView className="items-center py-4">
         <ThemedText className="text-xl font-bold tracking-widest text-text uppercase">
           {t(`experiences.types.${selectedFormat}` as TranslationKeys)}
         </ThemedText>
       </TwView>
 
-      {/* Experience Format Filter Tabs */}
       {!isFormatLocked && (
         <TwView className="flex-row gap-2 mb-4 justify-center">
-          {EXPERIENCE_FORMATS.map((format) => {
+          {USER_EXPERIENCE_FORMATS.map((format) => {
             const isSelected = selectedFormat === format;
             const translationKey = `experiences.types.${format}` as TranslationKeys;
             return (
@@ -236,7 +217,6 @@ function ExperiencesContent({
         </TwView>
       )}
 
-      {/* Search Input and Filter Icon */}
       <TwView className="flex-row items-center gap-2 mb-4">
         <TwView className="flex-1 flex-row items-center bg-zinc-200/50 dark:bg-zinc-800/40 border border-zinc-300/30 dark:border-zinc-700/30 rounded-xl px-3 py-2.5">
           <Icon
@@ -260,7 +240,6 @@ function ExperiencesContent({
         </TwView>
       </TwView>
 
-      {/* Theme Selection Chips Carousel */}
       <TwView className="mb-6 -mx-6">
         <FlatList
           data={themeOptions}
@@ -293,7 +272,6 @@ function ExperiencesContent({
         />
       </TwView>
 
-      {/* Track List */}
       <TwView className="gap-5">
         {filteredExperiences.length === 0 ? (
           <TwView className="items-center py-12" testID="tracks-empty-state">
@@ -318,7 +296,6 @@ function ExperiencesContent({
                 minAbbr: t('experiences.minAbbr'),
               })}
             >
-              {/* Thumbnail */}
               <TwImage
                 source={TRACK_IMAGES[exp.imageKey] || TRACK_IMAGES['bonus-track']}
                 className="size-16 rounded-xl bg-zinc-200 dark:bg-zinc-800"
@@ -326,7 +303,6 @@ function ExperiencesContent({
                 alt=""
               />
 
-              {/* Info stack */}
               <TwView className="flex-1 justify-center">
                 <ThemedText className="text-sm font-bold text-text leading-tight mb-0.5">
                   {exp.title}
@@ -339,7 +315,6 @@ function ExperiencesContent({
                 </ThemedText>
               </TwView>
 
-              {/* Options button */}
               <TwPressable
                 className="p-2 active:opacity-70"
                 accessibilityLabel={t('experiences.actionsMenu')}

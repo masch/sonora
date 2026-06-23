@@ -57,6 +57,26 @@ describe('useFeedbackQueue', () => {
     expect(Storage.setItem).toHaveBeenCalled();
   });
 
+  it('should enqueue coordinates if provided', async () => {
+    const { result } = renderHook(() => useFeedbackQueue());
+
+    await waitForQueueLoaded(result);
+
+    await act(async () => {
+      await result.current.enqueue({
+        experienceId: 'track-1',
+        message: 'Great trail!',
+        latitude: -34.56,
+        longitude: -58.78,
+      });
+    });
+
+    const entries = result.current.getAll();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].latitude).toBe(-34.56);
+    expect(entries[0].longitude).toBe(-58.78);
+  });
+
   it('should peek all queued entries', async () => {
     const { result } = renderHook(() => useFeedbackQueue());
 

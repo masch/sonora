@@ -10,7 +10,11 @@ import {
 
 export const sonoraSchema = pgSchema('sonora');
 
-export const experienceFormatEnum = sonoraSchema.enum('experience_format', ['track', 'trip']);
+export const experienceFormatEnum = sonoraSchema.enum('experience_format', [
+  'track',
+  'trip',
+  'general-feedback',
+]);
 
 export const themes = sonoraSchema.table('themes', {
   key: text('key').primaryKey(),
@@ -58,6 +62,8 @@ export const feedback = sonoraSchema.table('feedbacks', {
   message: text('message').notNull(),
   idempotencyKey: text('idempotency_key').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
 });
 
 export type Theme = typeof themes.$inferSelect;

@@ -117,8 +117,8 @@ function TrackContent({
   const handleFeedbackSubmit = async (message: string) => {
     setFeedbackStatus('sending');
     setFeedbackError(null);
-
     const trackUuid = track.id ?? trackId;
+    const idempotencyKey = generateUUID();
 
     try {
       const response = await fetch(API_URL, {
@@ -127,7 +127,7 @@ function TrackContent({
         body: JSON.stringify({
           experienceId: trackUuid,
           message,
-          idempotencyKey: generateUUID(),
+          idempotencyKey,
           createdAt: new Date().toISOString(),
         }),
       });
@@ -136,13 +136,13 @@ function TrackContent({
         setFeedbackStatus('sent');
       } else {
         logger.error('[API_ERROR] Server returned status:', response.status);
-        await feedbackQueue.enqueue({ experienceId: trackUuid, message });
+        await feedbackQueue.enqueue({ experienceId: trackUuid, message }, idempotencyKey);
         setFeedbackStatus('queued');
       }
     } catch (err) {
       logger.error('[NETWORK_ERROR] Fetch failed:', err);
       try {
-        await feedbackQueue.enqueue({ experienceId: trackUuid, message });
+        await feedbackQueue.enqueue({ experienceId: trackUuid, message }, idempotencyKey);
         setFeedbackStatus('queued');
       } catch (enqueueErr) {
         logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);
