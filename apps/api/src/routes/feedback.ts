@@ -28,8 +28,6 @@ function validateBody(
   };
 }
 
-const GENERAL_FEEDBACK_UUID = '00000000-0000-0000-0000-000000000000';
-
 const feedbackRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 feedbackRouter.post('/', async (c) => {
@@ -66,10 +64,7 @@ feedbackRouter.post('/', async (c) => {
   if (db) {
     try {
       await db.insert(feedback).values({
-        experienceId:
-          validation.data.experienceId === 'general-feedback'
-            ? GENERAL_FEEDBACK_UUID
-            : validation.data.experienceId,
+        experienceId: validation.data.experienceId,
         message: validation.data.message,
         idempotencyKey: validation.data.idempotencyKey,
         createdAt: new Date(createdAt),
@@ -97,8 +92,7 @@ feedbackRouter.get('/', async (c) => {
     // Format response items to match FeedbackEntry format expected by UI
     const entries = results.map((row) => ({
       id: row.idempotencyKey, // Use idempotencyKey as the client identifier
-      experienceId:
-        row.experienceId === GENERAL_FEEDBACK_UUID ? 'general-feedback' : row.experienceId,
+      experienceId: row.experienceId,
       message: row.message,
       createdAt: row.createdAt.toISOString(),
       latitude: row.latitude,

@@ -155,7 +155,7 @@ export default function MessagesScreen() {
     const lng = location.coords?.longitude ?? null;
 
     const payload = {
-      experienceId: 'general-feedback', // manual feedbacks are associated with general-feedback experience id
+      experienceId: APP_CONFIG.feedback.generalExperienceId,
       message,
       latitude: lat,
       longitude: lng,
