@@ -1,5 +1,4 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Platform } from 'react-native';
 
 import TrackDetailView from '@/components/track-detail-view';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
@@ -17,7 +16,7 @@ export default function TrackDetailScreen() {
       disableBottomPadding
       contentContainerClassName={CONTENT_PADDING}
     >
-      <TrackDetailView trackId={id ?? ''} isWeb={Platform.OS === 'web'} />
+      <TrackDetailView trackId={id ?? ''} />
     </ScrollScreenWrapper>
   );
 }

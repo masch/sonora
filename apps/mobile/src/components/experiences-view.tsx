@@ -286,7 +286,9 @@ function ExperiencesContent({
           filteredExperiences.map((exp) => (
             <TwPressable
               key={exp.id}
-              onPress={() => router.push(`/tracks/${exp.id}`)}
+              onPress={() =>
+                router.push(`/tracks/${exp.id}?title=${encodeURIComponent(exp.title)}`)
+              }
               className="flex-row items-center gap-4 active:opacity-75"
               testID={`track-row-${exp.slug}`}
               accessibilityLabel={t('experiences.rowAccessibilityLabel', {

@@ -225,7 +225,9 @@ export default function TrackMap() {
                   key={track.id}
                   testID={`view-track-${track.slug}`}
                   accessibilityLabel={t('map.viewTrack', { title: track.title })}
-                  onPress={() => router.push(`/tracks/${track.id}`)}
+                  onPress={() =>
+                    router.push(`/tracks/${track.id}?title=${encodeURIComponent(track.title)}`)
+                  }
                   className="active:opacity-75 mb-1"
                 >
                   <TwView className="flex-row items-center justify-between p-3 rounded-xl card-container">
