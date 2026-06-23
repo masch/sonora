@@ -77,7 +77,7 @@ doctor: ## Run React Doctor audit (full verbose scan)
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bunx react-doctor --verbose --diff --blocking warning
+	cd apps/mobile && bunx react-doctor --verbose --scope changed --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
