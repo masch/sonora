@@ -6,8 +6,6 @@ export interface TabDefinition {
   name: string;
   /** Display label (also used as i18n key for translations) */
   label: string;
-  /** Ionicons vector icon name (native) */
-  ioniconsName: string;
   /** SymbolView icon names (web) */
   symbolViewName: {
     ios: SFSymbol;
@@ -22,42 +20,36 @@ export const TABS = [
   {
     name: 'index',
     label: 'Home',
-    ioniconsName: 'home-outline',
     symbolViewName: { ios: 'house', android: 'home', web: 'home' },
     hidden: false,
   },
   {
     name: 'tracks',
     label: 'Tracks',
-    ioniconsName: 'musical-notes-outline',
     symbolViewName: getExperienceIcon('track'),
     hidden: false,
   },
   {
     name: 'trips',
     label: 'Trips',
-    ioniconsName: 'compass-outline',
     symbolViewName: getExperienceIcon('trip'),
     hidden: false,
   },
   {
     name: 'explore',
     label: 'Explore',
-    ioniconsName: 'compass-outline',
     symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
     hidden: true,
   },
   {
     name: 'settings',
     label: 'Settings',
-    ioniconsName: 'settings-outline',
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
     hidden: true,
   },
   {
     name: 'messages',
     label: 'Messages',
-    ioniconsName: 'bubble-left-outline',
     symbolViewName: getExperienceIcon('general-feedback'),
     hidden: false,
   },

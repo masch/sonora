@@ -11,28 +11,24 @@ jest.mock('@/constants/tabs', () => ({
     {
       name: 'index',
       label: 'Home',
-      ioniconsName: 'home-outline',
       symbolViewName: { ios: 'house', android: 'home', web: 'home' },
       hidden: false,
     },
     {
       name: 'experiences',
       label: 'Experiences',
-      ioniconsName: 'musical-notes-outline',
       symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
       hidden: false,
     },
     {
       name: 'explore',
       label: 'Explore',
-      ioniconsName: 'compass-outline',
       symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
       hidden: true,
     },
     {
       name: 'settings',
       label: 'Settings',
-      ioniconsName: 'settings-outline',
       symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
       hidden: true,
     },

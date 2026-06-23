@@ -8,7 +8,6 @@ describe('Tab definitions', () => {
   it('has correct first entry (index)', () => {
     const tab = TABS[0];
     expect(tab.name).toBe('index');
-    expect(tab.ioniconsName).toBe('home-outline');
     expect(tab.symbolViewName.ios).toBe('house');
     expect(tab.symbolViewName.android).toBe('home');
     expect(tab.symbolViewName.web).toBe('home');
@@ -17,7 +16,6 @@ describe('Tab definitions', () => {
   it('has correct second entry (tracks)', () => {
     const tab = TABS[1];
     expect(tab.name).toBe('tracks');
-    expect(tab.ioniconsName).toBe('musical-notes-outline');
     expect(tab.symbolViewName.ios).toBe('music.note.list');
     expect(tab.symbolViewName.android).toBe('library_music');
     expect(tab.symbolViewName.web).toBe('library_music');
@@ -26,7 +24,6 @@ describe('Tab definitions', () => {
   it('has correct third entry (trips)', () => {
     const tab = TABS[2];
     expect(tab.name).toBe('trips');
-    expect(tab.ioniconsName).toBe('compass-outline');
     expect(tab.symbolViewName.ios).toBe('map');
     expect(tab.symbolViewName.android).toBe('map');
     expect(tab.symbolViewName.web).toBe('map');
@@ -35,7 +32,6 @@ describe('Tab definitions', () => {
   it('has correct fourth entry (explore)', () => {
     const tab = TABS[3];
     expect(tab.name).toBe('explore');
-    expect(tab.ioniconsName).toBe('compass-outline');
     expect(tab.symbolViewName.ios).toBe('compass.drawing');
     expect(tab.symbolViewName.android).toBe('explore');
     expect(tab.symbolViewName.web).toBe('explore');
@@ -44,7 +40,6 @@ describe('Tab definitions', () => {
   it('has correct fifth entry (settings)', () => {
     const tab = TABS[4];
     expect(tab.name).toBe('settings');
-    expect(tab.ioniconsName).toBe('settings-outline');
     expect(tab.symbolViewName.ios).toBe('gear');
     expect(tab.symbolViewName.android).toBe('settings');
     expect(tab.symbolViewName.web).toBe('settings');
