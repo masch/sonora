@@ -38,7 +38,7 @@ feedbackRouter.post('/', async (c) => {
     return c.json<FeedbackResponse>({ status: 'error', errors: validation.errors }, 422);
   }
 
-  const { message, idempotencyKey, createdAt } = validation.data;
+  const { message, idempotencyKey, createdAt, latitude, longitude } = validation.data;
 
   const env = c.env || {};
   const maxLength = parseInt(env.FEEDBACK_MAX_LENGTH || '1000', 10);
@@ -68,6 +68,8 @@ feedbackRouter.post('/', async (c) => {
         message: validation.data.message,
         idempotencyKey: validation.data.idempotencyKey,
         createdAt: new Date(createdAt),
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
       });
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -78,6 +80,31 @@ feedbackRouter.post('/', async (c) => {
   }
 
   return c.json<FeedbackResponse>({ status: 'ok' }, 201);
+});
+
+feedbackRouter.get('/', async (c) => {
+  const db = c.var.db;
+  if (!db) {
+    return c.json({ status: 'error', errors: ['Database connection not available'] }, 500);
+  }
+  try {
+    const results = await db.select().from(feedback);
+    // Format response items to match FeedbackEntry format expected by UI
+    const entries = results.map((row) => ({
+      id: row.idempotencyKey, // Use idempotencyKey as the client identifier
+      experienceId: row.experienceId,
+      message: row.message,
+      createdAt: row.createdAt.toISOString(),
+      latitude: row.latitude,
+      longitude: row.longitude,
+    }));
+    return c.json(entries, 200);
+  } catch (err) {
+    return c.json(
+      { status: 'error', errors: [err instanceof Error ? err.message : 'Database error'] },
+      500,
+    );
+  }
 });
 
 export { feedbackRouter };

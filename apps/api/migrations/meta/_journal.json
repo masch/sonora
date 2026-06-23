@@ -15,6 +15,20 @@
       "when": 1782064999000,
       "tag": "0001_echoing_feedbacks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782167044379,
+      "tag": "0002_cooing_jane_foster",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782170121600,
+      "tag": "0003_foamy_matthew_murdock",
+      "breakpoints": true
     }
   ]
 }

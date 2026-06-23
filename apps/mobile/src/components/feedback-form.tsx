@@ -36,6 +36,7 @@ export default function FeedbackForm({
       return;
     }
     setValidationError(null);
+    setMessage('');
     onSubmit(trimmed);
   };
 
@@ -46,7 +47,8 @@ export default function FeedbackForm({
   };
 
   const handleDismiss = () => {
-    if (message.trim().length > 0) {
+    if (!visible) return;
+    if (message.trim().length > 0 && !isSent && !isQueued) {
       if (Platform.OS === 'web') {
         if (window.confirm(t('feedback.form.confirm.body'))) {
           discardAndClose();
@@ -131,6 +133,9 @@ export default function FeedbackForm({
             autoFocus
             testID="feedback-input"
             accessibilityLabel={t('feedback.form.placeholder')}
+            onSubmitEditing={handleSubmit}
+            blurOnSubmit={true}
+            returnKeyType="send"
           />
 
           {/* Validation error */}

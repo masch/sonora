@@ -12,4 +12,6 @@ export interface FeedbackEntry {
   createdAt: string;
   retryCount: number;
   lastError: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }

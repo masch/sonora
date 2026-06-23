@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { getItem, setItem, removeItem, QUEUE_KEY } from '@/storage/feedback-storage';
 import type { FeedbackEntry } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
@@ -10,6 +11,8 @@ function generateId(): string {
 interface EnqueueInput {
   experienceId: string;
   message: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /**
@@ -40,6 +43,21 @@ export function useFeedbackQueue() {
       });
   }, []);
 
+  // Listen for background sync updates to update local state dynamically
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('feedback-queue-synced', () => {
+      getItem(QUEUE_KEY)
+        .then((raw) => {
+          const entries: FeedbackEntry[] = raw ? JSON.parse(raw) : [];
+          setQueue(entries);
+        })
+        .catch(() => {});
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   const saveToStorage = async (entries: FeedbackEntry[]): Promise<void> => {
     await setItem(QUEUE_KEY, JSON.stringify(entries));
     setQueue(entries);
@@ -62,6 +80,8 @@ export function useFeedbackQueue() {
       createdAt: new Date().toISOString(),
       retryCount: 0,
       lastError: null,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
     };
 
     entries.push(entry);
@@ -86,5 +106,5 @@ export function useFeedbackQueue() {
     setQueue([]);
   };
 
-  return { enqueue, getAll, remove, clear, loaded: _loaded };
+  return { enqueue, getAll, remove, clear, loaded: _loaded, queue };
 }

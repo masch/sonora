@@ -13,6 +13,8 @@ export const FeedbackPostBodySchema = z.object({
   createdAt: z
     .string({ required_error: 'createdAt is required and must be a non-empty string' })
     .min(1, 'createdAt is required and must be a non-empty string'),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
 });
 
 export type FeedbackPostBody = z.infer<typeof FeedbackPostBodySchema>;

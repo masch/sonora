@@ -256,6 +256,21 @@ export const en = {
     },
     footer: 'Powered by Expo + NativeWind',
   },
+  messages: {
+    title: 'Messages',
+    loading: 'Loading messages...',
+    error: 'Error loading messages. Please try again.',
+    retry: 'Retry',
+    newButton: 'New message',
+    distanceLabel: 'Distance',
+    categoryLabel: 'Category',
+    emptyState: 'No messages available yet.',
+    pendingBadge: 'Pending',
+    community: 'Community',
+    filterTodos: 'All',
+    filterCercanos: 'Nearby',
+    veryNear: 'Very close',
+  },
 } as const;
 
 export type EnDict = typeof en;
