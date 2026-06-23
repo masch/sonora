@@ -64,12 +64,12 @@ jobs:
       - name: Fetch base branch for diff scan
         if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
-      - name: React Doctor (diff scan)
+      - name: React Doctor (diff scan — required)
         working-directory: apps/mobile
-        run: bunx react-doctor --verbose --diff origin/${{ github.event.pull_request.base.ref }} --fail-on error
-      - name: React Doctor (full scan — informational)
+        run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
+      - name: React Doctor (full scan — required)
         working-directory: apps/mobile
-        run: bunx react-doctor --verbose || true
+        run: make doctor
 
   validate-api:
     needs: changes
