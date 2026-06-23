@@ -65,10 +65,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
       - name: React Doctor (diff scan — required)
-        working-directory: apps/mobile
         run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
       - name: React Doctor (full scan — required)
-        working-directory: apps/mobile
         run: make doctor
 
   validate-api:
