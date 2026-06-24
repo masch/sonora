@@ -67,6 +67,11 @@ export const es = {
     errors: {
       mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el recorrido.',
     },
+    detail: {
+      registry: 'Registro: Umpepay',
+      location: 'Valle de Calamuchita',
+      playButton: 'Reproducir',
+    },
   },
   home: {
     title: 'SONORA',

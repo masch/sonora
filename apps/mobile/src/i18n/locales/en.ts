@@ -67,6 +67,11 @@ export const en = {
     errors: {
       mustBeOnSite: 'You must be at the starting point to begin the trip.',
     },
+    detail: {
+      registry: 'Registry: Umpepay',
+      location: 'Calamuchita Valley',
+      playButton: 'Play',
+    },
   },
   home: {
     title: 'SONORA',
