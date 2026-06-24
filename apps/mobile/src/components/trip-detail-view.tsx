@@ -3,6 +3,9 @@ import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
+import GpsPrecisionBadge from '@/components/gps-precision-badge';
+import { ThemedText } from '@/components/themed-text';
+import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
 import { TRACK_IMAGES } from '@/constants/images';
@@ -10,12 +13,12 @@ import { type Experience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
-import { ThemedText } from '@/components/themed-text';
 import type { FeedbackStatus } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
 import { logger } from '@/utils/logger';
@@ -23,24 +26,23 @@ import type { TranslationKeys } from '@/i18n/types';
 
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
-const formatDuration = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-};
-
-interface TrackDetailViewProps {
+interface TripDetailViewProps {
   track: Experience;
   trackId: string;
 }
 
-export default function TrackDetailView({ track, trackId }: TrackDetailViewProps) {
+export default function TripDetailView({ track, trackId }: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showManualFeedback, setShowManualFeedback] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
+  const geofence = useOfflineGeofence({
+    latitude: track.latitude,
+    longitude: track.longitude,
+  });
   const download = useTrackDownload(track.id ?? trackId, track.audioUrl ?? null);
   const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
 
@@ -72,7 +74,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
 
   const feedbackTrigger = useFeedbackTrigger(mappedTrackForFeedback, {
     didJustFinish: player.status === 'stopped',
-    isNearStart: true, // experiences are always playable, bypass geofence near checking
+    isNearStart: geofence.isNearStart,
   });
   const feedbackQueue = useFeedbackQueue();
 
@@ -126,77 +128,104 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
+  const isPlaybackBlocked = !geofence.isNearStart;
+
   const innerView = (
-    <TwView className="flex-1 bg-[#F9F6F0] dark:bg-zinc-900">
-      {/* Cover Image */}
-      <TwView className="relative w-full h-80 overflow-hidden bg-zinc-250">
-        <TwImage source={trackImage} className="w-full h-full" contentFit="cover" alt="" />
+    <TwView className="flex-1">
+      {/* Top Banner */}
+      <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
+        <TwImage
+          source={trackImage}
+          className="absolute inset-0 w-full h-full"
+          contentFit="cover"
+          alt=""
+        />
+        <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
+          <Icon
+            ios="speaker.wave.2.fill"
+            android="volume_up"
+            web="volume_up"
+            size={18}
+            tintColor="#000000"
+          />
+        </TwView>
       </TwView>
 
-      {/* Main Details Card */}
-      <TwView className="px-6 py-6 gap-6">
-        {/* Header Title & Category */}
-        <TwView className="gap-1">
+      {/* Main Content Area */}
+      <TwView className="relative flex-1 gap-4 p-4">
+        {/* Main Details Card */}
+        <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+          {/* Track header */}
+          <TwView className="items-center gap-2 p-2 w-full">
+            <ThemedText
+              themeColor="text"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              className="text-2xl font-black text-center px-2"
+            >
+              {track.title + ' '}
+            </ThemedText>
+            <ThemedText
+              themeColor="textSecondary"
+              className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
+            >
+              {t('experiences.duration', { minutes: Math.round(track.durationSeconds / 60) })}
+            </ThemedText>
+          </TwView>
+
           <ThemedText
             themeColor="text"
-            className="text-2xl font-bold leading-tight"
-            testID="experience-title"
+            className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
           >
-            {track.title}
+            {track.description}
           </ThemedText>
-          <ThemedText
-            themeColor="textSecondary"
-            className="text-sm font-semibold capitalize text-zinc-500 dark:text-zinc-400"
-            testID="experience-category"
-          >
-            {t(`experiences.categories.${track.themeKey}` as TranslationKeys)}
-          </ThemedText>
-        </TwView>
 
-        {/* Description */}
-        <ThemedText
-          themeColor="text"
-          className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
-          testID="experience-description"
-        >
-          {track.description}
-        </ThemedText>
-
-        {/* Metadata Details Rows */}
-        <TwView className="gap-3 pt-2">
-          {/* Duration Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon ios="clock" android="schedule" web="schedule" size={18} tintColor="#71717a" />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {formatDuration(track.durationSeconds)}
-            </ThemedText>
-          </TwView>
-
-          {/* Registry Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon ios="person" android="person" web="person" size={18} tintColor="#71717a" />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {t('experiences.detail.registry' as TranslationKeys)}
-            </ThemedText>
-          </TwView>
-
-          {/* Location Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon
-              ios="mappin.and.ellipse"
-              android="location_on"
-              web="location_on"
-              size={18}
-              tintColor="#71717a"
+          {/* Mini map */}
+          <TwView className="-mx-3 relative">
+            <TrackDetailMap
+              latitude={track.latitude}
+              longitude={track.longitude}
+              userLatitude={geofence.userCoordinates?.latitude}
+              userLongitude={geofence.userCoordinates?.longitude}
+              showLabels={showLabels}
+              waypoints={track.waypoints}
             />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {t('experiences.detail.location' as TranslationKeys)}
-            </ThemedText>
+            <TwPressable
+              onPress={() => setShowLabels(!showLabels)}
+              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 p-2 rounded-lg shadow-md z-20 active:opacity-80"
+              accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+              testID="toggle-map-labels"
+            >
+              <Icon
+                ios={showLabels ? 'tag.slash.fill' : 'tag.fill'}
+                android={showLabels ? 'label_off' : 'label'}
+                web={showLabels ? 'label_off' : 'label'}
+                size={16}
+                tintColor={showLabels ? '#dc2626' : '#2563eb'}
+              />
+            </TwPressable>
           </TwView>
-        </TwView>
 
-        {/* Big play button inline custom overlay */}
-        <TwView className="mt-4">
+          {/* GPS precision */}
+          <GpsPrecisionBadge
+            gpsStatus={geofence.gpsStatus}
+            gpsAccuracy={geofence.gpsAccuracy}
+            distanceMeters={geofence.distanceMeters}
+            isNearStart={geofence.isNearStart}
+            requiredRadiusMeters={geofence.requiredRadiusMeters}
+          />
+
+          {/* Block playback warning message if blocked */}
+          {isPlaybackBlocked && (
+            <ThemedText
+              className="text-xs text-rose-600 font-bold text-center mt-2 px-4"
+              testID="geofence-error-msg"
+            >
+              {t('experiences.errors.mustBeOnSite' as TranslationKeys)}
+            </ThemedText>
+          )}
+
+          {/* Unified Audio Controller: Download & Play in one flow */}
           <UnifiedAudioController
             downloadStatus={download.status}
             downloadProgress={download.progress}
@@ -214,23 +243,23 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
             onReset={() => player.seekTo(0)}
             onDownload={handlePlayAndDownload}
             onCancelDownload={download.deleteTrackLocal}
-            disabled={!track.audioUrl}
+            disabled={!track.audioUrl || isPlaybackBlocked}
           />
-        </TwView>
 
-        {/* Manual feedback button */}
-        <TwView className="self-stretch mt-2">
-          <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-            <TwPressable
-              accessibilityLabel={t('feedback.form.title')}
-              testID="feedback-manual-button"
-              className="py-3 items-center active:opacity-80"
-              onPress={() => setShowManualFeedback(true)}
-            >
-              <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                {t('feedback.form.title')}
-              </ThemedText>
-            </TwPressable>
+          {/* Manual feedback button */}
+          <TwView className="self-stretch">
+            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('feedback.form.title')}
+                testID="feedback-manual-button"
+                className="py-3 items-center active:opacity-80"
+                onPress={() => setShowManualFeedback(true)}
+              >
+                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
+                  {t('feedback.form.title')}
+                </ThemedText>
+              </TwPressable>
+            </TwView>
           </TwView>
         </TwView>
       </TwView>
@@ -239,15 +268,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
 
   return (
     <TwView className="flex-1">
-      <Stack.Screen
-        options={{
-          title: track.title,
-          headerStyle: {
-            backgroundColor: '#F9F6F0',
-          },
-          headerTintColor: '#000000',
-        }}
-      />
+      <Stack.Screen options={{ title: track.title }} />
       {Platform.OS === 'web' ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       <FeedbackForm

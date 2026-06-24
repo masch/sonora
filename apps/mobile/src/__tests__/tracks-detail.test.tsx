@@ -130,11 +130,29 @@ describe('TrackDetailScreen', () => {
     });
   });
 
-  it('renders GPS badge', async () => {
+  it('renders GPS badge for trip format', async () => {
+    mockExperiences[0].format = 'trip';
     const { getByTestId } = render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('gps-precision-badge')).toBeTruthy();
     });
+  });
+
+  it('renders experience details card layout and manual feedback button for track format', async () => {
+    mockExperiences[0].format = 'track';
+    mockExperiences[0].themeKey = 'birds';
+    const { queryByTestId, getByTestId, getByText } = render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(queryByTestId('gps-precision-badge')).toBeNull();
+      expect(getByTestId('experience-title')).toBeTruthy();
+      expect(getByTestId('experience-category')).toBeTruthy();
+      expect(getByText('45:00')).toBeTruthy();
+      expect(getByText('experiences.detail.registry')).toBeTruthy();
+      expect(getByText('experiences.detail.location')).toBeTruthy();
+      expect(getByTestId('feedback-manual-button')).toBeTruthy();
+    });
+    // Restore format
+    mockExperiences[0].format = 'trip';
   });
 
   it('shows not-found for unknown track id', async () => {
