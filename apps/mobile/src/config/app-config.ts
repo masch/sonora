@@ -44,11 +44,15 @@ function getApiBaseUrl(): string {
   return 'http://localhost:3000'; // web, iOS simulator, etc.
 }
 
+const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY || 'sonora-client-secret-1234';
+
 /**
  * Sonora Global App Configuration
  */
 export const APP_CONFIG = {
   apiBaseUrl: getApiBaseUrl(),
+  apiClientKey,
+  bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true',
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.
@@ -59,7 +63,7 @@ export const APP_CONFIG = {
      */
     instructionsUrl:
       process.env.EXPO_PUBLIC_INSTRUCTIONS_AUDIO_URL ||
-      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      `${getApiBaseUrl()}/audio/stream?key=experiences%2Finstrucciones.mp3&token=${apiClientKey}`,
   },
   feedback: {
     /**

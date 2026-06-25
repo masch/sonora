@@ -6,6 +6,7 @@ import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
 import { healthRouter } from './routes/health';
 import { themesRouter } from './routes/themes';
 import { experiencesRouter } from './routes/experiences';
+import { audioRouter } from './routes/audio';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -16,6 +17,11 @@ export interface Env {
   ALLOWED_ORIGIN?: string;
   ALLOWED_METHODS?: string;
   ALLOWED_HEADERS?: string;
+  BUCKET?: R2Bucket;
+  ADMIN_API_KEY?: string;
+  CLIENT_API_KEY?: string;
+  JWT_SECRET?: string;
+  AUDIO_LINK_EXPIRY_SECONDS?: string;
 }
 
 export interface Variables {
@@ -37,6 +43,7 @@ app.route('/health', healthRouter);
 app.route('/feedback', feedbackRouter);
 app.route('/themes', themesRouter);
 app.route('/experiences', experiencesRouter);
+app.route('/audio', audioRouter);
 
 // Global Error Handler
 app.onError((err, c) => {

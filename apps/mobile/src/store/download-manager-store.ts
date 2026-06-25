@@ -45,10 +45,7 @@ async function performFileDownload(
   const targetUri = `${parentDir}audio.mp3`;
 
   // Ensure directory exists
-  const dirInfo = await FileSystem.getInfoAsync(parentDir);
-  if (!dirInfo.exists) {
-    await FileSystem.makeDirectoryAsync(parentDir, { intermediates: true });
-  }
+  await FileSystem.makeDirectoryAsync(parentDir, { intermediates: true });
 
   // Perform download
   const result = await FileSystem.createDownloadResumable(
@@ -69,15 +66,65 @@ async function performFileDownload(
   return { localUri: result.uri };
 }
 
-async function performDownload(trackId: string, url: string) {
-  // Web has no local filesystem — stream directly from the remote URL
-  if (Platform.OS === 'web') {
-    useDownloadManagerStore.getState()._completeDownload(trackId, url);
-    return;
+async function performWebDownload(
+  trackId: string,
+  url: string,
+  onProgress: (progress: number) => void,
+): Promise<{ localUri: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch audio: ${response.statusText}`);
   }
 
+  const reader = response.body?.getReader();
+  // Fallback if Cache Storage or body reader is unavailable
+  if (typeof caches === 'undefined' || !reader) {
+    const blob = await response.blob();
+    return { localUri: URL.createObjectURL(blob) };
+  }
+
+  const cache = await caches.open('sonora-audio-cache');
+  const contentLength = response.headers.get('content-length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  let receivedLength = 0;
+  const chunks: Uint8Array[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    chunks.push(value);
+    receivedLength += value.length;
+
+    if (total > 0) {
+      const pct = (receivedLength / total) * 100;
+      onProgress(Math.min(99, Math.floor(pct))); // Hold at 99% until completed
+    }
+  }
+
+  const blob = new Blob(chunks as BlobPart[], { type: 'audio/mpeg' });
+  const localUri = URL.createObjectURL(blob);
+
+  // Cache the response constructed from the downloaded blob using a stable cache key
+  const cachedResponse = new Response(blob, {
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': blob.size.toString(),
+    },
+  });
+  const cacheKey = `https://sonora.local/tracks/${trackId}`;
+  await cache.put(cacheKey, cachedResponse);
+
+  return { localUri };
+}
+
+async function performDownload(trackId: string, url: string) {
+  const isWeb = Platform.OS === 'web';
+  const downloadFn = isWeb ? performWebDownload : performFileDownload;
+
   try {
-    const { localUri } = await performFileDownload(trackId, url, (progress) => {
+    const { localUri } = await downloadFn(trackId, url, (progress) => {
       useDownloadManagerStore.getState()._updateProgress(trackId, progress);
     });
 

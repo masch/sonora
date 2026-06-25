@@ -128,7 +128,7 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
-  const isPlaybackBlocked = !geofence.isNearStart;
+  const isPlaybackBlocked = !geofence.isNearStart && !APP_CONFIG.bypassGeofence;
 
   const innerView = (
     <TwView className="flex-1">

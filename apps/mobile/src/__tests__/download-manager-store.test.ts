@@ -117,4 +117,65 @@ describe('DownloadManagerStore', () => {
     expect(state.activeCount).toBe(0);
     expect(state.downloads['track-1'].status).toBe('idle');
   });
+
+  it('does not re-enqueue or start download if status is downloading or completed', () => {
+    useDownloadManagerStore.getState().enqueue('track-1', 'url-1');
+    expect(useDownloadManagerStore.getState().downloads['track-1'].status).toBe('downloading');
+
+    // Attempting to enqueue again should be ignored
+    useDownloadManagerStore.getState().enqueue('track-1', 'url-1');
+    expect(useDownloadManagerStore.getState().activeCount).toBe(1);
+
+    // Complete download
+    useDownloadManagerStore.getState()._completeDownload('track-1', '/path/to/file.mp3');
+    expect(useDownloadManagerStore.getState().downloads['track-1'].status).toBe('completed');
+
+    // Attempting to enqueue a completed download should be ignored
+    useDownloadManagerStore.getState().enqueue('track-1', 'url-1');
+    expect(useDownloadManagerStore.getState().downloads['track-1'].status).toBe('completed');
+    expect(useDownloadManagerStore.getState().activeCount).toBe(0);
+  });
+
+  it('updates progress only for tracks currently downloading', () => {
+    useDownloadManagerStore.getState().enqueue('track-1', 'url-1');
+    useDownloadManagerStore.getState().enqueue('track-2', 'url-2');
+
+    useDownloadManagerStore.getState()._updateProgress('track-1', 45);
+    expect(useDownloadManagerStore.getState().downloads['track-1'].progress).toBe(45);
+
+    // Mock queueing track-3 and track-4 so track-4 is in queue
+    useDownloadManagerStore.getState().enqueue('track-3', 'url-3');
+    useDownloadManagerStore.getState().enqueue('track-4', 'url-4');
+    expect(useDownloadManagerStore.getState().downloads['track-4'].status).toBe('queued');
+
+    // Progress update on queued track should be ignored
+    useDownloadManagerStore.getState()._updateProgress('track-4', 50);
+    expect(useDownloadManagerStore.getState().downloads['track-4'].progress).toBe(0);
+
+    // Progress update on non-existent track should do nothing
+    useDownloadManagerStore.getState()._updateProgress('nonexistent', 50);
+    expect(useDownloadManagerStore.getState().downloads['nonexistent']).toBeUndefined();
+  });
+
+  it('cancel removes a queued download without changing active count', () => {
+    useDownloadManagerStore.getState().enqueue('track-1', 'url-1');
+    useDownloadManagerStore.getState().enqueue('track-2', 'url-2');
+    useDownloadManagerStore.getState().enqueue('track-3', 'url-3');
+    useDownloadManagerStore.getState().enqueue('track-4', 'url-4'); // queued
+
+    expect(useDownloadManagerStore.getState().activeCount).toBe(3);
+    expect(useDownloadManagerStore.getState().queue).toHaveLength(1);
+
+    useDownloadManagerStore.getState().cancel('track-4');
+
+    const state = useDownloadManagerStore.getState();
+    expect(state.downloads['track-4'].status).toBe('idle');
+    expect(state.queue).toHaveLength(0);
+    expect(state.activeCount).toBe(3);
+  });
+
+  it('cancel does nothing if the track is not enqueued', () => {
+    useDownloadManagerStore.getState().cancel('nonexistent');
+    expect(useDownloadManagerStore.getState().downloads['nonexistent']).toBeUndefined();
+  });
 });

@@ -162,7 +162,7 @@ export const en = {
       position: '{{value}}s',
       duration: '{{value}}s',
       btnPlayDownload: 'Play',
-      statusDownloading: 'Downloading audio ({{value}}%)…',
+      statusDownloading: 'Loading ({{value}}%)…',
       btnCancel: 'Cancel',
       btnRewind: 'Rewind 10s',
       btnReset: 'Reset',

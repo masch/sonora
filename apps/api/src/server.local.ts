@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Pool } from 'pg';
-import app, { setDbClient } from './index';
 import { createDbClient } from './db';
+import app, { setDbClient } from './index';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

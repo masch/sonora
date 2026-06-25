@@ -39,7 +39,20 @@ ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
 .PHONY: start
 start: ## Launch Expo dev server
-	cd apps/mobile && bunx expo start
+	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+
+.PHONY: start-wrangler
+start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
+	cd apps/mobile && EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+
+.PHONY: start-wrangler-android
+start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
+	cd apps/mobile && EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+
+.PHONY: start-staging
+start-staging: ## Launch Expo dev server pointing to remote staging API
+	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
@@ -161,8 +174,17 @@ api-install: ## Install backend API dependencies (Hono, Wrangler, Vitest) — us
 	cd $(API_DIR) && bun install --frozen-lockfile
 
 .PHONY: api-dev
-api-dev: ## Run Hono API locally with wrangler dev
+api-dev: ## Run Hono API locally with wrangler dev (local simulation)
 	cd $(API_DIR) && bun run dev
+
+.PHONY: api-dev-remote-staging
+api-dev-remote-staging: ## Run Hono API locally connected to remote staging R2/resources
+	cd $(API_DIR) && bunx wrangler dev --remote --config wrangler.staging.toml
+
+.PHONY: api-dev-staging
+api-dev-staging: ## Run Hono API locally with wrangler dev connected to staging Neon DB
+	cd $(API_DIR) && bunx wrangler dev --config wrangler.staging.toml --env-file .env.staging
+
 
 .PHONY: api-test
 api-test: ## Run backend API tests (Vitest)
@@ -188,11 +210,13 @@ api-deploy-production: ## Deploy production Worker to Cloudflare (name: sonora-a
 	@echo ""
 
 .PHONY: api-deploy-production-secrets
-api-deploy-production-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN secrets on the production Worker
+api-deploy-production-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY secrets on the production Worker
 	@echo "Setting DATABASE_URL secret on production Worker..."
 	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_PRODUCTION_CLEAN)' | bunx wrangler secret put DATABASE_URL
 	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
 	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN
+	@echo "Setting ADMIN_API_KEY secret on production Worker..."
+	@cd $(API_DIR) && printf '%s' '$(ADMIN_API_KEY_CLEAN)' | bunx wrangler secret put ADMIN_API_KEY
 	@echo "Secrets set."
 
 .PHONY: api-deploy-staging
@@ -204,12 +228,48 @@ api-deploy-staging: ## Deploy staging Worker to Cloudflare (name: sonora-api-sta
 	@echo ""
 
 .PHONY: api-deploy-staging-secrets
-api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN secrets on the staging Worker
+api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY secrets on the staging Worker
 	@echo "Setting DATABASE_URL secret on staging Worker..."
 	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_STAGING_CLEAN)' | bunx wrangler secret put DATABASE_URL --config wrangler.staging.toml
 	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
 	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
+	@echo "Setting ADMIN_API_KEY secret on staging Worker..."
+	@cd $(API_DIR) && printf '%s' '$(ADMIN_API_KEY_CLEAN)' | bunx wrangler secret put ADMIN_API_KEY --config wrangler.staging.toml
 	@echo "Secrets set."
+
+
+.PHONY: api-r2-buckets-staging
+api-r2-buckets-staging: ## Create R2 audio buckets for staging environment
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket-staging --config wrangler.staging.toml
+
+
+.PHONY: api-r2-buckets-production
+api-r2-buckets-production: ## Create R2 audio buckets for production environment
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket
+
+.PHONY: api-upload-audio-staging
+api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		exit 1; \
+	fi
+	curl -X POST $(API_STAGING_URL)/audio/upload \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -F "key=$(KEY)" \
+	  -F "file=@$(FILE)"
+
+.PHONY: api-upload-audio-production
+api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		exit 1; \
+	fi
+	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -F "key=$(KEY)" \
+	  -F "file=@$(FILE)"
+
+
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: make api-deploy-staging-set-origin ORIGIN="https://example.com"
@@ -287,6 +347,8 @@ api-db-seed: ## Seed default trips data in local Postgres
 
 DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
 DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
+ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
+
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB

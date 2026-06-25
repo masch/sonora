@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env-file .dev.vars.local",
     "deploy": "wrangler deploy",
     "dev:local": "bun --watch src/server.local.ts",
     "db:generate": "drizzle-kit generate",
