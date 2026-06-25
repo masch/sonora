@@ -194,4 +194,16 @@ describe('CORS behavior', () => {
       expect(res.headers.get('access-control-allow-origin')).toBe('null');
     });
   });
+
+  it('exposes Content-Length and Content-Range headers', async () => {
+    const req = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+    const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
+    expect(res.headers.get('access-control-expose-headers')).toBe('Content-Length,Content-Range');
+  });
 });

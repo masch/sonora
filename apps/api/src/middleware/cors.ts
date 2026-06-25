@@ -40,6 +40,7 @@ export const configureCors = (): MiddlewareHandler => {
       },
       allowMethods: methods,
       allowHeaders: headers,
+      exposeHeaders: ['Content-Length', 'Content-Range'],
     });
 
     return corsMiddleware(c, next);

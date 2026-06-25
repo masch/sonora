@@ -50,6 +50,8 @@ expo-env.d.ts
 
 # local env files (API)
 .dev.vars
+.dev.vars.local
+.env.staging
 
 # ── General ─────────────────────────────────────
 

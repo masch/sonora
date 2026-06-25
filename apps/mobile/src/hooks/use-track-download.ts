@@ -103,13 +103,33 @@ export function useTrackDownload(
   useEffect(() => {
     if (!trackId) return;
 
-    // Skip filesystem check on web
-    if (Platform.OS === 'web') return;
+    let cancelled = false;
+
+    if (Platform.OS === 'web') {
+      if (typeof caches === 'undefined') return;
+      async function checkWebCache() {
+        try {
+          const cache = await caches.open('sonora-audio-cache');
+          const cacheKey = `https://sonora.local/tracks/${trackId}`;
+          const cachedResponse = await cache.match(cacheKey);
+          if (cachedResponse && !cancelled) {
+            const blob = await cachedResponse.blob();
+            const localUri = URL.createObjectURL(blob);
+            setLocalCache({ trackId: trackId as string, localUri });
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Error validating web cache';
+          logger.error(msg);
+        }
+      }
+      checkWebCache();
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const targetUri = getTargetUri(trackId);
     if (!targetUri) return;
-
-    let cancelled = false;
 
     async function checkLocalFile() {
       try {
@@ -128,7 +148,7 @@ export function useTrackDownload(
     return () => {
       cancelled = true;
     };
-  }, [trackId]);
+  }, [trackId, remoteAudioUrl]);
 
   // Derive state from store entry + cached local file
   const state = !trackId
@@ -147,6 +167,16 @@ export function useTrackDownload(
   async function deleteTrackLocal() {
     if (Platform.OS === 'web') {
       setLocalCache(null);
+      if (typeof caches !== 'undefined') {
+        try {
+          const cache = await caches.open('sonora-audio-cache');
+          const cacheKey = `https://sonora.local/tracks/${trackId}`;
+          await cache.delete(cacheKey);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to delete web cache';
+          logger.error(msg);
+        }
+      }
       return;
     }
 
