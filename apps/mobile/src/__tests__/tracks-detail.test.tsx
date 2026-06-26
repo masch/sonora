@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -17,7 +16,7 @@ const mockExperiences = [
     latitude: -32.211913,
     longitude: -64.73809,
     priceLabel: '15 mil $',
-    imageKey: 'deriva-centro',
+    imageKey: 'trips-deriva-centro-cover',
     isDownloadable: true,
     waypoints: [
       {

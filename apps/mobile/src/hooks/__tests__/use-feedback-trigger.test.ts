@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react-hooks';
-import { useFeedbackTrigger } from '../use-feedback-trigger';
 import type { LocalTrackMetadata } from '@/data/experiences';
+import { act, renderHook } from '@testing-library/react-hooks';
+import { useFeedbackTrigger } from '../use-feedback-trigger';
 
 describe('useFeedbackTrigger', () => {
   describe('audio_end mode', () => {
@@ -16,7 +16,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'audio_end',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       // Start with audio playing (not finished)
@@ -47,7 +47,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'audio_end',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       const { result } = renderHook(() => useFeedbackTrigger(track, { didJustFinish: false }));
@@ -69,7 +69,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'geofence',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       // Simulate geofence arrival: was not near, now is near
@@ -99,7 +99,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'geofence',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       const { result } = renderHook(() => useFeedbackTrigger(track, { isNearStart: false }));
@@ -121,7 +121,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'manual',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       const { result } = renderHook(() => useFeedbackTrigger(track, {}));
@@ -143,7 +143,7 @@ describe('useFeedbackTrigger', () => {
         audioRemoteUrl: 'https://example.com/audio.mp3',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
         // No feedbackTrigger
       };
 
@@ -166,7 +166,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'audio_end',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       // Start with audio playing, then finish to trigger
@@ -199,7 +199,7 @@ describe('useFeedbackTrigger', () => {
         feedbackTrigger: 'manual',
         category: 'landscapes',
         subLabel: 'Test',
-        imageKey: 'deriva-centro',
+        imageKey: 'trips-deriva-centro-cover',
       };
 
       const { result } = renderHook(() => useFeedbackTrigger(track, {}));
