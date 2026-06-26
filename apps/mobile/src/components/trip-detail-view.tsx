@@ -8,12 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
-import {
-  TRACK_IMAGES,
-  DEFAULT_TRACK_IMAGE,
-  SONORA_TRIP_BG,
-  SONORA_TRACKS_BG,
-} from '@/constants/images';
+import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type Experience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
@@ -135,21 +130,8 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
 
   const isPlaybackBlocked = !geofence.isNearStart && !APP_CONFIG.bypassGeofence;
 
-  const isTrip = track.format === 'trip';
-  const isTrack = track.format === 'track';
-  const hasBgImage = isTrip || isTrack;
-  const backgroundImg = isTrip ? SONORA_TRIP_BG : isTrack ? SONORA_TRACKS_BG : null;
-
   const innerView = (
-    <TwView className={`flex-1 ${hasBgImage ? 'bg-transparent' : 'bg-background'}`}>
-      {backgroundImg && (
-        <TwImage
-          source={backgroundImg}
-          className="absolute inset-0 w-full h-full"
-          contentFit="cover"
-          alt=""
-        />
-      )}
+    <TwView className="flex-1 bg-transparent">
       {/* Top Banner */}
       <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
         <TwImage

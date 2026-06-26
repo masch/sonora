@@ -11,6 +11,7 @@ import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 import { logger } from '@/utils/logger';
+import { SONORA_TRIP_BG, SONORA_TRACKS_BG } from '@/constants/images';
 
 const CONTENT_PADDING = 'pb-6';
 
@@ -145,6 +146,7 @@ export default function TrackDetailScreen() {
     <ScrollScreenWrapper
       withTabBar={false}
       disableBottomPadding
+      backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
       contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
     >
       {isTrip ? (

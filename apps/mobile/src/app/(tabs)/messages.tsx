@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { TwView, TwPressable } from '@/tw';
+import { SONORA_MESSAGES_BG } from '@/constants/images';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useLocationStore, type LocationStore } from '@/store/location-store';
@@ -473,7 +474,8 @@ export default function MessagesScreen() {
   return (
     <ScrollScreenWrapper
       disableBottomPadding
-      contentContainerClassName="grow pb-8 bg-background px-6 pt-4"
+      backgroundImage={SONORA_MESSAGES_BG}
+      contentContainerClassName="grow pb-8 px-6 pt-4"
     >
       <FeedbackHeader onNewMessage={() => dispatch({ type: 'OPEN' })} />
 
