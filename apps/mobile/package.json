@@ -79,7 +79,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --watchAll",
     "doctor": "npx react-doctor@latest",
-    "firebase-cli": "bunx firebase-tools"
+    "firebase-cli": "./node_modules/.bin/firebase"
   },
   "jest": {
     "preset": "jest-expo",

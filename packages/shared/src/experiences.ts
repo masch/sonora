@@ -5,9 +5,9 @@ export const EXPERIENCE_FORMATS = ['track', 'trip', 'general-feedback'] as const
 export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 
 export const TRACK_IMAGE_KEYS = [
-  'deriva-centro',
-  'track-texto-maga',
-  'track-pajaros-chiricotes',
+  'trips-deriva-centro-cover',
+  'tracks-texto-maga-cover',
+  'tracks-pajaros-chiricotes-cover',
 ] as const;
 export type TrackImageKey = (typeof TRACK_IMAGE_KEYS)[number];
 

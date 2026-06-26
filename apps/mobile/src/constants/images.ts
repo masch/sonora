@@ -4,12 +4,12 @@ import { type ImageSourcePropType } from 'react-native';
 // ── Track-specific images ───────────────────────────────
 
 export const TRACK_IMAGES: Record<TrackImageKey, ImageSourcePropType> = {
-  'deriva-centro': require('@/assets/images/sonora/deriva-centro.png'),
-  'track-texto-maga': require('@/assets/images/sonora/track-texto-maga.png'),
-  'track-pajaros-chiricotes': require('@/assets/images/sonora/track-pajaros-chiricotes.png'),
+  'trips-deriva-centro-cover': require('@/assets/images/sonora/trips-deriva-centro-cover.jpg'),
+  'tracks-texto-maga-cover': require('@/assets/images/sonora/tracks-texto-maga-cover.jpg'),
+  'tracks-pajaros-chiricotes-cover': require('@/assets/images/sonora/tracks-pajaros-chiricotes-cover.png'),
 };
 
-export const DEFAULT_TRACK_IMAGE: ImageSourcePropType = TRACK_IMAGES['deriva-centro'];
+export const DEFAULT_TRACK_IMAGE: ImageSourcePropType = TRACK_IMAGES['trips-deriva-centro-cover'];
 
 // ── App UI images ───────────────────────────────────────
 

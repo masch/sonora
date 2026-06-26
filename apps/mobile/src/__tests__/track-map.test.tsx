@@ -1,6 +1,6 @@
-import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
 import type { Experience } from '@/data/experiences';
+import { render, waitFor } from '@testing-library/react-native';
+import React from 'react';
 
 let mockTracksData: Experience[];
 
@@ -16,7 +16,7 @@ const DEFAULT_TRACKS: Experience[] = [
     latitude: -32.212,
     longitude: -64.738,
     audioUrl: 'https://example.com/audio.mp3',
-    imageKey: 'deriva-centro',
+    imageKey: 'trips-deriva-centro-cover',
     isDownloadable: true,
   },
   {
@@ -30,7 +30,7 @@ const DEFAULT_TRACKS: Experience[] = [
     latitude: -33.123,
     longitude: -65.456,
     audioUrl: 'https://example.com/audio2.mp3',
-    imageKey: 'deriva-centro',
+    imageKey: 'trips-deriva-centro-cover',
     isDownloadable: false,
   },
 ];
@@ -74,8 +74,8 @@ jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
 }));
 
-import * as Location from 'expo-location';
 import { useLocationStore } from '@/store/location-store';
+import * as Location from 'expo-location';
 
 jest.mock('@/store/location-store', () => ({
   useLocationStore: jest.fn(),
