@@ -51,6 +51,13 @@ jobs:
           APP_VERSION_CODE: ${{ github.run_number }}
           EXPO_NO_DOCTOR: '1'
         run: make eas-build-android-preview-ci
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/mobile/build-*.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Authenticate to Firebase
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/gcp-key.json
