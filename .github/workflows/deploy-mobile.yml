@@ -61,10 +61,13 @@ jobs:
       # Match local setup: write service account key to the path the Makefile
       # auto-detects (apps/mobile/firebase-sa-key.json). The Makefile then
       # exports GOOGLE_APPLICATION_CREDENTIALS automatically.
+      # Using env var to avoid shell-interpretation issues with echo + JSON.
       - name: Authenticate to Firebase
+        env:
+          FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           mkdir -p apps/mobile
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > apps/mobile/firebase-sa-key.json
+          echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
       - name: Distribute Android APK to Firebase
         env:
           APP_VERSION_CODE: ${{ github.run_number }}
