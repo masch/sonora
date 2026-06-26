@@ -54,9 +54,9 @@ jobs:
       - name: Authenticate to Firebase
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/gcp-key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json" >> $GITHUB_ENV
       - name: Distribute Android APK to Firebase
         env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
