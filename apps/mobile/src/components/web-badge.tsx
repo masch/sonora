@@ -5,8 +5,7 @@ import { ThemedText } from './themed-text';
 import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 
-const expoBadgeWhite = require('@/assets/images/expo-badge-white.png');
-const expoBadge = require('@/assets/images/expo-badge.png');
+import { EXPO_BADGE, EXPO_BADGE_WHITE } from '@/constants/images';
 
 export function WebBadge() {
   const { isDark } = useColorScheme();
@@ -18,7 +17,7 @@ export function WebBadge() {
         {version}
       </ThemedText>
       <TwImage
-        source={isDark ? expoBadgeWhite : expoBadge}
+        source={isDark ? EXPO_BADGE_WHITE : EXPO_BADGE}
         className="w-[123px] aspect-[123/24]"
         alt=""
       />

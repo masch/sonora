@@ -1,15 +1,15 @@
-import { useRouter } from 'expo-router';
+import { HomeAudioPlayer } from '@/components/home-audio-player';
+import { Icon } from '@/components/icon';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/icon';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { HomeAudioPlayer } from '@/components/home-audio-player';
 import { getExperienceIcon } from '@/utils/icons';
+import { useRouter } from 'expo-router';
 
-const unifiedHeaderImg = require('@/assets/images/sonora/home-unified-header.png');
+import { SONORA_LOGO, SONORA_HOME_BG } from '@/constants/images';
 
 export const SHOW_LOCAL_MESSAGES = true;
 
@@ -22,11 +22,23 @@ export default function HomeScreen() {
   const messageIcon = getExperienceIcon('general-feedback');
 
   return (
-    <ScrollScreenWrapper disableBottomPadding contentContainerClassName="grow pb-8 bg-background">
+    <ScrollScreenWrapper
+      disableBottomPadding
+      className="bg-transparent"
+      contentContainerClassName="grow pb-8 bg-transparent"
+    >
+      {/* Background Image */}
+      <TwImage
+        source={SONORA_HOME_BG}
+        className="absolute inset-0 w-full h-full"
+        contentFit="cover"
+        alt=""
+      />
+
       {/* Top Header - Unified Mockup Header Image */}
       <TwView className="relative w-full h-[380px] border-b border-zinc-800/15">
         <TwImage
-          source={unifiedHeaderImg}
+          source={SONORA_LOGO}
           className="w-full h-full"
           contentFit="contain"
           alt={t('home.bannerAlt')}
@@ -44,13 +56,14 @@ export default function HomeScreen() {
         <HomeAudioPlayer />
 
         {/* Navigation List Menu */}
-        <TwView className="gap-1">
+        <TwView className="gap-3">
           {/* Explorar Recorridos */}
           <TwPressable
             onPress={() => router.push('/trips')}
             accessibilityLabel={t('home.exploreRoutes')}
             testID="explore-routes-menu"
-            className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
+            className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
+            style={{ backgroundColor: colors.homeExploreRoutesBg }}
           >
             <TwView className="flex-row items-center gap-4 flex-1">
               <Icon
@@ -58,13 +71,13 @@ export default function HomeScreen() {
                 android={tripIcon.android}
                 web={tripIcon.web}
                 size={24}
-                tintColor={colors.text}
+                tintColor={colors.homeCardText}
               />
               <TwView className="flex-1">
-                <ThemedText className="text-lg font-bold text-text">
+                <ThemedText className="text-lg font-bold" style={{ color: colors.homeCardText }}>
                   {t('home.exploreRoutes')}
                 </ThemedText>
-                <ThemedText className="text-sm text-textSecondary mt-0.5">
+                <ThemedText className="text-sm mt-0.5" style={{ color: colors.homeCardSubtext }}>
                   {t('home.exploreRoutesSub')}
                 </ThemedText>
               </TwView>
@@ -74,7 +87,7 @@ export default function HomeScreen() {
               android="chevron_right"
               web="chevron_right"
               size={20}
-              tintColor={colors.textSecondary}
+              tintColor={colors.homeCardText}
             />
           </TwPressable>
 
@@ -83,7 +96,8 @@ export default function HomeScreen() {
             onPress={() => router.push('/tracks')}
             accessibilityLabel={t('home.exploreTracks')}
             testID="explore-tracks-menu"
-            className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
+            className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
+            style={{ backgroundColor: colors.homeExploreTracksBg }}
           >
             <TwView className="flex-row items-center gap-4 flex-1">
               <Icon
@@ -91,13 +105,13 @@ export default function HomeScreen() {
                 android={trackIcon.android}
                 web={trackIcon.web}
                 size={24}
-                tintColor={colors.text}
+                tintColor={colors.homeCardText}
               />
               <TwView className="flex-1">
-                <ThemedText className="text-lg font-bold text-text">
+                <ThemedText className="text-lg font-bold" style={{ color: colors.homeCardText }}>
                   {t('home.exploreTracks')}
                 </ThemedText>
-                <ThemedText className="text-sm text-textSecondary mt-0.5">
+                <ThemedText className="text-sm mt-0.5" style={{ color: colors.homeCardSubtext }}>
                   {t('home.exploreTracksSub')}
                 </ThemedText>
               </TwView>
@@ -107,7 +121,7 @@ export default function HomeScreen() {
               android="chevron_right"
               web="chevron_right"
               size={20}
-              tintColor={colors.textSecondary}
+              tintColor={colors.homeCardText}
             />
           </TwPressable>
 
@@ -117,7 +131,8 @@ export default function HomeScreen() {
               onPress={() => router.push('/messages')}
               accessibilityLabel={t('home.localMessages')}
               testID="local-messages-menu"
-              className="flex-row items-center justify-between py-5 border-b border-zinc-800/10 active:opacity-75"
+              className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
+              style={{ backgroundColor: colors.homeLocalMessagesBg }}
             >
               <TwView className="flex-row items-center gap-4 flex-1">
                 <Icon
@@ -125,13 +140,13 @@ export default function HomeScreen() {
                   android={messageIcon.android}
                   web={messageIcon.web}
                   size={24}
-                  tintColor={colors.text}
+                  tintColor={colors.homeCardText}
                 />
                 <TwView className="flex-1">
-                  <ThemedText className="text-lg font-bold text-text">
+                  <ThemedText className="text-lg font-bold" style={{ color: colors.homeCardText }}>
                     {t('home.localMessages')}
                   </ThemedText>
-                  <ThemedText className="text-sm text-textSecondary mt-0.5">
+                  <ThemedText className="text-sm mt-0.5" style={{ color: colors.homeCardSubtext }}>
                     {t('home.localMessagesSub')}
                   </ThemedText>
                 </TwView>
@@ -141,11 +156,14 @@ export default function HomeScreen() {
                 android="chevron_right"
                 web="chevron_right"
                 size={20}
-                tintColor={colors.textSecondary}
+                tintColor={colors.homeCardText}
               />
             </TwPressable>
           )}
         </TwView>
+
+        {/* Spacer to match the padding between elements */}
+        <TwView className="h-3" />
       </TwView>
     </ScrollScreenWrapper>
   );

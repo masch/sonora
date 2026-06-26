@@ -87,8 +87,11 @@ export function HomeAudioPlayer() {
   }
 
   return (
-    <TwView className="mb-6">
-      <ThemedText className="text-base font-extrabold text-text mb-4">
+    <TwView
+      className="mb-3 rounded-[24px] p-5"
+      style={{ backgroundColor: colors.homeInstructionsBg }}
+    >
+      <ThemedText className="text-sm font-bold mb-3" style={{ color: colors.homeCardSubtext }}>
         {t('home.instructionsTitle')}
       </ThemedText>
 
@@ -103,20 +106,26 @@ export function HomeAudioPlayer() {
               ? t('components.mediaControls.btnPlay')
               : t('components.mediaControls.btnPlayDownload')
         }
-        className="flex-row items-start gap-4 pb-6 border-b border-zinc-800/10 active:opacity-75"
+        className="flex-row items-start gap-4 active:opacity-75"
       >
         {/* Play / Pause / Download Icon (Visual indicator inside the pressable card) */}
         <TwView className="pt-1" testID="home-player-play-button">
-          <Icon name={actionIconName} size={28} tintColor={colors.text} />
+          <Icon name={actionIconName} size={28} tintColor={colors.homeCardText} />
         </TwView>
 
         <TwView className="flex-1">
           <TwView className="flex-row justify-between items-start">
             <TwView className="flex-1 mr-2">
-              <ThemedText className="text-lg font-extrabold text-text leading-tight">
+              <ThemedText
+                className="text-lg font-extrabold leading-tight"
+                style={{ color: colors.homeCardText }}
+              >
                 {t('home.instructionsName')}
               </ThemedText>
-              <ThemedText className="text-sm font-semibold text-textSecondary mt-0.5">
+              <ThemedText
+                className="text-sm font-semibold mt-0.5"
+                style={{ color: colors.homeCardSubtext }}
+              >
                 {statusText}
               </ThemedText>
             </TwView>
@@ -135,7 +144,7 @@ export function HomeAudioPlayer() {
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   className="active:opacity-75 p-2"
                 >
-                  <Icon name="reset" size={20} tintColor={colors.text} />
+                  <Icon name="reset" size={20} tintColor={colors.homeCardText} />
                 </TwPressable>
 
                 {/* Rewind 10s button */}
@@ -149,18 +158,21 @@ export function HomeAudioPlayer() {
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   className="active:opacity-75 p-2"
                 >
-                  <Icon name="rewind" size={20} tintColor={colors.text} />
+                  <Icon name="rewind" size={20} tintColor={colors.homeCardText} />
                 </TwPressable>
               </TwView>
             )}
           </TwView>
 
           {/* Progress Bar */}
-          <TwView className="h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mt-4 w-full overflow-hidden">
+          <TwView className="h-1 bg-zinc-300/60 rounded-full mt-4 w-full overflow-hidden">
             <TwView
               testID="home-player-progress-bar-fill"
-              className="h-full bg-text"
-              style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+              className="h-full"
+              style={{
+                backgroundColor: colors.homeCardText,
+                width: `${Math.min(100, Math.max(0, progressPct))}%`,
+              }}
             />
           </TwView>
 

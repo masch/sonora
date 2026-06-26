@@ -4,6 +4,7 @@ import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import { TwView, TwPressable } from '@/tw';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 interface IconSymbols {
   ios: SFSymbol;
@@ -31,6 +32,8 @@ export function TabButton({
   target,
   rel,
 }: TabButtonProps) {
+  const colors = useThemeColors();
+
   return (
     <TwPressable
       onPress={onPress}
@@ -43,17 +46,23 @@ export function TabButton({
       className="active:opacity-70"
     >
       <TwView
-        className={`flex-row items-center gap-1.5 ${isFocused ? 'bg-backgroundSelected' : 'bg-backgroundElement'} py-1 px-4 rounded-2xl`}
+        style={{
+          backgroundColor: isFocused ? colors.tabBarSelectedBg : 'transparent',
+        }}
+        className="flex-row items-center gap-1.5 py-1 px-4 rounded-2xl"
       >
         <Icon
           ios={icon.ios}
           android={icon.android}
           web={icon.web}
           size={14}
-          tintColor={isFocused ? 'rgb(107 114 128)' : 'rgb(156 163 175)'}
+          tintColor={isFocused ? colors.tabBarIconActive : colors.tabBarIconInactive}
         />
         {label && !hideLabel && (
-          <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+          <ThemedText
+            type="small"
+            style={{ color: isFocused ? colors.tabBarIconActive : colors.tabBarIconInactive }}
+          >
             {label}
           </ThemedText>
         )}

@@ -6,12 +6,8 @@ export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 
 export const TRACK_IMAGE_KEYS = [
   'deriva-centro',
-  'bonus-track',
-  'tacuarita-azul',
-  'el-arroyo',
-  'la-piedra-antigua',
-  'viento-chanares',
-  'voces-monte',
+  'track-texto-maga',
+  'track-pajaros-chiricotes',
 ] as const;
 export type TrackImageKey = (typeof TRACK_IMAGE_KEYS)[number];
 

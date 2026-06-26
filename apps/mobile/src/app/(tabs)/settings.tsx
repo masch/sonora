@@ -9,9 +9,7 @@ import { Icon } from '@/components/icon';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
-const logoImg = require('@/assets/images/sonora/logo.png');
-const mainBg = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
+import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_MAIN_BG } from '@/constants/images';
 
 export default function SettingsScreen() {
   const { t } = useAppTranslation();
@@ -24,13 +22,13 @@ export default function SettingsScreen() {
         {/* Top Banner */}
         <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
           <TwImage
-            source={bannerBg}
+            source={SONORA_BANNER_BG}
             className="absolute inset-0 w-full h-full"
             contentFit="cover"
             alt=""
           />
           <TwView className="size-40 items-center justify-center z-10">
-            <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
+            <TwImage source={SONORA_LOGO} className="w-full h-full" contentFit="contain" alt="" />
           </TwView>
           <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
             <Icon
@@ -48,7 +46,7 @@ export default function SettingsScreen() {
           className="relative flex-1 gap-4 p-4"
           style={Platform.OS === 'ios' ? { paddingBottom: TAB_BAR_INSET } : undefined}
         >
-          <TwImage source={mainBg} className="absolute inset-0" contentFit="cover" alt="" />
+          <TwImage source={SONORA_MAIN_BG} className="absolute inset-0" contentFit="cover" alt="" />
 
           {/* Header Card */}
           <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-2 z-10">
