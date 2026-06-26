@@ -12,7 +12,12 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { fetchThemes, fetchExperiences, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
 import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
 import type { TranslationKeys } from '@/i18n/types';
-import { TRACK_IMAGES, SONORA_TRIP_BG, SONORA_TRACKS_BG } from '@/constants/images';
+import {
+  TRACK_IMAGES,
+  DEFAULT_TRACK_IMAGE,
+  SONORA_TRIP_BG,
+  SONORA_TRACKS_BG,
+} from '@/constants/images';
 import { logger } from '@/utils/logger';
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -313,7 +318,7 @@ function ExperiencesContent({
                 })}
               >
                 <TwImage
-                  source={TRACK_IMAGES[exp.imageKey] || TRACK_IMAGES['bonus-track']}
+                  source={TRACK_IMAGES[exp.imageKey] || DEFAULT_TRACK_IMAGE}
                   className="size-16 rounded-xl bg-zinc-200 dark:bg-zinc-800"
                   contentFit="cover"
                   alt=""

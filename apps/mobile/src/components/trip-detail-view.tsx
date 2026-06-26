@@ -8,7 +8,12 @@ import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
-import { TRACK_IMAGES, SONORA_TRIP_BG, SONORA_TRACKS_BG } from '@/constants/images';
+import {
+  TRACK_IMAGES,
+  DEFAULT_TRACK_IMAGE,
+  SONORA_TRIP_BG,
+  SONORA_TRACKS_BG,
+} from '@/constants/images';
 import { type Experience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
@@ -123,7 +128,7 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
     feedbackTrigger.dismiss();
   };
 
-  const trackImage = TRACK_IMAGES[track.imageKey] || TRACK_IMAGES['bonus-track'];
+  const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
 
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;

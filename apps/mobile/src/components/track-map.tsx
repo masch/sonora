@@ -7,7 +7,7 @@ import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 import LoadingView from '@/components/loading-view';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { TRACK_IMAGES } from '@/constants/images';
+import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
@@ -220,7 +220,7 @@ export default function TrackMap() {
 
           <TwView className="flex-col gap-3">
             {tracks.map((track) => {
-              const trackImage = TRACK_IMAGES[track.imageKey] || TRACK_IMAGES['bonus-track'];
+              const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
               const dist = cardDistance(track);
 
               return (

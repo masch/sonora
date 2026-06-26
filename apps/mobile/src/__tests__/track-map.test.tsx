@@ -30,7 +30,7 @@ const DEFAULT_TRACKS: Experience[] = [
     latitude: -33.123,
     longitude: -65.456,
     audioUrl: 'https://example.com/audio2.mp3',
-    imageKey: 'bonus-track',
+    imageKey: 'deriva-centro',
     isDownloadable: false,
   },
 ];
