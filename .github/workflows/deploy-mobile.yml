@@ -58,12 +58,12 @@ jobs:
           path: apps/mobile/build-*.apk
           if-no-files-found: error
           retention-days: 7
-      - name: Authenticate to Firebase
-        run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/gcp-key.json
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
       - name: Distribute Android APK to Firebase
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
