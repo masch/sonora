@@ -58,9 +58,15 @@ jobs:
           path: apps/mobile/build-*.apk
           if-no-files-found: error
           retention-days: 7
+      # Match local setup: write service account key to the path the Makefile
+      # auto-detects (apps/mobile/firebase-sa-key.json). The Makefile then
+      # exports GOOGLE_APPLICATION_CREDENTIALS automatically.
+      - name: Authenticate to Firebase
+        run: |
+          mkdir -p apps/mobile
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > apps/mobile/firebase-sa-key.json
       - name: Distribute Android APK to Firebase
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
