@@ -127,7 +127,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
   const innerView = (
-    <TwView className="flex-1 bg-[#F9F6F0] dark:bg-zinc-900">
+    <TwView className="flex-1 bg-transparent">
       {/* Cover Image */}
       <TwView className="relative w-full h-80 overflow-hidden bg-zinc-250">
         <TwImage source={trackImage} className="w-full h-full" contentFit="cover" alt="" />

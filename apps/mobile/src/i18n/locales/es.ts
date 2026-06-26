@@ -67,6 +67,10 @@ export const es = {
     errors: {
       mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el recorrido.',
     },
+    detail: {
+      registry: 'Registro',
+      location: 'Ubicación',
+    },
   },
   home: {
     title: 'SONORA',

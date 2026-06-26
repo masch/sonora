@@ -24,17 +24,9 @@ export default function HomeScreen() {
   return (
     <ScrollScreenWrapper
       disableBottomPadding
-      className="bg-transparent"
-      contentContainerClassName="grow pb-8 bg-transparent"
+      backgroundImage={SONORA_HOME_BG}
+      contentContainerClassName="grow pb-8"
     >
-      {/* Background Image */}
-      <TwImage
-        source={SONORA_HOME_BG}
-        className="absolute inset-0 w-full h-full"
-        contentFit="cover"
-        alt=""
-      />
-
       {/* Top Header - Unified Mockup Header Image */}
       <TwView className="relative w-full h-[380px] border-b border-zinc-800/15">
         <TwImage

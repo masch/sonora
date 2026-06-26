@@ -13,20 +13,20 @@ describe('Tab definitions', () => {
     expect(tab.symbolViewName.web).toBe('home');
   });
 
-  it('has correct second entry (tracks)', () => {
+  it('has correct second entry (trips)', () => {
     const tab = TABS[1];
-    expect(tab.name).toBe('tracks');
-    expect(tab.symbolViewName.ios).toBe('music.note.list');
-    expect(tab.symbolViewName.android).toBe('library_music');
-    expect(tab.symbolViewName.web).toBe('library_music');
-  });
-
-  it('has correct third entry (trips)', () => {
-    const tab = TABS[2];
     expect(tab.name).toBe('trips');
     expect(tab.symbolViewName.ios).toBe('map');
     expect(tab.symbolViewName.android).toBe('map');
     expect(tab.symbolViewName.web).toBe('map');
+  });
+
+  it('has correct third entry (tracks)', () => {
+    const tab = TABS[2];
+    expect(tab.name).toBe('tracks');
+    expect(tab.symbolViewName.ios).toBe('music.note.list');
+    expect(tab.symbolViewName.android).toBe('library_music');
+    expect(tab.symbolViewName.web).toBe('library_music');
   });
 
   it('has correct fourth entry (explore)', () => {

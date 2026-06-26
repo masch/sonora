@@ -24,15 +24,15 @@ export const TABS = [
     hidden: false,
   },
   {
-    name: 'tracks',
-    label: 'Tracks',
-    symbolViewName: getExperienceIcon('track'),
-    hidden: false,
-  },
-  {
     name: 'trips',
     label: 'Trips',
     symbolViewName: getExperienceIcon('trip'),
+    hidden: false,
+  },
+  {
+    name: 'tracks',
+    label: 'Tracks',
+    symbolViewName: getExperienceIcon('track'),
     hidden: false,
   },
   {
