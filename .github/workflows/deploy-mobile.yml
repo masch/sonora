@@ -51,9 +51,12 @@ jobs:
           APP_VERSION_CODE: ${{ github.run_number }}
           EXPO_NO_DOCTOR: '1'
         run: make eas-build-android-preview-ci
+      - name: Authenticate to Firebase
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json" >> $GITHUB_ENV
       - name: Distribute Android APK to Firebase
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |

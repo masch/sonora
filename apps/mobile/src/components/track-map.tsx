@@ -17,9 +17,7 @@ import { getHaversineDistance } from '@/utils/haversine';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { logger } from '@/utils/logger';
 
-const bannerBg = require('@/assets/images/sonora/banner-fondo-logo-1.png');
-const logoImg = require('@/assets/images/sonora/logo.png');
-const instructionsBg = require('@/assets/images/sonora/cover-instrucciones-1.png');
+import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_INSTRUCTIONS_BG } from '@/constants/images';
 
 function formatDistance(
   meters: number,
@@ -117,7 +115,7 @@ export default function TrackMap() {
       {/* Top Banner */}
       <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
         <TwImage
-          source={bannerBg}
+          source={SONORA_BANNER_BG}
           className="absolute inset-0 w-full h-full"
           contentFit="cover"
           alt=""
@@ -128,7 +126,7 @@ export default function TrackMap() {
           testID="show-instructions"
           className="size-40 items-center justify-center z-10"
         >
-          <TwImage source={logoImg} className="w-full h-full" contentFit="contain" alt="" />
+          <TwImage source={SONORA_LOGO} className="w-full h-full" contentFit="contain" alt="" />
         </TwPressable>
         <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
           <Icon
@@ -162,7 +160,12 @@ export default function TrackMap() {
       >
         {/* Instructions Card */}
         <TwView className="relative overflow-hidden rounded-[24px] card-container-solid shadow-md backdrop-blur-md z-10">
-          <TwImage source={instructionsBg} className="w-full h-44" contentFit="cover" alt="" />
+          <TwImage
+            source={SONORA_INSTRUCTIONS_BG}
+            className="w-full h-44"
+            contentFit="cover"
+            alt=""
+          />
           <TwView className="flex-row items-center justify-between p-4 bg-white/40 dark:bg-zinc-800/40">
             <TwView className="flex-row items-center gap-4 flex-1">
               <TwView className="flex-row items-center gap-1.5">

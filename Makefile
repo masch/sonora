@@ -533,19 +533,19 @@ firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN
 
 .PHONY: firebase-distribute
 firebase-distribute: ## Upload APK to Firebase App Distribution (requires FIREBASE_TOKEN in .env, optional: FIREBASE_TESTERS)
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" $(FIREBASE_TESTER_FLAGS)
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" $(FIREBASE_TESTER_FLAGS)
 
 .PHONY: firebase-distribute-dev-team
 firebase-distribute-dev-team: ## Upload APK to dev-team group only
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV)"
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_DEV)"
 
 .PHONY: firebase-distribute-sonora-team
 firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_SONORA)"
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_SONORA)"
 
 .PHONY: firebase-distribute-all
 firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --token "$(FIREBASE_TOKEN)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" --release-notes "$(FIREBASE_RELEASE_NOTES)"
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" --release-notes "$(FIREBASE_RELEASE_NOTES)"
 
 # ── Emulator ───────────────────────────────
 

@@ -49,7 +49,7 @@ const defaultThemes = [
   },
 ];
 
-const defaultExperiences = [
+const trips = [
   {
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     slug: 'umepay-bosque',
@@ -65,11 +65,14 @@ const defaultExperiences = [
     imageKey: 'deriva-centro',
     isDownloadable: true,
   },
+] as const;
+
+const tracks = [
   {
     id: '5a9463ce-daba-4756-892e-4dd4cb862309',
-    slug: 'rio-claro',
-    title: 'BONUS TRACK',
-    description: 'Mindfulness',
+    slug: 'texto-maga',
+    title: 'Texto Maga',
+    description: 'Maga',
     format: 'track',
     themeKey: 'community',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
@@ -77,7 +80,7 @@ const defaultExperiences = [
     latitude: -32.211015,
     longitude: -64.73809012343702,
     priceLabel: 'FREE',
-    imageKey: 'bonus-track',
+    imageKey: 'track-texto-maga',
     isDownloadable: false,
   },
   {
@@ -150,21 +153,24 @@ const defaultExperiences = [
     imageKey: 'voces-monte',
     isDownloadable: true,
   },
-  {
-    id: '00000000-0000-0000-0000-000000000000',
-    slug: 'general-feedback',
-    title: 'Comunidad',
-    description: 'Comunidad y Feedback General',
-    format: 'general-feedback',
-    themeKey: 'community',
-    durationSeconds: 0,
-    latitude: 0,
-    longitude: 0,
-    priceLabel: 'FREE',
-    imageKey: 'bonus-track',
-    isDownloadable: false,
-  },
 ] as const;
+
+const generalFeedback = {
+  id: '00000000-0000-0000-0000-000000000000',
+  slug: 'general-feedback',
+  title: 'Comunidad',
+  description: 'Comunidad y Feedback General',
+  format: 'general-feedback',
+  themeKey: 'community',
+  durationSeconds: 0,
+  latitude: 0,
+  longitude: 0,
+  priceLabel: 'FREE',
+  imageKey: 'bonus-track',
+  isDownloadable: false,
+} as const;
+
+const defaultExperiences = [...trips, ...tracks, generalFeedback] as const;
 
 const defaultWaypoints = [
   {

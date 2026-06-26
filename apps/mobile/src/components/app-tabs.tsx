@@ -16,8 +16,12 @@ export default function AppTabs() {
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
+      backgroundColor={colors.tabBarBg}
+      indicatorColor={colors.tabBarSelectedBg}
+      iconColor={{
+        default: colors.tabBarIconInactive,
+        selected: colors.tabBarIconActive,
+      }}
       labelVisibilityMode="unlabeled"
     >
       {triggers}
