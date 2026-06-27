@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -52,7 +52,7 @@ const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY || 'sonora-client-se
 export const APP_CONFIG = {
   apiBaseUrl: getApiBaseUrl(),
   apiClientKey,
-  bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true',
+  bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.

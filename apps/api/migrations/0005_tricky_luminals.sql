@@ -1,0 +1,1 @@
+ALTER TABLE "sonora"."experiences" DROP COLUMN "is_downloadable";

@@ -275,23 +275,13 @@ export default function TrackMap() {
                           </ThemedText>
                         )}
                         <TwView className="size-10 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
-                          {track.isDownloadable ? (
-                            <Icon
-                              ios="arrow.down"
-                              android="arrow_downward"
-                              web="arrow_downward"
-                              size={18}
-                              tintColor="#ffffff"
-                            />
-                          ) : (
-                            <Icon
-                              ios="play.fill"
-                              android="play_arrow"
-                              web="play_arrow"
-                              size={18}
-                              tintColor="#ffffff"
-                            />
-                          )}
+                          <Icon
+                            ios="arrow.down"
+                            android="arrow_downward"
+                            web="arrow_downward"
+                            size={18}
+                            tintColor="#ffffff"
+                          />
                         </TwView>
                       </TwView>
                     </TwView>

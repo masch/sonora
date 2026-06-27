@@ -40,24 +40,31 @@ export function useImmersionPlayer(
   const positionMs = useAudioPlayerStore((s) => s.positionMs);
   const durationMs = useAudioPlayerStore((s) => s.durationMs);
   const errorMsg = useAudioPlayerStore((s) => s.errorMsg);
+  const currentUri = useAudioPlayerStore((s) => s.currentUri);
   const storePlay = useAudioPlayerStore((s) => s.play);
   const pause = useAudioPlayerStore((s) => s.pause);
   const stop = useAudioPlayerStore((s) => s.stop);
   const seekTo = useAudioPlayerStore((s) => s.seekTo);
   const setNowPlayingMetadata = useAudioPlayerStore((s) => s.setNowPlayingMetadata);
 
-  const status: PlayerStatus = localAudioUri ? storeStatus : 'idle';
+  const isCurrentTrack = localAudioUri !== null && currentUri === localAudioUri;
+  const status: PlayerStatus = isCurrentTrack ? storeStatus : 'idle';
+  const displayPositionMs = isCurrentTrack ? positionMs : 0;
+  const displayDurationMs = isCurrentTrack ? durationMs : 0;
+  const displayErrorMsg = isCurrentTrack ? errorMsg : null;
 
   // Sync metadata after render — avoids "Cannot update a component while rendering" error
   useEffect(() => {
-    setNowPlayingMetadata(mediaMetadata);
-  }, [mediaMetadata, setNowPlayingMetadata]);
+    if (isCurrentTrack) {
+      setNowPlayingMetadata(mediaMetadata);
+    }
+  }, [mediaMetadata, setNowPlayingMetadata, isCurrentTrack]);
 
   return {
     status,
-    positionMs,
-    durationMs,
-    errorMsg,
+    positionMs: displayPositionMs,
+    durationMs: displayDurationMs,
+    errorMsg: displayErrorMsg,
     play: () => {
       if (localAudioUri) {
         storePlay(localAudioUri);
