@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.1'
       - uses: oven-sh/setup-bun@v2
       # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
       - run: bun install --frozen-lockfile --minimum-release-age=0
