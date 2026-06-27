@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type L from 'leaflet';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -87,7 +87,7 @@ export default function TrackDetailMap({
 
         const destMarker = leaflet.marker([latitude, longitude], { icon }).addTo(map);
         destMarkerRef.current = destMarker;
-        destMarker.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
+        destMarker.bindTooltip('Pt 1', { permanent: true, direction: 'top' });
 
         // Draw path polyline and waypoints if available
         if (waypoints && waypoints.length > 0) {
@@ -110,7 +110,7 @@ export default function TrackDetailMap({
                 weight: 3,
               })
               .addTo(map);
-            marker.bindTooltip('Pt ' + (idx + 1), { permanent: true, direction: 'top' });
+            marker.bindTooltip('Pt ' + (idx + 2), { permanent: true, direction: 'top' });
             markers.push(marker);
           });
           waypointMarkersRef.current = markers;
@@ -206,13 +206,13 @@ export default function TrackDetailMap({
     if (dest) {
       dest.unbindTooltip();
       if (showLabels) {
-        dest.bindTooltip(t('map.destination'), { permanent: true, direction: 'top' });
+        dest.bindTooltip('Pt 1', { permanent: true, direction: 'top' });
       }
     }
     if (user) {
       user.unbindTooltip();
       if (showLabels) {
-        user.bindTooltip(t('map.userLocation'), { permanent: true, direction: 'top' });
+        user.bindTooltip('Pt 1', { permanent: true, direction: 'top' });
       }
     }
   }, [showLabels, t]);

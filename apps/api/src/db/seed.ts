@@ -102,22 +102,15 @@ const defaultWaypoints = [
   {
     experienceId: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     order: 1,
-    latitude: -32.211913,
-    longitude: -64.73809012343702,
+    latitude: -32.212488,
+    longitude: -64.736874,
     radiusMeters: 50,
   },
   {
     experienceId: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     order: 2,
-    latitude: -32.2125,
-    longitude: -64.7385,
-    radiusMeters: 50,
-  },
-  {
-    experienceId: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
-    order: 3,
-    latitude: -32.213,
-    longitude: -64.739,
+    latitude: -32.21333,
+    longitude: -64.736273,
     radiusMeters: 50,
   },
 ];
