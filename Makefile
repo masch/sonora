@@ -550,6 +550,7 @@ firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
 
 .PHONY: firebase-distribute-all
 firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
+	@echo "DBG:GAC_IN_RECIPE=$${GOOGLE_APPLICATION_CREDENTIALS:-NOT_SET}"
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" --release-notes "$(FIREBASE_RELEASE_NOTES)"
 
 # ── Emulator ───────────────────────────────
