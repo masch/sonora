@@ -1,0 +1,1 @@
+ALTER TABLE "sonora"."experiences" ADD COLUMN "geofence_bypassable" boolean DEFAULT false NOT NULL;

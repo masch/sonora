@@ -36,6 +36,15 @@ interface FeedbackDisplayEntry extends FeedbackServerEntry {
 
 /* ───────── Helper components ───────── */
 
+const CARD_BG_COLOR_KEYS: Record<
+  'general-feedback' | 'trip' | 'track',
+  'homeLocalMessagesBg' | 'homeExploreRoutesBg' | 'homeExploreTracksBg'
+> = {
+  'general-feedback': 'homeLocalMessagesBg',
+  trip: 'homeExploreRoutesBg',
+  track: 'homeExploreTracksBg',
+};
+
 const proximityIcons = {
   all: {
     ios: 'globe' as SFSymbol,
@@ -99,7 +108,7 @@ function ProximityFilter({ activeTab, onSelect }: ProximityFilterProps) {
 
   return (
     <TwView className="flex-row items-center justify-between border-b border-zinc-300/10 dark:border-zinc-700/10 pb-3">
-      <ThemedText className="text-[10px] font-black tracking-widest text-textSecondary uppercase">
+      <ThemedText className="text-[10px] font-black tracking-widest text-text uppercase">
         {t('messages.distanceLabel')}
       </ThemedText>
       <TwView className="flex-row gap-2">
@@ -148,7 +157,7 @@ function TypeFilter({ selectedType, onSelect }: TypeFilterProps) {
 
   return (
     <TwView className="flex-row items-center justify-between">
-      <ThemedText className="text-[10px] font-black tracking-widest text-textSecondary uppercase">
+      <ThemedText className="text-[10px] font-black tracking-widest text-text uppercase">
         {t('messages.categoryLabel')}
       </ThemedText>
       <TwView className="flex-row gap-2">
@@ -195,7 +204,7 @@ function FilterChip({
       className={`p-2 rounded-lg border ${
         selected
           ? 'bg-text border-text'
-          : 'bg-zinc-200/5 dark:bg-zinc-800/5 border-zinc-300/20 dark:border-zinc-700/20'
+          : 'bg-zinc-200/50 dark:bg-zinc-800/50 border-zinc-300/40 dark:border-zinc-700/40'
       } active:opacity-75`}
       testID={testID}
       accessibilityLabel={accessibilityLabel}
@@ -221,7 +230,7 @@ function FilterControls({
   onTypeChange,
 }: FilterControlsProps) {
   return (
-    <TwView className="bg-zinc-200/10 dark:bg-zinc-800/10 border border-zinc-300/10 dark:border-zinc-700/10 rounded-3xl p-4 gap-4 mb-6 backdrop-blur-md">
+    <TwView className="card-container-solid rounded-3xl p-4 gap-4 mb-6 backdrop-blur-md">
       <ProximityFilter activeTab={activeTab} onSelect={onTabChange} />
       <TypeFilter selectedType={selectedType} onSelect={onTypeChange} />
     </TwView>
@@ -239,6 +248,7 @@ interface MessageCardProps {
 
 function MessageCard({ item, experiences, location, index }: MessageCardProps) {
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
 
   const exp = experiences.find((e) => e.id === item.experienceId);
   const isGeneral = item.experienceId === 'general-feedback';
@@ -267,7 +277,8 @@ function MessageCard({ item, experiences, location, index }: MessageCardProps) {
     <TwAnimatedView
       entering={FadeInUp.delay(index * 50).duration(300)}
       key={item.id}
-      className="bg-zinc-200/20 dark:bg-zinc-800/20 border border-zinc-300/20 dark:border-zinc-700/20 rounded-2xl p-5 gap-3"
+      className="border border-zinc-300/10 dark:border-zinc-700/10 rounded-2xl p-5 gap-3"
+      style={{ backgroundColor: colors[CARD_BG_COLOR_KEYS[format]] + 'CC' }}
       testID={`message-card-${item.id}`}
     >
       <TwView className="flex-row items-center justify-between pb-1">
@@ -277,18 +288,24 @@ function MessageCard({ item, experiences, location, index }: MessageCardProps) {
             android={iconConfig.android}
             web={iconConfig.web}
             size={13}
-            tintColor="#888"
+            tintColor={colors.homeCardText}
           />
-          <ThemedText className="text-xs text-textSecondary font-semibold truncate flex-1">
+          <ThemedText
+            className="text-xs font-semibold truncate flex-1"
+            style={{ color: colors.homeCardText }}
+          >
             {title}
           </ThemedText>
         </TwView>
-        <ThemedText className="text-[10px] text-textSecondary">
+        <ThemedText className="text-[10px]" style={{ color: colors.homeCardSubtext }}>
           {new Date(item.createdAt).toLocaleDateString()}
         </ThemedText>
       </TwView>
 
-      <ThemedText className="text-base text-text italic">{`"${item.message}"`}</ThemedText>
+      <ThemedText
+        className="text-base italic"
+        style={{ color: colors.homeCardText }}
+      >{`"${item.message}"`}</ThemedText>
 
       {(item.isPending || !!distanceBadgeText) && (
         <TwView className="flex-row gap-1.5 pt-1.5 border-t border-zinc-300/10 dark:border-zinc-700/10">

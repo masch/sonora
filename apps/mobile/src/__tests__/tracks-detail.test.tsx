@@ -2,8 +2,9 @@ import { render, waitFor } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
 import TrackDetailScreen from '@/app/tracks/[id]';
+import { type Experience } from '@/data/experiences';
 
-const mockExperiences = [
+const mockExperiences: Experience[] = [
   {
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     slug: 'umepay-bosque',
@@ -44,15 +45,16 @@ jest.mock('@/data/experiences', () => ({
   fetchExperiences: jest.fn(() => Promise.resolve(mockExperiences)),
 }));
 
+const mockGeofence = {
+  isNearStart: true,
+  gpsAccuracy: null as number | null,
+  gpsStatus: 'initializing',
+  distanceMeters: null as number | null,
+  requiredRadiusMeters: 50,
+  errorMsg: null as string | null,
+};
 jest.mock('@/hooks/use-offline-geofence', () => ({
-  useOfflineGeofence: () => ({
-    isNearStart: true,
-    gpsAccuracy: null,
-    gpsStatus: 'initializing',
-    distanceMeters: null,
-    requiredRadiusMeters: 50,
-    errorMsg: null,
-  }),
+  useOfflineGeofence: () => mockGeofence,
 }));
 
 jest.mock('@/hooks/use-track-download', () => ({
@@ -168,5 +170,17 @@ describe('TrackDetailScreen', () => {
     await waitFor(() => {
       expect(getByText('Track not found')).toBeTruthy();
     });
+  });
+
+  it('blocks playback if geofence is strict (bypassable false) and user is far', async () => {
+    mockExperiences[0].geofenceBypassable = false;
+    mockGeofence.isNearStart = false;
+    const { getByTestId } = render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('geofence-error-msg')).toBeTruthy();
+    });
+    // Restore
+    mockGeofence.isNearStart = true;
+    mockExperiences[0].geofenceBypassable = undefined;
   });
 });

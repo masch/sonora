@@ -67,6 +67,13 @@ export const en = {
     errors: {
       mustBeOnSite: 'You must be at the starting point to begin the trip.',
     },
+    warnings: {
+      locationAlertTitle: 'Location Warning',
+      locationAlertMessage:
+        'You are not near the starting location. Playing now will bypass this location check. Do you wish to continue?',
+      cancel: 'Cancel',
+      continue: 'Continue',
+    },
     detail: {
       registry: 'Registry',
       location: 'Location',

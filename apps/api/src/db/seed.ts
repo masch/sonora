@@ -46,6 +46,7 @@ const trips = [
     priceLabel: '15 mil $',
     imageKey: 'trips-deriva-centro-cover',
     isDownloadable: true,
+    geofenceBypassable: true,
   },
 ] as const;
 
@@ -58,12 +59,13 @@ const tracks = [
     format: 'track',
     themeKey: 'community',
     audioUrl: 'experiences/tracks-texto-maga.mp3',
-    durationSeconds: 425,
+    durationSeconds: 232,
     latitude: -32.211015,
     longitude: -64.73809012343702,
     priceLabel: 'FREE',
     imageKey: 'tracks-texto-maga-cover',
     isDownloadable: false,
+    geofenceBypassable: false,
   },
   {
     id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d',
@@ -73,11 +75,12 @@ const tracks = [
     format: 'track',
     themeKey: 'birds',
     audioUrl: 'experiences/tracks-pajaros-chiricotes.mp3',
-    durationSeconds: 344,
+    durationSeconds: 139,
     latitude: -32.2115,
     longitude: -64.7385,
     imageKey: 'tracks-pajaros-chiricotes-cover',
     isDownloadable: true,
+    geofenceBypassable: false,
   },
 ] as const;
 
@@ -94,6 +97,7 @@ const generalFeedback = {
   priceLabel: 'FREE',
   imageKey: 'bonus-track',
   isDownloadable: false,
+  geofenceBypassable: false,
 } as const;
 
 const defaultExperiences = [...trips, ...tracks, generalFeedback] as const;

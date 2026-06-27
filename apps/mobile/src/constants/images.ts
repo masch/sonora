@@ -6,7 +6,7 @@ import { type ImageSourcePropType } from 'react-native';
 export const TRACK_IMAGES: Record<TrackImageKey, ImageSourcePropType> = {
   'trips-deriva-centro-cover': require('@/assets/images/sonora/trips-deriva-centro-cover.jpg'),
   'tracks-texto-maga-cover': require('@/assets/images/sonora/tracks-texto-maga-cover.jpg'),
-  'tracks-pajaros-chiricotes-cover': require('@/assets/images/sonora/tracks-pajaros-chiricotes-cover.png'),
+  'tracks-pajaros-chiricotes-cover': require('@/assets/images/sonora/tracks-pajaros-chiricotes-cover.jpg'),
 };
 
 export const DEFAULT_TRACK_IMAGE: ImageSourcePropType = TRACK_IMAGES['trips-deriva-centro-cover'];

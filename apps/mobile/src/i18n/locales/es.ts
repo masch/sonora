@@ -67,6 +67,13 @@ export const es = {
     errors: {
       mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el recorrido.',
     },
+    warnings: {
+      locationAlertTitle: 'Alerta de Ubicación',
+      locationAlertMessage:
+        'No estás cerca del punto de inicio del recorrido. Vas a saltear la validación de ubicación. ¿Querés continuar?',
+      cancel: 'Cancelar',
+      continue: 'Continuar',
+    },
     detail: {
       registry: 'Registro',
       location: 'Ubicación',

@@ -43,5 +43,6 @@ export interface Experience {
   priceLabel?: string | null;
   imageKey: TrackImageKey;
   isDownloadable: boolean;
+  geofenceBypassable?: boolean;
   waypoints?: Waypoint[];
 }

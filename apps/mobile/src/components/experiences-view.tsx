@@ -22,6 +22,15 @@ import { logger } from '@/utils/logger';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
+const CARD_BG_COLOR_KEYS: Record<
+  ExperienceFormat,
+  'homeExploreRoutesBg' | 'homeExploreTracksBg' | 'homeLocalMessagesBg'
+> = {
+  trip: 'homeExploreRoutesBg',
+  track: 'homeExploreTracksBg',
+  'general-feedback': 'homeLocalMessagesBg',
+};
+
 export default function ExperiencesScreen({ format }: { format?: ExperienceFormat }) {
   const params = useLocalSearchParams<{ format?: string }>();
   const lockedFormat = format || params.format;
@@ -299,7 +308,10 @@ function ExperiencesContent({
               onPress={() =>
                 router.push(`/tracks/${exp.id}?title=${encodeURIComponent(exp.title)}`)
               }
-              className="flex-row items-center gap-4 active:opacity-75"
+              className="flex-row items-center gap-4 px-5 py-4 rounded-[24px] active:opacity-75"
+              style={{
+                backgroundColor: colors[CARD_BG_COLOR_KEYS[exp.format]] + 'CC',
+              }}
               testID={`track-row-${exp.slug}`}
               accessibilityLabel={t('experiences.rowAccessibilityLabel', {
                 title: exp.title,
@@ -316,13 +328,22 @@ function ExperiencesContent({
               />
 
               <TwView className="flex-1 justify-center">
-                <ThemedText className="text-sm font-bold text-text leading-tight mb-0.5">
+                <ThemedText
+                  className="text-sm font-bold leading-tight mb-0.5"
+                  style={{ color: colors.homeCardText }}
+                >
                   {exp.title}
                 </ThemedText>
-                <ThemedText className="text-xs text-textSecondary leading-normal mb-0.5">
+                <ThemedText
+                  className="text-xs leading-normal mb-0.5"
+                  style={{ color: colors.homeCardSubtext }}
+                >
                   {exp.description}
                 </ThemedText>
-                <ThemedText className="text-xs text-textSecondary font-semibold leading-none">
+                <ThemedText
+                  className="text-xs font-semibold leading-none"
+                  style={{ color: colors.homeCardSubtext }}
+                >
                   {Math.round(exp.durationSeconds / 60)} {t('experiences.minAbbr')}
                 </ThemedText>
               </TwView>
@@ -337,7 +358,7 @@ function ExperiencesContent({
                   android="more_vert"
                   web="more_vert"
                   size={20}
-                  tintColor={colors.text}
+                  tintColor={colors.homeCardText}
                 />
               </TwPressable>
             </TwPressable>

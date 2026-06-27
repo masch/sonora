@@ -67,6 +67,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
   });
 
   it('returns store status when localAudioUri is set', () => {
+    useAudioPlayerStore.setState({ currentUri: 'file://audio.mp3' });
     useAudioPlayerStore.getState()._syncStatus({
       status: 'playing',
       positionMs: 15000,

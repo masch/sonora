@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
@@ -128,7 +128,45 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
-  const isPlaybackBlocked = !geofence.isNearStart && !APP_CONFIG.bypassGeofence;
+  const isBypassable = track.geofenceBypassable === true;
+  const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !APP_CONFIG.bypassGeofence;
+  const showBypassWarning = !geofence.isNearStart && isBypassable && !APP_CONFIG.bypassGeofence;
+
+  const triggerBypassAlert = (onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      const accepted = window.confirm(
+        `${t('experiences.warnings.locationAlertTitle' as TranslationKeys)}\n\n${t(
+          'experiences.warnings.locationAlertMessage' as TranslationKeys,
+        )}`,
+      );
+      if (accepted) onConfirm();
+    } else {
+      Alert.alert(
+        t('experiences.warnings.locationAlertTitle' as TranslationKeys),
+        t('experiences.warnings.locationAlertMessage' as TranslationKeys),
+        [
+          { text: t('experiences.warnings.cancel' as TranslationKeys), style: 'cancel' },
+          { text: t('experiences.warnings.continue' as TranslationKeys), onPress: onConfirm },
+        ],
+      );
+    }
+  };
+
+  const handlePlay = () => {
+    if (showBypassWarning) {
+      triggerBypassAlert(() => player.play());
+    } else {
+      player.play();
+    }
+  };
+
+  const handleDownload = () => {
+    if (showBypassWarning) {
+      triggerBypassAlert(() => handlePlayAndDownload());
+    } else {
+      handlePlayAndDownload();
+    }
+  };
 
   const innerView = (
     <TwView className="flex-1 bg-transparent">
@@ -234,14 +272,14 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
             positionMs={player.positionMs}
             durationMs={player.durationMs || track.durationSeconds * 1000}
             playerError={player.errorMsg}
-            onPlay={player.play}
+            onPlay={handlePlay}
             onPause={player.pause}
             onStop={player.stop}
             onRewind={() =>
               player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
             }
             onReset={() => player.seekTo(0)}
-            onDownload={handlePlayAndDownload}
+            onDownload={handleDownload}
             onCancelDownload={download.deleteTrackLocal}
             disabled={!track.audioUrl || isPlaybackBlocked}
           />
