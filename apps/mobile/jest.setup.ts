@@ -54,3 +54,22 @@ jest.mock('react-native-safe-area-context', () => {
     useSafeAreaInsets: () => insetValues,
   };
 });
+
+// Mock expo-router globally
+jest.mock('expo-router', () => {
+  const { useEffect } = require('react');
+  return {
+    useFocusEffect: (cb: () => void) => {
+      useEffect(() => {
+        cb();
+      }, []);
+    },
+    useLocalSearchParams: () => ({}),
+    useRouter: () => ({
+      push: jest.fn(),
+    }),
+    Stack: {
+      Screen: () => null,
+    },
+  };
+});

@@ -39,7 +39,7 @@ const trips = [
     description: 'Deriva por el centro, 3 secciones, 600mts',
     format: 'trip',
     themeKey: 'landscapes',
-    audioUrl: 'experiences/umepay-recorrido-bosque.mp3',
+    audioUrl: 'experiences/trips-deriva-centro.mp3',
     durationSeconds: 2065,
     latitude: -32.211913,
     longitude: -64.73809012343702,
