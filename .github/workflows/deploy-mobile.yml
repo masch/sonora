@@ -68,27 +68,12 @@ jobs:
         run: |
           mkdir -p apps/mobile
           echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
-      - name: Debug — verify SA key file
-        run: |
-          echo "FILE_SIZE=$(wc -c < apps/mobile/firebase-sa-key.json)"
-          echo "FILE_EXISTS=$(test -f apps/mobile/firebase-sa-key.json && echo YES || echo NO)"
       - name: Distribute Android APK to Firebase
         env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          # Debug: verify SA key file
-          echo "DBG:FILE_SIZE=$(wc -c < apps/mobile/firebase-sa-key.json 2>/dev/null || echo 0)"
-          echo "DBG:FILE_EXISTS=$(test -f apps/mobile/firebase-sa-key.json && echo YES || echo NO)"
-          # Debug: check if Makefile's conditional exports GOOGLE_APPLICATION_CREDENTIALS
-          make -f - check-gac <<'MAKEFILE'
-          FIREBASE_SA_KEY_PATH = apps/mobile/firebase-sa-key.json
-          ifneq ($(wildcard $(FIREBASE_SA_KEY_PATH)),)
-          export GOOGLE_APPLICATION_CREDENTIALS := $(abspath $(FIREBASE_SA_KEY_PATH))
-          endif
-          check-gac:
-          	@echo "DBG:GAC_IN_MAKE=$${GOOGLE_APPLICATION_CREDENTIALS:-NOT_SET}"
-          MAKEFILE
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
           make firebase-distribute-all
