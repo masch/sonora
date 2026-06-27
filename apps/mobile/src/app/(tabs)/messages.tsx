@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer } from 'react';
 import { DeviceEventEmitter } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
@@ -388,6 +389,10 @@ export default function MessagesScreen() {
   );
   const [form, dispatch] = useReducer(formReducer, initialFormState);
   const { feed, experiences, loading, error, refetch } = useFeedbackFeed();
+
+  useFocusEffect(() => {
+    refetch();
+  });
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('feedback-queue-synced', () => {

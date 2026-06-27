@@ -58,22 +58,27 @@ jobs:
           path: apps/mobile/build-*.apk
           if-no-files-found: error
           retention-days: 7
-      # Match local setup: write service account key to the path the Makefile
-      # auto-detects (apps/mobile/firebase-sa-key.json). The Makefile then
-      # exports GOOGLE_APPLICATION_CREDENTIALS automatically.
-      # Using env var to avoid shell-interpretation issues with echo + JSON.
-      - name: Authenticate to Firebase
-        env:
-          FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          mkdir -p apps/mobile
-          echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
+      # Write service account key and distribute via Node.js.
+      # Using node directly instead of bun because firebase-tools' internal
+      # google-auth-library doesn't reliably read GOOGLE_APPLICATION_CREDENTIALS
+      # under bun's runtime in CI (confirmed across multiple attempts).
       - name: Distribute Android APK to Firebase
         env:
+          FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          # Write SA key
+          mkdir -p apps/mobile
+          echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
+          # Find the newest APK
+          APK_PATH=$(ls -t apps/mobile/build-*.apk 2>/dev/null | head -1)
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
-          make firebase-distribute-all
+          # Run firebase with Node.js, NOT bun (google-auth-library needs Node APIs)
+          node apps/mobile/node_modules/.bin/firebase \
+            appdistribution:distribute "$APK_PATH" \
+            --app "1:967054219260:android:aad883fdf7059bec060479" \
+            --groups "dev-team,sonora-team" \
+            --release-notes "$FIREBASE_RELEASE_NOTES"
