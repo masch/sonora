@@ -14,14 +14,15 @@
 | Tasks incomplete                   | 0     |
 
 **Task breakdown**:
-| # | Task | Status | Evidence |
-|---|------|--------|----------|
-| 1.1 | Convert `deriva-centro.png` JPEG→PNG | ✅ Complete | `file` reports PNG image data |
-| 1.2 | Convert `bonus-track.png` JPEG→PNG | ✅ Complete | `file` reports PNG image data |
-| 2.1 | `file` confirms both report PNG | ✅ Complete | Verified below |
-| 2.2 | `make validate` passes | ✅ Complete | 24 suites, 159 tests, all green |
+
+| #   | Task                                   | Status      | Evidence                                      |
+| --- | -------------------------------------- | ----------- | --------------------------------------------- |
+| 1.1 | Convert `deriva-centro.png` JPEG→PNG   | ✅ Complete | `file` reports PNG image data                 |
+| 1.2 | Convert `bonus-track.png` JPEG→PNG     | ✅ Complete | `file` reports PNG image data                 |
+| 2.1 | `file` confirms both report PNG        | ✅ Complete | Verified below                                |
+| 2.2 | `make validate` passes                 | ✅ Complete | 24 suites, 159 tests, all green               |
 | 2.3 | `eas build --platform android --local` | ✅ Complete | User-verified (reported all 6 tasks complete) |
-| 2.4 | Visual side-by-side comparison | ✅ Complete | User-verified (reported all 6 tasks complete) |
+| 2.4 | Visual side-by-side comparison         | ✅ Complete | User-verified (reported all 6 tasks complete) |
 
 ## Build & Tests Execution
 

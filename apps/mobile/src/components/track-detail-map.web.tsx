@@ -166,8 +166,7 @@ export default function TrackDetailMap({
   useLayoutEffect(() => {
     if (!mapRef.current) return;
     const leaflet = (window as unknown as Record<string, unknown>).L as
-      | typeof import('leaflet')
-      | undefined;
+      typeof import('leaflet') | undefined;
     if (!leaflet) return;
 
     if (userLatitude !== undefined && userLongitude !== undefined) {
