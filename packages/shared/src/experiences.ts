@@ -42,7 +42,6 @@ export interface Experience {
   recordedAt?: string | null;
   priceLabel?: string | null;
   imageKey: TrackImageKey;
-  isDownloadable: boolean;
   geofenceBypassable?: boolean;
   waypoints?: Waypoint[];
 }

@@ -45,7 +45,6 @@ const trips = [
     longitude: -64.73809012343702,
     priceLabel: '15 mil $',
     imageKey: 'trips-deriva-centro-cover',
-    isDownloadable: true,
     geofenceBypassable: true,
   },
 ] as const;
@@ -64,7 +63,6 @@ const tracks = [
     longitude: -64.73809012343702,
     priceLabel: 'FREE',
     imageKey: 'tracks-texto-maga-cover',
-    isDownloadable: false,
     geofenceBypassable: false,
   },
   {
@@ -79,7 +77,6 @@ const tracks = [
     latitude: -32.2115,
     longitude: -64.7385,
     imageKey: 'tracks-pajaros-chiricotes-cover',
-    isDownloadable: true,
     geofenceBypassable: false,
   },
 ] as const;
@@ -96,7 +93,6 @@ const generalFeedback = {
   longitude: 0,
   priceLabel: 'FREE',
   imageKey: 'bonus-track',
-  isDownloadable: false,
   geofenceBypassable: false,
 } as const;
 

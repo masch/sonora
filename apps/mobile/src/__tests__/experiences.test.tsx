@@ -24,7 +24,6 @@ const mockExperiences = [
     latitude: -32.2115,
     longitude: -64.7385,
     imageKey: 'tacuarita-azul',
-    isDownloadable: true,
   },
   {
     id: '2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d',
@@ -38,7 +37,6 @@ const mockExperiences = [
     latitude: -32.212,
     longitude: -64.739,
     imageKey: 'el-arroyo',
-    isDownloadable: true,
   },
 ];
 

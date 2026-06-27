@@ -39,7 +39,6 @@ export const experiences = sonoraSchema.table('experiences', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }),
   priceLabel: text('price_label'),
   imageKey: text('image_key').notNull(),
-  isDownloadable: boolean('is_downloadable').default(true).notNull(),
   geofenceBypassable: boolean('geofence_bypassable').default(false).notNull(),
 });
 
