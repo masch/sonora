@@ -66,7 +66,6 @@ jobs:
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
-          APP_VERSION_CODE: ${{ github.run_number }}
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           # Write SA key
@@ -76,8 +75,8 @@ jobs:
           APK_PATH=$(ls -t apps/mobile/build-*.apk 2>/dev/null | head -1)
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
-          # Run firebase with Node.js, NOT bun (google-auth-library needs Node APIs)
-          node apps/mobile/node_modules/.bin/firebase \
+          # Run firebase with Node.js via npx, NOT bun (google-auth-library needs Node APIs)
+          npx --prefix apps/mobile firebase \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967054219260:android:aad883fdf7059bec060479" \
             --groups "dev-team,sonora-team" \
