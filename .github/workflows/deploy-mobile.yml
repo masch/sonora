@@ -106,9 +106,12 @@ jobs:
 
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
-          # Run firebase with Node.js via npx, NOT bun (google-auth-library needs Node APIs)
-          npx --prefix apps/mobile firebase \
+          # Run firebase with Node.js directly from the installed node_modules to guarantee version,
+          # and include --non-interactive and --debug for CI troubleshooting
+          node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967054219260:android:aad883fdf7059bec060479" \
             --groups "dev-team,sonora-team" \
-            --release-notes "$FIREBASE_RELEASE_NOTES"
+            --release-notes "$FIREBASE_RELEASE_NOTES" \
+            --non-interactive \
+            --debug
