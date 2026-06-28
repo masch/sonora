@@ -1,4 +1,4 @@
-import { fetchExperiences } from '@/data/experiences';
+import { fetchExperiences, fetchThemes } from '@/data/experiences';
 import * as storage from '@/storage/feedback-storage';
 
 // Mock storage
@@ -116,5 +116,89 @@ describe('fetchExperiences data service', () => {
     (storage.getItem as jest.Mock).mockRejectedValueOnce(new Error('Database corrupted'));
 
     await expect(fetchExperiences()).rejects.toThrow('Network error');
+  });
+
+  describe('fetchThemes data service', () => {
+    const mockServerThemes = [
+      { key: 'theme-1', labelKey: 'Theme 1', order: 1 },
+      { key: 'theme-2', labelKey: 'Theme 2', order: 2 },
+    ];
+
+    it('should fetch themes from the API and cache them locally when online', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockServerThemes,
+      });
+
+      const result = await fetchThemes();
+
+      expect(result).toEqual(mockServerThemes);
+      expect(storage.setItem).toHaveBeenCalledWith(
+        'themes_list_cache',
+        JSON.stringify(mockServerThemes),
+      );
+    });
+
+    it('should fallback to local cache when API fetch fails', async () => {
+      const cachedThemes = [{ key: 'cached-theme', labelKey: 'Cached Theme', order: 1 }];
+      mockStore['themes_list_cache'] = JSON.stringify(cachedThemes);
+
+      mockFetch.mockRejectedValueOnce(new TypeError('Network request failed'));
+
+      const result = await fetchThemes();
+
+      expect(result).toEqual(cachedThemes);
+      expect(storage.getItem).toHaveBeenCalledWith('themes_list_cache');
+    });
+
+    it('should fallback to local cache when API returns a non-OK HTTP status (e.g. 500)', async () => {
+      const cachedThemes = [{ key: 'cached-theme', labelKey: 'Cached Theme', order: 2 }];
+      mockStore['themes_list_cache'] = JSON.stringify(cachedThemes);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      const result = await fetchThemes();
+      expect(result).toEqual(cachedThemes);
+    });
+
+    it('should propagate the fetch error if both API fails and cache is empty', async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError('Network request failed'));
+
+      await expect(fetchThemes()).rejects.toThrow('Network request failed');
+    });
+
+    it('should propagate the HTTP error if API returns non-OK and cache is empty', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+      });
+
+      await expect(fetchThemes()).rejects.toThrow('Failed to fetch themes');
+    });
+
+    it('should still return fetched themes even if writing to storage fails', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockServerThemes,
+      });
+
+      // Make storage setItem fail
+      (storage.setItem as jest.Mock).mockRejectedValueOnce(new Error('Disk Full'));
+
+      const result = await fetchThemes();
+      expect(result).toEqual(mockServerThemes);
+    });
+
+    it('should propagate original API error if reading from cache throws an error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      // Make storage getItem fail
+      (storage.getItem as jest.Mock).mockRejectedValueOnce(new Error('Database corrupted'));
+
+      await expect(fetchThemes()).rejects.toThrow('Network error');
+    });
   });
 });

@@ -30,15 +30,40 @@ export interface LocalTrackMetadata {
   imageKey: string;
 }
 
-export async function fetchThemes(signal?: AbortSignal): Promise<Theme[]> {
-  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/themes`, { signal });
-  if (!response.ok) {
-    throw new Error('Failed to fetch themes');
-  }
-  return response.json();
-}
-
+const THEMES_CACHE_KEY = 'themes_list_cache';
 const EXPERIENCES_CACHE_KEY = 'experiences_list_cache';
+
+export async function fetchThemes(signal?: AbortSignal): Promise<Theme[]> {
+  try {
+    const response = await fetch(`${APP_CONFIG.apiBaseUrl}/themes`, { signal });
+    if (!response.ok) {
+      throw new Error('Failed to fetch themes');
+    }
+    const data: Theme[] = await response.json();
+
+    // Asynchronously save to local cache
+    storage.setItem(THEMES_CACHE_KEY, JSON.stringify(data)).catch((err) => {
+      logger.warn(
+        `Failed to write themes cache: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+
+    return data;
+  } catch (error) {
+    logger.info('[Offline Mode] Fetch failed, loading cached themes...');
+    try {
+      const cached = await storage.getItem(THEMES_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (cacheError) {
+      logger.error(
+        `Failed to read themes cache: ${cacheError instanceof Error ? cacheError.message : String(cacheError)}`,
+      );
+    }
+    throw error;
+  }
+}
 
 export async function fetchExperiences(signal?: AbortSignal): Promise<Experience[]> {
   try {
