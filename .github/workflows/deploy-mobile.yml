@@ -93,19 +93,9 @@ jobs:
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           APK_PATH: ${{ needs.build.outputs.apk_path }}
         run: |
-          # Write SA key safely (handle both raw JSON and base64 encoded secrets)
+          # Write service account key
           mkdir -p apps/mobile
-          if [[ "$FIREBASE_SA_KEY" =~ ^[[:space:]]*\{ ]]; then
-            echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
-          else
-            echo "$FIREBASE_SA_KEY" | base64 -d > apps/mobile/firebase-sa-key.json
-          fi
-
-          # Verify key file is valid JSON
-          if ! node -e "require('fs').readFileSync('apps/mobile/firebase-sa-key.json', 'utf8'); JSON.parse(require('fs').readFileSync('apps/mobile/firebase-sa-key.json', 'utf8'))" 2>/dev/null; then
-            echo "ERROR: firebase-sa-key.json is not valid JSON!"
-            exit 1
-          fi
+          echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
 
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
