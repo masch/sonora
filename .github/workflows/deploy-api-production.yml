@@ -5,14 +5,8 @@ env:
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'apps/api/**'
-      - 'packages/shared/**'
-      - '.github/workflows/**'
-      - 'Makefile'
-    branches:
-      - main
+  schedule:
+    - cron: '0 0 */3 * *'
 
 jobs:
   deploy-production:
