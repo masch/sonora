@@ -53,7 +53,9 @@ export async function fetchExperiences(signal?: AbortSignal): Promise<Experience
 
     // Asynchronously save to local cache
     storage.setItem(EXPERIENCES_CACHE_KEY, JSON.stringify(filtered)).catch((err) => {
-      logger.warn(`Failed to write experiences cache: ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn(
+        `Failed to write experiences cache: ${err instanceof Error ? err.message : String(err)}`,
+      );
     });
 
     return filtered;
@@ -65,7 +67,9 @@ export async function fetchExperiences(signal?: AbortSignal): Promise<Experience
         return JSON.parse(cached);
       }
     } catch (cacheError) {
-      logger.error(`Failed to read experiences cache: ${cacheError instanceof Error ? cacheError.message : String(cacheError)}`);
+      logger.error(
+        `Failed to read experiences cache: ${cacheError instanceof Error ? cacheError.message : String(cacheError)}`,
+      );
     }
     throw error;
   }
