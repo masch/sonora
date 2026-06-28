@@ -14,11 +14,8 @@ if ! git diff --quiet "$_f" 2>/dev/null; then
 fi
 unset _f
 
-# 1. Format code
-make format
-
-# 2. Stage the formatted files so gga reviews the final version
-git add -u
+# 1. Check code formatting
+make format-check
 
 # 3. Run all validation steps (collect all failures; run API if files changed)
 FAILED_TARGETS=""
