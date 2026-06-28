@@ -5,6 +5,7 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
 import type { DownloadEntry as StoreDownloadEntry } from '@/store/download-manager-store';
 import { logger } from '@/utils/logger';
+import { useNetworkStatus } from '@/hooks/use-network-status';
 
 export type DownloadStatus = 'idle' | 'downloading' | 'completed' | 'error';
 
@@ -23,6 +24,7 @@ const getTargetUri = (trackId: string | null) => {
 interface LocalCache {
   trackId: string;
   localUri: string;
+  etag?: string | null;
 }
 
 /**
@@ -92,6 +94,7 @@ export function useTrackDownload(
   _estimatedSizeBytes?: number,
 ): TrackDownloadState & { startDownload: () => void; deleteTrackLocal: () => Promise<void> } {
   const { t } = useAppTranslation();
+  const { isOnline } = useNetworkStatus();
 
   // Subscribe to the store entry for this specific track
   const storeEntry = useDownloadManagerStore((s) => (trackId ? s.downloads[trackId] : undefined));
@@ -99,56 +102,144 @@ export function useTrackDownload(
   // Cached local URI from filesystem check — survives across renders
   const [localCache, setLocalCache] = useState<LocalCache | null>(null);
 
-  // One-time check for pre-existing local file
+  // Check for pre-existing local file and validate its ETag
   useEffect(() => {
     if (!trackId) return;
+    const currentTrackId = trackId;
 
     let cancelled = false;
 
-    if (Platform.OS === 'web') {
-      if (typeof caches === 'undefined') return;
-      async function checkWebCache() {
-        try {
-          const cache = await caches.open('sonora-audio-cache');
-          const cacheKey = `https://sonora.local/tracks/${trackId}`;
-          const cachedResponse = await cache.match(cacheKey);
-          if (cachedResponse && !cancelled) {
-            const blob = await cachedResponse.blob();
-            const localUri = URL.createObjectURL(blob);
-            setLocalCache({ trackId: trackId as string, localUri });
+    async function checkAndValidateCache() {
+      let cachedEtag: string | null = null;
+      let localUri: string | null = null;
+
+      if (Platform.OS === 'web') {
+        if (typeof caches !== 'undefined') {
+          try {
+            const cache = await caches.open('sonora-audio-cache');
+            const cacheKey = `https://sonora.local/tracks/${currentTrackId}`;
+            const cachedResponse = await cache.match(cacheKey);
+            if (cachedResponse) {
+              const blob = await cachedResponse.blob();
+              localUri = URL.createObjectURL(blob);
+              cachedEtag =
+                cachedResponse.headers.get('x-audio-etag') || cachedResponse.headers.get('etag');
+            }
+          } catch (err) {
+            logger.error('Error validating web cache:', err);
           }
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : 'Error validating web cache';
-          logger.error(msg);
+        }
+      } else {
+        const targetUri = getTargetUri(currentTrackId);
+        if (targetUri) {
+          try {
+            const info = await FileSystem.getInfoAsync(targetUri);
+            if (info.exists) {
+              localUri = info.uri;
+              const metadataUri = `${FileSystem.documentDirectory}tracks/${currentTrackId}/metadata.json`;
+              const metaInfo = await FileSystem.getInfoAsync(metadataUri);
+              if (metaInfo.exists) {
+                const content = await FileSystem.readAsStringAsync(metadataUri);
+                const meta = JSON.parse(content);
+                cachedEtag = meta.etag;
+              }
+            }
+          } catch (err) {
+            logger.error('Error validating local cache:', err);
+          }
         }
       }
-      checkWebCache();
-      return () => {
-        cancelled = true;
-      };
-    }
 
-    const targetUri = getTargetUri(trackId);
-    if (!targetUri) return;
+      if (cancelled) return;
 
-    async function checkLocalFile() {
-      try {
-        const info = await FileSystem.getInfoAsync(targetUri as string);
-        if (!cancelled && info.exists) {
-          setLocalCache({ trackId: trackId as string, localUri: info.uri });
+      if (localUri) {
+        // Set the cache initially so it is playable immediately
+        setLocalCache({ trackId: currentTrackId, localUri, etag: cachedEtag });
+
+        // If online and remoteAudioUrl is available, perform background verification of the ETag
+        if (isOnline && remoteAudioUrl) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            // Add a cache-buster query parameter to bypass intermediate caches
+            const separator = remoteAudioUrl.includes('?') ? '&' : '?';
+            const cacheBustUrl = `${remoteAudioUrl}${separator}_cb=${Date.now()}`;
+
+            // Fetch only the headers using GET with Range: bytes=0-0 to retrieve R2 ETag
+            const response = await fetch(cacheBustUrl, {
+              method: 'GET',
+              headers: {
+                Range: 'bytes=0-0',
+                'Cache-Control': 'no-cache',
+                Pragma: 'no-cache',
+              },
+              cache: 'no-store',
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok || response.status === 206) {
+              const serverEtag =
+                response.headers.get('x-audio-etag') || response.headers.get('etag');
+
+              if (serverEtag && serverEtag !== cachedEtag) {
+                logger.warn(
+                  `[CACHE_INVALIDATION] Audio ETag mismatch for track ${currentTrackId}. Local: ${cachedEtag}, Server: ${serverEtag}. Invalidating cache...`,
+                );
+
+                // Delete local cache files due to ETag mismatch
+                if (Platform.OS === 'web') {
+                  if (typeof caches !== 'undefined') {
+                    const cache = await caches.open('sonora-audio-cache');
+                    const cacheKey = `https://sonora.local/tracks/${currentTrackId}`;
+                    await cache.delete(cacheKey);
+                  }
+                } else {
+                  const targetUri = getTargetUri(currentTrackId);
+                  if (targetUri) {
+                    const info = await FileSystem.getInfoAsync(targetUri);
+                    if (info.exists) {
+                      await FileSystem.deleteAsync(targetUri);
+                    }
+                    const metadataUri = `${FileSystem.documentDirectory}tracks/${currentTrackId}/metadata.json`;
+                    const metaInfo = await FileSystem.getInfoAsync(metadataUri);
+                    if (metaInfo.exists) {
+                      await FileSystem.deleteAsync(metadataUri);
+                    }
+                  }
+                }
+
+                // Reset Zustand store to idle so derived state updates immediately
+                useDownloadManagerStore.getState().cancel(currentTrackId);
+
+                if (!cancelled) {
+                  setLocalCache(null);
+                }
+              }
+            } else {
+              logger.warn(
+                `[useTrackDownload] Server responded with status ${response.status} when checking ETag`,
+              );
+            }
+          } catch (err) {
+            logger.warn(
+              `Failed to verify server ETag for track ${currentTrackId} (network or timeout):`,
+              err,
+            );
+          }
         }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Error validating local cache';
-        logger.error(msg);
+      } else {
+        setLocalCache(null);
       }
     }
 
-    checkLocalFile();
+    checkAndValidateCache();
 
     return () => {
       cancelled = true;
     };
-  }, [trackId, remoteAudioUrl]);
+  }, [trackId, remoteAudioUrl, isOnline]);
 
   // Derive state from store entry + cached local file
   const state = !trackId
@@ -165,6 +256,8 @@ export function useTrackDownload(
   }
 
   async function deleteTrackLocal() {
+    if (!trackId) return;
+
     if (Platform.OS === 'web') {
       setLocalCache(null);
       if (typeof caches !== 'undefined') {
@@ -177,6 +270,7 @@ export function useTrackDownload(
           logger.error(msg);
         }
       }
+      useDownloadManagerStore.getState().cancel(trackId);
       return;
     }
 
@@ -193,6 +287,7 @@ export function useTrackDownload(
       const msg = err instanceof Error ? err.message : t('errors.deleteFailed');
       logger.error(msg);
     }
+    useDownloadManagerStore.getState().cancel(trackId);
   }
 
   return {

@@ -3,13 +3,26 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTrackDownload } from '../use-track-download';
 
 // ---------------------------------------------------------------------------
+// Mock network status and fetch
+// ---------------------------------------------------------------------------
+let mockIsOnline = true;
+jest.mock('@/hooks/use-network-status', () => ({
+  useNetworkStatus: () => ({ isOnline: mockIsOnline }),
+}));
+
+const mockFetch = jest.fn();
+Object.assign(globalThis, { fetch: mockFetch });
+
+// ---------------------------------------------------------------------------
 // Mock expo-file-system — the hook still needs it for local file checks and
 // deleteTrackLocal, but download orchestration is delegated to the store.
 // ---------------------------------------------------------------------------
+let mockMetadataContent = '{"etag":"server-etag-123","url":"https://mock.com/audio.mp3"}';
 jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///mock-docs/',
   getInfoAsync: jest.fn(),
   deleteAsync: jest.fn(),
+  readAsStringAsync: jest.fn(() => Promise.resolve(mockMetadataContent)),
 }));
 
 // ---------------------------------------------------------------------------
@@ -27,6 +40,7 @@ let mockStore: {
     | undefined
   >;
   enqueue: jest.Mock;
+  cancel: jest.Mock;
 };
 
 jest.mock('@/store/download-manager-store', () => {
@@ -43,7 +57,22 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStore = { downloads: {}, enqueue: jest.fn() };
+    mockStore = {
+      downloads: {},
+      enqueue: jest.fn(),
+      cancel: jest.fn((id) => {
+        delete mockStore.downloads[id];
+      }),
+    };
+    mockIsOnline = true;
+    mockMetadataContent = '{"etag":"server-etag-123","url":"https://mock.com/audio.mp3"}';
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 206,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === 'etag' ? 'server-etag-123' : null),
+      },
+    });
   });
 
   it('should initialize with idle status when file does not exist locally', async () => {
@@ -213,5 +242,81 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
     );
     expect(result!.current.localAudioUri).toBeNull();
     expect(result!.current.status).toBe('idle');
+  });
+
+  it('should invalidate cache when server ETag does not match local ETag', async () => {
+    (FileSystem.getInfoAsync as jest.Mock).mockImplementation((path: string) => {
+      if (path.endsWith('audio.mp3')) {
+        return Promise.resolve({
+          exists: true,
+          uri: 'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
+        });
+      }
+      if (path.endsWith('metadata.json')) {
+        return Promise.resolve({
+          exists: true,
+          uri: 'file:///mock-docs/tracks/umepay-bosque/metadata.json',
+        });
+      }
+      return Promise.resolve({ exists: false });
+    });
+
+    mockMetadataContent = '{"etag":"old-etag-123","url":"https://mock.com/audio.mp3"}';
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 206,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === 'etag' ? 'new-server-etag-999' : null),
+      },
+    });
+
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
+    await act(async () => {
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      result = renderResult.result;
+      await Promise.resolve(); // checkAndValidateCache checkLocalFile
+      await Promise.resolve(); // fetch response microtasks
+      await Promise.resolve(); // deleteAsync and state update microtasks
+    });
+
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
+      'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
+    );
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
+      'file:///mock-docs/tracks/umepay-bosque/metadata.json',
+    );
+    expect(result!.current.status).toBe('idle');
+    expect(result!.current.localAudioUri).toBeNull();
+  });
+
+  it('should keep cache when offline even if ETag check cannot run', async () => {
+    (FileSystem.getInfoAsync as jest.Mock).mockImplementation((path: string) => {
+      if (path.endsWith('audio.mp3')) {
+        return Promise.resolve({
+          exists: true,
+          uri: 'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
+        });
+      }
+      if (path.endsWith('metadata.json')) {
+        return Promise.resolve({
+          exists: true,
+          uri: 'file:///mock-docs/tracks/umepay-bosque/metadata.json',
+        });
+      }
+      return Promise.resolve({ exists: false });
+    });
+
+    mockIsOnline = false;
+
+    let result: { readonly current: ReturnType<typeof useTrackDownload> };
+    await act(async () => {
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      result = renderResult.result;
+      await Promise.resolve();
+    });
+
+    expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+    expect(result!.current.status).toBe('completed');
+    expect(result!.current.localAudioUri).toBe('file:///mock-docs/tracks/umepay-bosque/audio.mp3');
   });
 });

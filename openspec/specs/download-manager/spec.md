@@ -80,8 +80,12 @@ Downloads SHALL be saved to `{FileSystem.documentDirectory}tracks/{trackId}/audi
 
 The system MUST ensure the parent directory exists before writing.
 
-#### Scenario: File saved to correct path
+### 4. Cache Invalidation and ETag Verification
 
-- GIVEN a download completes for "track-1"
-- WHEN the download promise resolves
-- THEN the file exists at `{documentDirectory}tracks/track-1/audio.mp3`
+The system MUST verify the integrity of the local cache against the server before playing or loading a track.
+
+The system MUST fetch headers from the server using a lightweight request (e.g. `Range: bytes=0-0` with cache-control headers) to retrieve the fresh `ETag` or `x-audio-etag` when the device is online.
+
+If the server ETag differs from the locally cached ETag (or if no local ETag exists but a server ETag is present), the system MUST invalidate the local cache by deleting the cached files and resetting the track download status to `idle`.
+
+The system MUST support a robust offline mode: if there is no internet connection or the ETag verification fails or times out (5-second threshold), the local cached version MUST be preserved and played without interruption.

@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { logger } from '@/utils/logger';
@@ -63,6 +63,24 @@ async function performFileDownload(
     throw new Error('Download failed to write file');
   }
 
+  // Save ETag to metadata file if available
+  let etag: string | undefined;
+  if (result.headers) {
+    const headersLower = Object.fromEntries(
+      Object.entries(result.headers).map(([k, v]) => [k.toLowerCase(), v]),
+    );
+    etag = headersLower['x-audio-etag'] || headersLower['etag'];
+  }
+
+  if (etag) {
+    try {
+      const metadataUri = `${parentDir}metadata.json`;
+      await FileSystem.writeAsStringAsync(metadataUri, JSON.stringify({ etag, url }));
+    } catch (err) {
+      logger.error('Failed to write metadata for track', trackId, err);
+    }
+  }
+
   return { localUri: result.uri };
 }
 
@@ -75,6 +93,8 @@ async function performWebDownload(
   if (!response.ok) {
     throw new Error(`Failed to fetch audio: ${response.statusText}`);
   }
+
+  const etag = response.headers.get('x-audio-etag') || response.headers.get('etag');
 
   const reader = response.body?.getReader();
   // Fallback if Cache Storage or body reader is unavailable
@@ -111,6 +131,8 @@ async function performWebDownload(
     headers: {
       'Content-Type': 'audio/mpeg',
       'Content-Length': blob.size.toString(),
+      ...(etag ? { ETag: etag } : {}),
+      ...(etag ? { 'x-audio-etag': etag } : {}),
     },
   });
   const cacheKey = `https://sonora.local/tracks/${trackId}`;

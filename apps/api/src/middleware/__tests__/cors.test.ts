@@ -204,6 +204,8 @@ describe('CORS behavior', () => {
       },
     });
     const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
-    expect(res.headers.get('access-control-expose-headers')).toBe('Content-Length,Content-Range');
+    expect(res.headers.get('access-control-expose-headers')).toBe(
+      'Content-Length,Content-Range,ETag,x-audio-etag',
+    );
   });
 });
