@@ -40,7 +40,7 @@ const trips = [
     format: 'trip',
     themeKey: 'landscapes',
     audioUrl: 'experiences/trips-deriva-centro.mp3',
-    durationSeconds: 2099,
+    durationSeconds: 2104,
     latitude: -32.211913,
     longitude: -64.73809012343702,
     priceLabel: '15 mil $',
