@@ -2,16 +2,7 @@ name: Deploy Mobile
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'Makefile'
+  workflow_call:
 
 permissions:
   contents: read
