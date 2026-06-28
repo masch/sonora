@@ -6,8 +6,6 @@ env:
 on:
   workflow_dispatch:
   workflow_call:
-  schedule:
-    - cron: '0 0 */3 * *'
 
 jobs:
   deploy-production:
