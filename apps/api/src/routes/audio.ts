@@ -138,6 +138,11 @@ audioRouter.get('/stream', async (c) => {
     c.res.headers.forEach((value, k) => headers.set(k, value));
     audioObject.writeHttpMetadata(headers);
 
+    const etag = audioObject.etag || headObject.etag;
+    if (etag) {
+      headers.set('x-audio-etag', etag);
+    }
+
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Content-Length', (end - start + 1).toString());
     headers.set('Content-Type', contentType);

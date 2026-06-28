@@ -1,5 +1,6 @@
 import { APP_CONFIG } from '@/config/app-config';
 import type { Theme, Experience } from '@sonora/shared';
+import * as storage from '@/storage/feedback-storage';
 
 export { EXPERIENCE_FORMATS, TRACK_IMAGE_KEYS, USER_EXPERIENCE_FORMATS } from '@sonora/shared';
 export type {
@@ -35,11 +36,33 @@ export async function fetchThemes(signal?: AbortSignal): Promise<Theme[]> {
   return response.json();
 }
 
+const EXPERIENCES_CACHE_KEY = 'experiences_list_cache';
+
 export async function fetchExperiences(signal?: AbortSignal): Promise<Experience[]> {
-  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/experiences`, { signal });
-  if (!response.ok) {
-    throw new Error('Failed to fetch experiences');
+  try {
+    const response = await fetch(`${APP_CONFIG.apiBaseUrl}/experiences`, { signal });
+    if (!response.ok) {
+      throw new Error('Failed to fetch experiences');
+    }
+    const data: Experience[] = await response.json();
+    const filtered = data.filter((exp) => exp.format === 'trip' || exp.format === 'track');
+
+    // Asynchronously save to local cache
+    storage.setItem(EXPERIENCES_CACHE_KEY, JSON.stringify(filtered)).catch((err) => {
+      console.warn('Failed to write experiences cache:', err);
+    });
+
+    return filtered;
+  } catch (error) {
+    console.log('[Offline Mode] Fetch failed, loading cached experiences...');
+    try {
+      const cached = await storage.getItem(EXPERIENCES_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (cacheError) {
+      console.error('Failed to read experiences cache:', cacheError);
+    }
+    throw error;
   }
-  const data: Experience[] = await response.json();
-  return data.filter((exp) => exp.format === 'trip' || exp.format === 'track');
 }

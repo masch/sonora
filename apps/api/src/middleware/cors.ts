@@ -19,7 +19,7 @@ export const configureCors = (): MiddlewareHandler => {
       : ['POST', 'GET', 'OPTIONS', 'HEAD'];
     const headers = allowedHeaders
       ? allowedHeaders.split(',').map((h) => h.trim())
-      : ['Content-Type', 'Authorization'];
+      : ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma'];
 
     const corsMiddleware = cors({
       origin: (origin) => {
@@ -40,7 +40,7 @@ export const configureCors = (): MiddlewareHandler => {
       },
       allowMethods: methods,
       allowHeaders: headers,
-      exposeHeaders: ['Content-Length', 'Content-Range'],
+      exposeHeaders: ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag'],
     });
 
     return corsMiddleware(c, next);
