@@ -58,7 +58,7 @@ const tracks = [
     format: 'track',
     themeKey: 'community',
     audioUrl: 'experiences/tracks-texto-maga.mp3',
-    durationSeconds: 184,
+    durationSeconds: 193,
     latitude: -32.211015,
     longitude: -64.73809012343702,
     priceLabel: 'FREE',

@@ -9,6 +9,7 @@ import TrackDetailView from '@/components/track-detail-view';
 import TripDetailView from '@/components/trip-detail-view';
 import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
 import { logger } from '@/utils/logger';
 import { SONORA_TRIP_BG, SONORA_TRACKS_BG } from '@/constants/images';
@@ -18,6 +19,7 @@ const CONTENT_PADDING = 'pb-6';
 export default function TrackDetailScreen() {
   const { id, title: initialTitle } = useLocalSearchParams<{ id: string; title?: string }>();
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
 
   const [state, setState] = useState<{
     track: Experience | null;
@@ -143,17 +145,28 @@ export default function TrackDetailScreen() {
   const isTrip = track.format === 'trip';
 
   return (
-    <ScrollScreenWrapper
-      withTabBar={false}
-      disableBottomPadding
-      backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
-      contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
-    >
-      {isTrip ? (
-        <TripDetailView track={track} trackId={id ?? ''} />
-      ) : (
-        <TrackDetailView track={track} trackId={id ?? ''} />
-      )}
-    </ScrollScreenWrapper>
+    <>
+      <Stack.Screen
+        options={{
+          title: track.title,
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+        }}
+      />
+      <ScrollScreenWrapper
+        withTabBar={false}
+        disableBottomPadding
+        backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
+        contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
+      >
+        {isTrip ? (
+          <TripDetailView track={track} trackId={id ?? ''} />
+        ) : (
+          <TrackDetailView track={track} trackId={id ?? ''} />
+        )}
+      </ScrollScreenWrapper>
+    </>
   );
 }

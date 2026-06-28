@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
 import UnifiedAudioController from '@/components/unified-audio-controller';
@@ -12,6 +11,7 @@ import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
@@ -36,6 +36,7 @@ interface TrackDetailViewProps {
 
 export default function TrackDetailView({ track, trackId }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showManualFeedback, setShowManualFeedback] = useState(false);
@@ -126,6 +127,8 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
 
+  const cardBg = colors.homeExploreTracksBg + 'CC';
+
   const innerView = (
     <TwView className="flex-1 bg-transparent">
       {/* Cover Image */}
@@ -133,104 +136,122 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
         <TwImage source={trackImage} className="w-full h-full" contentFit="cover" alt="" />
       </TwView>
 
-      {/* Main Details Card */}
-      <TwView className="px-6 py-6 gap-6">
-        {/* Header Title & Category */}
-        <TwView className="gap-1">
-          <ThemedText
-            themeColor="text"
-            className="text-2xl font-bold leading-tight"
-            testID="experience-title"
-          >
-            {track.title}
-          </ThemedText>
-          <ThemedText
-            themeColor="textSecondary"
-            className="text-sm font-semibold capitalize text-zinc-500 dark:text-zinc-400"
-            testID="experience-category"
-          >
-            {t(`experiences.categories.${track.themeKey}` as TranslationKeys)}
-          </ThemedText>
-        </TwView>
-
-        {/* Description */}
-        <ThemedText
-          themeColor="text"
-          className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
-          testID="experience-description"
+      {/* Main Content Area */}
+      <TwView className="relative flex-1 gap-4 p-4">
+        {/* Main Details Card */}
+        <TwView
+          style={{ backgroundColor: cardBg, borderColor: colors.border }}
+          className="w-full max-w-[800px] self-center border px-4 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-6 z-10"
         >
-          {track.description}
-        </ThemedText>
-
-        {/* Metadata Details Rows */}
-        <TwView className="gap-3 pt-2">
-          {/* Duration Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon ios="clock" android="schedule" web="schedule" size={18} tintColor="#71717a" />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {formatDuration(track.durationSeconds)}
-            </ThemedText>
-          </TwView>
-
-          {/* Registry Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon ios="person" android="person" web="person" size={18} tintColor="#71717a" />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {t('experiences.detail.registry' as TranslationKeys)}
-            </ThemedText>
-          </TwView>
-
-          {/* Location Row */}
-          <TwView className="flex-row items-center gap-3">
-            <Icon
-              ios="mappin.and.ellipse"
-              android="location_on"
-              web="location_on"
-              size={18}
-              tintColor="#71717a"
-            />
-            <ThemedText className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
-              {t('experiences.detail.location' as TranslationKeys)}
-            </ThemedText>
-          </TwView>
-        </TwView>
-
-        {/* Big play button inline custom overlay */}
-        <TwView className="mt-4">
-          <UnifiedAudioController
-            downloadStatus={download.status}
-            downloadProgress={download.progress}
-            downloadError={download.errorMsg}
-            playerStatus={player.status}
-            positionMs={player.positionMs}
-            durationMs={player.durationMs || track.durationSeconds * 1000}
-            playerError={player.errorMsg}
-            onPlay={player.play}
-            onPause={player.pause}
-            onStop={player.stop}
-            onRewind={() =>
-              player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
-            }
-            onReset={() => player.seekTo(0)}
-            onDownload={handlePlayAndDownload}
-            onCancelDownload={download.deleteTrackLocal}
-            disabled={!track.audioUrl}
-          />
-        </TwView>
-
-        {/* Manual feedback button */}
-        <TwView className="self-stretch mt-2">
-          <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-            <TwPressable
-              accessibilityLabel={t('feedback.form.title')}
-              testID="feedback-manual-button"
-              className="py-3 items-center active:opacity-80"
-              onPress={() => setShowManualFeedback(true)}
+          {/* Header Title & Category */}
+          <TwView className="gap-1">
+            <ThemedText
+              className="text-2xl font-bold leading-tight"
+              style={{ color: colors.homeCardText }}
+              testID="experience-title"
             >
-              <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                {t('feedback.form.title')}
+              {track.title}
+            </ThemedText>
+            <ThemedText
+              className="text-sm font-semibold capitalize"
+              style={{ color: colors.homeCardSubtext }}
+              testID="experience-category"
+            >
+              {t(`experiences.categories.${track.themeKey}` as TranslationKeys)}
+            </ThemedText>
+          </TwView>
+
+          {/* Description */}
+          <ThemedText
+            className="text-sm leading-relaxed"
+            style={{ color: colors.homeCardText }}
+            testID="experience-description"
+          >
+            {track.description}
+          </ThemedText>
+
+          {/* Metadata Details Rows */}
+          <TwView className="gap-3 pt-2">
+            {/* Duration Row */}
+            <TwView className="flex-row items-center gap-3">
+              <Icon
+                ios="clock"
+                android="schedule"
+                web="schedule"
+                size={18}
+                tintColor={colors.homeCardSubtext}
+              />
+              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
+                {formatDuration(track.durationSeconds)}
               </ThemedText>
-            </TwPressable>
+            </TwView>
+
+            {/* Registry Row */}
+            <TwView className="flex-row items-center gap-3">
+              <Icon
+                ios="person"
+                android="person"
+                web="person"
+                size={18}
+                tintColor={colors.homeCardSubtext}
+              />
+              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
+                {t('experiences.detail.registry' as TranslationKeys)}
+              </ThemedText>
+            </TwView>
+
+            {/* Location Row */}
+            <TwView className="flex-row items-center gap-3">
+              <Icon
+                ios="mappin.and.ellipse"
+                android="location_on"
+                web="location_on"
+                size={18}
+                tintColor={colors.homeCardSubtext}
+              />
+              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
+                {t('experiences.detail.location' as TranslationKeys)}
+              </ThemedText>
+            </TwView>
+          </TwView>
+
+          {/* Big play button inline custom overlay */}
+          <TwView className="mt-4">
+            <UnifiedAudioController
+              downloadStatus={download.status}
+              downloadProgress={download.progress}
+              downloadError={download.errorMsg}
+              playerStatus={player.status}
+              positionMs={player.positionMs}
+              durationMs={player.durationMs || track.durationSeconds * 1000}
+              playerError={player.errorMsg}
+              onPlay={player.play}
+              onPause={player.pause}
+              onStop={player.stop}
+              onRewind={() =>
+                player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
+              }
+              onReset={() => player.seekTo(0)}
+              onDownload={handlePlayAndDownload}
+              onCancelDownload={download.deleteTrackLocal}
+              disabled={!track.audioUrl}
+            />
+          </TwView>
+
+          {/* Manual feedback button */}
+          <TwView className="self-stretch mt-2">
+            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
+              <TwPressable
+                accessibilityLabel={t('feedback.form.title')}
+                testID="feedback-manual-button"
+                className="py-3 items-center active:opacity-80"
+                onPress={() => setShowManualFeedback(true)}
+              >
+                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
+                  {t('feedback.form.title')}
+                </ThemedText>
+              </TwPressable>
+            </TwView>
           </TwView>
         </TwView>
       </TwView>
@@ -239,15 +260,6 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
 
   return (
     <TwView className="flex-1">
-      <Stack.Screen
-        options={{
-          title: track.title,
-          headerStyle: {
-            backgroundColor: '#F9F6F0',
-          },
-          headerTintColor: '#000000',
-        }}
-      />
       {Platform.OS === 'web' ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       <FeedbackForm
