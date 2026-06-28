@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Platform, Alert } from 'react-native';
-import { Stack } from 'expo-router';
 
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
@@ -16,6 +15,7 @@ import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
@@ -33,6 +33,7 @@ interface TripDetailViewProps {
 
 export default function TripDetailView({ track, trackId }: TripDetailViewProps) {
   const { t } = useAppTranslation();
+  const colors = useThemeColors();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [showManualFeedback, setShowManualFeedback] = useState(false);
@@ -168,6 +169,8 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
     }
   };
 
+  const cardBg = colors.homeExploreRoutesBg + 'CC';
+
   const innerView = (
     <TwView className="flex-1 bg-transparent">
       {/* Top Banner */}
@@ -192,28 +195,31 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
       {/* Main Content Area */}
       <TwView className="relative flex-1 gap-4 p-4">
         {/* Main Details Card */}
-        <TwView className="w-full max-w-[800px] self-center card-container-solid px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+        <TwView
+          style={{ backgroundColor: cardBg, borderColor: colors.border }}
+          className="w-full max-w-[800px] self-center border px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
+        >
           {/* Track header */}
           <TwView className="items-center gap-2 p-2 w-full">
             <ThemedText
-              themeColor="text"
               numberOfLines={1}
               adjustsFontSizeToFit
               className="text-2xl font-black text-center px-2"
+              style={{ color: colors.homeCardText }}
             >
               {track.title + ' '}
             </ThemedText>
             <ThemedText
-              themeColor="textSecondary"
               className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
+              style={{ color: colors.homeCardSubtext }}
             >
               {t('experiences.duration', { minutes: Math.round(track.durationSeconds / 60) })}
             </ThemedText>
           </TwView>
 
           <ThemedText
-            themeColor="text"
             className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
+            style={{ color: colors.homeCardText }}
           >
             {track.description}
           </ThemedText>
@@ -306,7 +312,6 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
 
   return (
     <TwView className="flex-1">
-      <Stack.Screen options={{ title: track.title }} />
       {Platform.OS === 'web' ? <TwView className="flex-1">{innerView}</TwView> : innerView}
 
       <FeedbackForm
