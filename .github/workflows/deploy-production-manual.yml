@@ -1,0 +1,15 @@
+name: Deploy Production Manual (API & Mobile)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-api:
+    name: Deploy API
+    uses: ./.github/workflows/deploy-api-production.yml
+    secrets: inherit
+
+  deploy-mobile:
+    name: Deploy Mobile
+    uses: ./.github/workflows/deploy-mobile.yml
+    secrets: inherit
