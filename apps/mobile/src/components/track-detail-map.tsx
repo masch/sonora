@@ -73,7 +73,7 @@ if (wps && wps.length > 0) {
       fillColor: '#ffffff',
       fillOpacity: 1,
       weight: 3
-    }).addTo(map).bindTooltip("Pt " + (idx + 1), {permanent: true, direction: 'top'});
+    }).addTo(map).bindTooltip("Pt " + (idx + 2), {permanent: true, direction: 'top'});
   });
 
   var bounds = L.latLngBounds(latlngs);
@@ -116,7 +116,7 @@ export default function TrackDetailMap({
   const [fallback, setFallback] = useState(false);
   const [error, setError] = useState(false);
 
-  const destLabel = t('map.destination');
+  const destLabel = 'Pt 1';
   const userLocLabel = t('map.userLocation');
   const waypointsJson = JSON.stringify(waypoints);
 

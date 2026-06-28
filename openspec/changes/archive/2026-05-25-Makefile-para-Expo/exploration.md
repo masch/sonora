@@ -5,13 +5,14 @@
 The project is **sonora**, an Expo SDK 56 universal app (iOS, Android, Web) using **Bun 1.3.3** as package manager, TypeScript 6.0 (strict), and Expo Router for file-based routing.
 
 **Existing scripts in `package.json`:**
-| Script | Command |
-|--------|---------|
-| `start` | `expo start` |
-| `android` | `expo start --android` |
-| `ios` | `expo start --ios` |
-| `web` | `expo start --web` |
-| `lint` | `expo lint` |
+
+| Script          | Command                           |
+| --------------- | --------------------------------- |
+| `start`         | `expo start`                      |
+| `android`       | `expo start --android`            |
+| `ios`           | `expo start --ios`                |
+| `web`           | `expo start --web`                |
+| `lint`          | `expo lint`                       |
 | `reset-project` | `node ./scripts/reset-project.js` |
 
 **No Makefile exists.** No CI configuration exists (no `.github/workflows/`). No test runner is configured (`openspec/config.yaml` shows `testing.runner: none`).

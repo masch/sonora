@@ -219,11 +219,11 @@ Both `pg` and `@neondatabase/serverless` use the same `drizzle-orm` query API, b
 
 The factory should detect the environment. Options:
 
-| Approach                      | Description                                                                                                                    |
+| Approach | Description |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| A. env var switch             | `if (process.env.DATABASE_URL)` → pg Pool, else fallback. Won't work in Workers where `process.env` doesn't exist the same way |
-| B. Explicit factory           | `db.ts` exports `createDbClient(adapter: 'pg'                                                                                  | 'neon', connectionString: string)` |
-| C. Middleware-per-environment | Local server has middleware that sets `db`, Workers route handler reads binding                                                |
+| A. env var switch | `if (process.env.DATABASE_URL)` → pg Pool, else fallback. Won't work in Workers where `process.env` doesn't exist the same way |
+| B. Explicit factory | `db.ts` exports `createDbClient(adapter: 'pg'                                                                                  | 'neon', connectionString: string)` |
+| C. Middleware-per-environment | Local server has middleware that sets `db`, Workers route handler reads binding |
 
 **Recommendation**: **Approach B** — explicit factory called from the entry point. `server.local.ts` creates a pg Pool and passes it. Workers handler reads the Hyperdrive binding (or Neon connection string from secret) and creates the Neon client at request time or module level.
 

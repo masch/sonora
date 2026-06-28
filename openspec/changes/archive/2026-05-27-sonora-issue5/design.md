@@ -126,11 +126,7 @@ export const MaxContentWidth = 800;
 ```ts
 // src/components/themed-text.tsx
 type ThemeColor =
-  | 'text'
-  | 'textSecondary'
-  | 'background'
-  | 'backgroundElement'
-  | 'backgroundSelected';
+  'text' | 'textSecondary' | 'background' | 'backgroundElement' | 'backgroundSelected';
 ```
 
 ### @theme Spacing Tokens Added to global.css
