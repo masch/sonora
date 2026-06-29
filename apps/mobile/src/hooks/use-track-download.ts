@@ -91,7 +91,7 @@ function mapStoreEntry(
 export function useTrackDownload(
   trackId: string | null,
   remoteAudioUrl: string | null,
-  _estimatedSizeBytes?: number,
+  trackTitle: string,
 ): TrackDownloadState & { startDownload: () => void; deleteTrackLocal: () => Promise<void> } {
   const { t } = useAppTranslation();
   const { isOnline } = useNetworkStatus();
@@ -252,7 +252,7 @@ export function useTrackDownload(
       return;
     }
 
-    useDownloadManagerStore.getState().enqueue(trackId, remoteAudioUrl);
+    useDownloadManagerStore.getState().enqueue(trackId, remoteAudioUrl, trackTitle);
   }
 
   async function deleteTrackLocal() {

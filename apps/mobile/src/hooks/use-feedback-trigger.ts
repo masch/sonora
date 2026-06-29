@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { LocalTrackMetadata } from '@/data/experiences';
+import { AnalyticsService } from '@/services/analytics';
 
 export interface FeedbackTriggerSources {
   /** From useImmersionPlayer: true when audio playback just finished */
@@ -25,14 +26,14 @@ export interface FeedbackTriggerResult {
  * - undefined: never triggers
  */
 export function useFeedbackTrigger(
-  track: LocalTrackMetadata | undefined,
+  track: LocalTrackMetadata,
   sources: FeedbackTriggerSources,
 ): FeedbackTriggerResult {
   const [showFeedback, setShowFeedback] = useState(false);
   const [prevDidJustFinish, setPrevDidJustFinish] = useState(sources.didJustFinish ?? false);
   const [prevIsNearStart, setPrevIsNearStart] = useState(sources.isNearStart ?? false);
 
-  const triggerMode = track?.feedbackTrigger;
+  const triggerMode = track.feedbackTrigger;
 
   const currentDidJustFinish = sources.didJustFinish ?? false;
   if (currentDidJustFinish !== prevDidJustFinish) {
@@ -45,6 +46,17 @@ export function useFeedbackTrigger(
   const currentIsNearStart = sources.isNearStart ?? false;
   if (currentIsNearStart !== prevIsNearStart) {
     setPrevIsNearStart(currentIsNearStart);
+    if (currentIsNearStart) {
+      AnalyticsService.trackEvent('geofence_entered', {
+        track_id: track.id,
+        title: track.title,
+      });
+    } else {
+      AnalyticsService.trackEvent('geofence_exited', {
+        track_id: track.id,
+        title: track.title,
+      });
+    }
     if (triggerMode === 'geofence' && currentIsNearStart) {
       setShowFeedback(true);
     }

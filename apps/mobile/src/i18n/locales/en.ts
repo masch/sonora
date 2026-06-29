@@ -4,6 +4,8 @@ export const en = {
     dismiss: 'Dismiss',
     yes: 'Yes',
     no: 'No',
+    somethingWentWrong: 'Oops! Something went wrong',
+    retry: 'Retry',
   },
   map: {
     offlineTitle: 'Map unavailable',
@@ -24,6 +26,7 @@ export const en = {
     zeroDistance: '0 mts',
     destination: 'Destination',
     userLocation: 'Your location',
+    point: 'Pt {{index}}',
     hideLabels: 'Hide labels',
     showLabels: 'Show labels',
     fetchingLocation: 'Locating…',

@@ -4,6 +4,8 @@ export const es = {
     dismiss: 'Descartar',
     yes: 'Sí',
     no: 'No',
+    somethingWentWrong: '¡Oops! Algo salió mal',
+    retry: 'Reintentar',
   },
   map: {
     offlineTitle: 'Mapa no disponible',
@@ -24,6 +26,7 @@ export const es = {
     zeroDistance: '0 mts',
     destination: 'Destino',
     userLocation: 'Tu ubicación',
+    point: 'Pt {{index}}',
     hideLabels: 'Ocultar nombres',
     showLabels: 'Mostrar nombres',
     fetchingLocation: 'Ubicando…',

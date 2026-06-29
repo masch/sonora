@@ -4,6 +4,11 @@ Universal Expo app targeting iOS, Android, and Web.
 
 **Stack:** Expo SDK 56 · React Native 0.85 · TypeScript 6.0 · expo-router · Tailwind CSS v4 · Jest
 
+## Environments (Web Access)
+
+- **Production:** [https://sonoraderivapoeticas-team-sonora.expo.app/](https://sonoraderivapoeticas-team-sonora.expo.app/) (main web application)
+- **Staging:** [https://sonoraderivapoeticas-team-sonora--staging.expo.app/](https://sonoraderivapoeticas-team-sonora--staging.expo.app/) (pull request preview builds)
+
 ## Prerequisites
 
 - [bun](https://bun.sh) — package manager

@@ -22,6 +22,8 @@ export interface NetworkStatusState {
  * Monitors network connectivity using @react-native-community/netinfo.
  * Exposes `isOnline` boolean that auto-updates on connectivity changes.
  */
+import { AnalyticsService } from '@/services/analytics';
+
 export function useNetworkStatus(): NetworkStatusState {
   const [isOnline, setIsOnline] = useState(true);
   // Use ref to prevent re-subscribing on every render
@@ -32,7 +34,12 @@ export function useNetworkStatus(): NetworkStatusState {
     isInitialized.current = true;
 
     const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsOnline(state.isConnected ?? false);
+      const connected = state.isConnected ?? false;
+      setIsOnline(connected);
+      AnalyticsService.trackEvent('network_status_changed', {
+        is_online: connected,
+        type: state.type,
+      });
     });
 
     return () => {

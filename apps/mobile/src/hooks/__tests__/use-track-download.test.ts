@@ -36,7 +36,13 @@ jest.mock('expo-file-system/legacy', () => ({
 let mockStore: {
   downloads: Record<
     string,
-    | { status: string; progress: number; localUri: string | null; errorMsg: string | null }
+    | {
+        status: string;
+        progress: number;
+        localUri: string | null;
+        errorMsg: string | null;
+        title: string;
+      }
     | undefined
   >;
   enqueue: jest.Mock;
@@ -54,6 +60,7 @@ jest.mock('@/store/download-manager-store', () => {
 describe('useTrackDownload hook (refactored — store-driven)', () => {
   const trackId = 'umepay-bosque';
   const remoteAudioUrl = 'https://mock.com/audio.mp3';
+  const trackTitle = 'Umepay Bosque';
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,7 +87,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
@@ -98,7 +105,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
@@ -115,11 +122,12 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
       progress: 0,
       localUri: null,
       errorMsg: 'errors.insufficientSpace',
+      title: trackTitle,
     };
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -135,11 +143,12 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
       progress: 45,
       localUri: null,
       errorMsg: null,
+      title: trackTitle,
     };
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -155,11 +164,12 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
       progress: 100,
       localUri: 'file:///mock-docs/tracks/umepay-bosque/audio.mp3',
       errorMsg: null,
+      title: trackTitle,
     };
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -172,7 +182,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
   it('should show idle status when trackId is null', async () => {
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(null, null));
+      const renderResult = renderHook(() => useTrackDownload(null, null, 'unknown'));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -186,7 +196,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -196,13 +206,13 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
     });
 
     expect(mockStore.enqueue).toHaveBeenCalledTimes(1);
-    expect(mockStore.enqueue).toHaveBeenCalledWith(trackId, remoteAudioUrl);
+    expect(mockStore.enqueue).toHaveBeenCalledWith(trackId, remoteAudioUrl, trackTitle);
   });
 
   it('should not enqueue when trackId is null', async () => {
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(null, null));
+      const renderResult = renderHook(() => useTrackDownload(null, null, 'unknown'));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -223,7 +233,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile — sets cachedLocalUri
     });
@@ -272,7 +282,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve(); // checkAndValidateCache checkLocalFile
       await Promise.resolve(); // fetch response microtasks
@@ -310,7 +320,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl));
+      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
       result = renderResult.result;
       await Promise.resolve();
     });

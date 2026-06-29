@@ -4,10 +4,14 @@ import * as storage from '@/storage/feedback-storage';
 import { logger } from '@/utils/logger';
 
 export { EXPERIENCE_FORMATS, TRACK_IMAGE_KEYS } from '@sonora/shared';
-export { USER_EXPERIENCE_FORMATS };
+export { USER_EXPERIENCE_FORMATS, isPlayableExperience } from '@sonora/shared';
 export type {
   Theme,
   Experience,
+  TrackExperience,
+  TripExperience,
+  GeneralFeedbackExperience,
+  PlayableExperience,
   Waypoint,
   ExperienceFormat,
   TrackImageKey,

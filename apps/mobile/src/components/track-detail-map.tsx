@@ -29,7 +29,13 @@ interface TrackDetailMapProps {
 // Build Leaflet HTML → base64 data URI
 // ---------------------------------------------------------------------------
 
-function buildDataUri(lat: number, lng: number, destLabel: string, waypointsJson: string): string {
+function buildDataUri(
+  lat: number,
+  lng: number,
+  destLabel: string,
+  waypointsJson: string,
+  pointTemplate: string,
+): string {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -67,13 +73,14 @@ if (wps && wps.length > 0) {
   L.polyline(latlngs, {color: '#10b981', weight: 4, opacity: 0.8}).addTo(map);
 
   wps.forEach(function(wp, idx) {
+    var label = "${pointTemplate}".replace('INDEX_PLACEHOLDER', (idx + 2));
     L.circleMarker([wp.latitude, wp.longitude], {
       radius: 6,
       color: '#10b981',
       fillColor: '#ffffff',
       fillOpacity: 1,
       weight: 3
-    }).addTo(map).bindTooltip("Pt " + (idx + 2), {permanent: true, direction: 'top'});
+    }).addTo(map).bindTooltip(label, {permanent: true, direction: 'top'});
   });
 
   var bounds = L.latLngBounds(latlngs);
@@ -116,13 +123,14 @@ export default function TrackDetailMap({
   const [fallback, setFallback] = useState(false);
   const [error, setError] = useState(false);
 
-  const destLabel = 'Pt 1';
+  const destLabel = t('map.point', { index: 1 });
+  const pointTemplate = t('map.point', { index: 'INDEX_PLACEHOLDER' });
   const userLocLabel = t('map.userLocation');
   const waypointsJson = JSON.stringify(waypoints);
 
   const uri = fallback
     ? buildEmbedUrl(latitude, longitude)
-    : buildDataUri(latitude, longitude, destLabel, waypointsJson);
+    : buildDataUri(latitude, longitude, destLabel, waypointsJson, pointTemplate);
 
   // Toggle labels dynamically without reloading the WebView
   useEffect(() => {
@@ -221,22 +229,28 @@ export default function TrackDetailMap({
           </ThemedText>
         </TwView>
       )}
-      <WebView
-        ref={webviewRef}
-        source={{ uri }}
-        className="flex-1 bg-transparent"
-        accessibilityLabel={t('map.loadingMap')}
-        testID="track-detail-map"
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
-        onLoadEnd={() => setLoading(false)}
-        onError={handleError}
-        javaScriptEnabled
-        domStorageEnabled
-        allowFileAccess
-        mixedContentMode="compatibility"
-      />
+      {(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const WebViewComp = WebView as any;
+        return (
+          <WebViewComp
+            ref={webviewRef}
+            source={{ uri }}
+            className="flex-1 bg-transparent"
+            accessibilityLabel={t('map.loadingMap')}
+            testID="track-detail-map"
+            scrollEnabled={false}
+            bounces={false}
+            overScrollMode="never"
+            onLoadEnd={() => setLoading(false)}
+            onError={handleError}
+            javaScriptEnabled
+            domStorageEnabled
+            allowFileAccess
+            mixedContentMode="compatibility"
+          />
+        );
+      })()}
     </TwView>
   );
 }

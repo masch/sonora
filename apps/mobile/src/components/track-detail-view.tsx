@@ -5,7 +5,7 @@ import FeedbackForm from '@/components/feedback-form';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
-import { type Experience } from '@/data/experiences';
+import { type TrackExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
@@ -30,11 +30,10 @@ const formatDuration = (seconds: number) => {
 };
 
 interface TrackDetailViewProps {
-  track: Experience;
-  trackId: string;
+  track: TrackExperience;
 }
 
-export default function TrackDetailView({ track, trackId }: TrackDetailViewProps) {
+export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
@@ -42,7 +41,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
 
-  const download = useTrackDownload(track.id ?? trackId, track.audioUrl ?? null);
+  const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
 
   // Auto-play when download completes if the user initiated it
@@ -65,7 +64,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
     description: track.description,
     durationSeconds: track.durationSeconds,
     startCoordinates: { latitude: track.latitude, longitude: track.longitude },
-    audioRemoteUrl: track.audioUrl ?? '',
+    audioRemoteUrl: track.audioUrl,
     category: track.themeKey as TranslationKeys,
     subLabel: track.description,
     imageKey: track.imageKey as keyof typeof TRACK_IMAGES,
@@ -80,7 +79,7 @@ export default function TrackDetailView({ track, trackId }: TrackDetailViewProps
   const handleFeedbackSubmit = async (message: string) => {
     setFeedbackStatus('sending');
     setFeedbackError(null);
-    const trackUuid = track.id ?? trackId;
+    const trackUuid = track.id;
     const idempotencyKey = generateUUID();
 
     try {
