@@ -69,6 +69,22 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Fetch Firebase Configuration
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+        run: |
+          # Fetch Android App ID from Firebase project
+          APP_ID=$(npx -y firebase-tools@latest apps:list --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive | grep -i "android" | awk -F'│' '{print $3}' | xargs)
+
+          if [ -z "$APP_ID" ]; then
+            # Fallback to hardcoded App ID if listing fails
+            APP_ID="1:967054219260:android:aad883fdf7059bec060479"
+          fi
+
+          # Fetch google-services.json config
+          npx -y firebase-tools@latest apps:sdkconfig ANDROID "$APP_ID" --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive > apps/mobile/google-services.json
+
       - name: Build Android Preview APK
         id: build-apk
         env:
