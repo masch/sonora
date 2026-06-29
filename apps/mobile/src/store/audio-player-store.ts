@@ -63,6 +63,15 @@ function disableLockScreenControls(player: AudioPlayer) {
   }
 }
 
+import { AnalyticsService } from '@/services/analytics';
+
+function getTrackIdFromUri(uri: string | null): string {
+  if (!uri) return 'unknown';
+  const parts = uri.split('/');
+  const lastPart = parts[parts.length - 1] || 'unknown';
+  return lastPart.replace(/\.[^/.]+$/, ''); // strip extension
+}
+
 export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPlayer | null }>(
   (set, get) => ({
     status: 'idle',
@@ -91,29 +100,53 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
         _player.play();
         enableLockScreenControls(_player, currentMetadata);
         set({ currentUri: uri, status: 'playing', errorMsg: null });
+
+        AnalyticsService.trackEvent('audio_playback_started', {
+          track_id: getTrackIdFromUri(uri),
+          uri,
+          title: currentMetadata?.title ?? 'unknown',
+          resume: !!resume,
+        });
       }
     },
 
     pause: () => {
-      const { _player } = get();
+      const { _player, currentUri, positionMs, currentMetadata } = get();
       _player?.pause();
       // Keep lock screen controls active so the player shows in paused state
       // when the phone is locked — Android shows a Play button to resume.
       set({ status: 'paused' });
+
+      AnalyticsService.trackEvent('audio_playback_paused', {
+        track_id: getTrackIdFromUri(currentUri),
+        position_ms: positionMs,
+        title: currentMetadata?.title ?? 'unknown',
+      });
     },
 
     stop: () => {
-      const { _player } = get();
+      const { _player, currentUri, currentMetadata } = get();
       _player?.pause();
       _player?.seekTo(0);
       if (_player) disableLockScreenControls(_player);
       set({ status: 'stopped', positionMs: 0 });
+
+      AnalyticsService.trackEvent('audio_playback_stopped', {
+        track_id: getTrackIdFromUri(currentUri),
+        title: currentMetadata?.title ?? 'unknown',
+      });
     },
 
     seekTo: (positionMs: number) => {
-      const { _player } = get();
+      const { _player, currentUri, currentMetadata } = get();
       _player?.seekTo(positionMs / 1000);
       set({ positionMs });
+
+      AnalyticsService.trackEvent('audio_seeked', {
+        track_id: getTrackIdFromUri(currentUri),
+        position_ms: positionMs,
+        title: currentMetadata?.title ?? 'unknown',
+      });
     },
 
     confirmInterrupt: () => {
@@ -134,6 +167,13 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
         pendingPlayRequest: null,
         positionMs: 0,
       });
+
+      AnalyticsService.trackEvent('audio_playback_started', {
+        track_id: getTrackIdFromUri(uri),
+        uri,
+        title: currentMetadata?.title ?? 'unknown',
+        resume: false,
+      });
     },
 
     cancelInterrupt: () => {
@@ -153,7 +193,35 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     },
 
     _syncStatus: (partial) => {
+      const prevStatus = get().status;
+      const prevError = get().errorMsg;
+
       set(partial);
+
+      const currentUri = get().currentUri;
+      const trackId = currentUri ? getTrackIdFromUri(currentUri) : 'unknown';
+      const title = get().currentMetadata?.title ?? 'unknown';
+
+      // Playback completed naturally
+      if (partial.status === 'stopped' && prevStatus === 'playing') {
+        AnalyticsService.trackEvent('audio_playback_completed', {
+          track_id: trackId,
+          title,
+        });
+      }
+
+      // Playback failed
+      if (partial.errorMsg && partial.errorMsg !== prevError) {
+        AnalyticsService.trackEvent('audio_playback_failed', {
+          track_id: trackId,
+          error_msg: partial.errorMsg,
+          title,
+        });
+        AnalyticsService.recordError(
+          new Error(partial.errorMsg),
+          `Playback failed for track ${trackId}`,
+        );
+      }
     },
   }),
 );

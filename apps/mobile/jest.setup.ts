@@ -73,3 +73,15 @@ jest.mock('expo-router', () => {
     },
   };
 });
+
+// Mock expo-audio globally
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    stop: jest.fn(),
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+  })),
+  useAudioPlayerStatus: jest.fn(() => ({})),
+  setAudioModeAsync: jest.fn(() => Promise.resolve()),
+}));

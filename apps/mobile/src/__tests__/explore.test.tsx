@@ -41,9 +41,18 @@ jest.mock('@/hooks/use-immersion-player', () => ({
 jest.mock('@/data/experiences', () => ({
   fetchExperiences: jest.fn(() =>
     Promise.resolve([
-      { id: 'umepay-bosque', slug: 'umepay-bosque', audioUrl: 'https://example.com/audio.mp3' },
+      {
+        id: 'umepay-bosque',
+        slug: 'umepay-bosque',
+        audioUrl: 'https://example.com/audio.mp3',
+        format: 'track',
+      },
     ]),
   ),
+  isPlayableExperience: (experience: unknown) => {
+    const exp = experience as { format?: string };
+    return exp?.format === 'track' || exp?.format === 'trip';
+  },
 }));
 
 const mockMap: Record<string, string> = {

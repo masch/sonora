@@ -13,6 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.masch.sonora',
+    googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
       UIBackgroundModes: ['fetch'],
     },
@@ -26,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     predictiveBackGestureEnabled: false,
     package: 'com.masch.sonora',
+    googleServicesFile: './google-services.json',
     versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
   },
   web: {
@@ -33,6 +35,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: './assets/images/favicon.png',
   },
   plugins: [
+    '@react-native-firebase/app',
+    '@react-native-firebase/crashlytics',
     'expo-router',
     [
       'expo-audio',

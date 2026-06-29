@@ -42,6 +42,11 @@ jest.mock('expo-router', () => ({
 jest.mock('@/data/experiences', () => ({
   fetchThemes: jest.fn(() => Promise.resolve([])),
   fetchExperiences: jest.fn(() => Promise.resolve(mockExperiences)),
+  USER_EXPERIENCE_FORMATS: ['track', 'trip'],
+  isPlayableExperience: (track: unknown) => {
+    const t = track as { format?: string };
+    return t?.format ? ['track', 'trip'].includes(t.format) : false;
+  },
 }));
 
 const mockGeofence = {

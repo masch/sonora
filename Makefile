@@ -506,9 +506,13 @@ eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (u
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
 
-.PHONY: eas-build-web
-eas-build-web: eas-whoami ## Export web app and deploy to EAS Hosting (checks auth first)
+.PHONY: eas-build-web-production
+eas-build-web-production: eas-whoami ## Export web app and deploy to EAS Hosting production
 	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+
+.PHONY: eas-build-web-staging
+eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting staging (alias: staging)
+	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 # ── Firebase App Distribution ────────────
 

@@ -8,4 +8,8 @@ module.exports = {
     if (i18nKey) return (mockT(i18nKey) ?? '') as unknown as React.ReactElement;
     return React.createElement(React.Fragment, null, children);
   },
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
 };

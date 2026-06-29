@@ -31,6 +31,7 @@
     "expo-system-ui": "56.0.5",
     "expo-task-manager": "56.0.19",
     "expo-web-browser": "56.0.5",
+    "firebase": "^11.1.0",
     "i18next": "26.3.0",
     "nativewind": "5.0.0-preview.4",
     "postcss": "8.5.15",
@@ -47,9 +48,13 @@
     "react-native-webview": "^13.16.1",
     "react-native-worklets": "0.8.3",
     "tailwindcss": "4.3.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "@react-native-firebase/app": "^21.9.0",
+    "@react-native-firebase/analytics": "^21.9.0",
+    "@react-native-firebase/crashlytics": "^21.9.0"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "0.85.3",
     "@babel/runtime": "7.29.7",
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/react-native": "13.3.3",

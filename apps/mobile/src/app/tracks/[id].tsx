@@ -7,7 +7,7 @@ import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailView from '@/components/track-detail-view';
 import TripDetailView from '@/components/trip-detail-view';
-import { fetchExperiences, type Experience } from '@/data/experiences';
+import { fetchExperiences, type Experience, isPlayableExperience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
@@ -133,7 +133,7 @@ export default function TrackDetailScreen() {
     );
   }
 
-  if (!track) {
+  if (!track || !isPlayableExperience(track)) {
     return (
       <TwView className="flex-grow items-center justify-center px-6">
         <Stack.Screen options={{ title: t('experiences.notFound') }} />
@@ -161,11 +161,7 @@ export default function TrackDetailScreen() {
         backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
         contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
       >
-        {isTrip ? (
-          <TripDetailView track={track} trackId={id ?? ''} />
-        ) : (
-          <TrackDetailView track={track} trackId={id ?? ''} />
-        )}
+        {isTrip ? <TripDetailView track={track} /> : <TrackDetailView track={track} />}
       </ScrollScreenWrapper>
     </>
   );

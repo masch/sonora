@@ -8,7 +8,7 @@ import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { APP_CONFIG } from '@/config/app-config';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
-import { type Experience } from '@/data/experiences';
+import { type TripExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
@@ -27,11 +27,10 @@ import type { TranslationKeys } from '@/i18n/types';
 const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TripDetailViewProps {
-  track: Experience;
-  trackId: string;
+  track: TripExperience;
 }
 
-export default function TripDetailView({ track, trackId }: TripDetailViewProps) {
+export default function TripDetailView({ track }: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
@@ -44,7 +43,7 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
     latitude: track.latitude,
     longitude: track.longitude,
   });
-  const download = useTrackDownload(track.id ?? trackId, track.audioUrl ?? null);
+  const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
 
   // Auto-play when download completes if the user initiated it
@@ -67,7 +66,7 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
     description: track.description,
     durationSeconds: track.durationSeconds,
     startCoordinates: { latitude: track.latitude, longitude: track.longitude },
-    audioRemoteUrl: track.audioUrl ?? '',
+    audioRemoteUrl: track.audioUrl,
     category: track.themeKey as TranslationKeys,
     subLabel: track.description,
     imageKey: track.imageKey as keyof typeof TRACK_IMAGES,
@@ -82,7 +81,7 @@ export default function TripDetailView({ track, trackId }: TripDetailViewProps) 
   const handleFeedbackSubmit = async (message: string) => {
     setFeedbackStatus('sending');
     setFeedbackError(null);
-    const trackUuid = track.id ?? trackId;
+    const trackUuid = track.id;
     const idempotencyKey = generateUUID();
 
     try {

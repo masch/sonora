@@ -16,7 +16,12 @@ import { Icon } from '@/components/icon';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { fetchExperiences, type Experience } from '@/data/experiences';
+import {
+  fetchExperiences,
+  type Experience,
+  type PlayableExperience,
+  isPlayableExperience,
+} from '@/data/experiences';
 import { TwView, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { useState, useEffect } from 'react';
@@ -33,13 +38,13 @@ const RESET_PROJECT_COMMAND = 'npm run reset-project';
 
 /** Sub-component that only mounts when an active experience is selected.
  *  All experience-dependent hooks live here — no conditional params, no fallback values. */
-function ActiveExperienceSection({ experience }: { experience: Experience }) {
+function ActiveExperienceSection({ experience }: { experience: PlayableExperience }) {
   const { t } = useAppTranslation();
   const geofence = useOfflineGeofence({
     latitude: experience.latitude,
     longitude: experience.longitude,
   });
-  const download = useTrackDownload(experience.slug, experience.audioUrl ?? null);
+  const download = useTrackDownload(experience.slug, experience.audioUrl, experience.title);
   const player = useImmersionPlayer(download.localAudioUri, { title: experience.title });
 
   return (
@@ -228,7 +233,9 @@ export default function ExploreScreen() {
               </TwView>
             )}
 
-            {activeExperience && <ActiveExperienceSection experience={activeExperience} />}
+            {activeExperience && isPlayableExperience(activeExperience) && (
+              <ActiveExperienceSection experience={activeExperience} />
+            )}
 
             {/* Development Hints */}
             <TwView className="card-container gap-4 self-stretch p-4 rounded-xl">

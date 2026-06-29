@@ -28,7 +28,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
   });
 
   it('returns idle initial state when trackId is null', () => {
-    const { result } = renderHook(() => useTrackDownload(null, null));
+    const { result } = renderHook(() => useTrackDownload(null, null, 'unknown'));
 
     expect(result.current.status).toBe('idle');
     expect(result.current.progress).toBe(0);
@@ -40,7 +40,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
 
   it('returns idle when trackId is provided but no store entry exists', () => {
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('idle');
@@ -55,12 +55,13 @@ describe('useTrackDownload (refactored — download store integration)', () => {
           progress: 45,
           localUri: null,
           errorMsg: null,
+          title: 'Track 1',
         },
       },
     });
 
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('downloading');
@@ -75,12 +76,13 @@ describe('useTrackDownload (refactored — download store integration)', () => {
           progress: 100,
           localUri: '/mock/path/audio.mp3',
           errorMsg: null,
+          title: 'Track 1',
         },
       },
     });
 
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('completed');
@@ -96,12 +98,13 @@ describe('useTrackDownload (refactored — download store integration)', () => {
           progress: 0,
           localUri: null,
           errorMsg: 'Network failed',
+          title: 'Track 1',
         },
       },
     });
 
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('error');
@@ -114,21 +117,21 @@ describe('useTrackDownload (refactored — download store integration)', () => {
       .mockImplementation(() => {});
 
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     act(() => {
       result.current.startDownload();
     });
 
-    expect(enqueueSpy).toHaveBeenCalledWith('track-1', 'https://example.com/audio.mp3');
+    expect(enqueueSpy).toHaveBeenCalledWith('track-1', 'https://example.com/audio.mp3', 'Track 1');
 
     enqueueSpy.mockRestore();
   });
 
   it('reacts to store entry changing from idle to downloading', () => {
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('idle');
@@ -141,6 +144,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
             progress: 10,
             localUri: null,
             errorMsg: null,
+            title: 'Track 1',
           },
         },
       });
@@ -152,7 +156,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
 
   it('returns same interface shape as original TrackDownloadState', () => {
     const { result } = renderHook(() =>
-      useTrackDownload('track-1', 'https://example.com/audio.mp3'),
+      useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     const keys = Object.keys(result.current).sort();

@@ -15,7 +15,7 @@ export function HomeAudioPlayer() {
   const playOnDownloadCompleteRef = useRef(false);
 
   const instructionsUrl = APP_CONFIG.audio.instructionsUrl;
-  const download = useTrackDownload('instructions', instructionsUrl);
+  const download = useTrackDownload('instructions', instructionsUrl, t('home.instructionsName'));
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
   });

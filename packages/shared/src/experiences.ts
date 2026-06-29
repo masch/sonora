@@ -28,14 +28,12 @@ export interface Waypoint {
   radiusMeters: number;
 }
 
-export interface Experience {
+export interface BaseExperience {
   id: string;
   slug: string;
   title: string;
   description: string;
-  format: ExperienceFormat;
   themeKey: string;
-  audioUrl?: string | null;
   durationSeconds: number;
   latitude: number;
   longitude: number;
@@ -43,5 +41,27 @@ export interface Experience {
   priceLabel?: string | null;
   imageKey: TrackImageKey;
   geofenceBypassable?: boolean;
-  waypoints?: Waypoint[];
+}
+
+export interface TrackExperience extends BaseExperience {
+  format: 'track';
+  audioUrl: string;
+}
+
+export interface TripExperience extends BaseExperience {
+  format: 'trip';
+  audioUrl: string;
+  waypoints: Waypoint[];
+}
+
+export interface GeneralFeedbackExperience extends BaseExperience {
+  format: 'general-feedback';
+}
+
+export type Experience = TrackExperience | TripExperience | GeneralFeedbackExperience;
+
+export type PlayableExperience = TrackExperience | TripExperience;
+
+export function isPlayableExperience(experience: Experience): experience is PlayableExperience {
+  return (USER_EXPERIENCE_FORMATS as readonly string[]).includes(experience.format);
 }

@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
+import { AnalyticsService } from '@/services/analytics';
 import { logger } from '@/utils/logger';
 
 export type DownloadStatus = 'idle' | 'queued' | 'downloading' | 'completed' | 'error';
@@ -11,11 +12,13 @@ export interface DownloadEntry {
   progress: number;
   localUri: string | null;
   errorMsg: string | null;
+  title: string;
 }
 
 export interface DownloadItem {
   trackId: string;
   url: string;
+  title: string;
 }
 
 export interface DownloadManagerState {
@@ -26,7 +29,7 @@ export interface DownloadManagerState {
 }
 
 export interface DownloadManagerActions {
-  enqueue: (trackId: string, url: string) => void;
+  enqueue: (trackId: string, url: string, title: string) => void;
   cancel: (trackId: string) => void;
   getDownload: (trackId: string) => DownloadEntry | undefined;
   _completeDownload: (trackId: string, localUri: string) => void;
@@ -141,9 +144,11 @@ async function performWebDownload(
   return { localUri };
 }
 
-async function performDownload(trackId: string, url: string) {
+async function performDownload(trackId: string, url: string, title: string) {
   const isWeb = Platform.OS === 'web';
   const downloadFn = isWeb ? performWebDownload : performFileDownload;
+
+  AnalyticsService.trackEvent('audio_download_started', { track_id: trackId, url, title });
 
   try {
     const { localUri } = await downloadFn(trackId, url, (progress) => {
@@ -174,6 +179,7 @@ function processQueue(
         progress: 0,
         localUri: null,
         errorMsg: null,
+        title: next.title,
       },
     };
 
@@ -184,7 +190,7 @@ function processQueue(
     });
 
     // Fire-and-forget the actual download
-    performDownload(next.trackId, next.url);
+    performDownload(next.trackId, next.url, next.title);
 
     state = get(); // Refresh state for next loop iteration
   }
@@ -196,7 +202,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
   activeCount: 0,
   maxConcurrent: 3,
 
-  enqueue: (trackId: string, url: string) => {
+  enqueue: (trackId: string, url: string, title: string) => {
     const existing = get().downloads[trackId];
     if (existing && (existing.status === 'downloading' || existing.status === 'completed')) {
       return;
@@ -211,6 +217,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
           progress: 0,
           localUri: null,
           errorMsg: null,
+          title,
         },
       },
     });
@@ -225,15 +232,16 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
             progress: 0,
             localUri: null,
             errorMsg: null,
+            title,
           },
         },
         activeCount: get().activeCount + 1,
       });
-      performDownload(trackId, url);
+      performDownload(trackId, url, title);
     } else {
       // Add to FIFO queue
       set({
-        queue: [...get().queue, { trackId, url }],
+        queue: [...get().queue, { trackId, url, title }],
       });
     }
   },
@@ -253,6 +261,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
           progress: 0,
           localUri: null,
           errorMsg: null,
+          title: entry.title,
         },
       },
       queue: filteredQueue,
@@ -269,6 +278,13 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
   },
 
   _completeDownload: (trackId: string, localUri: string) => {
+    const entry = get().downloads[trackId];
+    if (!entry) {
+      logger.error('Attempted to complete download for non-existent track:', trackId);
+      return;
+    }
+    const { title } = entry;
+    AnalyticsService.trackEvent('audio_download_completed', { track_id: trackId, title });
     set({
       downloads: {
         ...get().downloads,
@@ -277,6 +293,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
           progress: 100,
           localUri,
           errorMsg: null,
+          title,
         },
       },
       activeCount: get().activeCount - 1,
@@ -286,6 +303,18 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
   },
 
   _failDownload: (trackId: string, errorMsg: string) => {
+    const entry = get().downloads[trackId];
+    if (!entry) {
+      logger.error('Attempted to fail download for non-existent track:', trackId);
+      return;
+    }
+    const { title } = entry;
+    AnalyticsService.trackEvent('audio_download_failed', {
+      track_id: trackId,
+      error_msg: errorMsg,
+      title,
+    });
+    AnalyticsService.recordError(new Error(errorMsg), `Download failed for track ${trackId}`);
     set({
       downloads: {
         ...get().downloads,
@@ -294,6 +323,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
           progress: 0,
           localUri: null,
           errorMsg,
+          title,
         },
       },
       activeCount: get().activeCount - 1,

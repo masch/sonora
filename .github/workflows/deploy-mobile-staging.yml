@@ -1,35 +1,44 @@
-name: Deploy Mobile
+name: Deploy Mobile Staging
 
 on:
   workflow_dispatch:
-  workflow_call:
+    inputs:
+      build_android:
+        description: 'Manual: Compile and deploy Android App (Firebase App Distribution)'
+        required: true
+        type: boolean
+        default: true
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - '.github/workflows/**'
+      - 'Makefile'
+    branches:
+      - main
 
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXPO_PUBLIC_API_URL: https://sonora-api.sonora-api.workers.dev
+  EXPO_PUBLIC_API_URL: https://sonora-api-staging.sonora-api.workers.dev
 
 concurrency:
-  group: deploy-main
+  group: deploy-staging-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy-web:
+    name: Deploy Web Staging
     runs-on: ubuntu-latest
-    environment: production
-    outputs:
-      apk_path: ${{ steps.build-apk.outputs.apk_path }}
+    environment: staging
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
       - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make check
-      - name: Deploy to EAS Hosting
+      - name: Deploy Staging to EAS Hosting
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
@@ -39,7 +48,22 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-        run: make eas-build-web-production
+        run: make eas-build-web-staging
+
+  deploy-android:
+    name: Deploy Android Staging (Manual)
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.build_android == true
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      apk_path: ${{ steps.build-apk.outputs.apk_path }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - run: make check
       - name: Setup Java SDK
         uses: actions/setup-java@v4
         with:
@@ -65,40 +89,36 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  deploy-firebase:
+  distribute-android:
+    name: Distribute Android to Firebase Staging
+    needs: deploy-android
     runs-on: ubuntu-latest
-    needs: build
-    environment: production
+    environment: staging
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
       - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
       - run: bun install --frozen-lockfile --minimum-release-age=0
       - name: Download Android APK Artifact
         uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: apps/mobile
-      # Write service account key and distribute via Node.js.
-      # Using node directly instead of bun because firebase-tools' internal
-      # google-auth-library doesn't reliably read GOOGLE_APPLICATION_CREDENTIALS
-      # under bun's runtime in CI (confirmed across multiple attempts).
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          APK_PATH: ${{ needs.build.outputs.apk_path }}
+          APK_PATH: ${{ needs.deploy-android.outputs.apk_path }}
         run: |
           # Write service account key
           mkdir -p apps/mobile
           echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
 
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
-          export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
+          export FIREBASE_RELEASE_NOTES="Staging Build ${{ github.run_number }} - $CLEAN_MSG"
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967054219260:android:aad883fdf7059bec060479" \
