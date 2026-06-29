@@ -2,7 +2,19 @@ name: Deploy Android Production
 
 on:
   workflow_dispatch:
+    inputs:
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: true
+        type: string
+        default: 'dev-team'
   workflow_call:
+    inputs:
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: false
+        type: string
+        default: 'dev-team'
 
 permissions:
   contents: read
@@ -95,6 +107,6 @@ jobs:
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967054219260:android:aad883fdf7059bec060479" \
-            --groups "dev-team,sonora-team" \
+            --groups "${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
             --release-notes "$FIREBASE_RELEASE_NOTES" \
             --non-interactive
