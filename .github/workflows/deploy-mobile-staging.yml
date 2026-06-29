@@ -138,6 +138,6 @@ jobs:
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967054219260:android:aad883fdf7059bec060479" \
-            --groups "all" \
+            --groups "dev-team" \
             --release-notes "$FIREBASE_RELEASE_NOTES" \
             --non-interactive
