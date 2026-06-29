@@ -54,7 +54,7 @@ jobs:
     name: Deploy Android Staging (Manual)
     if: |
       github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.build_android == true
+      inputs.build_android == true
     runs-on: ubuntu-latest
     environment: staging
     outputs:
