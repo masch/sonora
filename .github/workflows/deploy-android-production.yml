@@ -52,8 +52,7 @@ jobs:
             APP_ID="1:967054219260:android:aad883fdf7059bec060479"
           fi
 
-          # Fetch google-services.json config
-          npx -y firebase-tools@latest apps:sdkconfig ANDROID "$APP_ID" --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive > apps/mobile/google-services.json
+          npx -y firebase-tools@latest apps:sdkconfig ANDROID "$APP_ID" --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive -o apps/mobile/google-services.json
 
       - name: Build Android Preview APK
         id: build-apk
