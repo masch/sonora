@@ -63,7 +63,7 @@ jobs:
     needs: [check-changes, deploy-api]
     if: |
       needs.check-changes.outputs.has_changes == 'true' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == true)
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true')
     uses: ./.github/workflows/deploy-android-production.yml
     with:
       firebase_groups: ${{ github.event.inputs.firebase_groups || 'dev-team' }}
