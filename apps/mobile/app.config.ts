@@ -1,12 +1,27 @@
-import { type ExpoConfig, type ConfigContext } from 'expo/config';
+import { type ConfigContext, type ExpoConfig } from 'expo/config';
 import { fontConfig } from './src/config/font.ts';
 
-export default ({ config }: ConfigContext): ExpoConfig => {
-  const isStaging = process.env.APP_ENV === 'staging';
+const isStaging = process.env.APP_ENV === 'staging';
 
+const ENV_CONFIG = {
+  staging: {
+    name: 'Sonora Staging',
+    package: 'com.masch.sonora.staging',
+    bundleIdentifier: 'com.masch.sonora.staging',
+  },
+  production: {
+    name: 'Sonora',
+    package: 'com.masch.sonora',
+    bundleIdentifier: 'com.masch.sonora',
+  },
+};
+
+const activeEnv = isStaging ? ENV_CONFIG.staging : ENV_CONFIG.production;
+
+export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
-    name: isStaging ? 'Sonora Staging' : 'Sonora',
+    name: activeEnv.name,
     slug: 'sonora',
     version: '1.0.0',
     orientation: 'portrait',
@@ -15,10 +30,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: 'automatic',
     ios: {
       icon: './assets/expo.icon',
-      bundleIdentifier: 'com.masch.sonora',
+      bundleIdentifier: activeEnv.bundleIdentifier,
       googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
-        UIBackgroundModes: ['fetch'],
+        UIBackgroundModes: ['audio'], // Changed to 'audio' for background playback support
       },
     },
     android: {
@@ -29,7 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      package: 'com.masch.sonora',
+      package: activeEnv.package,
       googleServicesFile: './google-services.json',
       versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
     },
@@ -41,12 +56,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       '@react-native-firebase/app',
       '@react-native-firebase/crashlytics',
       'expo-router',
-      [
-        'expo-audio',
-        {
-          enableBackgroundPlayback: true,
-        },
-      ],
+      'expo-audio', // standard config plugin, options-free
       [
         'expo-splash-screen',
         {
@@ -62,18 +72,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-font',
         {
-          fonts: fontConfig.nativeFonts,
-          android: {
-            fonts: [
-              {
-                fontFamily: fontConfig.family,
-                fontDefinitions: fontConfig.androidFonts.map((f) => ({
-                  path: f.path,
-                  weight: f.weight,
-                })),
-              },
-            ],
-          },
+          fonts: fontConfig.nativeFonts, // standard expo-font format
         },
       ],
     ],
