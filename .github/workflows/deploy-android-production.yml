@@ -31,6 +31,8 @@ jobs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make check
@@ -54,12 +56,18 @@ jobs:
 
           npx -y firebase-tools@latest apps:sdkconfig ANDROID "$APP_ID" --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive -o apps/mobile/google-services.json
 
+      - name: Calculate Version Code
+        id: version-code
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          VERSION_CODE=$((1000 + COMMIT_COUNT))
+          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: Build Android Preview APK
         id: build-apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
-          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
           EXPO_NO_DOCTOR: '1'
         run: |
           make eas-build-android-preview-ci
