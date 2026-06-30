@@ -55,6 +55,7 @@ jobs:
           fi
 
           npx -y firebase-tools@latest apps:sdkconfig ANDROID "$APP_ID" --project "$FIREBASE_PROJECT_ID" --token "$FIREBASE_TOKEN" --non-interactive -o apps/mobile/google-services.json
+          git add -f apps/mobile/google-services.json
 
       - name: Calculate Version Code
         id: version-code
