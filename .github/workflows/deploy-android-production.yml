@@ -60,8 +60,7 @@ jobs:
         id: version-code
         run: |
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          VERSION_CODE=$((1000 + COMMIT_COUNT))
-          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "val=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
       - name: Build Android Preview APK
         id: build-apk
         env:
