@@ -56,6 +56,7 @@ jobs:
       - name: Build Android Preview APK
         id: build-apk
         env:
+          APP_ENV: production
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
           APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
