@@ -54,13 +54,15 @@ jobs:
     name: Deploy Android Staging (Manual)
     if: |
       github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.build_android == true
+      inputs.build_android == true
     runs-on: ubuntu-latest
     environment: staging
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make check
@@ -69,13 +71,33 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Write google-services.json
+        env:
+          ANDROID_GOOGLE_SERVICES_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICES_BASE64 }}
+        run: |
+          echo "$ANDROID_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/google-services.json
+          git add -f apps/mobile/google-services.json
+
+      - name: Calculate Version Code
+        id: version-code
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "val=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
       - name: Build Android Preview APK
         id: build-apk
         env:
+          APP_ENV: staging
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
-          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
           EXPO_NO_DOCTOR: '1'
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
         run: |
           make eas-build-android-preview-ci
           # Export the exact APK path that was generated
@@ -121,7 +143,7 @@ jobs:
           export FIREBASE_RELEASE_NOTES="Staging Build ${{ github.run_number }} - $CLEAN_MSG"
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
-            --app "1:967054219260:android:aad883fdf7059bec060479" \
-            --groups "dev-team,sonora-team" \
+            --app "1:967212589494:android:45c43fdf65470a1e14e117" \
+            --groups "dev-team" \
             --release-notes "$FIREBASE_RELEASE_NOTES" \
             --non-interactive

@@ -2,6 +2,17 @@ name: Deploy Production (API & Mobile)
 
 on:
   workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Manual: Compile and deploy Android App (Firebase App Distribution)'
+        required: true
+        type: boolean
+        default: true
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: true
+        type: string
+        default: 'dev-team'
   schedule:
     - cron: '0 0 */3 * *'
 
@@ -33,16 +44,27 @@ jobs:
             fi
           fi
 
-  deploy-mobile:
-    name: Deploy Mobile
+  deploy-web:
+    name: Deploy Web
     needs: check-changes
     if: needs.check-changes.outputs.has_changes == 'true'
-    uses: ./.github/workflows/deploy-mobile.yml
+    uses: ./.github/workflows/deploy-web-production.yml
     secrets: inherit
 
   deploy-api:
     name: Deploy API
-    needs: [check-changes, deploy-mobile]
+    needs: [check-changes, deploy-web]
     if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/deploy-api-production.yml
+    secrets: inherit
+
+  deploy-android:
+    name: Deploy Android
+    needs: [check-changes, deploy-api]
+    if: |
+      needs.check-changes.outputs.has_changes == 'true' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == true)
+    uses: ./.github/workflows/deploy-android-production.yml
+    with:
+      firebase_groups: ${{ github.event.inputs.firebase_groups || 'dev-team' }}
     secrets: inherit
