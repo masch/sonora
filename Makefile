@@ -516,8 +516,18 @@ eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting st
 
 # ── Firebase App Distribution ────────────
 
-# Firebase project App ID
-FIREBASE_APP_ID ?= 1:967054219260:android:aad883fdf7059bec060479
+# Firebase project App IDs
+FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:aad883fdf7059bec060479
+FIREBASE_APP_ID_STAGING    := 1:967212589494:android:45c43fdf65470a1e14e117
+
+# Choose which App ID to use (defaults to production, override with APP_ENV=staging)
+APP_ENV ?= production
+ifeq ($(APP_ENV),staging)
+FIREBASE_APP_ID ?= $(FIREBASE_APP_ID_STAGING)
+else
+FIREBASE_APP_ID ?= $(FIREBASE_APP_ID_PRODUCTION)
+endif
+
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json
 ifneq ($(wildcard $(FIREBASE_SA_KEY_PATH)),)
@@ -532,9 +542,8 @@ FIREBASE_GROUP_DEV     ?= dev-team
 FIREBASE_GROUP_SONORA  ?= sonora-team
 # Composes --testers flag only when FIREBASE_TESTERS is non-empty
 FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
-# Release notes — auto-generates "Build <versionCode> - <date>" but can be overridden:
-#   make firebase-distribute-all FIREBASE_RELEASE_NOTES="Fix login crash"
-FIREBASE_RELEASE_NOTES ?= Build $(shell grep -oP 'versionCode:\s*\K\d+' app.config.ts) - $(shell date '+%Y-%m-%d')
+# Release notes — auto-generates "Build <versionCode> - <date>"
+FIREBASE_RELEASE_NOTES ?= Build $(or $(APP_VERSION_CODE),unknown) - $(shell date '+%Y-%m-%d')
 
 .PHONY: firebase-login-ci
 firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
