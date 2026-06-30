@@ -88,23 +88,28 @@ export const AnalyticsService = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
     ensureWebInitialized();
 
+    const extendedParams = {
+      ...params,
+      platform: Platform.OS,
+    };
+
     if (Platform.OS === 'web') {
       if (webAnalytics) {
         try {
           const { logEvent } = require('firebase/analytics');
-          logEvent(webAnalytics, eventName, params);
+          logEvent(webAnalytics, eventName, extendedParams);
         } catch (err) {
           logger.warn(`Firebase Web logEvent error for ${eventName}:`, err);
         }
       } else {
-        logger.info(`[Analytics Web] Event: ${eventName}`, params);
+        logger.info(`[Analytics Web] Event: ${eventName}`, extendedParams);
       }
       return;
     }
 
     try {
       const analytics = require('@react-native-firebase/analytics').default;
-      analytics().logEvent(eventName, params);
+      analytics().logEvent(eventName, extendedParams);
     } catch (err) {
       logger.warn(`Firebase logEvent error for ${eventName}:`, err);
     }

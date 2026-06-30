@@ -56,7 +56,7 @@ describe('AnalyticsService', () => {
   it('tracks events on native platform', () => {
     platform.OS = 'ios';
     AnalyticsService.trackEvent('test_event', { foo: 'bar' });
-    expect(mockLogEvent).toHaveBeenCalledWith('test_event', { foo: 'bar' });
+    expect(mockLogEvent).toHaveBeenCalledWith('test_event', { foo: 'bar', platform: 'ios' });
   });
 
   it('records errors on native platform', () => {
@@ -73,6 +73,7 @@ describe('AnalyticsService', () => {
     expect(mockLogEvent).not.toHaveBeenCalled();
     expect(mockWebLogEvent).toHaveBeenCalledWith(expect.any(Object), 'test_web_event', {
       foo: 'web_bar',
+      platform: 'web',
     });
   });
 
