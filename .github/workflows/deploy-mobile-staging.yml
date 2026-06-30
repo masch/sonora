@@ -142,7 +142,7 @@ jobs:
           export FIREBASE_RELEASE_NOTES="Staging Build ${{ github.run_number }} - $CLEAN_MSG"
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
-            --app "1:967054219260:android:aad883fdf7059bec060479" \
+            --app "1:967212589494:android:45c43fdf65470a1e14e117" \
             --groups "dev-team" \
             --release-notes "$FIREBASE_RELEASE_NOTES" \
             --non-interactive
