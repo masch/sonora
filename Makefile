@@ -520,28 +520,16 @@ eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting st
 FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:aad883fdf7059bec060479
 FIREBASE_APP_ID_STAGING    := 1:967212589494:android:45c43fdf65470a1e14e117
 
-# Choose which App ID to use (defaults to production, override with APP_ENV=staging)
-APP_ENV ?= production
-ifeq ($(APP_ENV),staging)
-FIREBASE_APP_ID ?= $(FIREBASE_APP_ID_STAGING)
-else
-FIREBASE_APP_ID ?= $(FIREBASE_APP_ID_PRODUCTION)
-endif
-
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json
 ifneq ($(wildcard $(FIREBASE_SA_KEY_PATH)),)
 export GOOGLE_APPLICATION_CREDENTIALS := $(abspath $(FIREBASE_SA_KEY_PATH))
 endif
-# APK path — auto-picks the newest build-*.apk (override: make firebase-distribute FIREBASE_APK_PATH=dist/app-release.apk)
+# APK path — auto-picks the newest build-*.apk (override: FIREBASE_APK_PATH=dist/app-release.apk)
 FIREBASE_APK_PATH ?= $(shell ls -t apps/mobile/build-*.apk apps/mobile/android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
-# Tester emails (comma-separated) — override: make firebase-distribute FIREBASE_TESTERS="foo@bar,baz@qux"
-FIREBASE_TESTERS ?=
 # Firebase App Distribution groups
-FIREBASE_GROUP_DEV     ?= dev-team
-FIREBASE_GROUP_SONORA  ?= sonora-team
-# Composes --testers flag only when FIREBASE_TESTERS is non-empty
-FIREBASE_TESTER_FLAGS = $(if $(FIREBASE_TESTERS),--testers "$(FIREBASE_TESTERS)")
+FIREBASE_GROUP_DEV    := dev-team
+FIREBASE_GROUP_SONORA := sonora-team
 # Release notes — auto-generates "Build <versionCode> - <date>"
 FIREBASE_RELEASE_NOTES ?= Build $(or $(APP_VERSION_CODE),unknown) - $(shell date '+%Y-%m-%d')
 
@@ -549,21 +537,47 @@ FIREBASE_RELEASE_NOTES ?= Build $(or $(APP_VERSION_CODE),unknown) - $(shell date
 firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
 	bun --filter @sonora/mobile firebase-cli login:ci
 
-.PHONY: firebase-distribute
-firebase-distribute: ## Upload APK to Firebase App Distribution (requires GOOGLE_APPLICATION_CREDENTIALS, optional: FIREBASE_TESTERS)
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" $(FIREBASE_TESTER_FLAGS)
+# ── Staging distribution ──────────────────────────────────────────────────────
 
-.PHONY: firebase-distribute-dev-team
-firebase-distribute-dev-team: ## Upload APK to dev-team group only
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_DEV)"
+.PHONY: firebase-distribute-staging-dev
+firebase-distribute-staging-dev: ## [staging] Upload APK to dev-team group
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_STAGING)" \
+		--groups "$(FIREBASE_GROUP_DEV)"
 
-.PHONY: firebase-distribute-sonora-team
-firebase-distribute-sonora-team: ## Upload APK to sonora-team group only
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_SONORA)"
+.PHONY: firebase-distribute-staging-sonora
+firebase-distribute-staging-sonora: ## [staging] Upload APK to sonora-team group
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_STAGING)" \
+		--groups "$(FIREBASE_GROUP_SONORA)"
 
-.PHONY: firebase-distribute-all
-firebase-distribute-all: ## Upload APK to both groups (dev-team + sonora-team)
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" --app "$(FIREBASE_APP_ID)" --groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" --release-notes "$(FIREBASE_RELEASE_NOTES)"
+.PHONY: firebase-distribute-staging-all
+firebase-distribute-staging-all: ## [staging] Upload APK to dev-team + sonora-team
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_STAGING)" \
+		--groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES)"
+
+# ── Production distribution ───────────────────────────────────────────────────
+
+.PHONY: firebase-distribute-prod-dev
+firebase-distribute-prod-dev: ## [production] Upload APK to dev-team group
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
+		--groups "$(FIREBASE_GROUP_DEV)"
+
+.PHONY: firebase-distribute-prod-sonora
+firebase-distribute-prod-sonora: ## [production] Upload APK to sonora-team group
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
+		--groups "$(FIREBASE_GROUP_SONORA)"
+
+.PHONY: firebase-distribute-prod-all
+firebase-distribute-prod-all: ## [production] Upload APK to dev-team + sonora-team
+	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
+		--groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES)"
 
 # ── Emulator ───────────────────────────────
 
