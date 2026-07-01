@@ -14,6 +14,7 @@ import { useLocationStore, type LocationStore } from '@/store/location-store';
 import { APP_CONFIG } from '@/config/app-config';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
+import { ApiClient } from '@/services/api-client';
 import FeedbackForm from '@/components/feedback-form';
 import { getHaversineDistance } from '@/utils/haversine';
 import { type Experience } from '@/data/experiences';
@@ -416,19 +417,14 @@ export default function MessagesScreen() {
     const idempotencyKey = generateUUID();
 
     try {
-      const response = await fetch(`${APP_CONFIG.apiBaseUrl}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, idempotencyKey, createdAt: new Date().toISOString() }),
+      await ApiClient.post('/feedback', {
+        ...payload,
+        idempotencyKey,
+        createdAt: new Date().toISOString(),
       });
 
-      if (response.status === 201) {
-        dispatch({ type: 'SENT' });
-        refetch();
-      } else {
-        await enqueue(payload, idempotencyKey);
-        dispatch({ type: 'QUEUED' });
-      }
+      dispatch({ type: 'SENT' });
+      refetch();
     } catch {
       await enqueue(payload, idempotencyKey);
       dispatch({ type: 'QUEUED' });

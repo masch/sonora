@@ -16,6 +16,7 @@ import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { ApiClient } from '@/services/api-client';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
@@ -23,8 +24,6 @@ import type { FeedbackStatus } from '@/types/feedback';
 import { generateUUID } from '@/utils/uuid';
 import { logger } from '@/utils/logger';
 import type { TranslationKeys } from '@/i18n/types';
-
-const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
 
 interface TripDetailViewProps {
   track: TripExperience;
@@ -85,26 +84,16 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
     const idempotencyKey = generateUUID();
 
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          experienceId: trackUuid,
-          message,
-          idempotencyKey,
-          createdAt: new Date().toISOString(),
-        }),
+      await ApiClient.post('/feedback', {
+        experienceId: trackUuid,
+        message,
+        idempotencyKey,
+        createdAt: new Date().toISOString(),
       });
 
-      if (response.status === 201) {
-        setFeedbackStatus('sent');
-      } else {
-        logger.error('[API_ERROR] Server returned status:', response.status);
-        await feedbackQueue.enqueue({ experienceId: trackUuid, message }, idempotencyKey);
-        setFeedbackStatus('queued');
-      }
+      setFeedbackStatus('sent');
     } catch (err) {
-      logger.error('[NETWORK_ERROR] Fetch failed:', err);
+      logger.error('[API_ERROR] Fetch failed, queueing feedback:', err);
       try {
         await feedbackQueue.enqueue({ experienceId: trackUuid, message }, idempotencyKey);
         setFeedbackStatus('queued');

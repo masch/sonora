@@ -45,7 +45,7 @@ const trips = [
     longitude: -64.73809012343702,
     priceLabel: '15 mil $',
     imageKey: 'trips-deriva-centro-cover',
-    geofenceBypassable: true,
+    geofenceBypassable: false,
   },
 ] as const;
 
