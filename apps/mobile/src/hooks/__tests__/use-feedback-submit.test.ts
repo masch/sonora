@@ -28,6 +28,16 @@ jest.mock('@/utils/logger', () => ({
   },
 }));
 
+// ── Location store mock (mutable coords for tests) ──────────────────────
+
+const mockCoordsContainer = { value: null as { latitude: number; longitude: number } | null };
+
+jest.mock('@/store/location-store', () => ({
+  useLocationStore: {
+    getState: () => ({ coords: mockCoordsContainer.value }),
+  },
+}));
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function renderSubmitHook() {
@@ -42,6 +52,7 @@ function renderSubmitHook() {
 describe('useFeedbackSubmit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCoordsContainer.value = null;
   });
 
   it('should start with idle state', () => {
@@ -93,6 +104,8 @@ describe('useFeedbackSubmit', () => {
       message: 'Great track!',
       idempotencyKey: '00000000-0000-0000-0000-000000000000',
       createdAt: expect.any(String),
+      latitude: null,
+      longitude: null,
     });
     expect(result.current.feedbackStatus).toBe('sent');
     expect(result.current.feedbackError).toBeNull();
@@ -108,7 +121,7 @@ describe('useFeedbackSubmit', () => {
     });
 
     expect(mockEnqueue).toHaveBeenCalledWith(
-      { experienceId: 'exp-1', message: 'Great track!' },
+      { experienceId: 'exp-1', message: 'Great track!', latitude: null, longitude: null },
       '00000000-0000-0000-0000-000000000000',
     );
     expect(result.current.feedbackStatus).toBe('queued');
@@ -199,5 +212,64 @@ describe('useFeedbackSubmit', () => {
     });
     expect(result.current.feedbackStatus).toBe('sent');
     expect(ApiClient.post).toHaveBeenCalledTimes(2);
+  });
+
+  // ── Location tests ──────────────────────────────────────────────────
+
+  it('should include latitude and longitude when coords are available', async () => {
+    mockCoordsContainer.value = { latitude: -34.61, longitude: -58.38 };
+    jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current.submitFeedback('exp-1', 'Great track!');
+    });
+
+    expect(ApiClient.post).toHaveBeenCalledWith('/feedback', {
+      experienceId: 'exp-1',
+      message: 'Great track!',
+      idempotencyKey: '00000000-0000-0000-0000-000000000000',
+      createdAt: expect.any(String),
+      latitude: -34.61,
+      longitude: -58.38,
+    });
+    expect(result.current.feedbackStatus).toBe('sent');
+  });
+
+  it('should include null latitude and longitude when coords are null', async () => {
+    mockCoordsContainer.value = null;
+    jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current.submitFeedback('exp-1', 'Great track!');
+    });
+
+    expect(ApiClient.post).toHaveBeenCalledWith('/feedback', {
+      experienceId: 'exp-1',
+      message: 'Great track!',
+      idempotencyKey: '00000000-0000-0000-0000-000000000000',
+      createdAt: expect.any(String),
+      latitude: null,
+      longitude: null,
+    });
+    expect(result.current.feedbackStatus).toBe('sent');
+  });
+
+  it('should include latitude and longitude in enqueue fallback when coords available', async () => {
+    mockCoordsContainer.value = { latitude: -34.61, longitude: -58.38 };
+    jest.spyOn(ApiClient, 'post').mockRejectedValueOnce(new Error('Network error'));
+    mockEnqueue.mockResolvedValueOnce('00000000-0000-0000-0000-000000000000');
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current.submitFeedback('exp-1', 'Great track!');
+    });
+
+    expect(mockEnqueue).toHaveBeenCalledWith(
+      { experienceId: 'exp-1', message: 'Great track!', latitude: -34.61, longitude: -58.38 },
+      '00000000-0000-0000-0000-000000000000',
+    );
+    expect(result.current.feedbackStatus).toBe('queued');
   });
 });

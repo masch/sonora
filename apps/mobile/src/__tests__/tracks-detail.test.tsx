@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import TrackDetailScreen from '@/app/tracks/[id]';
@@ -91,11 +92,20 @@ jest.mock('react-native-webview', () => ({
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
 
+const mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
 const mockMap: Record<string, string> = {
   'experiences.notFound': 'Track not found',
   'experiences.duration': '45 min walk',
   'index.waitingForDownload': 'Download audio first to play it',
   'map.loadingMap': 'Loading map…',
+  'experiences.geofenceBlocked.bannerTitle': "You're too far",
+  'experiences.geofenceBlocked.bannerDescription': 'You need to be within {{radius}} meters',
+  'experiences.geofenceBlocked.bannerDistance': 'Current distance: {{distance}}',
+  'experiences.geofenceBlocked.blockedAlertTitle': "Can't play",
+  'experiences.geofenceBlocked.blockedAlertMessage':
+    'You need to be within {{radius}} meters. Current distance: {{distance}}.',
+  'experiences.geofenceBlocked.blockedAlertOk': 'Got it',
 };
 
 beforeAll(() => {
@@ -176,15 +186,41 @@ describe('TrackDetailScreen', () => {
     });
   });
 
-  it('blocks playback if geofence is strict (bypassable false) and user is far', async () => {
+  it('blocks playback if geofence is strict (bypassable false) and renders blocked banner', async () => {
     mockExperiences[0].geofenceBypassable = false;
     mockGeofence.isNearStart = false;
-    const { getByTestId } = render(<TrackDetailScreen />);
+    const { getByTestId, getByText } = render(<TrackDetailScreen />);
     await waitFor(() => {
-      expect(getByTestId('geofence-error-msg')).toBeTruthy();
+      expect(getByTestId('geofence-blocked-banner')).toBeTruthy();
+      expect(getByText("You're too far")).toBeTruthy();
     });
     // Restore
     mockGeofence.isNearStart = true;
+    mockExperiences[0].geofenceBypassable = undefined;
+  });
+
+  it('shows alert when download is tapped while geofence blocked', async () => {
+    mockExperiences[0].geofenceBypassable = false;
+    mockGeofence.isNearStart = false;
+    mockGeofence.distanceMeters = 250;
+    const { getByTestId } = render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('play-download-button'));
+
+    // The mock t() returns the key template literally (no interpolation),
+    // so we check the alert was called with the right title and button text
+    expect(mockAlert).toHaveBeenCalledWith(
+      "Can't play",
+      'You need to be within {{radius}} meters. Current distance: {{distance}}.',
+      expect.arrayContaining([expect.objectContaining({ text: 'Got it' })]),
+    );
+
+    // Restore
+    mockGeofence.isNearStart = true;
+    mockGeofence.distanceMeters = null;
     mockExperiences[0].geofenceBypassable = undefined;
   });
 });

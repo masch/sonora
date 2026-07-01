@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer } from 'react';
+import { useEffect, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
@@ -13,15 +13,14 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useLocationStore, type LocationStore } from '@/store/location-store';
 import { APP_CONFIG } from '@/config/app-config';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
+import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
-import { ApiClient } from '@/services/api-client';
 import FeedbackForm from '@/components/feedback-form';
 import { getHaversineDistance } from '@/utils/haversine';
 import { type Experience } from '@/data/experiences';
 import { getExperienceIcon } from '@/utils/icons';
 import { TwAnimatedView } from '@/tw/animated';
 import { FadeInUp } from 'react-native-reanimated';
-import { generateUUID } from '@/utils/uuid';
 
 interface FeedbackServerEntry {
   id: string;
@@ -338,63 +337,26 @@ function MessageCard({ item, experiences, location, index }: MessageCardProps) {
   );
 }
 
-/* ───────── Form reducer ───────── */
-
-interface FormState {
-  modalVisible: boolean;
-  submitStatus: 'sending' | 'sent' | 'queued' | 'error' | undefined;
-  submitErrorMsg: string | null;
-}
-
-type FormAction =
-  | { type: 'OPEN' }
-  | { type: 'CLOSE' }
-  | { type: 'SENDING' }
-  | { type: 'SENT' }
-  | { type: 'QUEUED' }
-  | { type: 'ERROR'; message: string };
-
-function formReducer(_state: FormState, action: FormAction): FormState {
-  switch (action.type) {
-    case 'OPEN':
-      return { modalVisible: true, submitStatus: undefined, submitErrorMsg: null };
-    case 'CLOSE':
-      return { modalVisible: false, submitStatus: undefined, submitErrorMsg: null };
-    case 'SENDING':
-      return { modalVisible: true, submitStatus: 'sending', submitErrorMsg: null };
-    case 'SENT':
-      return { modalVisible: false, submitStatus: 'sent', submitErrorMsg: null };
-    case 'QUEUED':
-      return { modalVisible: false, submitStatus: 'queued', submitErrorMsg: null };
-    case 'ERROR':
-      return { modalVisible: true, submitStatus: 'error', submitErrorMsg: action.message };
-  }
-}
-
-const initialFormState: FormState = {
-  modalVisible: false,
-  submitStatus: undefined,
-  submitErrorMsg: null,
-};
-
 /* ───────── Main screen ───────── */
 
 export default function MessagesScreen() {
   const { t } = useAppTranslation();
   const location = useLocationStore();
-  const { enqueue, queue } = useFeedbackQueue();
+  const { queue } = useFeedbackQueue();
+  const feedback = useFeedbackSubmit();
 
   const [activeTab, setActiveTab] = useState<'todos' | 'cercanos'>('todos');
   const [selectedType, setSelectedType] = useState<'all' | 'general-feedback' | 'trip' | 'track'>(
     'all',
   );
-  const [form, dispatch] = useReducer(formReducer, initialFormState);
+  const [modalVisible, setModalVisible] = useState(false);
   const { feed, experiences, loading, error, refetch } = useFeedbackFeed();
 
   useFocusEffect(() => {
     refetch();
   });
 
+  // Refetch feed when background sync catches up
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('feedback-queue-synced', () => {
       refetch();
@@ -402,33 +364,10 @@ export default function MessagesScreen() {
     return () => sub.remove();
   }, [refetch]);
 
-  const handleManualSubmit = async (message: string) => {
-    dispatch({ type: 'SENDING' });
-    const lat = location.coords?.latitude ?? null;
-    const lng = location.coords?.longitude ?? null;
-
-    const payload = {
-      experienceId: APP_CONFIG.feedback.generalExperienceId,
-      message,
-      latitude: lat,
-      longitude: lng,
-    };
-
-    const idempotencyKey = generateUUID();
-
-    try {
-      await ApiClient.post('/feedback', {
-        ...payload,
-        idempotencyKey,
-        createdAt: new Date().toISOString(),
-      });
-
-      dispatch({ type: 'SENT' });
+  const handleSubmit = (message: string) => {
+    feedback.submitFeedback(APP_CONFIG.feedback.generalExperienceId, message).then(() => {
       refetch();
-    } catch {
-      await enqueue(payload, idempotencyKey);
-      dispatch({ type: 'QUEUED' });
-    }
+    });
   };
 
   const mergedFeed: FeedbackDisplayEntry[] = [
@@ -495,7 +434,7 @@ export default function MessagesScreen() {
       backgroundImage={SONORA_MESSAGES_BG}
       contentContainerClassName="grow pb-8 px-6 pt-4"
     >
-      <FeedbackHeader onNewMessage={() => dispatch({ type: 'OPEN' })} />
+      <FeedbackHeader onNewMessage={() => setModalVisible(true)} />
 
       <FilterControls
         activeTab={activeTab}
@@ -523,11 +462,14 @@ export default function MessagesScreen() {
       </TwView>
 
       <FeedbackForm
-        visible={form.modalVisible}
-        status={form.submitStatus}
-        errorMsg={form.submitErrorMsg}
-        onSubmit={handleManualSubmit}
-        onDismiss={() => dispatch({ type: 'CLOSE' })}
+        visible={modalVisible}
+        status={feedback.feedbackStatus}
+        errorMsg={feedback.feedbackError}
+        onSubmit={handleSubmit}
+        onDismiss={() => {
+          feedback.dismissFeedback();
+          setModalVisible(false);
+        }}
       />
     </ScrollScreenWrapper>
   );

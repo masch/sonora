@@ -70,6 +70,17 @@ export const en = {
     errors: {
       mustBeOnSite: 'You must be at the starting point to begin the trip.',
     },
+    geofenceBlocked: {
+      bannerTitle: "You're too far from the starting point",
+      bannerDescription:
+        'You need to be within {{radius}} meters of the starting point to listen to this trip.',
+      bannerDistance: 'Current distance: {{distance}}',
+      notAvailable: 'N/A',
+      blockedAlertTitle: "Can't play",
+      blockedAlertMessage:
+        'You need to be within {{radius}} meters of the starting point to listen to this trip. Current distance: {{distance}}.',
+      blockedAlertOk: 'Got it',
+    },
     warnings: {
       locationAlertTitle: 'Location Warning',
       locationAlertMessage:

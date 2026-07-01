@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform, Alert } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from './track-detail-map';
@@ -20,6 +21,12 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import type { TranslationKeys } from '@/i18n/types';
+
+function formatDistance(d: number | null, fallbackText: string): string {
+  if (d === null) return fallbackText;
+  if (d >= 1000) return `${(d / 1000).toFixed(1)} km`;
+  return `${Math.round(d)} m`;
+}
 
 interface TripDetailViewProps {
   track: TripExperience;
@@ -88,6 +95,20 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !APP_CONFIG.bypassGeofence;
   const showBypassWarning = !geofence.isNearStart && isBypassable && !APP_CONFIG.bypassGeofence;
 
+  const showGeofenceBlockedAlert = () => {
+    Alert.alert(
+      t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys),
+      t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
+        radius: geofence.requiredRadiusMeters,
+        distance: formatDistance(
+          geofence.distanceMeters,
+          t('experiences.geofenceBlocked.notAvailable'),
+        ),
+      }),
+      [{ text: t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys) }],
+    );
+  };
+
   const triggerBypassAlert = (onConfirm: () => void) => {
     if (Platform.OS === 'web') {
       const accepted = window.confirm(
@@ -111,6 +132,8 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const handlePlay = () => {
     if (showBypassWarning) {
       triggerBypassAlert(() => player.play());
+    } else if (isPlaybackBlocked) {
+      showGeofenceBlockedAlert();
     } else {
       player.play();
     }
@@ -119,6 +142,8 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const handleDownload = () => {
     if (showBypassWarning) {
       triggerBypassAlert(() => handlePlayAndDownload());
+    } else if (isPlaybackBlocked) {
+      showGeofenceBlockedAlert();
     } else {
       handlePlayAndDownload();
     }
@@ -214,14 +239,12 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
             requiredRadiusMeters={geofence.requiredRadiusMeters}
           />
 
-          {/* Block playback warning message if blocked */}
+          {/* Block playback banner if blocked */}
           {isPlaybackBlocked && (
-            <ThemedText
-              className="text-xs text-rose-600 font-bold text-center mt-2 px-4"
-              testID="geofence-error-msg"
-            >
-              {t('experiences.errors.mustBeOnSite' as TranslationKeys)}
-            </ThemedText>
+            <GeofenceBlockedBanner
+              distanceMeters={geofence.distanceMeters}
+              requiredRadiusMeters={geofence.requiredRadiusMeters}
+            />
           )}
 
           {/* Unified Audio Controller: Download & Play in one flow */}
@@ -242,7 +265,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
             onReset={() => player.seekTo(0)}
             onDownload={handleDownload}
             onCancelDownload={download.deleteTrackLocal}
-            disabled={!track.audioUrl || isPlaybackBlocked}
+            disabled={!track.audioUrl}
           />
 
           {/* Manual feedback button */}

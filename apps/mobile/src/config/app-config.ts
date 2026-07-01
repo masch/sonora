@@ -65,6 +65,13 @@ export const APP_CONFIG = {
       process.env.EXPO_PUBLIC_INSTRUCTIONS_AUDIO_URL ||
       `${getApiBaseUrl()}/audio/stream?key=experiences%2Finstrucciones.mp3&token=${apiClientKey}`,
   },
+  geofence: {
+    /**
+     * Radius in meters the user must be within to start playback.
+     * Also used by GpsPrecisionBadge and GeofenceBlockedBanner.
+     */
+    radiusMeters: 50,
+  },
   feedback: {
     /**
      * The UUID of the "general-feedback" experience in the DB seed.

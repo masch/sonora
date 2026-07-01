@@ -3,10 +3,24 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { useLocationStore } from '@/store/location-store';
 import MessagesScreen from '../app/(tabs)/messages';
 
-// Mock location store
-jest.mock('@/store/location-store', () => ({
-  useLocationStore: jest.fn(),
-}));
+// Mock location store — supports both hook call (useLocationStore()) and
+// static getState (useLocationStore.getState()) used by useFeedbackSubmit
+jest.mock('@/store/location-store', () => {
+  const mockStore = {
+    coords: { latitude: -34.56, longitude: -58.78 },
+    status: 'ready',
+    accuracy: null,
+    errorMsg: null,
+    startWatching: jest.fn(),
+  };
+  const useLocationStore = Object.assign(
+    jest.fn(() => mockStore),
+    {
+      getState: () => mockStore,
+    },
+  );
+  return { useLocationStore };
+});
 
 // Mock NetInfo
 jest.mock('@react-native-community/netinfo', () => ({
@@ -38,6 +52,9 @@ describe('MessagesScreen', () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -34.56, longitude: -58.78 },
       status: 'ready',
+      accuracy: null,
+      errorMsg: null,
+      startWatching: jest.fn(),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).fetch = jest.fn().mockImplementation(() =>
@@ -92,4 +109,32 @@ describe('MessagesScreen', () => {
       expect(getByTestId('feedback-input')).toBeTruthy();
     });
   });
+
+  it('closes modal and refetches feed on successful submission', async () => {
+    const { getByTestId, queryByTestId } = render(<MessagesScreen />);
+
+    // Wait for feed to load
+    await waitFor(() => {
+      expect(getByTestId('new-message-button')).toBeTruthy();
+    });
+
+    // Open the modal
+    fireEvent.press(getByTestId('new-message-button'));
+    await waitFor(() => {
+      expect(getByTestId('feedback-input')).toBeTruthy();
+    });
+
+    // Type a message and press submit
+    const input = getByTestId('feedback-input');
+    fireEvent.changeText(input, 'Test message');
+    fireEvent.press(getByTestId('feedback-submit-button'));
+
+    // Modal should close after successful submission
+    await waitFor(
+      () => {
+        expect(queryByTestId('feedback-input')).toBeNull();
+      },
+      { timeout: 5000 },
+    );
+  }, 10000);
 });
