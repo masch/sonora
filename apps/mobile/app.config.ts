@@ -1,12 +1,25 @@
-import { type ExpoConfig, type ConfigContext } from 'expo/config';
+import { type ConfigContext, type ExpoConfig } from 'expo/config';
 import { fontConfig } from './src/config/font.ts';
 
-export default ({ config }: ConfigContext): ExpoConfig => {
-  const isStaging = process.env.APP_ENV === 'staging';
+const isStaging = process.env.APP_ENV === 'staging';
 
+const ENV_CONFIG = {
+  staging: {
+    name: 'Sonora Staging',
+    appId: 'com.masch.sonora.staging',
+  },
+  production: {
+    name: 'Sonora',
+    appId: 'com.masch.sonora',
+  },
+};
+
+const activeEnv = isStaging ? ENV_CONFIG.staging : ENV_CONFIG.production;
+
+export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
-    name: isStaging ? 'Sonora Staging' : 'Sonora',
+    name: activeEnv.name,
     slug: 'sonora',
     version: '1.0.0',
     orientation: 'portrait',
@@ -15,7 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: 'automatic',
     ios: {
       icon: './assets/expo.icon',
-      bundleIdentifier: 'com.masch.sonora',
+      bundleIdentifier: activeEnv.appId,
       googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
         UIBackgroundModes: ['fetch'],
@@ -29,7 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      package: 'com.masch.sonora',
+      package: activeEnv.appId,
       googleServicesFile: './google-services.json',
       versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
     },
