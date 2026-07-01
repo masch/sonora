@@ -70,6 +70,17 @@ export const es = {
     errors: {
       mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el recorrido.',
     },
+    geofenceBlocked: {
+      bannerTitle: 'Estás lejos del punto de inicio',
+      bannerDescription:
+        'Necesitás estar a menos de {{radius}} metros del punto de inicio para escuchar este recorrido.',
+      bannerDistance: 'Distancia actual: {{distance}}',
+      notAvailable: 'N/A',
+      blockedAlertTitle: 'No podés reproducir',
+      blockedAlertMessage:
+        'Para escuchar este recorrido tenés que estar a menos de {{radius}} metros del punto de inicio. Distancia actual: {{distance}}.',
+      blockedAlertOk: 'Entendido',
+    },
     warnings: {
       locationAlertTitle: 'Alerta de Ubicación',
       locationAlertMessage:
