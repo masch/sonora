@@ -5,8 +5,7 @@ import { getItem, setItem, QUEUE_KEY } from '@/storage/feedback-storage';
 import { APP_CONFIG } from '@/config/app-config';
 import type { FeedbackEntry } from '@/types/feedback';
 import { logger } from '@/utils/logger';
-
-const API_URL = `${APP_CONFIG.apiBaseUrl}/feedback`;
+import { ApiClient } from '@/services/api-client';
 
 /**
  * Listens for offline→online transitions and flushes all pending
@@ -56,32 +55,21 @@ export async function flushQueue(): Promise<void> {
     const results = await Promise.all(
       entries.map(async (entry): Promise<FeedbackEntry | null> => {
         try {
-          const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              experienceId: entry.experienceId,
-              message: entry.message,
-              idempotencyKey: entry.id,
-              createdAt: entry.createdAt,
-              latitude: entry.latitude,
-              longitude: entry.longitude,
-            }),
+          await ApiClient.post('/feedback', {
+            experienceId: entry.experienceId,
+            message: entry.message,
+            idempotencyKey: entry.id,
+            createdAt: entry.createdAt,
+            latitude: entry.latitude,
+            longitude: entry.longitude,
           });
-
-          if (response.status === 201 || response.status === 409) {
-            // 201 = accepted, 409 = duplicate (already processed — safe to remove)
-            return null;
-          } else {
-            // Failed — keep for retry, increment retry count
-            return {
-              ...entry,
-              retryCount: entry.retryCount + 1,
-              lastError: `HTTP ${response.status}`,
-            };
-          }
+          return null;
         } catch (err: unknown) {
-          // Network error — keep for retry
+          if (err instanceof Error && err.message.includes('status 409')) {
+            // 409 = duplicate (already processed — safe to remove)
+            return null;
+          }
+          // Failed — keep for retry
           return {
             ...entry,
             retryCount: entry.retryCount + 1,

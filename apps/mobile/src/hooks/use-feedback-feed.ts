@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { APP_CONFIG } from '@/config/app-config';
 import { logger } from '@/utils/logger';
 import { type Experience } from '@/data/experiences';
+import { ApiClient } from '@/services/api-client';
 
 interface FeedbackServerEntry {
   id: string;
@@ -19,17 +19,14 @@ interface FeedState {
   loading: boolean;
 }
 
-async function fetchFeedData(
-  apiBaseUrl: string,
-): Promise<{ feed: FeedbackServerEntry[]; experiences: Experience[] }> {
-  const [feedResponse, expResponse] = await Promise.all([
-    fetch(`${apiBaseUrl}/feedback`),
-    fetch(`${apiBaseUrl}/experiences`),
+async function fetchFeedData(): Promise<{
+  feed: FeedbackServerEntry[];
+  experiences: Experience[];
+}> {
+  const [feedData, expData] = await Promise.all([
+    ApiClient.get<FeedbackServerEntry[]>('/feedback'),
+    ApiClient.get<Experience[]>('/experiences'),
   ]);
-
-  if (!feedResponse.ok || !expResponse.ok) throw new Error('API failed');
-
-  const [feedData, expData] = await Promise.all([feedResponse.json(), expResponse.json()]);
 
   return { feed: feedData, experiences: expData };
 }
@@ -43,7 +40,7 @@ export function useFeedbackFeed() {
   });
 
   useEffect(() => {
-    fetchFeedData(APP_CONFIG.apiBaseUrl)
+    fetchFeedData()
       .then((data) => setState({ ...data, error: false, loading: false }))
       .catch((err: unknown) => {
         logger.error('Failed to fetch feedback feed:', err);
@@ -53,7 +50,7 @@ export function useFeedbackFeed() {
 
   const refetch = () => {
     setState((prev) => ({ ...prev, loading: true, error: false }));
-    fetchFeedData(APP_CONFIG.apiBaseUrl)
+    fetchFeedData()
       .then((data) => setState({ ...data, error: false, loading: false }))
       .catch((err: unknown) => {
         logger.error('Failed to fetch feedback feed:', err);

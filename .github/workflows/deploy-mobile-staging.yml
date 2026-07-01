@@ -8,14 +8,6 @@ on:
         required: true
         type: boolean
         default: true
-  pull_request:
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/shared/**'
-      - '.github/workflows/**'
-      - 'Makefile'
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -25,7 +17,7 @@ env:
   EXPO_PUBLIC_API_URL: https://sonora-api-staging.sonora-api.workers.dev
 
 concurrency:
-  group: deploy-staging-${{ github.event.pull_request.number || github.ref }}
+  group: deploy-staging-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
