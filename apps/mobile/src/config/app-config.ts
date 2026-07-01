@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -56,8 +57,9 @@ export const APP_CONFIG = {
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    rewindOffsetMs: 10000,
+    rewindOffsetMs: DEFAULT_REMOTE_CONFIG.audio.rewindOffsetMs,
     /**
      * Default instructions audio URL.
      */
@@ -68,9 +70,9 @@ export const APP_CONFIG = {
   geofence: {
     /**
      * Radius in meters the user must be within to start playback.
-     * Also used by GpsPrecisionBadge and GeofenceBlockedBanner.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    radiusMeters: 50,
+    radiusMeters: DEFAULT_REMOTE_CONFIG.geofence.radiusMeters,
   },
   feedback: {
     /**
@@ -81,8 +83,9 @@ export const APP_CONFIG = {
     generalExperienceId: '00000000-0000-0000-0000-000000000000',
     /**
      * Feedback queue sync interval in seconds (used on Web and Mobile background sync).
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      * Note: iOS caps background execution to a minimum of 15 minutes (900 seconds).
      */
-    syncIntervalSec: 30,
+    syncIntervalSec: DEFAULT_REMOTE_CONFIG.feedback.syncIntervalSec,
   },
 } as const;

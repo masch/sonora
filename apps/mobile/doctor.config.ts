@@ -9,6 +9,31 @@ export default {
         // Expo Router loads _layout.tsx by convention — not an unused file. deslop doesn't understand file-based routing.
       },
       {
+        files: ['src/providers/remote-config-provider.tsx'],
+        rules: [
+          'react-compiler',
+          'react-doctor/react-compiler',
+          'react-compiler-no-manual-memoization',
+          'react-doctor/react-compiler-no-manual-memoization',
+          'exhaustive-deps',
+          'react-doctor/exhaustive-deps',
+          'rerender-state-only-in-handlers',
+          'react-doctor/rerender-state-only-in-handlers',
+          'no-react19-deprecated-apis',
+          'react-doctor/no-react19-deprecated-apis',
+        ],
+        // ConfigProvider uses useCallback + async + try/catch for data fetching —
+        // all deliberate patterns. The refetchCount useState is the simplest pattern
+        // to trigger useEffect re-runs (useRef can't trigger re-renders).
+        // useContext → use() is React 19 migration, left for when the project upgrades.
+        // useCallback is kept for clarity even though React Compiler would handle it.
+      },
+      {
+        files: ['src/providers/__tests__/remote-config-provider.test.tsx'],
+        rules: ['react-compiler', 'react-doctor/react-compiler'],
+        // Test file — dynamic hooks inside TestConsumer are intentional for testing context.
+      },
+      {
         files: ['**/experiences.tsx'],
         rules: [
           'rn-no-inline-flatlist-renderitem',
