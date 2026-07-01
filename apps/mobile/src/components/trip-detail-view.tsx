@@ -10,19 +10,15 @@ import { APP_CONFIG } from '@/config/app-config';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type TripExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
-import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
+import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { ApiClient } from '@/services/api-client';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
-import type { FeedbackStatus } from '@/types/feedback';
-import { generateUUID } from '@/utils/uuid';
-import { logger } from '@/utils/logger';
 import type { TranslationKeys } from '@/i18n/types';
 
 interface TripDetailViewProps {
@@ -32,8 +28,7 @@ interface TripDetailViewProps {
 export default function TripDetailView({ track }: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>();
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
@@ -75,39 +70,11 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
     didJustFinish: player.status === 'stopped',
     isNearStart: geofence.isNearStart,
   });
-  const feedbackQueue = useFeedbackQueue();
 
-  const handleFeedbackSubmit = async (message: string) => {
-    setFeedbackStatus('sending');
-    setFeedbackError(null);
-    const trackUuid = track.id;
-    const idempotencyKey = generateUUID();
-
-    try {
-      await ApiClient.post('/feedback', {
-        experienceId: trackUuid,
-        message,
-        idempotencyKey,
-        createdAt: new Date().toISOString(),
-      });
-
-      setFeedbackStatus('sent');
-    } catch (err) {
-      logger.error('[API_ERROR] Fetch failed, queueing feedback:', err);
-      try {
-        await feedbackQueue.enqueue({ experienceId: trackUuid, message }, idempotencyKey);
-        setFeedbackStatus('queued');
-      } catch (enqueueErr) {
-        logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);
-        setFeedbackStatus('error');
-        setFeedbackError(t('feedback.form.error'));
-      }
-    }
-  };
+  const handleFeedbackSubmit = (message: string) => feedback.submitFeedback(track.id, message);
 
   const handleFeedbackDismiss = () => {
-    setFeedbackStatus(undefined);
-    setFeedbackError(null);
+    feedback.dismissFeedback();
     setShowManualFeedback(false);
     feedbackTrigger.dismiss();
   };
@@ -115,7 +82,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
 
   const showFeedbackForm =
-    feedbackTrigger.showFeedback || showManualFeedback || feedbackStatus !== undefined;
+    feedbackTrigger.showFeedback || showManualFeedback || feedback.feedbackStatus !== undefined;
 
   const isBypassable = track.geofenceBypassable === true;
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !APP_CONFIG.bypassGeofence;
@@ -306,8 +273,8 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
         visible={showFeedbackForm}
         onSubmit={handleFeedbackSubmit}
         onDismiss={handleFeedbackDismiss}
-        status={feedbackStatus}
-        errorMsg={feedbackError}
+        status={feedback.feedbackStatus}
+        errorMsg={feedback.feedbackError}
       />
     </TwView>
   );
