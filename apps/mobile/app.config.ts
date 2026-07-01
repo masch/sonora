@@ -6,13 +6,11 @@ const isStaging = process.env.APP_ENV === 'staging';
 const ENV_CONFIG = {
   staging: {
     name: 'Sonora Staging',
-    package: 'com.masch.sonora.staging',
-    bundleIdentifier: 'com.masch.sonora.staging',
+    appId: 'com.masch.sonora.staging',
   },
   production: {
     name: 'Sonora',
-    package: 'com.masch.sonora',
-    bundleIdentifier: 'com.masch.sonora',
+    appId: 'com.masch.sonora',
   },
 };
 
@@ -30,10 +28,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: 'automatic',
     ios: {
       icon: './assets/expo.icon',
-      bundleIdentifier: activeEnv.bundleIdentifier,
+      bundleIdentifier: activeEnv.appId,
       googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
-        UIBackgroundModes: ['audio'], // Changed to 'audio' for background playback support
+        UIBackgroundModes: ['fetch'],
       },
     },
     android: {
@@ -44,7 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      package: activeEnv.package,
+      package: activeEnv.appId,
       googleServicesFile: './google-services.json',
       versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
     },
@@ -56,7 +54,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       '@react-native-firebase/app',
       '@react-native-firebase/crashlytics',
       'expo-router',
-      'expo-audio', // standard config plugin, options-free
+      [
+        'expo-audio',
+        {
+          enableBackgroundPlayback: true,
+        },
+      ],
       [
         'expo-splash-screen',
         {
@@ -72,7 +75,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-font',
         {
-          fonts: fontConfig.nativeFonts, // standard expo-font format
+          fonts: fontConfig.nativeFonts,
+          android: {
+            fonts: [
+              {
+                fontFamily: fontConfig.family,
+                fontDefinitions: fontConfig.androidFonts.map((f) => ({
+                  path: f.path,
+                  weight: f.weight,
+                })),
+              },
+            ],
+          },
         },
       ],
     ],

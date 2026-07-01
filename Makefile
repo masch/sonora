@@ -518,7 +518,7 @@ eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting st
 
 # Firebase project App IDs
 FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:aad883fdf7059bec060479
-FIREBASE_APP_ID_STAGING    := 1:967212589494:android:45c43fdf65470a1e14e117
+FIREBASE_APP_ID_STAGING    := 1:967212589494:android:602e693b852146f814e117
 
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json
