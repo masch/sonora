@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
+import { useLocationStore } from '@/store/location-store';
 import { ApiClient } from '@/services/api-client';
 import type { FeedbackStatus } from '@/types/feedback';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -41,19 +42,28 @@ export function useFeedbackSubmit(): UseFeedbackSubmitResult {
       setFeedbackError(null);
       const idempotencyKey = generateUUID();
 
+      const { coords } = useLocationStore.getState();
+      const lat = coords?.latitude ?? null;
+      const lng = coords?.longitude ?? null;
+
       try {
         await ApiClient.post('/feedback', {
           experienceId,
           message,
           idempotencyKey,
           createdAt: new Date().toISOString(),
+          latitude: lat,
+          longitude: lng,
         });
 
         setFeedbackStatus('sent');
       } catch (err) {
         logger.error('[API_ERROR] Fetch failed, queueing feedback:', err);
         try {
-          await feedbackQueue.enqueue({ experienceId, message }, idempotencyKey);
+          await feedbackQueue.enqueue(
+            { experienceId, message, latitude: lat, longitude: lng },
+            idempotencyKey,
+          );
           setFeedbackStatus('queued');
         } catch (enqueueErr) {
           logger.error('[ENQUEUE_ERROR] SQLite fallback failed:', enqueueErr);
