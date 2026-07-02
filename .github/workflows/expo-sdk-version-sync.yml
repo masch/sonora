@@ -65,24 +65,24 @@ jobs:
           branch: chore/expo-sdk-version-sync
           title: 'chore: sync expo sdk dependency versions'
           body: |
-            Sync automatizado de versiones de dependencias Expo SDK via `expo install --fix`.
+            Automated sync of Expo SDK dependency versions via `expo install --fix`.
 
-            **Mismatches detectados:**
+            **Mismatches detected:**
             ```
             ${{ steps.check.outputs.output }}
             ```
 
             > [!IMPORTANT]
-            > Revisar manualmente antes de mergear. Los changes deben pasar todos los checks del PR.
+            > Manual review required before merging. All PR checks must pass.
           labels: dependencies
 
       - name: Summary
         if: always()
         run: |
           if [ "${{ steps.check.outputs.exit_code }}" = "0" ]; then
-            echo "✅ No se detectaron mismatches. Todo en orden."
+            echo "✅ No mismatches detected. All good."
           elif [ "${{ steps.pr.outputs.pull-request-number }}" != "" ]; then
-            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} creado con las correcciones."
+            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} created with fixes."
           else
-            echo "⚠️ Mismatches detectados pero no se generaron cambios."
+            echo "⚠️ Mismatches detected but no changes were generated."
           fi
