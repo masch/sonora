@@ -4,7 +4,7 @@ import * as TaskManager from 'expo-task-manager';
 
 import { useRegisterBackgroundTask } from './use-register-background-task';
 import { flushQueue } from './use-feedback-sync';
-import { APP_CONFIG } from '@/config/app-config';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { logger } from '@/utils/logger';
 
 export const BACKGROUND_SYNC_TASK = 'background-feedback-sync';
@@ -29,6 +29,6 @@ if (Platform.OS !== 'web') {
  */
 export function useBackgroundSync() {
   useRegisterBackgroundTask(BACKGROUND_SYNC_TASK, {
-    minimumInterval: APP_CONFIG.feedback.syncIntervalSec,
+    minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
   });
 }

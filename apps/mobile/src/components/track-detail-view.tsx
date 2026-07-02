@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
 import UnifiedAudioController from '@/components/unified-audio-controller';
-import { APP_CONFIG } from '@/config/app-config';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type TrackExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
@@ -34,6 +34,7 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
+  const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
 
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
@@ -183,9 +184,7 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
               onPlay={player.play}
               onPause={player.pause}
               onStop={player.stop}
-              onRewind={() =>
-                player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
-              }
+              onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
               onReset={() => player.seekTo(0)}
               onDownload={handlePlayAndDownload}
               onCancelDownload={download.deleteTrackLocal}

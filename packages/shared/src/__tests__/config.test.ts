@@ -7,8 +7,7 @@ import {
 
 describe('RemoteConfigPayloadSchema', () => {
   const fullPayload: RemoteConfigPayload = {
-    geofence: { radiusMeters: 50 },
-    bypassGeofence: false,
+    geofence: { radiusMeters: 50, bypassGeofence: false },
     audio: { rewindOffsetMs: 10000 },
     feedback: { syncIntervalSec: 30 },
   };
@@ -62,7 +61,7 @@ describe('RemoteConfigPayloadSchema', () => {
     });
 
     it('rejects non-boolean bypassGeofence', () => {
-      const schema = RemoteConfigPayloadSchema.shape.bypassGeofence;
+      const schema = RemoteConfigPayloadSchema.shape.geofence.shape.bypassGeofence;
       expect(schema.safeParse('yes').success).toBe(false);
     });
   });
@@ -70,7 +69,7 @@ describe('RemoteConfigPayloadSchema', () => {
   describe('TypeScript types', () => {
     it('DEFAULT_REMOTE_CONFIG satisfies RemoteConfigPayload', () => {
       const check: RemoteConfigPayload = DEFAULT_REMOTE_CONFIG;
-      expect(check.bypassGeofence).toBe(false);
+      expect(check.geofence.bypassGeofence).toBe(false);
     });
   });
 });

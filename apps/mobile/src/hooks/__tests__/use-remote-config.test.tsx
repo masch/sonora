@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { ConfigProvider } from '../../providers/remote-config-provider';
 import { useRemoteConfig } from '../use-remote-config';
+import { useRemoteConfigStore } from '../../store/remote-config-store';
 import { ApiClient } from '../../services/api-client';
 import { getCachedConfig } from '../../storage/config-cache';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -25,6 +26,12 @@ const mockGetCachedConfig = getCachedConfig as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Reset store to initial state
+  useRemoteConfigStore.setState({
+    config: DEFAULT_REMOTE_CONFIG,
+    isLoading: true,
+    error: null,
+  });
   mockGetCachedConfig.mockResolvedValue(null);
   mockApiGet.mockResolvedValue({});
 });
@@ -32,72 +39,54 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────
 
 describe('useRemoteConfig', () => {
-  it('returns merged config when used inside ConfigProvider', async () => {
+  it('returns merged config after init resolves', async () => {
     mockApiGet.mockResolvedValue({
-      geofence: { radiusMeters: 200 },
+      geofence: { radiusMeters: 200, bypassGeofence: true },
     });
 
-    let capturedConfig: unknown;
+    // Init the store before the component renders
+    await useRemoteConfigStore.getState().init();
+
     function Consumer() {
-      const { config, isLoading } = useRemoteConfig();
-      if (!isLoading) {
-        capturedConfig = config;
-      }
-      return <Text>{isLoading ? 'Loading' : 'Ready'}</Text>;
+      const { config } = useRemoteConfig();
+      return <Text testID="config">{JSON.stringify(config)}</Text>;
     }
 
-    render(
-      <ConfigProvider>
-        <Consumer />
-      </ConfigProvider>,
-    );
+    render(<Consumer />);
 
-    await screen.findByText('Ready');
+    const configText = screen.getByTestId('config').props.children;
+    const config = JSON.parse(configText);
 
-    expect(capturedConfig).toBeDefined();
-    const config = capturedConfig as Record<string, unknown>;
-    expect(config.geofence).toEqual({ radiusMeters: 200 });
-    expect(config.bypassGeofence).toBe(false);
+    expect(config.geofence.radiusMeters).toBe(200);
+    expect(config.geofence.bypassGeofence).toBe(true);
   });
 
-  it('returns loading state initially', () => {
-    mockApiGet.mockImplementation(() => new Promise(() => {}));
-
+  it('returns loading state initially before init', () => {
     function Consumer() {
       const { isLoading } = useRemoteConfig();
       return <Text testID="loading-state">{isLoading ? 'Loading' : 'Done'}</Text>;
     }
 
-    render(
-      <ConfigProvider>
-        <Consumer />
-      </ConfigProvider>,
-    );
+    render(<Consumer />);
 
     expect(screen.getByTestId('loading-state')).toHaveTextContent('Loading');
   });
 
   it('returns default config when no API overrides', async () => {
-    mockApiGet.mockResolvedValue({});
+    // Init with empty API response
+    await useRemoteConfigStore.getState().init();
 
     function Consumer() {
-      const { config, isLoading } = useRemoteConfig();
+      const { config } = useRemoteConfig();
       return (
         <Text testID="vals">
-          {isLoading
-            ? 'Load'
-            : `${config.geofence.radiusMeters}|${config.bypassGeofence}|${config.audio.rewindOffsetMs}|${config.feedback.syncIntervalSec}`}
+          {`${config.geofence.radiusMeters}|${config.geofence.bypassGeofence}|${config.audio.rewindOffsetMs}|${config.feedback.syncIntervalSec}`}
         </Text>
       );
     }
 
-    render(
-      <ConfigProvider>
-        <Consumer />
-      </ConfigProvider>,
-    );
+    render(<Consumer />);
 
-    await screen.findByText('50|false|10000|30');
     expect(screen.getByTestId('vals')).toHaveTextContent('50|false|10000|30');
   });
 });

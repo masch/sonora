@@ -19,8 +19,7 @@ describe('config-cache', () => {
     it('stores config as JSON string under the cache key', async () => {
       const { setCachedConfig } = importModule();
       const config = {
-        geofence: { radiusMeters: 100 },
-        bypassGeofence: true,
+        geofence: { radiusMeters: 100, bypassGeofence: true },
         audio: { rewindOffsetMs: 15000 },
         feedback: { syncIntervalSec: 60 },
       };
@@ -34,8 +33,7 @@ describe('config-cache', () => {
   describe('getCachedConfig', () => {
     it('returns parsed config when cache exists', async () => {
       const config = {
-        geofence: { radiusMeters: 75 },
-        bypassGeofence: false,
+        geofence: { radiusMeters: 75, bypassGeofence: false },
         audio: { rewindOffsetMs: 5000 },
         feedback: { syncIntervalSec: 120 },
       };

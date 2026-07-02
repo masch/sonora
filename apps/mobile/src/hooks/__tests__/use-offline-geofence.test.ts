@@ -17,8 +17,7 @@ describe('useOfflineGeofence hook', () => {
   const targetCoords = { latitude: -31.979, longitude: -64.635 };
 
   const defaultConfig = {
-    geofence: { radiusMeters: 50 },
-    bypassGeofence: false,
+    geofence: { radiusMeters: 50, bypassGeofence: false },
     audio: { rewindOffsetMs: 10000 },
     feedback: { syncIntervalSec: 30 },
   };
@@ -96,8 +95,7 @@ describe('useOfflineGeofence hook', () => {
   it('should use geofence radius from useRemoteConfig', () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
-        geofence: { radiusMeters: 200 },
-        bypassGeofence: false,
+        geofence: { radiusMeters: 200, bypassGeofence: false },
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
       },
@@ -135,8 +133,7 @@ describe('useOfflineGeofence hook', () => {
     // Update the remote config mock and re-render
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
-        geofence: { radiusMeters: 500 },
-        bypassGeofence: false,
+        geofence: { radiusMeters: 500, bypassGeofence: false },
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
       },

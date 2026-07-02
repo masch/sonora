@@ -53,7 +53,6 @@ const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY || 'sonora-client-se
 export const APP_CONFIG = {
   apiBaseUrl: getApiBaseUrl(),
   apiClientKey,
-  bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.
@@ -73,6 +72,12 @@ export const APP_CONFIG = {
      * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
     radiusMeters: DEFAULT_REMOTE_CONFIG.geofence.radiusMeters,
+    /**
+     * Build-time env override to bypass geofence restriction entirely.
+     * @note the logic is inverted: setting the env var to "false" actually enables bypass.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
+     */
+    bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
   },
   feedback: {
     /**

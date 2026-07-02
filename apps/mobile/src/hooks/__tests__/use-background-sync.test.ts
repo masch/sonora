@@ -3,7 +3,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 
 import { useBackgroundSync, BACKGROUND_SYNC_TASK } from '../use-background-sync';
-import { APP_CONFIG } from '@/config/app-config';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 
 // Mock expo-background-fetch
 jest.mock('expo-background-fetch', () => ({
@@ -41,7 +41,7 @@ describe('useBackgroundSync', () => {
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
     expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK, {
-      minimumInterval: APP_CONFIG.feedback.syncIntervalSec,
+      minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
       stopOnTerminate: false,
       startOnBoot: true,
     });

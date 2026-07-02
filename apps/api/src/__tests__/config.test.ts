@@ -13,14 +13,14 @@ describe('GET /config', () => {
     const body = (await res.json()) as Record<string, unknown>;
 
     expect(body).toHaveProperty('geofence');
-    expect(body).toHaveProperty('bypassGeofence');
     expect(body).toHaveProperty('audio');
     expect(body).toHaveProperty('feedback');
 
     const geofence = body.geofence as Record<string, unknown>;
+    expect(geofence).toHaveProperty('bypassGeofence');
     expect(typeof geofence.radiusMeters).toBe('number');
 
-    expect(typeof body.bypassGeofence).toBe('boolean');
+    expect(typeof geofence.bypassGeofence).toBe('boolean');
 
     const audio = body.audio as Record<string, unknown>;
     expect(typeof audio.rewindOffsetMs).toBe('number');
@@ -32,14 +32,13 @@ describe('GET /config', () => {
   it('returns DEFAULT_REMOTE_CONFIG values', async () => {
     const res = await app.request('/config');
     const body = (await res.json()) as {
-      geofence: { radiusMeters: number };
-      bypassGeofence: boolean;
+      geofence: { radiusMeters: number; bypassGeofence: boolean };
       audio: { rewindOffsetMs: number };
       feedback: { syncIntervalSec: number };
     };
 
     expect(body.geofence.radiusMeters).toBe(50);
-    expect(body.bypassGeofence).toBe(false);
+    expect(body.geofence.bypassGeofence).toBe(false);
     expect(body.audio.rewindOffsetMs).toBe(10000);
     expect(body.feedback.syncIntervalSec).toBe(30);
   });

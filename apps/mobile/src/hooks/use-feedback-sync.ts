@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { getItem, setItem, QUEUE_KEY } from '@/storage/feedback-storage';
-import { APP_CONFIG } from '@/config/app-config';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import type { FeedbackEntry } from '@/types/feedback';
 import { logger } from '@/utils/logger';
 import { ApiClient } from '@/services/api-client';
@@ -14,6 +14,7 @@ import { ApiClient } from '@/services/api-client';
  */
 export function useFeedbackSync(): void {
   const flushingRef = useRef(false);
+  const syncIntervalSec = useRemoteConfigStore((s) => s.config.feedback.syncIntervalSec);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -35,13 +36,13 @@ export function useFeedbackSync(): void {
           flushingRef.current = false;
         });
       }
-    }, APP_CONFIG.feedback.syncIntervalSec * 1000);
+    }, syncIntervalSec * 1000);
 
     return () => {
       unsubscribe();
       clearInterval(interval);
     };
-  }, []);
+  }, [syncIntervalSec]);
 }
 
 export async function flushQueue(): Promise<void> {

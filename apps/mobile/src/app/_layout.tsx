@@ -16,7 +16,7 @@ import { useBackgroundSync } from '@/hooks/use-background-sync';
 import { AudioPlayerBridge } from '@/components/audio-player-bridge';
 import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-modal';
 import { AnalyticsService } from '@/services/analytics';
-import { ConfigProvider } from '@/providers/remote-config-provider';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
@@ -50,6 +50,11 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Initialise remote config on app load
+  useEffect(() => {
+    useRemoteConfigStore.getState().init();
+  }, []);
+
   // Track app open event
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
@@ -80,16 +85,14 @@ export default function RootLayout() {
   };
 
   return (
-    <ConfigProvider>
-      <ThemeProvider value={navTheme}>
-        <AudioPlayerBridge />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
-        </Stack>
-        <InterruptConfirmationModal />
-      </ThemeProvider>
-    </ConfigProvider>
+    <ThemeProvider value={navTheme}>
+      <AudioPlayerBridge />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
+      </Stack>
+      <InterruptConfirmationModal />
+    </ThemeProvider>
   );
 }
 
