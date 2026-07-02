@@ -19,6 +19,13 @@ export const FeedbackPostBodySchema = z.object({
 
 export type FeedbackPostBody = z.infer<typeof FeedbackPostBodySchema>;
 
+/**
+ * The UUID of the "general-feedback" experience in the DB seed.
+ * Used by both API (seed) and mobile (feedback submission).
+ * Single source of truth — do NOT duplicate.
+ */
+export const GENERAL_FEEDBACK_EXPERIENCE_ID = '00000000-0000-0000-0000-000000000000';
+
 export interface FeedbackResponse {
   status: 'ok' | 'duplicate' | 'error';
   errors?: string[];

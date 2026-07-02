@@ -81,12 +81,6 @@ export const APP_CONFIG = {
   },
   feedback: {
     /**
-     * The UUID of the "general-feedback" experience in the DB seed.
-     * The frontend sends this UUID so the backend FK constraint resolves correctly.
-     * Matching seed: apps/api/src/db/seed.ts → id: '00000000-0000-0000-0000-000000000000'
-     */
-    generalExperienceId: '00000000-0000-0000-0000-000000000000',
-    /**
      * Feedback queue sync interval in seconds (used on Web and Mobile background sync).
      * Default sourced from @sonora/shared — overrideable via GET /api/config.
      * Note: iOS caps background execution to a minimum of 15 minutes (900 seconds).

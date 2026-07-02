@@ -11,13 +11,13 @@ import { SONORA_MESSAGES_BG } from '@/constants/images';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useLocationStore, type LocationStore } from '@/store/location-store';
-import { APP_CONFIG } from '@/config/app-config';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
 import FeedbackForm from '@/components/feedback-form';
 import { getHaversineDistance } from '@/utils/haversine';
 import { type Experience } from '@/data/experiences';
+import { GENERAL_FEEDBACK_EXPERIENCE_ID } from '@sonora/shared';
 import { getExperienceIcon } from '@/utils/icons';
 import { TwAnimatedView } from '@/tw/animated';
 import { FadeInUp } from 'react-native-reanimated';
@@ -365,7 +365,7 @@ export default function MessagesScreen() {
   }, [refetch]);
 
   const handleSubmit = (message: string) => {
-    feedback.submitFeedback(APP_CONFIG.feedback.generalExperienceId, message).then(() => {
+    feedback.submitFeedback(GENERAL_FEEDBACK_EXPERIENCE_ID, message).then(() => {
       refetch();
     });
   };
