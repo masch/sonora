@@ -42,7 +42,14 @@ jobs:
         working-directory: apps/mobile
         env:
           BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE: '0'
-        run: npx expo install --fix
+        run: |
+          # expo install --fix internally spawns bun add which does NOT inherit
+          # BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE — it reads bunfig.toml instead.
+          # Temporarily override minimumReleaseAge so the subprocess sees 0.
+          cp ../../bunfig.toml /tmp/bunfig.toml.bak
+          sed -i 's/minimumReleaseAge = 345600/minimumReleaseAge = 0/' ../../bunfig.toml
+          npx expo install --fix
+          mv /tmp/bunfig.toml.bak ../../bunfig.toml
 
       - name: Sync bun lockfile after expo install
         if: steps.check.outputs.exit_code != '0'
