@@ -96,7 +96,7 @@ jobs:
         run: |
           gh workflow run deploy-mobile-staging.yml \
             --ref chore/expo-sdk-version-sync \
-            -f build_android=false
+            -f build_android=true
 
       - name: Summary
         if: always()
