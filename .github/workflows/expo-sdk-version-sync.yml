@@ -50,6 +50,18 @@ jobs:
           sed -i 's/minimumReleaseAge = 345600/minimumReleaseAge = 0/' ../../bunfig.toml
           npx expo install --fix
           mv /tmp/bunfig.toml.bak ../../bunfig.toml
+          # Strip tilde/caret ranges from expo deps — pin exact versions only
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const tracked = Object.keys(pkg.dependencies || {}).filter(
+            k => k.startsWith('expo') || k.startsWith('@expo/') || k === 'react-native-webview'
+          );
+          for (const k of tracked) {
+            pkg.dependencies[k] = pkg.dependencies[k].replace(/^[\^~]/, '');
+          }
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       - name: Sync bun lockfile after expo install
         if: steps.check.outputs.exit_code != '0'
