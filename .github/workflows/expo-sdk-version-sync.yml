@@ -1,0 +1,75 @@
+name: Expo SDK Version Sync
+
+on:
+  schedule:
+    # Weekly: Monday 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: expo-sdk-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile --minimum-release-age=0
+
+      - name: Check Expo SDK version mismatches
+        id: check
+        working-directory: apps/mobile
+        continue-on-error: true
+        run: |
+          npx expo install --check > /tmp/expo-check.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          echo "output<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/expo-check.log >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Apply Expo SDK version fixes
+        if: steps.check.outputs.exit_code != '0'
+        working-directory: apps/mobile
+        run: npx expo install --fix
+
+      - name: Sync bun lockfile after expo install
+        if: steps.check.outputs.exit_code != '0'
+        run: bun install --minimum-release-age=0
+
+      - name: Create Pull Request
+        id: pr
+        if: steps.check.outputs.exit_code != '0'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: sync expo sdk dependency versions'
+          branch: chore/expo-sdk-version-sync
+          title: 'chore: sync expo sdk dependency versions'
+          body: |
+            Sync automatizado de versiones de dependencias Expo SDK via `expo install --fix`.
+
+            **Mismatches detectados:**
+            ```
+            ${{ steps.check.outputs.output }}
+            ```
+
+            > [!IMPORTANT]
+            > Revisar manualmente antes de mergear. Los changes deben pasar todos los checks del PR.
+          labels: dependencies
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.exit_code }}" = "0" ]; then
+            echo "✅ No se detectaron mismatches. Todo en orden."
+          elif [ "${{ steps.pr.outputs.pull-request-number }}" != "" ]; then
+            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} creado con las correcciones."
+          else
+            echo "⚠️ Mismatches detectados pero no se generaron cambios."
+          fi
