@@ -32,7 +32,7 @@ run_step() {
 run_step "make test" "make test"
 run_step "make lint" "make lint"
 run_step "make typecheck" "make typecheck"
-run_step "make doctor-diff" "make doctor-diff"
+run_step "make doctor" "make doctor"
 echo "Running make expo-doctor..."
 make expo-doctor || echo "pre-commit: expo-doctor: known bun false positives — not blocking commit" >&2
 

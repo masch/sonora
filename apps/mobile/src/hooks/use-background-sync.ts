@@ -28,7 +28,8 @@ if (Platform.OS !== 'web') {
  * Runs on app startup and registers the task with the configured interval.
  */
 export function useBackgroundSync() {
+  const syncIntervalSec = useRemoteConfigStore((s) => s.config.feedback.syncIntervalSec);
   useRegisterBackgroundTask(BACKGROUND_SYNC_TASK, {
-    minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
+    minimumInterval: syncIntervalSec,
   });
 }
