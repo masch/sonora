@@ -40,6 +40,8 @@ jobs:
       - name: Apply Expo SDK version fixes
         if: steps.check.outputs.exit_code != '0'
         working-directory: apps/mobile
+        env:
+          BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE: '0'
         run: npx expo install --fix
 
       - name: Sync bun lockfile after expo install
