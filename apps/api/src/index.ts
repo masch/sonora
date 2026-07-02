@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health';
 import { themesRouter } from './routes/themes';
 import { experiencesRouter } from './routes/experiences';
 import { audioRouter } from './routes/audio';
+import { configRouter } from './routes/config';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -44,6 +45,7 @@ app.route('/feedback', feedbackRouter);
 app.route('/themes', themesRouter);
 app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
+app.route('/config', configRouter);
 
 // Global Error Handler
 app.onError((err, c) => {

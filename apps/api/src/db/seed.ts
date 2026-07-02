@@ -2,6 +2,7 @@ import { inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { createDbClient } from './index';
 import { experiences, themes, waypoints } from './schema';
+import { GENERAL_FEEDBACK_EXPERIENCE_ID } from '@sonora/shared';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -82,7 +83,7 @@ const tracks = [
 ] as const;
 
 const generalFeedback = {
-  id: '00000000-0000-0000-0000-000000000000',
+  id: GENERAL_FEEDBACK_EXPERIENCE_ID,
   slug: 'general-feedback',
   title: 'Comunidad',
   description: 'Comunidad y Feedback General',

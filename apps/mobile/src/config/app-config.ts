@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -52,12 +53,12 @@ const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY || 'sonora-client-se
 export const APP_CONFIG = {
   apiBaseUrl: getApiBaseUrl(),
   apiClientKey,
-  bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    rewindOffsetMs: 10000,
+    rewindOffsetMs: DEFAULT_REMOTE_CONFIG.audio.rewindOffsetMs,
     /**
      * Default instructions audio URL.
      */
@@ -68,21 +69,22 @@ export const APP_CONFIG = {
   geofence: {
     /**
      * Radius in meters the user must be within to start playback.
-     * Also used by GpsPrecisionBadge and GeofenceBlockedBanner.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    radiusMeters: 50,
+    radiusMeters: DEFAULT_REMOTE_CONFIG.geofence.radiusMeters,
+    /**
+     * Build-time env override to bypass geofence restriction entirely.
+     * @note the logic is inverted: setting the env var to "false" actually enables bypass.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
+     */
+    bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
   },
   feedback: {
     /**
-     * The UUID of the "general-feedback" experience in the DB seed.
-     * The frontend sends this UUID so the backend FK constraint resolves correctly.
-     * Matching seed: apps/api/src/db/seed.ts → id: '00000000-0000-0000-0000-000000000000'
-     */
-    generalExperienceId: '00000000-0000-0000-0000-000000000000',
-    /**
      * Feedback queue sync interval in seconds (used on Web and Mobile background sync).
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
      * Note: iOS caps background execution to a minimum of 15 minutes (900 seconds).
      */
-    syncIntervalSec: 30,
+    syncIntervalSec: DEFAULT_REMOTE_CONFIG.feedback.syncIntervalSec,
   },
 } as const;

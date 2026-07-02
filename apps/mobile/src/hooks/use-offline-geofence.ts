@@ -1,8 +1,6 @@
-import { APP_CONFIG } from '@/config/app-config';
 import { useLocationStore } from '@/store/location-store';
 import { getHaversineDistance } from '@/utils/haversine';
-
-const { radiusMeters } = APP_CONFIG.geofence;
+import { useRemoteConfig } from './use-remote-config';
 
 export interface GeofenceState {
   isNearStart: boolean;
@@ -20,7 +18,9 @@ export function useOfflineGeofence(
     longitude: number;
   } | null,
 ): GeofenceState {
+  const { config } = useRemoteConfig();
   const { coords, accuracy, status, errorMsg } = useLocationStore();
+  const radiusMeters = config.geofence.radiusMeters;
 
   if (!targetCoords || !coords) {
     return {

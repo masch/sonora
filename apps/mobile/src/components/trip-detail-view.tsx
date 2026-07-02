@@ -7,7 +7,7 @@ import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
-import { APP_CONFIG } from '@/config/app-config';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type TripExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
@@ -92,8 +92,10 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
     feedbackTrigger.showFeedback || showManualFeedback || feedback.feedbackStatus !== undefined;
 
   const isBypassable = track.geofenceBypassable === true;
-  const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !APP_CONFIG.bypassGeofence;
-  const showBypassWarning = !geofence.isNearStart && isBypassable && !APP_CONFIG.bypassGeofence;
+  const bypassGeofence = useRemoteConfigStore((s) => s.config.geofence.bypassGeofence);
+  const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
+  const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
+  const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
 
   const showGeofenceBlockedAlert = () => {
     Alert.alert(
@@ -259,9 +261,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
             onPlay={handlePlay}
             onPause={player.pause}
             onStop={player.stop}
-            onRewind={() =>
-              player.seekTo(Math.max(0, player.positionMs - APP_CONFIG.audio.rewindOffsetMs))
-            }
+            onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
             onReset={() => player.seekTo(0)}
             onDownload={handleDownload}
             onCancelDownload={download.deleteTrackLocal}
