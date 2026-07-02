@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: expo-sdk-sync
@@ -88,6 +89,15 @@ jobs:
             > Manual review required before merging. All PR checks must pass.
           labels: dependencies
 
+      - name: Trigger staging deploy with updates
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run deploy-mobile-staging.yml \
+            --ref chore/expo-sdk-version-sync \
+            -f build_android=true
+
       - name: Summary
         if: always()
         run: |
@@ -95,6 +105,7 @@ jobs:
             echo "✅ No mismatches detected. All good."
           elif [ "${{ steps.pr.outputs.pull-request-number }}" != "" ]; then
             echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} created with fixes."
+            echo "🚀 Staging deploy triggered from branch chore/expo-sdk-version-sync."
           else
             echo "⚠️ Mismatches detected but no changes were generated."
           fi
