@@ -27,8 +27,12 @@ jobs:
         working-directory: apps/mobile
         continue-on-error: true
         run: |
+          # bash -e kills the script on non-zero exit; disable temporarily
+          set +e
           npx expo install --check > /tmp/expo-check.log 2>&1
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit_code=$?
+          set -e
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           echo "output<<EOF" >> "$GITHUB_OUTPUT"
           cat /tmp/expo-check.log >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
