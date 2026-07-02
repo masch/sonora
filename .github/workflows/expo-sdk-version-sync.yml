@@ -72,7 +72,7 @@ jobs:
         if: steps.check.outputs.exit_code != '0'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_PR_ONLY }}
           commit-message: 'chore: sync expo sdk dependency versions'
           branch: chore/expo-sdk-version-sync
           title: 'chore: sync expo sdk dependency versions'
