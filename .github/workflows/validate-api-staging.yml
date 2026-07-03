@@ -1,0 +1,51 @@
+name: Validate API Staging
+# Validates API code on PRs without requiring secrets.
+# Complements pr.yml's validate-api job (which runs api-test + typecheck)
+# by running the broader api-validate suite (lint + typecheck + api-test + shared-test).
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - '.github/workflows/**'
+      - 'Makefile'
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: validate-api-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
+        run: rm -f tsconfig.json
+      - run: bun install --frozen-lockfile
+      - run: make api-validate
+      - name: Detect change type
+        id: change-type
+        run: |
+          CHANGED_FILES=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)
+          echo "### Changed files" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$CHANGED_FILES" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          if echo "$CHANGED_FILES" | grep -qvE '(^|/)package\.json$|bun\.lock$'; then
+            echo "**Classification**: source-code" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**Classification**: deps-only" >> "$GITHUB_STEP_SUMMARY"
+          fi
