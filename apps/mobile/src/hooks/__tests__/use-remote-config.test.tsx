@@ -31,6 +31,7 @@ beforeEach(() => {
     config: DEFAULT_REMOTE_CONFIG,
     isLoading: true,
     error: null,
+    versionStatus: 'ok',
   });
   mockGetCachedConfig.mockResolvedValue(null);
   mockApiGet.mockResolvedValue({});

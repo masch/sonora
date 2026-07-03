@@ -148,6 +148,97 @@ The Worker reads `DB_ADAPTER=neon` from `wrangler.toml` and connects via `@neond
 | `api-db-shell`    | Open an interactive psql shell               |
 | `api-dev-local`   | Run the API server locally with Postgres     |
 
+## App Version Check
+
+The app enforces a minimum version via remote config. On `init()`, the store fetches config from the API, compares the installed version (from `app.config.ts` → `Constants.expoConfig.version`) against the server's `minimumVersion`, and sets a `versionStatus` that drives conditional UI.
+
+### States
+
+| Status  | UI                                                           | Condition                                                                    |
+| ------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `ok`    | Normal app                                                   | Installed version >= minimum version                                         |
+| `warn`  | `UpdateWarningBanner` (non-blocking, dismissible)            | Installed version < minimum, `blockOlderVersions=false`                      |
+| `block` | `UpdateRequiredModal` (blocking — full-screen, no dismissal) | Installed version < minimum, `blockOlderVersions=true` (and no active grace) |
+
+### Grace period
+
+When `blockOlderVersions=true`, a grace period can downgrade `block` → `warn` for a window defined by the server:
+
+```text
+now >= GRACE_PERIOD_START && now < GRACE_PERIOD_END  →  warn (downgraded)
+otherwise                                               block
+```
+
+- Grace period is **server-authoritative** — dates are ISO 8601 strings compared server-side, and the result is included in the API response. Client does not compute grace.
+- If `GRACE_PERIOD_START` or `GRACE_PERIOD_END` is missing, no grace is applied.
+
+### API environment variables
+
+Set these on the Cloudflare Worker (`[vars]` in `wrangler.toml` or `wrangler.secret.toml`, or `wrangler secret put`):
+
+| Variable               | Default  | Description                                                      |
+| ---------------------- | -------- | ---------------------------------------------------------------- |
+| `MINIMUM_APP_VERSION`  | `0.0.0`  | Semver minimum required version. Set to `0.0.0` to disable check |
+| `BLOCK_OLDER_VERSIONS` | `false`  | When `true`, below-minimum users see a blocking modal            |
+| `GRACE_PERIOD_START`   | _(none)_ | ISO date start of grace window (e.g. `2026-06-25`)               |
+| `GRACE_PERIOD_END`     | _(none)_ | ISO date end of grace window (e.g. `2026-07-10`)                 |
+
+> **Note:** `MINIMUM_APP_VERSION=0.0.0` in dev bypasses the version check. In staging/production set it to the actual minimum.
+
+### Manual testing
+
+The app version is `1.0.0` (hardcoded in `app.config.ts`). To test each state, deploy the API with different `[vars]` in `wrangler.staging.toml`:
+
+```bash
+# 1. Deploy to staging
+make api-deploy-staging
+
+# 2. Run the app pointing to staging
+make start-staging
+```
+
+**Case — `ok` (no banner, no modal):**
+
+```toml
+MINIMUM_APP_VERSION = "0.0.0"
+```
+
+**Case — `warn` (banner visible):**
+
+```toml
+MINIMUM_APP_VERSION = "2.0.0"
+BLOCK_OLDER_VERSIONS = "false"
+```
+
+**Case — `block` (modal bloqueante):**
+
+```toml
+MINIMUM_APP_VERSION = "2.0.0"
+BLOCK_OLDER_VERSIONS = "true"
+```
+
+**Case — grace (block downgraded to warn):**
+
+```toml
+MINIMUM_APP_VERSION = "2.0.0"
+BLOCK_OLDER_VERSIONS = "true"
+GRACE_PERIOD_START = "2026-06-25"
+GRACE_PERIOD_END   = "2026-07-10"
+```
+
+> Set `GRACE_PERIOD_START` to yesterday and `GRACE_PERIOD_END` to tomorrow from today's date.
+
+**Case — grace expired (back to block):**
+
+```toml
+MINIMUM_APP_VERSION = "2.0.0"
+BLOCK_OLDER_VERSIONS = "true"
+GRACE_PERIOD_START = "2026-06-01"
+GRACE_PERIOD_END   = "2026-06-20"
+```
+
+Each change requires a redeploy: `make api-deploy-staging`.
+
 ## Platform support
 
 | Platform | Target                     |

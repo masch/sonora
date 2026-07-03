@@ -129,12 +129,28 @@ describe('MessagesScreen', () => {
     fireEvent.changeText(input, 'Test message');
     fireEvent.press(getByTestId('feedback-submit-button'));
 
-    // Modal should close after successful submission
+    // Step 1 — wait for the submission to succeed (sent state appears, input hides)
+    await waitFor(
+      () => {
+        expect(getByTestId('feedback-sent-state')).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
+
+    // Step 2 — wait for the auto-dismiss (BottomModal autoDismissDelay = 2s)
     await waitFor(
       () => {
         expect(queryByTestId('feedback-input')).toBeNull();
       },
       { timeout: 5000 },
     );
-  }, 10000);
+
+    // Step 3 — feed should have been refetched after submission
+    await waitFor(
+      () => {
+        expect(queryByTestId('feedback-sent-state')).toBeNull();
+      },
+      { timeout: 5000 },
+    );
+  }, 20000);
 });

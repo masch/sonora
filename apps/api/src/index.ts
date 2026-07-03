@@ -23,6 +23,10 @@ export interface Env {
   CLIENT_API_KEY?: string;
   JWT_SECRET?: string;
   AUDIO_LINK_EXPIRY_SECONDS?: string;
+  MINIMUM_APP_VERSION: string;
+  BLOCK_OLDER_VERSIONS: string;
+  GRACE_PERIOD_START?: string;
+  GRACE_PERIOD_END?: string;
 }
 
 export interface Variables {

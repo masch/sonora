@@ -15,6 +15,8 @@ import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useBackgroundSync } from '@/hooks/use-background-sync';
 import { AudioPlayerBridge } from '@/components/audio-player-bridge';
 import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-modal';
+import { UpdateRequiredModal } from '@/components/update-required-modal';
+import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwView, TwText, TwPressable } from '@/tw';
@@ -55,6 +57,9 @@ export default function RootLayout() {
     useRemoteConfigStore.getState().init();
   }, []);
 
+  // Subscribe to version status
+  const versionStatus = useRemoteConfigStore((s) => s.versionStatus);
+
   // Track app open event
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
@@ -87,11 +92,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navTheme}>
       <AudioPlayerBridge />
+      {versionStatus === 'warn' && <UpdateWarningBanner />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
       </Stack>
       <InterruptConfirmationModal />
+      {versionStatus === 'block' && <UpdateRequiredModal />}
     </ThemeProvider>
   );
 }

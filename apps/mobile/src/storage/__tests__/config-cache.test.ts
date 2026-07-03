@@ -22,6 +22,7 @@ describe('config-cache', () => {
         geofence: { radiusMeters: 100, bypassGeofence: true },
         audio: { rewindOffsetMs: 15000 },
         feedback: { syncIntervalSec: 60 },
+        appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
       };
 
       await setCachedConfig(config);
@@ -36,6 +37,7 @@ describe('config-cache', () => {
         geofence: { radiusMeters: 75, bypassGeofence: false },
         audio: { rewindOffsetMs: 5000 },
         feedback: { syncIntervalSec: 120 },
+        appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
       };
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(config));
 

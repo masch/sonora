@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { useConfirm } from '@/hooks/use-confirm';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
 import type { FeedbackStatus } from '@/types/feedback';
 
@@ -46,34 +47,21 @@ export default function FeedbackForm({
     onDismiss();
   };
 
-  const handleDismiss = () => {
+  const { confirm, component: confirmComponent } = useConfirm();
+
+  const handleDismiss = async () => {
     if (!visible) return;
     if (message.trim().length > 0 && !isSent && !isQueued) {
-      if (Platform.OS === 'web') {
-        if (window.confirm(t('feedback.form.confirm.body'))) {
-          discardAndClose();
-        }
-      } else {
-        Alert.alert(
-          t('feedback.form.confirm.title'),
-          t('feedback.form.confirm.body'),
-          [
-            {
-              text: t('feedback.form.confirm.cancel'),
-              style: 'cancel',
-            },
-            {
-              text: t('feedback.form.confirm.discard'),
-              style: 'destructive',
-              onPress: discardAndClose,
-            },
-          ],
-          { cancelable: true },
-        );
-      }
-    } else {
-      discardAndClose();
+      const ok = await confirm({
+        title: t('feedback.form.confirm.title'),
+        message: t('feedback.form.confirm.body'),
+        confirmLabel: t('feedback.form.confirm.discard'),
+        cancelLabel: t('feedback.form.confirm.cancel'),
+        destructive: true,
+      });
+      if (!ok) return;
     }
+    discardAndClose();
   };
 
   const isSending = status === 'sending';
@@ -116,6 +104,8 @@ export default function FeedbackForm({
           <TwText className="text-text text-center">{t('feedback.form.queued')}</TwText>
         </TwView>
       )}
+
+      {confirmComponent}
 
       {showInput && (
         <>

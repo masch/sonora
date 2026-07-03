@@ -2,7 +2,13 @@ import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import type { RemoteConfigPayload } from '@sonora/shared';
 import { ApiClient } from '../../services/api-client';
 import { getCachedConfig, setCachedConfig } from '../../storage/config-cache';
-import { useRemoteConfigStore } from '../remote-config-store';
+import { useRemoteConfigStore, computeVersionStatus } from '../remote-config-store';
+
+// Mock Constants so installedVersion is stable for versionStatus tests
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { expoConfig: { version: '1.0.0' } },
+}));
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -28,25 +34,103 @@ const DEFAULT_CONFIG = {
   feedback: { syncIntervalSec: 30 },
 };
 
+const DEFAULT_APP_VERSION = {
+  appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
+};
+
+const fullDefaults: RemoteConfigPayload = { ...DEFAULT_REMOTE_CONFIG, ...DEFAULT_APP_VERSION };
+
 beforeEach(() => {
   jest.clearAllMocks();
   useRemoteConfigStore.setState({
-    config: DEFAULT_REMOTE_CONFIG,
+    config: fullDefaults,
     isLoading: true,
     error: null,
+    versionStatus: 'ok',
   });
   mockGetCachedConfig.mockResolvedValue(null);
   mockApiGet.mockResolvedValue({});
 });
 
-// ── Tests ──────────────────────────────────────────────────────────
+// ── computeVersionStatus (pure function) ───────────────────────────
+
+describe('computeVersionStatus', () => {
+  it('returns ok when installed version meets minimum', () => {
+    const result = computeVersionStatus('1.5.0', '1.0.0', true, undefined, undefined);
+    expect(result).toBe('ok');
+  });
+
+  it('returns ok when installed version equals minimum', () => {
+    const result = computeVersionStatus('1.0.0', '1.0.0', true, undefined, undefined);
+    expect(result).toBe('ok');
+  });
+
+  it('returns block when installed version is below minimum and blockOlderVersions is true', () => {
+    const result = computeVersionStatus('1.0.0', '2.0.0', true, undefined, undefined);
+    expect(result).toBe('block');
+  });
+
+  it('returns warn when installed version is below minimum and blockOlderVersions is false', () => {
+    const result = computeVersionStatus('1.0.0', '2.0.0', false, undefined, undefined);
+    expect(result).toBe('warn');
+  });
+
+  it('downgrades block to warn within grace period range', () => {
+    const start = new Date(Date.now() - 86400000).toISOString(); // yesterday
+    const end = new Date(Date.now() + 86400000).toISOString(); // tomorrow
+    const result = computeVersionStatus('1.0.0', '2.0.0', true, start, end);
+    expect(result).toBe('warn');
+  });
+
+  it('keeps block after grace period ends', () => {
+    const start = '2026-01-01T00:00:00Z';
+    const end = '2026-01-10T00:00:00Z';
+    const result = computeVersionStatus('1.0.0', '2.0.0', true, start, end);
+    expect(result).toBe('block');
+  });
+
+  it('returns block before grace period starts', () => {
+    const start = new Date(Date.now() + 86400000).toISOString(); // tomorrow
+    const end = new Date(Date.now() + 86400000 * 2).toISOString(); // day after
+    const result = computeVersionStatus('1.0.0', '2.0.0', true, start, end);
+    expect(result).toBe('block');
+  });
+
+  it('returns block when grace period dates are missing (no grace, strict mode)', () => {
+    const result = computeVersionStatus('1.0.0', '2.0.0', true, undefined, undefined);
+    expect(result).toBe('block');
+  });
+
+  it('returns ok when installedVersion is empty (offline first-launch)', () => {
+    const result = computeVersionStatus('', '1.0.0', true, undefined, undefined);
+    expect(result).toBe('ok');
+  });
+
+  it('returns block when installedVersion is invalid semver', () => {
+    const result = computeVersionStatus('not-a-version', '1.0.0', true, undefined, undefined);
+    expect(result).toBe('block');
+  });
+
+  it('returns ok when minimumVersion is default (0.0.0)', () => {
+    const result = computeVersionStatus('1.0.0', '0.0.0', true, undefined, undefined);
+    expect(result).toBe('ok');
+  });
+
+  it('returns ok when below minimum but blockOlderVersions is false', () => {
+    const result = computeVersionStatus('1.0.0', '2.0.0', false, undefined, undefined);
+    expect(result).toBe('warn');
+  });
+});
+
+// ── Store integration ──────────────────────────────────────────────
 
 describe('RemoteConfigStore', () => {
   it('initialises with loading state and defaults', () => {
     const state = useRemoteConfigStore.getState();
-    expect(state.config).toEqual(DEFAULT_REMOTE_CONFIG);
+    expect(state.config).toEqual(fullDefaults);
     expect(state.isLoading).toBe(true);
     expect(state.error).toBeNull();
+    expect(state.versionStatus).toBe('ok');
   });
 
   it('fetch API and merge remote config on init', async () => {
@@ -74,7 +158,7 @@ describe('RemoteConfigStore', () => {
 
     const state = useRemoteConfigStore.getState();
     expect(state.isLoading).toBe(false);
-    expect(state.config).toEqual(DEFAULT_CONFIG);
+    expect(state.config).toMatchObject(DEFAULT_CONFIG);
   });
 
   it('uses cached config when API fails and cache exists', async () => {
@@ -82,6 +166,7 @@ describe('RemoteConfigStore', () => {
       geofence: { radiusMeters: 300, bypassGeofence: true },
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },
+      appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
     mockApiGet.mockRejectedValue(new Error('Offline'));
@@ -133,7 +218,7 @@ describe('RemoteConfigStore', () => {
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config).toEqual(DEFAULT_CONFIG);
+    expect(state.config).toMatchObject(DEFAULT_CONFIG);
     expect(state.error).toBeNull();
   });
 
@@ -163,6 +248,69 @@ describe('RemoteConfigStore', () => {
     expect(capturedSignal).toBeDefined();
     expect(capturedSignal!.aborted).toBe(false);
     expect(capturedSignal!.constructor.name).toBe('AbortSignal');
+  });
+
+  describe('versionStatus after init', () => {
+    it('returns warn when API returns higher minimumVersion and blockOlderVersions is false', async () => {
+      mockApiGet.mockResolvedValue({
+        appVersion: { minimumVersion: '2.0.0', blockOlderVersions: false },
+      });
+
+      await useRemoteConfigStore.getState().init();
+
+      const state = useRemoteConfigStore.getState();
+      expect(state.versionStatus).toBe('warn');
+    });
+
+    it('returns block when API returns higher minimumVersion and blockOlderVersions is true', async () => {
+      mockApiGet.mockResolvedValue({
+        appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
+      });
+
+      await useRemoteConfigStore.getState().init();
+
+      const { versionStatus } = useRemoteConfigStore.getState();
+      expect(versionStatus).toBe('block');
+    });
+
+    it('downgrades block to warn when grace period is in range', async () => {
+      const start = new Date(Date.now() - 86400000).toISOString(); // yesterday
+      const end = new Date(Date.now() + 86400000).toISOString(); // tomorrow
+      mockApiGet.mockResolvedValue({
+        appVersion: {
+          minimumVersion: '2.0.0',
+          blockOlderVersions: true,
+          gracePeriodStart: start,
+          gracePeriodEnd: end,
+        },
+      });
+
+      await useRemoteConfigStore.getState().init();
+
+      const { versionStatus } = useRemoteConfigStore.getState();
+      expect(versionStatus).toBe('warn');
+    });
+
+    it('returns ok when app version meets minimum from API', async () => {
+      mockApiGet.mockResolvedValue({
+        appVersion: { minimumVersion: '0.5.0', blockOlderVersions: true },
+      });
+
+      await useRemoteConfigStore.getState().init();
+
+      const { versionStatus } = useRemoteConfigStore.getState();
+      expect(versionStatus).toBe('ok');
+    });
+
+    it('returns ok when init fails and no cache (offline first-launch fallback)', async () => {
+      mockGetCachedConfig.mockResolvedValue(null);
+      mockApiGet.mockRejectedValue(new Error('Offline'));
+
+      await useRemoteConfigStore.getState().init();
+
+      const { versionStatus } = useRemoteConfigStore.getState();
+      expect(versionStatus).toBe('ok');
+    });
   });
 
   it('refetch triggers a new API call and updates config', async () => {

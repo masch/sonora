@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: expo-sdk-sync
@@ -40,7 +41,28 @@ jobs:
       - name: Apply Expo SDK version fixes
         if: steps.check.outputs.exit_code != '0'
         working-directory: apps/mobile
-        run: npx expo install --fix
+        env:
+          BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE: '0'
+        run: |
+          # expo install --fix internally spawns bun add which does NOT inherit
+          # BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE — it reads bunfig.toml instead.
+          # Temporarily override minimumReleaseAge so the subprocess sees 0.
+          cp ../../bunfig.toml /tmp/bunfig.toml.bak
+          sed -i 's/minimumReleaseAge = 345600/minimumReleaseAge = 0/' ../../bunfig.toml
+          npx expo install --fix
+          mv /tmp/bunfig.toml.bak ../../bunfig.toml
+          # Strip tilde/caret ranges from expo deps — pin exact versions only
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const tracked = Object.keys(pkg.dependencies || {}).filter(
+            k => k.startsWith('expo') || k.startsWith('@expo/') || k === 'react-native-webview'
+          );
+          for (const k of tracked) {
+            pkg.dependencies[k] = pkg.dependencies[k].replace(/^[\^~]/, '');
+          }
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       - name: Sync bun lockfile after expo install
         if: steps.check.outputs.exit_code != '0'
@@ -51,29 +73,39 @@ jobs:
         if: steps.check.outputs.exit_code != '0'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_PR_ONLY }}
           commit-message: 'chore: sync expo sdk dependency versions'
           branch: chore/expo-sdk-version-sync
           title: 'chore: sync expo sdk dependency versions'
           body: |
-            Sync automatizado de versiones de dependencias Expo SDK via `expo install --fix`.
+            Automated sync of Expo SDK dependency versions via `expo install --fix`.
 
-            **Mismatches detectados:**
+            **Mismatches detected:**
             ```
             ${{ steps.check.outputs.output }}
             ```
 
             > [!IMPORTANT]
-            > Revisar manualmente antes de mergear. Los changes deben pasar todos los checks del PR.
+            > Manual review required before merging. All PR checks must pass.
           labels: dependencies
+
+      - name: Trigger staging deploy with updates
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run deploy-mobile-staging.yml \
+            --ref chore/expo-sdk-version-sync \
+            -f build_android=true
 
       - name: Summary
         if: always()
         run: |
           if [ "${{ steps.check.outputs.exit_code }}" = "0" ]; then
-            echo "✅ No se detectaron mismatches. Todo en orden."
+            echo "✅ No mismatches detected. All good."
           elif [ "${{ steps.pr.outputs.pull-request-number }}" != "" ]; then
-            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} creado con las correcciones."
+            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} created with fixes."
+            echo "🚀 Staging deploy triggered from branch chore/expo-sdk-version-sync."
           else
-            echo "⚠️ Mismatches detectados pero no se generaron cambios."
+            echo "⚠️ Mismatches detected but no changes were generated."
           fi
