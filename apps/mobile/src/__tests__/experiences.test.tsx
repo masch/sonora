@@ -90,7 +90,7 @@ jest.mock('expo-symbols', () => ({
 
 describe('ExperiencesScreen', () => {
   it('renders all layout elements correctly', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = render(<ExperiencesScreen />);
+    const { getByText, getByPlaceholderText, getByTestId } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByTestId('type-chip-track')).toBeTruthy();
@@ -108,7 +108,7 @@ describe('ExperiencesScreen', () => {
   });
 
   it('filters tracks by search query', async () => {
-    const { getByPlaceholderText, queryByText } = render(<ExperiencesScreen />);
+    const { getByPlaceholderText, queryByText } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByPlaceholderText('Search tracks...')).toBeTruthy();
@@ -122,7 +122,7 @@ describe('ExperiencesScreen', () => {
   });
 
   it('filters tracks by theme chip selection', async () => {
-    const { getByText, queryByText } = render(<ExperiencesScreen />);
+    const { getByText, queryByText } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByText('Landscapes')).toBeTruthy();

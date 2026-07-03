@@ -53,7 +53,7 @@ describe('useRemoteConfig', () => {
       return <Text testID="config">{JSON.stringify(config)}</Text>;
     }
 
-    render(<Consumer />);
+    await render(<Consumer />);
 
     const configText = screen.getByTestId('config').props.children;
     const config = JSON.parse(configText);
@@ -62,13 +62,13 @@ describe('useRemoteConfig', () => {
     expect(config.geofence.bypassGeofence).toBe(true);
   });
 
-  it('returns loading state initially before init', () => {
+  it('returns loading state initially before init', async () => {
     function Consumer() {
       const { isLoading } = useRemoteConfig();
       return <Text testID="loading-state">{isLoading ? 'Loading' : 'Done'}</Text>;
     }
 
-    render(<Consumer />);
+    await render(<Consumer />);
 
     expect(screen.getByTestId('loading-state')).toHaveTextContent('Loading');
   });
@@ -86,7 +86,7 @@ describe('useRemoteConfig', () => {
       );
     }
 
-    render(<Consumer />);
+    await render(<Consumer />);
 
     expect(screen.getByTestId('vals')).toHaveTextContent('50|false|10000|30');
   });

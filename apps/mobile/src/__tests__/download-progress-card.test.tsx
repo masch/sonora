@@ -5,10 +5,10 @@ import DownloadProgressCard from '@/components/download-progress-card';
 
 describe('DownloadProgressCard', () => {
   describe('idle state', () => {
-    it('renders the download and delete buttons', () => {
+    it('renders the download and delete buttons', async () => {
       const onDownload = jest.fn();
       const onDelete = jest.fn();
-      const { getByText, getByTestId } = render(
+      const { getByText, getByTestId } = await render(
         <DownloadProgressCard
           status="idle"
           progress={0}
@@ -25,9 +25,9 @@ describe('DownloadProgressCard', () => {
       expect(getByText('components.downloadCard.btnDelete')).toBeTruthy();
     });
 
-    it('calls onDownload when download button is pressed', () => {
+    it('calls onDownload when download button is pressed', async () => {
       const onDownload = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <DownloadProgressCard
           status="idle"
           progress={0}
@@ -41,9 +41,9 @@ describe('DownloadProgressCard', () => {
       expect(onDownload).toHaveBeenCalledTimes(1);
     });
 
-    it('calls onDelete when delete button is pressed', () => {
+    it('calls onDelete when delete button is pressed', async () => {
       const onDelete = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <DownloadProgressCard
           status="idle"
           progress={0}
@@ -59,8 +59,8 @@ describe('DownloadProgressCard', () => {
   });
 
   describe('downloading state', () => {
-    it('renders a progress bar fill element', () => {
-      const { getByTestId } = render(
+    it('renders a progress bar fill element', async () => {
+      const { getByTestId } = await render(
         <DownloadProgressCard
           status="downloading"
           progress={65}
@@ -73,8 +73,8 @@ describe('DownloadProgressCard', () => {
       expect(getByTestId('progress-bar-fill')).toBeTruthy();
     });
 
-    it('renders progress percentage text for any value', () => {
-      const { getByText, rerender } = render(
+    it('renders progress percentage text for any value', async () => {
+      const { getByText, rerender } = await render(
         <DownloadProgressCard
           status="downloading"
           progress={42}
@@ -113,8 +113,8 @@ describe('DownloadProgressCard', () => {
   });
 
   describe('completed state', () => {
-    it('renders a checkmark completion indicator', () => {
-      const { getByText } = render(
+    it('renders a checkmark completion indicator', async () => {
+      const { getByText } = await render(
         <DownloadProgressCard
           status="completed"
           progress={100}
@@ -127,9 +127,9 @@ describe('DownloadProgressCard', () => {
       expect(getByText('components.downloadCard.statusCompleted')).toBeTruthy();
     });
 
-    it('renders delete button in completed state', () => {
+    it('renders delete button in completed state', async () => {
       const onDelete = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <DownloadProgressCard
           status="completed"
           progress={100}
@@ -146,8 +146,8 @@ describe('DownloadProgressCard', () => {
   });
 
   describe('error state', () => {
-    it('renders an error message when errorMsg is provided', () => {
-      const { getByText } = render(
+    it('renders an error message when errorMsg is provided', async () => {
+      const { getByText } = await render(
         <DownloadProgressCard
           status="error"
           progress={50}
@@ -160,9 +160,9 @@ describe('DownloadProgressCard', () => {
       expect(getByText('Insufficient storage space')).toBeTruthy();
     });
 
-    it('renders download button for retry in error state', () => {
+    it('renders download button for retry in error state', async () => {
       const onDownload = jest.fn();
-      const { getByTestId } = render(
+      const { getByTestId } = await render(
         <DownloadProgressCard
           status="error"
           progress={50}

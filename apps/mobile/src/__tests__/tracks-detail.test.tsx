@@ -127,28 +127,28 @@ beforeEach(() => {
 
 describe('TrackDetailScreen', () => {
   it('renders the track title from metadata', async () => {
-    const { getByText } = render(<TrackDetailScreen />);
+    const { getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByText('DERIVA POR EL CENTRO')).toBeTruthy();
     });
   });
 
   it('renders the track description', async () => {
-    const { getByText } = render(<TrackDetailScreen />);
+    const { getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByText('Deriva por el centro, 3 secciones, 600mts')).toBeTruthy();
     });
   });
 
   it('renders the duration from translation', async () => {
-    const { getByText } = render(<TrackDetailScreen />);
+    const { getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByText('45 min walk')).toBeTruthy();
     });
   });
 
   it('renders download card', async () => {
-    const { getByTestId } = render(<TrackDetailScreen />);
+    const { getByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
     });
@@ -156,7 +156,7 @@ describe('TrackDetailScreen', () => {
 
   it('renders GPS badge for trip format', async () => {
     mockExperiences[0].format = 'trip';
-    const { getByTestId } = render(<TrackDetailScreen />);
+    const { getByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('gps-precision-badge')).toBeTruthy();
     });
@@ -165,7 +165,7 @@ describe('TrackDetailScreen', () => {
   it('renders experience details card layout and manual feedback button for track format', async () => {
     mockExperiences[0].format = 'track';
     mockExperiences[0].themeKey = 'birds';
-    const { queryByTestId, getByTestId, getByText } = render(<TrackDetailScreen />);
+    const { queryByTestId, getByTestId, getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(queryByTestId('gps-precision-badge')).toBeNull();
       expect(getByTestId('experience-title')).toBeTruthy();
@@ -181,7 +181,7 @@ describe('TrackDetailScreen', () => {
 
   it('shows not-found for unknown track id', async () => {
     mockParams.id = 'unknown-track';
-    const { getByText } = render(<TrackDetailScreen />);
+    const { getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByText('Track not found')).toBeTruthy();
     });
@@ -189,7 +189,7 @@ describe('TrackDetailScreen', () => {
 
   it('handles empty id gracefully', async () => {
     mockParams.id = '';
-    const { getByText } = render(<TrackDetailScreen />);
+    const { getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByText('Track not found')).toBeTruthy();
     });
@@ -198,7 +198,7 @@ describe('TrackDetailScreen', () => {
   it('blocks playback if geofence is strict (bypassable false) and renders blocked banner', async () => {
     mockExperiences[0].geofenceBypassable = false;
     mockGeofence.isNearStart = false;
-    const { getByTestId, getByText } = render(<TrackDetailScreen />);
+    const { getByTestId, getByText } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('geofence-blocked-banner')).toBeTruthy();
       expect(getByText("You're too far")).toBeTruthy();
@@ -212,7 +212,7 @@ describe('TrackDetailScreen', () => {
     mockExperiences[0].geofenceBypassable = false;
     mockGeofence.isNearStart = false;
     mockGeofence.distanceMeters = 250;
-    const { getByTestId, queryByTestId } = render(<TrackDetailScreen />);
+    const { getByTestId, queryByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
     });

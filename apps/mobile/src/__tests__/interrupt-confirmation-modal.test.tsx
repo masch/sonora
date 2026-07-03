@@ -42,50 +42,50 @@ describe('InterruptConfirmationModal', () => {
     mockPendingPlayRequest = null;
   });
 
-  it('renders when pendingPlayRequest is set', () => {
+  it('renders when pendingPlayRequest is set', async () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
-    const { getByTestId } = render(<InterruptConfirmationModal />);
+    const { getByTestId } = await render(<InterruptConfirmationModal />);
     expect(getByTestId('interrupt-confirmation-modal')).toBeTruthy();
   });
 
-  it('does not render when no pending request', () => {
-    const { queryByTestId } = render(<InterruptConfirmationModal />);
+  it('does not render when no pending request', async () => {
+    const { queryByTestId } = await render(<InterruptConfirmationModal />);
     expect(queryByTestId('interrupt-confirmation-modal')).toBeNull();
   });
 
-  it('calls confirmInterrupt on Yes button press', () => {
+  it('calls confirmInterrupt on Yes button press', async () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
-    const { getByTestId } = render(<InterruptConfirmationModal />);
+    const { getByTestId } = await render(<InterruptConfirmationModal />);
     fireEvent.press(getByTestId('interrupt-confirm-button'));
 
     expect(mockConfirmInterrupt).toHaveBeenCalledTimes(1);
   });
 
-  it('calls cancelInterrupt on No button press', () => {
+  it('calls cancelInterrupt on No button press', async () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
-    const { getByTestId } = render(<InterruptConfirmationModal />);
+    const { getByTestId } = await render(<InterruptConfirmationModal />);
     fireEvent.press(getByTestId('interrupt-deny-button'));
 
     expect(mockCancelInterrupt).toHaveBeenCalledTimes(1);
   });
 
-  it('calls cancelInterrupt when backdrop is pressed', () => {
+  it('calls cancelInterrupt when backdrop is pressed', async () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
-    const { getByTestId } = render(<InterruptConfirmationModal />);
+    const { getByTestId } = await render(<InterruptConfirmationModal />);
     const backdrop = getByTestId('bottom-modal-backdrop');
     fireEvent.press(backdrop);
 
     expect(mockCancelInterrupt).toHaveBeenCalledTimes(1);
   });
 
-  it('shows title and message text', () => {
+  it('shows title and message text', async () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
-    const { getByText } = render(<InterruptConfirmationModal />);
+    const { getByText } = await render(<InterruptConfirmationModal />);
     expect(getByText('Cancel current audio?')).toBeTruthy();
     expect(getByText('Playing new audio will stop the current one.')).toBeTruthy();
   });

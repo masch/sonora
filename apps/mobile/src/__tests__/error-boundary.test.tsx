@@ -15,11 +15,11 @@ describe('ErrorBoundary component', () => {
     jest.clearAllMocks();
   });
 
-  it('renders error message, tracks error, and triggers retry on press', () => {
+  it('renders error message, tracks error, and triggers retry on press', async () => {
     const mockRetry = jest.fn();
     const error = new Error('Test crash error message');
 
-    render(<ErrorBoundary error={error} retry={mockRetry} />);
+    await render(<ErrorBoundary error={error} retry={mockRetry} />);
 
     // Verify error messages and layout content
     expect(screen.getByText('Test crash error message')).toBeTruthy();

@@ -77,21 +77,21 @@ beforeAll(() => {
 
 describe('Explore screen (now Home content)', () => {
   it('renders the title', async () => {
-    const { getByText } = render(<ExploreScreen />);
+    const { getByText } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(getByText('Welcome to Expo')).toBeTruthy();
     });
   });
 
   it('renders the get started badge', async () => {
-    const { getByText } = render(<ExploreScreen />);
+    const { getByText } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(getByText('get started')).toBeTruthy();
     });
   });
 
   it('renders all HintRow titles', async () => {
-    const { getByText } = render(<ExploreScreen />);
+    const { getByText } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(getByText('Try editing')).toBeTruthy();
     });
@@ -100,7 +100,7 @@ describe('Explore screen (now Home content)', () => {
   });
 
   it('renders without crashing', async () => {
-    const { toJSON } = render(<ExploreScreen />);
+    const { toJSON } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(toJSON()).not.toBeNull();
     });
@@ -108,7 +108,7 @@ describe('Explore screen (now Home content)', () => {
 
   it('shows empty state when experiences API returns empty', async () => {
     (fetchExperiences as jest.Mock).mockResolvedValueOnce([]);
-    const { getByText } = render(<ExploreScreen />);
+    const { getByText } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(getByText('No experiences available yet.')).toBeTruthy();
     });
@@ -118,7 +118,7 @@ describe('Explore screen (now Home content)', () => {
 
   it('shows error state when experiences API fails', async () => {
     (fetchExperiences as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-    const { getByText } = render(<ExploreScreen />);
+    const { getByText } = await render(<ExploreScreen />);
     await waitFor(() => {
       expect(getByText('Failed to load featured experience.')).toBeTruthy();
     });

@@ -4,8 +4,8 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { KeyboardAvoidingView as RNKeyboardAvoidingView, Modal as RNModal } from 'react-native';
 
 describe('BottomModal', () => {
-  it('renders children when visible is true', () => {
-    const { getByText } = render(
+  it('renders children when visible is true', async () => {
+    const { getByText } = await render(
       <BottomModal visible={true} onDismiss={jest.fn()}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
@@ -14,8 +14,8 @@ describe('BottomModal', () => {
     expect(getByText('Modal Content')).toBeTruthy();
   });
 
-  it('does not render children when visible is false', () => {
-    const { queryByText } = render(
+  it('does not render children when visible is false', async () => {
+    const { queryByText } = await render(
       <BottomModal visible={false} onDismiss={jest.fn()}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
@@ -24,9 +24,9 @@ describe('BottomModal', () => {
     expect(queryByText('Modal Content')).toBeNull();
   });
 
-  it('calls onDismiss when backdrop is pressed', () => {
+  it('calls onDismiss when backdrop is pressed', async () => {
     const onDismiss = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <BottomModal visible={true} onDismiss={onDismiss}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
@@ -38,9 +38,9 @@ describe('BottomModal', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call onDismiss when modal content is pressed', () => {
+  it('does not call onDismiss when modal content is pressed', async () => {
     const onDismiss = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <BottomModal visible={true} onDismiss={onDismiss}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
@@ -52,10 +52,10 @@ describe('BottomModal', () => {
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it('calls onDismiss automatically when autoDismissTrigger is true', () => {
+  it('calls onDismiss automatically when autoDismissTrigger is true', async () => {
     jest.useFakeTimers();
     const onDismiss = jest.fn();
-    render(
+    await render(
       <BottomModal visible={true} onDismiss={onDismiss} autoDismissTrigger={true}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
@@ -69,8 +69,8 @@ describe('BottomModal', () => {
     jest.useRealTimers();
   });
 
-  it('renders Modal with statusBarTranslucent and correct KeyboardAvoidingView behavior', () => {
-    const { UNSAFE_getByType } = render(
+  it('renders Modal with statusBarTranslucent and correct KeyboardAvoidingView behavior', async () => {
+    const { UNSAFE_getByType } = await render(
       <BottomModal visible={true} onDismiss={jest.fn()}>
         <TwText>Modal Content</TwText>
       </BottomModal>,

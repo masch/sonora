@@ -29,32 +29,32 @@ beforeAll(() => {
 });
 
 describe('Settings screen', () => {
-  it('renders the title and subtitle', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders the title and subtitle', async () => {
+    const { getByText } = await render(<SettingsScreen />);
     expect(getByText('Settings')).toBeTruthy();
     expect(getByText('Manage your preferences')).toBeTruthy();
   });
 
-  it('renders profile info', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders profile info', async () => {
+    const { getByText } = await render(<SettingsScreen />);
     expect(getByText('John Doe')).toBeTruthy();
     expect(getByText('john@example.com')).toBeTruthy();
   });
 
-  it('renders section headers', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders section headers', async () => {
+    const { getByText } = await render(<SettingsScreen />);
     expect(getByText('Preferences')).toBeTruthy();
     expect(getByText('About')).toBeTruthy();
   });
 
-  it('renders preference rows', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders preference rows', async () => {
+    const { getByText } = await render(<SettingsScreen />);
     expect(getByText('Notifications')).toBeTruthy();
     expect(getByText('Language')).toBeTruthy();
   });
 
-  it('renders about section items', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders about section items', async () => {
+    const { getByText } = await render(<SettingsScreen />);
     expect(getByText('Version')).toBeTruthy();
     expect(getByText('1.0.0')).toBeTruthy();
     expect(getByText('Terms of Service')).toBeTruthy();

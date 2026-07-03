@@ -74,8 +74,8 @@ jest.mock('expo-symbols', () => ({
 import HomeScreen, { SHOW_LOCAL_MESSAGES } from '@/app/(tabs)/index';
 
 describe('Home screen (Redesigned)', () => {
-  it('renders home layout elements and menu items', () => {
-    const { getByText, getByTestId, queryByText, queryByTestId } = render(<HomeScreen />);
+  it('renders home layout elements and menu items', async () => {
+    const { getByText, getByTestId, queryByText, queryByTestId } = await render(<HomeScreen />);
 
     expect(getByText('home.title')).toBeTruthy();
     expect(getByText('home.poetic')).toBeTruthy();
@@ -96,8 +96,8 @@ describe('Home screen (Redesigned)', () => {
     }
   });
 
-  it('renders without crashing', () => {
-    const { toJSON } = render(<HomeScreen />);
+  it('renders without crashing', async () => {
+    const { toJSON } = await render(<HomeScreen />);
 
     expect(toJSON()).not.toBeNull();
   });

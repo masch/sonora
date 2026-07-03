@@ -65,24 +65,24 @@ beforeAll(() => {
 });
 
 describe('Web app-tabs', () => {
-  it('renders without crashing', () => {
-    const { toJSON } = render(<AppTabsWeb />);
+  it('renders without crashing', async () => {
+    const { toJSON } = await render(<AppTabsWeb />);
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders TabTrigger for visible (index and experiences) tabs', () => {
-    const { getByTestId } = render(<AppTabsWeb />);
+  it('renders TabTrigger for visible (index and experiences) tabs', async () => {
+    const { getByTestId } = await render(<AppTabsWeb />);
     expect(getByTestId('tab-trigger-index')).toBeTruthy();
     expect(getByTestId('tab-trigger-experiences')).toBeTruthy();
   });
 
-  it('does NOT render TabTrigger for hidden (explore) tab', () => {
-    const { queryByTestId } = render(<AppTabsWeb />);
+  it('does NOT render TabTrigger for hidden (explore) tab', async () => {
+    const { queryByTestId } = await render(<AppTabsWeb />);
     expect(queryByTestId('tab-trigger-explore')).toBeNull();
   });
 
-  it('does NOT render TabTrigger for hidden (settings) tab', () => {
-    const { queryByTestId } = render(<AppTabsWeb />);
+  it('does NOT render TabTrigger for hidden (settings) tab', async () => {
+    const { queryByTestId } = await render(<AppTabsWeb />);
     expect(queryByTestId('tab-trigger-settings')).toBeNull();
   });
 });

@@ -37,8 +37,8 @@ beforeAll(() => {
 });
 
 describe('FeedbackForm', () => {
-  it('renders title, text input, and submit button', () => {
-    const { getByText, getByTestId, getByPlaceholderText } = render(
+  it('renders title, text input, and submit button', async () => {
+    const { getByText, getByTestId, getByPlaceholderText } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} />,
     );
 
@@ -48,9 +48,9 @@ describe('FeedbackForm', () => {
     expect(getByPlaceholderText('Tell us about your experience…')).toBeTruthy();
   });
 
-  it('calls onSubmit with the typed message when submit is pressed', () => {
+  it('calls onSubmit with the typed message when submit is pressed', async () => {
     const onSubmit = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
     );
 
@@ -62,9 +62,9 @@ describe('FeedbackForm', () => {
     expect(onSubmit).toHaveBeenCalledWith('Great trail!');
   });
 
-  it('shows empty validation error when submitting empty message', () => {
+  it('shows empty validation error when submitting empty message', async () => {
     const onSubmit = jest.fn();
-    const { getByText, getByTestId } = render(
+    const { getByText, getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
     );
 
@@ -74,9 +74,9 @@ describe('FeedbackForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('shows validation error for whitespace-only message', () => {
+  it('shows validation error for whitespace-only message', async () => {
     const onSubmit = jest.fn();
-    const { getByText, getByTestId } = render(
+    const { getByText, getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
     );
 
@@ -89,8 +89,8 @@ describe('FeedbackForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('shows sending state when status is sending', () => {
-    const { getByText, queryByTestId } = render(
+  it('shows sending state when status is sending', async () => {
+    const { getByText, queryByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} status="sending" />,
     );
 
@@ -99,16 +99,16 @@ describe('FeedbackForm', () => {
     expect(queryByTestId('feedback-submit-button')).toBeNull();
   });
 
-  it('shows queued state when status is queued', () => {
-    const { getByText } = render(
+  it('shows queued state when status is queued', async () => {
+    const { getByText } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} status="queued" />,
     );
 
     expect(getByText('Saved offline — will send when connected')).toBeTruthy();
   });
 
-  it('shows error state with retry button when status is error', () => {
-    const { getByText, getByTestId } = render(
+  it('shows error state with retry button when status is error', async () => {
+    const { getByText, getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} status="error" />,
     );
 
@@ -116,9 +116,9 @@ describe('FeedbackForm', () => {
     expect(getByTestId('feedback-retry-button')).toBeTruthy();
   });
 
-  it('calls onDismiss when dismiss is pressed', () => {
+  it('calls onDismiss when dismiss is pressed', async () => {
     const onDismiss = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
     );
 
@@ -127,8 +127,8 @@ describe('FeedbackForm', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('has autoFocus enabled on TextInput', () => {
-    const { getByTestId } = render(
+  it('has autoFocus enabled on TextInput', async () => {
+    const { getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={jest.fn()} />,
     );
     const input = getByTestId('feedback-input');
@@ -138,7 +138,7 @@ describe('FeedbackForm', () => {
   it('prompts confirmation dialog when dismissing with text', async () => {
     const onDismiss = jest.fn();
 
-    const { getByTestId, findByText } = render(
+    const { getByTestId, findByText } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
     );
 
@@ -152,10 +152,10 @@ describe('FeedbackForm', () => {
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it('does not prompt confirmation when status is sent or queued', () => {
+  it('does not prompt confirmation when status is sent or queued', async () => {
     const onDismiss = jest.fn();
 
-    const { getByTestId, queryByTestId, rerender } = render(
+    const { getByTestId, queryByTestId, rerender } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
     );
 
@@ -175,10 +175,10 @@ describe('FeedbackForm', () => {
     expect(onDismiss).toHaveBeenCalled();
   });
 
-  it('clears message and bypasses confirmation when status changes to queued', () => {
+  it('clears message and bypasses confirmation when status changes to queued', async () => {
     const onDismiss = jest.fn();
 
-    const { getByTestId, queryByTestId, rerender } = render(
+    const { getByTestId, queryByTestId, rerender } = await render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
     );
 
@@ -198,9 +198,9 @@ describe('FeedbackForm', () => {
     expect(onDismiss).toHaveBeenCalled();
   });
 
-  it('calls onSubmit when onSubmitEditing is triggered on TextInput', () => {
+  it('calls onSubmit when onSubmitEditing is triggered on TextInput', async () => {
     const onSubmit = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
     );
 
@@ -211,8 +211,8 @@ describe('FeedbackForm', () => {
     expect(onSubmit).toHaveBeenCalledWith('Submitting via keyboard enter');
   });
 
-  it('does not render when visible is false', () => {
-    const { queryByTestId } = render(
+  it('does not render when visible is false', async () => {
+    const { queryByTestId } = await render(
       <FeedbackForm visible={false} onSubmit={jest.fn()} onDismiss={jest.fn()} />,
     );
 

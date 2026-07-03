@@ -66,8 +66,8 @@ describe('HomeAudioPlayer', () => {
     mockDurationMs = 0;
   });
 
-  it('renders initial state when undownloaded', () => {
-    const { getByTestId, getByText } = render(<HomeAudioPlayer />);
+  it('renders initial state when undownloaded', async () => {
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
 
     expect(getByTestId('home-audio-player')).toBeTruthy();
     expect(getByText('home.instructionsTitle')).toBeTruthy();
@@ -79,25 +79,25 @@ describe('HomeAudioPlayer', () => {
     expect(mockStartDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('renders downloading state with progress', () => {
+  it('renders downloading state with progress', async () => {
     mockDownloadStatus = 'downloading';
     mockDownloadProgress = 45;
 
-    const { getByTestId, getByText } = render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
 
     expect(getByText('Downloading (45%)…')).toBeTruthy();
     const fill = getByTestId('home-player-progress-bar-fill');
     expect(fill.props.style.width).toBe('45%');
   });
 
-  it('renders completed (downloaded) state with player controls', () => {
+  it('renders completed (downloaded) state with player controls', async () => {
     mockDownloadStatus = 'completed';
     mockLocalAudioUri = 'local-file-path.mp3';
     mockPlayerStatus = 'paused';
     mockPositionMs = 30000;
     mockDurationMs = 120000;
 
-    const { getByTestId, getByText } = render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
 
     // Shows current/duration time
     expect(getByText('0:30 / 2:00')).toBeTruthy();
@@ -118,12 +118,12 @@ describe('HomeAudioPlayer', () => {
     expect(mockSeekTo).toHaveBeenLastCalledWith(0);
   });
 
-  it('toggles pause when playing', () => {
+  it('toggles pause when playing', async () => {
     mockDownloadStatus = 'completed';
     mockLocalAudioUri = 'local-file-path.mp3';
     mockPlayerStatus = 'playing';
 
-    const { getByTestId } = render(<HomeAudioPlayer />);
+    const { getByTestId } = await render(<HomeAudioPlayer />);
 
     const playBtn = getByTestId('home-audio-player');
     fireEvent.press(playBtn);

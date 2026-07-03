@@ -52,7 +52,7 @@ function TestHarness({
 
 describe('useConfirm', () => {
   it('shows confirm dialog when trigger is pressed', async () => {
-    const { getByTestId, findByText } = render(<TestHarness />);
+    const { getByTestId, findByText } = await render(<TestHarness />);
 
     fireEvent.press(getByTestId('trigger'));
 
@@ -62,7 +62,7 @@ describe('useConfirm', () => {
 
   it('resolves to true when confirm is pressed', async () => {
     const onResult = jest.fn();
-    const { getByTestId, findByTestId } = render(<TestHarness onResult={onResult} />);
+    const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
     fireEvent.press(getByTestId('trigger'));
     fireEvent.press(await findByTestId('confirm-button'));
@@ -75,7 +75,7 @@ describe('useConfirm', () => {
 
   it('resolves to false when cancel is pressed', async () => {
     const onResult = jest.fn();
-    const { getByTestId, findByTestId } = render(<TestHarness onResult={onResult} />);
+    const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
     fireEvent.press(getByTestId('trigger'));
     fireEvent.press(await findByTestId('confirm-cancel-button'));
@@ -87,14 +87,16 @@ describe('useConfirm', () => {
   });
 
   it('applies destructive testID when destructive is true', async () => {
-    const { getByTestId, findByTestId } = render(<TestHarness destructive onResult={jest.fn()} />);
+    const { getByTestId, findByTestId } = await render(
+      <TestHarness destructive onResult={jest.fn()} />,
+    );
 
     fireEvent.press(getByTestId('trigger'));
     expect(await findByTestId('confirm-destructive-button')).toBeTruthy();
   });
 
   it('shows both cancel and confirm buttons', async () => {
-    const { getByTestId, findByTestId } = render(<TestHarness />);
+    const { getByTestId, findByTestId } = await render(<TestHarness />);
 
     fireEvent.press(getByTestId('trigger'));
 

@@ -66,7 +66,7 @@ describe('MessagesScreen', () => {
   });
 
   it('renders messages header title and lists community feeds', async () => {
-    const { getByText } = render(<MessagesScreen />);
+    const { getByText } = await render(<MessagesScreen />);
 
     await waitFor(() => {
       expect(getByText('messages.title')).toBeTruthy();
@@ -76,7 +76,7 @@ describe('MessagesScreen', () => {
   });
 
   it('filters by proximity (Cercanos tab)', async () => {
-    const { getByText, getByTestId, queryByText } = render(<MessagesScreen />);
+    const { getByText, getByTestId, queryByText } = await render(<MessagesScreen />);
 
     await waitFor(() => {
       expect(getByText('"Escuché un zorzal cerca del puente"')).toBeTruthy();
@@ -95,7 +95,7 @@ describe('MessagesScreen', () => {
   });
 
   it('opens submission modal when Mensaje nuevo is tapped', async () => {
-    const { getByTestId } = render(<MessagesScreen />);
+    const { getByTestId } = await render(<MessagesScreen />);
 
     // Wait for feed to load first so the button is rendered on the screen
     await waitFor(() => {
@@ -111,7 +111,7 @@ describe('MessagesScreen', () => {
   });
 
   it('closes modal and refetches feed on successful submission', async () => {
-    const { getByTestId, queryByTestId } = render(<MessagesScreen />);
+    const { getByTestId, queryByTestId } = await render(<MessagesScreen />);
 
     // Wait for feed to load
     await waitFor(() => {

@@ -29,8 +29,8 @@ jest.mock('expo-symbols', () => {
 });
 
 describe('Icon component', () => {
-  it('resolves generic names correctly from ICON_MAP', () => {
-    const { getByTestId } = render(<Icon name="play" size={24} tintColor="red" />);
+  it('resolves generic names correctly from ICON_MAP', async () => {
+    const { getByTestId } = await render(<Icon name="play" size={24} tintColor="red" />);
     const symbol = getByTestId('mock-symbol-view');
 
     expect(symbol.props.name).toBe(JSON.stringify(ICON_MAP.play));
@@ -38,8 +38,8 @@ describe('Icon component', () => {
     expect(symbol.props.tintColor).toBe('red');
   });
 
-  it('falls back to explicit platform keys (backward compatibility)', () => {
-    const { getByTestId } = render(
+  it('falls back to explicit platform keys (backward compatibility)', async () => {
+    const { getByTestId } = await render(
       <Icon ios="square.fill" android="square" web="square" size={20} />,
     );
     const symbol = getByTestId('mock-symbol-view');
@@ -50,9 +50,11 @@ describe('Icon component', () => {
     expect(symbol.props.size).toBe(20);
   });
 
-  it('forwards weight and style props to SymbolView', () => {
+  it('forwards weight and style props to SymbolView', async () => {
     const customStyle = { transform: [{ rotate: '90deg' }] };
-    const { getByTestId } = render(<Icon name="chevronRight" weight="bold" style={customStyle} />);
+    const { getByTestId } = await render(
+      <Icon name="chevronRight" weight="bold" style={customStyle} />,
+    );
     const symbol = getByTestId('mock-symbol-view');
 
     expect(symbol.props.weight).toBe('bold');

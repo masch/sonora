@@ -77,24 +77,24 @@ beforeAll(() => {
 });
 
 describe('Native app-tabs', () => {
-  it('renders without crashing', () => {
-    const { toJSON } = render(<AppTabsNative />);
+  it('renders without crashing', async () => {
+    const { toJSON } = await render(<AppTabsNative />);
     expect(toJSON()).not.toBeNull();
   });
 
-  it('renders triggers for visible (index and experiences) tabs', () => {
-    const { getByTestId } = render(<AppTabsNative />);
+  it('renders triggers for visible (index and experiences) tabs', async () => {
+    const { getByTestId } = await render(<AppTabsNative />);
     expect(getByTestId('native-trigger-index')).toBeTruthy();
     expect(getByTestId('native-trigger-experiences')).toBeTruthy();
   });
 
-  it('does NOT render trigger for hidden (explore) tab', () => {
-    const { queryByTestId } = render(<AppTabsNative />);
+  it('does NOT render trigger for hidden (explore) tab', async () => {
+    const { queryByTestId } = await render(<AppTabsNative />);
     expect(queryByTestId('native-trigger-explore')).toBeNull();
   });
 
-  it('does NOT render trigger for hidden (settings) tab', () => {
-    const { queryByTestId } = render(<AppTabsNative />);
+  it('does NOT render trigger for hidden (settings) tab', async () => {
+    const { queryByTestId } = await render(<AppTabsNative />);
     expect(queryByTestId('native-trigger-settings')).toBeNull();
   });
 });
