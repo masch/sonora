@@ -32,7 +32,7 @@ describe('ErrorBoundary component', () => {
 
     // Verify retry button click
     const retryBtn = screen.getByTestId('retry-button');
-    fireEvent.press(retryBtn);
+    await fireEvent.press(retryBtn);
     expect(mockRetry).toHaveBeenCalledTimes(1);
   });
 });

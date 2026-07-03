@@ -37,7 +37,7 @@ describe('DownloadProgressCard', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('download-button'));
+      await fireEvent.press(getByTestId('download-button'));
       expect(onDownload).toHaveBeenCalledTimes(1);
     });
 
@@ -53,7 +53,7 @@ describe('DownloadProgressCard', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('delete-button'));
+      await fireEvent.press(getByTestId('delete-button'));
       expect(onDelete).toHaveBeenCalledTimes(1);
     });
   });
@@ -140,7 +140,7 @@ describe('DownloadProgressCard', () => {
       );
 
       expect(getByTestId('delete-button')).toBeTruthy();
-      fireEvent.press(getByTestId('delete-button'));
+      await fireEvent.press(getByTestId('delete-button'));
       expect(onDelete).toHaveBeenCalledTimes(1);
     });
   });
@@ -173,7 +173,7 @@ describe('DownloadProgressCard', () => {
       );
 
       expect(getByTestId('download-button')).toBeTruthy();
-      fireEvent.press(getByTestId('download-button'));
+      await fireEvent.press(getByTestId('download-button'));
       expect(onDownload).toHaveBeenCalledTimes(1);
     });
   });

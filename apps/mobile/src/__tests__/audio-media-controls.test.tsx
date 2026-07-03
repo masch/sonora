@@ -105,7 +105,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('audio-play-button'));
+      await fireEvent.press(getByTestId('audio-play-button'));
       expect(onPlay).toHaveBeenCalledTimes(1);
     });
 
@@ -123,7 +123,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('audio-pause-button'));
+      await fireEvent.press(getByTestId('audio-pause-button'));
       expect(onPause).toHaveBeenCalledTimes(1);
     });
   });
@@ -144,7 +144,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('audio-play-button'));
+      await fireEvent.press(getByTestId('audio-play-button'));
       expect(onPlay).not.toHaveBeenCalled();
     });
 
@@ -163,7 +163,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('audio-play-button'));
+      await fireEvent.press(getByTestId('audio-play-button'));
       expect(onPlay).toHaveBeenCalledTimes(1);
     });
 
@@ -181,7 +181,7 @@ describe('AudioMediaControls', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('audio-play-button'));
+      await fireEvent.press(getByTestId('audio-play-button'));
       expect(onPlay).toHaveBeenCalledTimes(1);
     });
   });

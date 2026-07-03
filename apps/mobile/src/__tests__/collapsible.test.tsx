@@ -30,11 +30,11 @@ describe('Collapsible component', () => {
     expect(queryByText('Hidden Child Content')).toBeNull();
 
     // Tap to open
-    fireEvent.press(getByText('Test Collapsible'));
+    await fireEvent.press(getByText('Test Collapsible'));
     expect(getByText('Hidden Child Content')).toBeTruthy();
 
     // Tap to close
-    fireEvent.press(getByText('Test Collapsible'));
+    await fireEvent.press(getByText('Test Collapsible'));
     expect(queryByText('Hidden Child Content')).toBeNull();
   });
 });

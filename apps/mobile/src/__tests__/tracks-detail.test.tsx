@@ -220,7 +220,7 @@ describe('TrackDetailScreen', () => {
     // Modal should not be visible before tapping
     expect(queryByTestId('geofence-blocked-alert-ok')).toBeNull();
 
-    fireEvent.press(getByTestId('play-download-button'));
+    await fireEvent.press(getByTestId('play-download-button'));
 
     // Modal should now be visible with dismiss button
     await waitFor(() => {

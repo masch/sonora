@@ -54,7 +54,7 @@ describe('useConfirm', () => {
   it('shows confirm dialog when trigger is pressed', async () => {
     const { getByTestId, findByText } = await render(<TestHarness />);
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
 
     expect(await findByText('Test Title')).toBeTruthy();
     expect(await findByText('Test Message')).toBeTruthy();
@@ -64,8 +64,8 @@ describe('useConfirm', () => {
     const onResult = jest.fn();
     const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
-    fireEvent.press(getByTestId('trigger'));
-    fireEvent.press(await findByTestId('confirm-button'));
+    await fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(await findByTestId('confirm-button'));
 
     await waitFor(() => {
       expect(getByTestId('result')).toHaveTextContent('confirmed');
@@ -77,8 +77,8 @@ describe('useConfirm', () => {
     const onResult = jest.fn();
     const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
-    fireEvent.press(getByTestId('trigger'));
-    fireEvent.press(await findByTestId('confirm-cancel-button'));
+    await fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(await findByTestId('confirm-cancel-button'));
 
     await waitFor(() => {
       expect(getByTestId('result')).toHaveTextContent('cancelled');
@@ -91,14 +91,14 @@ describe('useConfirm', () => {
       <TestHarness destructive onResult={jest.fn()} />,
     );
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
     expect(await findByTestId('confirm-destructive-button')).toBeTruthy();
   });
 
   it('shows both cancel and confirm buttons', async () => {
     const { getByTestId, findByTestId } = await render(<TestHarness />);
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
 
     expect(await findByTestId('confirm-cancel-button')).toBeTruthy();
     expect(await findByTestId('confirm-button')).toBeTruthy();

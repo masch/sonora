@@ -75,7 +75,7 @@ describe('HomeAudioPlayer', () => {
     expect(getByText('home.instructionsSubtitle')).toBeTruthy();
 
     const playBtn = getByTestId('home-audio-player');
-    fireEvent.press(playBtn);
+    await fireEvent.press(playBtn);
     expect(mockStartDownload).toHaveBeenCalledTimes(1);
   });
 
@@ -106,15 +106,15 @@ describe('HomeAudioPlayer', () => {
     expect(progressFill.props.style.width).toBe('25%'); // 30000 / 120000 = 25%
 
     const playBtn = getByTestId('home-audio-player');
-    fireEvent.press(playBtn);
+    await fireEvent.press(playBtn);
     expect(mockPlay).toHaveBeenCalledTimes(1);
 
     const rewindBtn = getByTestId('home-player-rewind-button');
-    fireEvent.press(rewindBtn);
+    await fireEvent.press(rewindBtn);
     expect(mockSeekTo).toHaveBeenCalledWith(20000); // 30s - 10s = 20s
 
     const resetBtn = getByTestId('home-player-reset-button');
-    fireEvent.press(resetBtn);
+    await fireEvent.press(resetBtn);
     expect(mockSeekTo).toHaveBeenLastCalledWith(0);
   });
 
@@ -126,7 +126,7 @@ describe('HomeAudioPlayer', () => {
     const { getByTestId } = await render(<HomeAudioPlayer />);
 
     const playBtn = getByTestId('home-audio-player');
-    fireEvent.press(playBtn);
+    await fireEvent.press(playBtn);
     expect(mockPause).toHaveBeenCalledTimes(1);
   });
 });

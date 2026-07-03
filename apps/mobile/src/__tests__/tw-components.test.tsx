@@ -72,7 +72,7 @@ describe('TwPressable', () => {
     );
     expect(getByText('Press Me')).toBeTruthy();
 
-    fireEvent.press(getByText('Press Me'));
+    await fireEvent.press(getByText('Press Me'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -83,8 +83,8 @@ describe('TwPressable', () => {
         <TwText>Multi Press</TwText>
       </TwPressable>,
     );
-    fireEvent.press(getByText('Multi Press'));
-    fireEvent.press(getByText('Multi Press'));
+    await fireEvent.press(getByText('Multi Press'));
+    await fireEvent.press(getByText('Multi Press'));
     expect(onPress).toHaveBeenCalledTimes(2);
   });
 });
@@ -102,7 +102,7 @@ describe('TwTextInput', () => {
     const { getByDisplayValue } = await render(
       <TwTextInput className="border p-2" value="" onChangeText={onChangeText} />,
     );
-    fireEvent.changeText(getByDisplayValue(''), 'New text');
+    await fireEvent.changeText(getByDisplayValue(''), 'New text');
     expect(onChangeText).toHaveBeenCalledWith('New text');
   });
 });

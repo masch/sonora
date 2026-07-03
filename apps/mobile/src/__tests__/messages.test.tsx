@@ -84,7 +84,7 @@ describe('MessagesScreen', () => {
 
     // Switch to Cercanos tab
     const tabCercanos = getByTestId('tab-cercanos');
-    fireEvent.press(tabCercanos);
+    await fireEvent.press(tabCercanos);
 
     await waitFor(() => {
       // msg-1 is at the exact same mock coordinates, so it should be visible
@@ -103,7 +103,7 @@ describe('MessagesScreen', () => {
     });
 
     const newBtn = getByTestId('new-message-button');
-    fireEvent.press(newBtn);
+    await fireEvent.press(newBtn);
 
     await waitFor(() => {
       expect(getByTestId('feedback-input')).toBeTruthy();
@@ -119,15 +119,15 @@ describe('MessagesScreen', () => {
     });
 
     // Open the modal
-    fireEvent.press(getByTestId('new-message-button'));
+    await fireEvent.press(getByTestId('new-message-button'));
     await waitFor(() => {
       expect(getByTestId('feedback-input')).toBeTruthy();
     });
 
     // Type a message and press submit
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Test message');
-    fireEvent.press(getByTestId('feedback-submit-button'));
+    await fireEvent.changeText(input, 'Test message');
+    await fireEvent.press(getByTestId('feedback-submit-button'));
 
     // Step 1 — wait for the submission to succeed (sent state appears, input hides)
     await waitFor(

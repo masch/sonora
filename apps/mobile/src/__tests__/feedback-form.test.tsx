@@ -55,9 +55,9 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Great trail!');
+    await fireEvent.changeText(input, 'Great trail!');
 
-    fireEvent.press(getByTestId('feedback-submit-button'));
+    await fireEvent.press(getByTestId('feedback-submit-button'));
 
     expect(onSubmit).toHaveBeenCalledWith('Great trail!');
   });
@@ -68,7 +68,7 @@ describe('FeedbackForm', () => {
       <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
     );
 
-    fireEvent.press(getByTestId('feedback-submit-button'));
+    await fireEvent.press(getByTestId('feedback-submit-button'));
 
     expect(getByText('Message cannot be empty')).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -81,9 +81,9 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, '   ');
+    await fireEvent.changeText(input, '   ');
 
-    fireEvent.press(getByTestId('feedback-submit-button'));
+    await fireEvent.press(getByTestId('feedback-submit-button'));
 
     expect(getByText('Message cannot be empty')).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe('FeedbackForm', () => {
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
     );
 
-    fireEvent.press(getByTestId('feedback-dismiss-button'));
+    await fireEvent.press(getByTestId('feedback-dismiss-button'));
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
@@ -143,9 +143,9 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Unsaved feedback text');
+    await fireEvent.changeText(input, 'Unsaved feedback text');
 
-    fireEvent.press(getByTestId('feedback-dismiss-button'));
+    await fireEvent.press(getByTestId('feedback-dismiss-button'));
 
     // Confirm dialog should appear with title, blocking dismissal
     expect(await findByText('Discard feedback?')).toBeTruthy();
@@ -160,7 +160,7 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Feedback text');
+    await fireEvent.changeText(input, 'Feedback text');
 
     // Change status to sent
     rerender(
@@ -170,7 +170,7 @@ describe('FeedbackForm', () => {
     // Verify input is unmounted/hidden
     expect(queryByTestId('feedback-input')).toBeNull();
 
-    fireEvent.press(getByTestId('feedback-dismiss-button'));
+    await fireEvent.press(getByTestId('feedback-dismiss-button'));
 
     expect(onDismiss).toHaveBeenCalled();
   });
@@ -183,7 +183,7 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Feedback text offline');
+    await fireEvent.changeText(input, 'Feedback text offline');
 
     // Change status to queued
     rerender(
@@ -193,7 +193,7 @@ describe('FeedbackForm', () => {
     // Verify input is unmounted/hidden
     expect(queryByTestId('feedback-input')).toBeNull();
 
-    fireEvent.press(getByTestId('feedback-dismiss-button'));
+    await fireEvent.press(getByTestId('feedback-dismiss-button'));
 
     expect(onDismiss).toHaveBeenCalled();
   });
@@ -205,7 +205,7 @@ describe('FeedbackForm', () => {
     );
 
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Submitting via keyboard enter');
+    await fireEvent.changeText(input, 'Submitting via keyboard enter');
     fireEvent(input, 'submitEditing');
 
     expect(onSubmit).toHaveBeenCalledWith('Submitting via keyboard enter');

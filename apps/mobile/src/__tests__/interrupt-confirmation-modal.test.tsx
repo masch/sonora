@@ -58,7 +58,7 @@ describe('InterruptConfirmationModal', () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
     const { getByTestId } = await render(<InterruptConfirmationModal />);
-    fireEvent.press(getByTestId('interrupt-confirm-button'));
+    await fireEvent.press(getByTestId('interrupt-confirm-button'));
 
     expect(mockConfirmInterrupt).toHaveBeenCalledTimes(1);
   });
@@ -67,7 +67,7 @@ describe('InterruptConfirmationModal', () => {
     mockPendingPlayRequest = { uri: 'new-uri' };
 
     const { getByTestId } = await render(<InterruptConfirmationModal />);
-    fireEvent.press(getByTestId('interrupt-deny-button'));
+    await fireEvent.press(getByTestId('interrupt-deny-button'));
 
     expect(mockCancelInterrupt).toHaveBeenCalledTimes(1);
   });
@@ -77,7 +77,7 @@ describe('InterruptConfirmationModal', () => {
 
     const { getByTestId } = await render(<InterruptConfirmationModal />);
     const backdrop = getByTestId('bottom-modal-backdrop');
-    fireEvent.press(backdrop);
+    await fireEvent.press(backdrop);
 
     expect(mockCancelInterrupt).toHaveBeenCalledTimes(1);
   });

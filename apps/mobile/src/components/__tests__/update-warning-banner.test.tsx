@@ -29,7 +29,7 @@ describe('UpdateWarningBanner', () => {
     const dismissButton = screen.getByTestId('update-banner-dismiss-button');
     expect(dismissButton).toBeTruthy();
 
-    fireEvent.press(dismissButton);
+    await fireEvent.press(dismissButton);
 
     // After dismiss, the banner should no longer be rendered
     expect(screen.queryByTestId('update-warning-banner')).toBeNull();

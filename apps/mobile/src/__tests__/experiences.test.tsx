@@ -115,7 +115,7 @@ describe('ExperiencesScreen', () => {
     });
 
     const searchInput = getByPlaceholderText('Search tracks...');
-    fireEvent.changeText(searchInput, 'arroyo');
+    await fireEvent.changeText(searchInput, 'arroyo');
 
     expect(queryByText('El arroyo')).toBeTruthy();
     expect(queryByText('Tacuarita Azul')).toBeNull();
@@ -129,7 +129,7 @@ describe('ExperiencesScreen', () => {
     });
 
     const landscapesChip = getByText('Landscapes');
-    fireEvent.press(landscapesChip);
+    await fireEvent.press(landscapesChip);
 
     expect(queryByText('Tacuarita Azul')).toBeTruthy();
     expect(queryByText('El arroyo')).toBeNull();

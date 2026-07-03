@@ -33,7 +33,7 @@ describe('BottomModal', () => {
     );
 
     const backdrop = getByTestId('bottom-modal-backdrop');
-    fireEvent.press(backdrop);
+    await fireEvent.press(backdrop);
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
@@ -47,7 +47,7 @@ describe('BottomModal', () => {
     );
 
     const contentContainer = getByTestId('bottom-modal-content-container');
-    fireEvent.press(contentContainer);
+    await fireEvent.press(contentContainer);
 
     expect(onDismiss).not.toHaveBeenCalled();
   });
