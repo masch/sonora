@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -40,25 +40,25 @@ export function useConfirm(): ConfirmResult {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
+  const confirm = (opts: ConfirmOptions): Promise<boolean> => {
     return new Promise((resolve) => {
       resolveRef.current = resolve;
       setOptions(opts);
       setVisible(true);
     });
-  }, []);
+  };
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = () => {
     resolveRef.current?.(true);
     resolveRef.current = null;
     setVisible(false);
-  }, []);
+  };
 
-  const handleDismiss = useCallback(() => {
+  const handleDismiss = () => {
     resolveRef.current?.(false);
     resolveRef.current = null;
     setVisible(false);
-  }, []);
+  };
 
   const component = options ? (
     <BottomModal visible={visible} onDismiss={handleDismiss}>

@@ -1,5 +1,5 @@
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Pressable, Text } from 'react-native';
 
 import { useConfirm } from '../use-confirm';
@@ -27,7 +27,7 @@ function TestHarness({
   const { confirm, component } = useConfirm();
   const [result, setResult] = useState<boolean | null>(null);
 
-  const handleTrigger = useCallback(async () => {
+  const handleTrigger = async () => {
     const ok = await confirm({
       title: 'Test Title',
       message: 'Test Message',
@@ -37,7 +37,7 @@ function TestHarness({
     });
     setResult(ok);
     onResult?.(ok);
-  }, [confirm, onResult, destructive]);
+  };
 
   return (
     <>

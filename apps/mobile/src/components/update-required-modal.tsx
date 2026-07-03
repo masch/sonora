@@ -5,22 +5,24 @@ import { ModalPrimitive } from '@/components/ui/modal-primitive';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 
+// TODO: Replace with platform-specific store URL when published:
+//   iOS: https://apps.apple.com/app/id<APP_STORE_ID>
+//   Android: market://details?id=<BUNDLE_ID>
+const HANDLE_UPDATE_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
+
+/** Module-scoped — no local state dependencies. */
+function handleUpdatePress() {
+  Linking.openURL(HANDLE_UPDATE_URL).catch(() => {
+    // Silently ignore — the web URL is a best-effort fallback.
+  });
+}
+
 /**
  * Full-screen non-dismissable modal shown when the app version is blocked.
  * Prevents access to app content until the user updates.
  */
 export function UpdateRequiredModal() {
   const { t } = useAppTranslation();
-
-  const handleUpdatePress = () => {
-    // Open the app's web/expo URL as a universal fallback.
-    // TODO: Replace with platform-specific store URL when published:
-    //   iOS: https://apps.apple.com/app/id<APP_STORE_ID>
-    //   Android: market://details?id=<BUNDLE_ID>
-    Linking.openURL('https://sonoraderivapoeticas-team-sonora.expo.app/').catch(() => {
-      // Silently ignore — the web URL is a best-effort fallback.
-    });
-  };
 
   return (
     <ModalPrimitive visible transparent={false} animationType="fade" dismissable={false}>
