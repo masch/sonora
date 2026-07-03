@@ -1,9 +1,20 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import FeedbackForm from '@/components/feedback-form';
+
+// Mock BottomModal so useConfirm renders children when visible
+jest.mock('@/components/ui/bottom-modal', () => {
+  const MockBottomModal = ({
+    visible,
+    children,
+  }: {
+    children: React.ReactNode;
+    visible: boolean;
+  }) => (visible ? <>{children}</> : null);
+  return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
+});
 
 const mockMap: Record<string, string> = {
   'feedback.form.title': 'Leave feedback',
@@ -15,6 +26,10 @@ const mockMap: Record<string, string> = {
   'feedback.form.error': 'Something went wrong',
   'feedback.form.retry': 'Retry',
   'feedback.form.validation.empty': 'Message cannot be empty',
+  'feedback.form.confirm.title': 'Discard feedback?',
+  'feedback.form.confirm.body': 'You have unsaved changes',
+  'feedback.form.confirm.discard': 'Discard',
+  'feedback.form.confirm.cancel': 'Keep Editing',
 };
 
 beforeAll(() => {
@@ -120,11 +135,10 @@ describe('FeedbackForm', () => {
     expect(input.props.autoFocus).toBe(true);
   });
 
-  it('prompts confirmation Alert when dismissing with text', () => {
+  it('prompts confirmation dialog when dismissing with text', async () => {
     const onDismiss = jest.fn();
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
-    const { getByTestId } = render(
+    const { getByTestId, findByText } = render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
     );
 
@@ -133,16 +147,13 @@ describe('FeedbackForm', () => {
 
     fireEvent.press(getByTestId('feedback-dismiss-button'));
 
-    expect(alertSpy).toHaveBeenCalled();
+    // Confirm dialog should appear with title, blocking dismissal
+    expect(await findByText('Discard feedback?')).toBeTruthy();
     expect(onDismiss).not.toHaveBeenCalled();
-
-    // Clean up
-    alertSpy.mockRestore();
   });
 
-  it('does not prompt confirmation Alert when status is sent or queued', () => {
+  it('does not prompt confirmation when status is sent or queued', () => {
     const onDismiss = jest.fn();
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
     const { getByTestId, queryByTestId, rerender } = render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
@@ -161,16 +172,11 @@ describe('FeedbackForm', () => {
 
     fireEvent.press(getByTestId('feedback-dismiss-button'));
 
-    expect(alertSpy).not.toHaveBeenCalled();
     expect(onDismiss).toHaveBeenCalled();
-
-    // Clean up
-    alertSpy.mockRestore();
   });
 
   it('clears message and bypasses confirmation when status changes to queued', () => {
     const onDismiss = jest.fn();
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
     const { getByTestId, queryByTestId, rerender } = render(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status={undefined} />,
@@ -189,11 +195,7 @@ describe('FeedbackForm', () => {
 
     fireEvent.press(getByTestId('feedback-dismiss-button'));
 
-    expect(alertSpy).not.toHaveBeenCalled();
     expect(onDismiss).toHaveBeenCalled();
-
-    // Clean up
-    alertSpy.mockRestore();
   });
 
   it('calls onSubmit when onSubmitEditing is triggered on TextInput', () => {

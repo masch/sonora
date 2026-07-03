@@ -1,11 +1,63 @@
 import { create } from 'zustand';
+import Constants from 'expo-constants';
 import type { RemoteConfigPayload } from '@sonora/shared';
-import { DEFAULT_REMOTE_CONFIG, RemoteConfigPayloadSchema } from '@sonora/shared';
+import { DEFAULT_REMOTE_CONFIG, RemoteConfigPayloadSchema, gte } from '@sonora/shared';
 import { getCachedConfig, setCachedConfig } from '../storage/config-cache';
 import { ApiClient } from '../services/api-client';
 import { logger } from '../utils/logger';
 
 const CONFIG_TIMEOUT_MS = 3000;
+
+export type VersionStatus = 'ok' | 'warn' | 'block';
+
+/**
+ * Pure function: compare installed app version against minimum version.
+ * Returns the appropriate version status based on the config.
+ *
+ * Grace period is a server-authoritative ISO date range (`gracePeriodStart` to `gracePeriodEnd`).
+ * If either date is absent, block is immediate — no client-side grace tracking.
+ *
+ * @param installedVersion — from Constants.expoConfig.version (empty if unavailable)
+ * @param minimumVersion — minimum required version from remote config
+ * @param blockOlderVersions — whether to block or warn when below minimum
+ * @param gracePeriodStart — ISO date when grace period starts (undefined = immediate block)
+ * @param gracePeriodEnd — ISO date when grace period ends (undefined = immediate block)
+ */
+export function computeVersionStatus(
+  installedVersion: string,
+  minimumVersion: string,
+  blockOlderVersions: boolean,
+  gracePeriodStart: string | undefined,
+  gracePeriodEnd: string | undefined,
+): VersionStatus {
+  // No installed version (offline first-launch) -> ok
+  if (!installedVersion) return 'ok';
+
+  const comparison = gte(installedVersion, minimumVersion);
+
+  // Invalid semver -> block (fail closed per spec)
+  if (comparison === null) return 'block';
+
+  // Version meets minimum -> ok
+  if (comparison) return 'ok';
+
+  // Version is below minimum
+  if (blockOlderVersions) {
+    // Check grace period: server-authoritative date range
+    if (gracePeriodStart && gracePeriodEnd) {
+      const startMs = new Date(gracePeriodStart).getTime();
+      const endMs = new Date(gracePeriodEnd).getTime();
+      if (isNaN(startMs) || isNaN(endMs)) return 'block'; // invalid date -> no grace
+      const now = Date.now();
+      if (now >= startMs && now < endMs) {
+        return 'warn';
+      }
+    }
+    return 'block';
+  }
+
+  return 'warn';
+}
 
 /**
  * Per-field merge: validate each API response key against its Zod schema.
@@ -37,6 +89,7 @@ interface RemoteConfigState {
   config: RemoteConfigPayload;
   isLoading: boolean;
   error: Error | null;
+  versionStatus: VersionStatus;
   /** Initialise config: read cache, fetch API, merge. Call once at app startup. */
   init: () => Promise<void>;
   /** Re-fetch config from the API. Call to refresh at any time. */
@@ -87,6 +140,20 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
       apiError = err;
     }
 
+    // ── Compute versionStatus (server-authoritative grace period) ───
+    const installedVersion = Constants.expoConfig?.version ?? '';
+    const { appVersion } = get().config;
+
+    const versionStatus = computeVersionStatus(
+      installedVersion,
+      appVersion.minimumVersion,
+      appVersion.blockOlderVersions,
+      appVersion.gracePeriodStart,
+      appVersion.gracePeriodEnd,
+    );
+
+    set({ versionStatus });
+
     if (apiError) {
       if (apiError instanceof Error && apiError.name === 'AbortError') {
         // Timeout — not an actionable error, keep current config
@@ -105,6 +172,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
     config: DEFAULT_REMOTE_CONFIG,
     isLoading: true,
     error: null,
+    versionStatus: 'ok',
 
     init: async () => {
       const controller = new AbortController();

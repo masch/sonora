@@ -283,6 +283,15 @@ export const es = {
     },
     footer: 'Powered by Expo + NativeWind',
   },
+  versionCheck: {
+    modalTitle: 'Actualización requerida',
+    modalMessage: 'Actualizá Sonora a la última versión para seguir usando la app.',
+    modalButton: 'Descargar actualización',
+    bannerTitle: 'Actualización disponible',
+    bannerMessage:
+      'Hay una nueva versión de Sonora disponible. Actualizá para tener la mejor experiencia.',
+    bannerDismiss: 'Descartar',
+  },
   messages: {
     title: 'Mensajes',
     loading: 'Cargando mensajes...',
