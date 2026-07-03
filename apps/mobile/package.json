@@ -56,7 +56,6 @@
   "devDependencies": {
     "@react-native/jest-preset": "0.85.3",
     "@babel/runtime": "7.29.7",
-    "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/react-native": "14.0.1",
     "@types/jest": "29.5.14",
     "@types/leaflet": "^1.9.21",

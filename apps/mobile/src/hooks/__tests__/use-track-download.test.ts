@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTrackDownload } from '../use-track-download';
 
@@ -87,7 +87,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
@@ -105,7 +107,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile microtask
     });
@@ -127,7 +131,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -148,7 +154,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -169,7 +177,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -182,7 +192,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
   it('should show idle status when trackId is null', async () => {
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(null, null, 'unknown'));
+      const renderResult = await renderHook(() => useTrackDownload(null, null, 'unknown'));
       result = renderResult.result;
       await Promise.resolve();
     });
@@ -196,12 +206,14 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve();
     });
 
-    act(() => {
+    await act(() => {
       result!.current.startDownload();
     });
 
@@ -212,12 +224,12 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
   it('should not enqueue when trackId is null', async () => {
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(null, null, 'unknown'));
+      const renderResult = await renderHook(() => useTrackDownload(null, null, 'unknown'));
       result = renderResult.result;
       await Promise.resolve();
     });
 
-    act(() => {
+    await act(() => {
       result!.current.startDownload();
     });
 
@@ -233,7 +245,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve(); // flush checkLocalFile — sets cachedLocalUri
     });
@@ -282,7 +296,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve(); // checkAndValidateCache checkLocalFile
       await Promise.resolve(); // fetch response microtasks
@@ -320,7 +336,9 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
 
     let result: { readonly current: ReturnType<typeof useTrackDownload> };
     await act(async () => {
-      const renderResult = renderHook(() => useTrackDownload(trackId, remoteAudioUrl, trackTitle));
+      const renderResult = await renderHook(() =>
+        useTrackDownload(trackId, remoteAudioUrl, trackTitle),
+      );
       result = renderResult.result;
       await Promise.resolve();
     });

@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import Storage from 'expo-sqlite/kv-store';
 import { useFeedbackQueue } from '../use-feedback-queue';
 
@@ -40,7 +40,7 @@ async function waitForQueueLoaded(
 
 describe('useFeedbackQueue', () => {
   it('should enqueue a feedback entry with a generated id', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 
@@ -58,7 +58,7 @@ describe('useFeedbackQueue', () => {
   });
 
   it('should enqueue coordinates if provided', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 
@@ -78,7 +78,7 @@ describe('useFeedbackQueue', () => {
   });
 
   it('should peek all queued entries', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 
@@ -97,7 +97,7 @@ describe('useFeedbackQueue', () => {
   });
 
   it('should remove a specific entry by id', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 
@@ -125,7 +125,7 @@ describe('useFeedbackQueue', () => {
   });
 
   it('should clear the entire queue', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 
@@ -154,7 +154,7 @@ describe('useFeedbackQueue', () => {
   });
 
   it('should not create duplicate entries with the same idempotency key', async () => {
-    const { result } = renderHook(() => useFeedbackQueue());
+    const { result } = await renderHook(() => useFeedbackQueue());
 
     await waitForQueueLoaded(result);
 

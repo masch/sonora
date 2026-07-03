@@ -27,16 +27,17 @@ function TestHarness({
   const { confirm, component } = useConfirm();
   const [result, setResult] = useState<boolean | null>(null);
 
-  const handleTrigger = async () => {
-    const ok = await confirm({
+  const handleTrigger = () => {
+    confirm({
       title: 'Test Title',
       message: 'Test Message',
       confirmLabel: 'Confirm',
       cancelLabel: 'Cancel',
       destructive,
+    }).then((ok) => {
+      setResult(ok);
+      onResult?.(ok);
     });
-    setResult(ok);
-    onResult?.(ok);
   };
 
   return (

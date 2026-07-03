@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 
@@ -36,7 +36,7 @@ describe('useBackgroundSync', () => {
     (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
 
     await act(async () => {
-      renderHook(() => useBackgroundSync());
+      await renderHook(() => useBackgroundSync());
     });
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
@@ -51,7 +51,7 @@ describe('useBackgroundSync', () => {
     (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(true);
 
     await act(async () => {
-      renderHook(() => useBackgroundSync());
+      await renderHook(() => useBackgroundSync());
     });
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);

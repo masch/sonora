@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
 
@@ -27,8 +27,8 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     });
   });
 
-  it('returns idle initial state when trackId is null', () => {
-    const { result } = renderHook(() => useTrackDownload(null, null, 'unknown'));
+  it('returns idle initial state when trackId is null', async () => {
+    const { result } = await renderHook(() => useTrackDownload(null, null, 'unknown'));
 
     expect(result.current.status).toBe('idle');
     expect(result.current.progress).toBe(0);
@@ -38,8 +38,8 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(typeof result.current.deleteTrackLocal).toBe('function');
   });
 
-  it('returns idle when trackId is provided but no store entry exists', () => {
-    const { result } = renderHook(() =>
+  it('returns idle when trackId is provided but no store entry exists', async () => {
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
@@ -47,7 +47,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(result.current.progress).toBe(0);
   });
 
-  it('reflects downloading state from the store entry', () => {
+  it('reflects downloading state from the store entry', async () => {
     useDownloadManagerStore.setState({
       downloads: {
         'track-1': {
@@ -60,7 +60,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
       },
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
@@ -68,7 +68,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(result.current.progress).toBe(45);
   });
 
-  it('reflects completed state from the store entry', () => {
+  it('reflects completed state from the store entry', async () => {
     useDownloadManagerStore.setState({
       downloads: {
         'track-1': {
@@ -81,7 +81,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
       },
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
@@ -90,7 +90,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(result.current.localAudioUri).toBe('/mock/path/audio.mp3');
   });
 
-  it('reflects error state from the store entry', () => {
+  it('reflects error state from the store entry', async () => {
     useDownloadManagerStore.setState({
       downloads: {
         'track-1': {
@@ -103,7 +103,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
       },
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
@@ -111,16 +111,16 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(result.current.errorMsg).toBe('Network failed');
   });
 
-  it('startDownload calls download store enqueue', () => {
+  it('startDownload calls download store enqueue', async () => {
     const enqueueSpy = jest
       .spyOn(useDownloadManagerStore.getState(), 'enqueue')
       .mockImplementation(() => {});
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
-    act(() => {
+    await act(() => {
       result.current.startDownload();
     });
 
@@ -129,14 +129,14 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     enqueueSpy.mockRestore();
   });
 
-  it('reacts to store entry changing from idle to downloading', () => {
-    const { result } = renderHook(() =>
+  it('reacts to store entry changing from idle to downloading', async () => {
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 
     expect(result.current.status).toBe('idle');
 
-    act(() => {
+    await act(() => {
       useDownloadManagerStore.setState({
         downloads: {
           'track-1': {
@@ -154,8 +154,8 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(result.current.progress).toBe(10);
   });
 
-  it('returns same interface shape as original TrackDownloadState', () => {
-    const { result } = renderHook(() =>
+  it('returns same interface shape as original TrackDownloadState', async () => {
+    const { result } = await renderHook(() =>
       useTrackDownload('track-1', 'https://example.com/audio.mp3', 'Track 1'),
     );
 

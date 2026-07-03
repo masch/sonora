@@ -145,7 +145,9 @@ describe('FeedbackForm', () => {
     const input = getByTestId('feedback-input');
     await fireEvent.changeText(input, 'Unsaved feedback text');
 
-    await fireEvent.press(getByTestId('feedback-dismiss-button'));
+    // Use raw fireEvent (sync) — fireEvent.press wraps in act() and hangs
+    // because handleDismiss awaits confirm() which needs user interaction.
+    fireEvent(getByTestId('feedback-dismiss-button'), 'press');
 
     // Confirm dialog should appear with title, blocking dismissal
     expect(await findByText('Discard feedback?')).toBeTruthy();
@@ -163,7 +165,7 @@ describe('FeedbackForm', () => {
     await fireEvent.changeText(input, 'Feedback text');
 
     // Change status to sent
-    rerender(
+    await rerender(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status="sent" />,
     );
 
@@ -186,7 +188,7 @@ describe('FeedbackForm', () => {
     await fireEvent.changeText(input, 'Feedback text offline');
 
     // Change status to queued
-    rerender(
+    await rerender(
       <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} status="queued" />,
     );
 

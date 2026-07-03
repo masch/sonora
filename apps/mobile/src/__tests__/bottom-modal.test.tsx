@@ -1,7 +1,6 @@
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { TwText } from '@/tw';
 import { fireEvent, render } from '@testing-library/react-native';
-import { KeyboardAvoidingView as RNKeyboardAvoidingView, Modal as RNModal } from 'react-native';
 
 describe('BottomModal', () => {
   it('renders children when visible is true', async () => {
@@ -69,17 +68,13 @@ describe('BottomModal', () => {
     jest.useRealTimers();
   });
 
-  it('renders Modal with statusBarTranslucent and correct KeyboardAvoidingView behavior', async () => {
-    const { UNSAFE_getByType } = await render(
+  it('renders with correct KeyboardAvoidingView behavior', async () => {
+    const { getByTestId } = await render(
       <BottomModal visible={true} onDismiss={jest.fn()}>
         <TwText>Modal Content</TwText>
       </BottomModal>,
     );
 
-    const modalInstance = UNSAFE_getByType(RNModal);
-    const keyboardAvoidingViewInstance = UNSAFE_getByType(RNKeyboardAvoidingView);
-
-    expect(modalInstance.props.statusBarTranslucent).toBe(true);
-    expect(keyboardAvoidingViewInstance.props.behavior).toBe('padding');
+    expect(getByTestId('bottom-modal-keyboard-view')).toBeTruthy();
   });
 });

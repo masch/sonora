@@ -78,7 +78,7 @@ describe('AudioPlayerBridge', () => {
 
     expect(useAudioPlayerStore.getState()._player).not.toBeNull();
 
-    unmount();
+    await unmount();
 
     expect(mockRemove).toHaveBeenCalledTimes(1);
     expect(useAudioPlayerStore.getState()._player).toBeNull();

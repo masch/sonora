@@ -86,7 +86,7 @@ describe('DownloadProgressCard', () => {
 
       expect(getByText('components.downloadCard.progressPercent')).toBeTruthy();
 
-      rerender(
+      await rerender(
         <DownloadProgressCard
           status="downloading"
           progress={0}
@@ -98,7 +98,7 @@ describe('DownloadProgressCard', () => {
 
       expect(getByText('components.downloadCard.progressPercent')).toBeTruthy();
 
-      rerender(
+      await rerender(
         <DownloadProgressCard
           status="downloading"
           progress={100}
