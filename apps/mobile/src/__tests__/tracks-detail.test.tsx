@@ -1,5 +1,4 @@
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import TrackDetailScreen from '@/app/tracks/[id]';
@@ -62,6 +61,18 @@ jest.mock('@/hooks/use-offline-geofence', () => ({
   useOfflineGeofence: () => mockGeofence,
 }));
 
+// Mock BottomModal — RN <Modal> crashes in test renderer (React 19)
+jest.mock('@/components/ui/bottom-modal', () => {
+  const MockBottomModal = ({
+    visible,
+    children,
+  }: {
+    children: React.ReactNode;
+    visible: boolean;
+  }) => (visible ? <>{children}</> : null);
+  return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
+});
+
 jest.mock('@/hooks/use-track-download', () => ({
   useTrackDownload: () => ({
     status: 'idle',
@@ -91,8 +102,6 @@ jest.mock('react-native-webview', () => ({
 
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
-
-const mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const mockMap: Record<string, string> = {
   'experiences.notFound': 'Track not found',
@@ -199,24 +208,24 @@ describe('TrackDetailScreen', () => {
     mockExperiences[0].geofenceBypassable = undefined;
   });
 
-  it('shows alert when download is tapped while geofence blocked', async () => {
+  it('shows blocked modal when download is tapped while geofence blocked', async () => {
     mockExperiences[0].geofenceBypassable = false;
     mockGeofence.isNearStart = false;
     mockGeofence.distanceMeters = 250;
-    const { getByTestId } = render(<TrackDetailScreen />);
+    const { getByTestId, queryByTestId } = render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
     });
 
+    // Modal should not be visible before tapping
+    expect(queryByTestId('geofence-blocked-alert-ok')).toBeNull();
+
     fireEvent.press(getByTestId('play-download-button'));
 
-    // The mock t() returns the key template literally (no interpolation),
-    // so we check the alert was called with the right title and button text
-    expect(mockAlert).toHaveBeenCalledWith(
-      "Can't play",
-      'You need to be within {{radius}} meters. Current distance: {{distance}}.',
-      expect.arrayContaining([expect.objectContaining({ text: 'Got it' })]),
-    );
+    // Modal should now be visible with dismiss button
+    await waitFor(() => {
+      expect(getByTestId('geofence-blocked-alert-ok')).toBeTruthy();
+    });
 
     // Restore
     mockGeofence.isNearStart = true;

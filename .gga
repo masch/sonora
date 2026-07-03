@@ -24,6 +24,9 @@ PROVIDER="opencode"
 #   FILE_PATTERNS="*.py"
 #   FILE_PATTERNS="*.go,*.mod"
 FILE_PATTERNS="*.ts,*.tsx,*.js,*.jsx"
+#FILE_PATTERNS="apps/mobile/**"
+#FILE_PATTERNS="apps/api/**"
+#FILE_PATTERNS="packages/**"
 
 # File patterns to exclude from review (comma-separated)
 # Default: none
@@ -43,7 +46,7 @@ STRICT_MODE="true"
 # Timeout in seconds for AI provider response
 # Default: 300 (5 minutes)
 # Increase for large changesets or slow connections
-TIMEOUT="300"
+TIMEOUT="600"
 
 # Base branch for --pr-mode (auto-detects main/master/develop if empty)
 # Default: auto-detect

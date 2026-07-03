@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
+import { BottomModal } from '@/components/ui/bottom-modal';
 import FeedbackForm from '@/components/feedback-form';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
@@ -15,6 +16,7 @@ import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { useConfirm } from '@/hooks/use-confirm';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
@@ -38,6 +40,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
+  const [showGeofenceBlockedAlert, setShowGeofenceBlockedAlert] = useState(false);
   const userInitiatedPlayRef = useRef(false);
 
   const geofence = useOfflineGeofence({
@@ -97,58 +100,39 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
   const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
 
-  const showGeofenceBlockedAlert = () => {
-    Alert.alert(
-      t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys),
-      t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
-        radius: geofence.requiredRadiusMeters,
-        distance: formatDistance(
-          geofence.distanceMeters,
-          t('experiences.geofenceBlocked.notAvailable'),
-        ),
-      }),
-      [{ text: t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys) }],
-    );
-  };
+  const { confirm, component: confirmComponent } = useConfirm();
+  const openBlockedAlert = () => setShowGeofenceBlockedAlert(true);
 
-  const triggerBypassAlert = (onConfirm: () => void) => {
-    if (Platform.OS === 'web') {
-      const accepted = window.confirm(
-        `${t('experiences.warnings.locationAlertTitle' as TranslationKeys)}\n\n${t(
-          'experiences.warnings.locationAlertMessage' as TranslationKeys,
-        )}`,
-      );
-      if (accepted) onConfirm();
-    } else {
-      Alert.alert(
-        t('experiences.warnings.locationAlertTitle' as TranslationKeys),
-        t('experiences.warnings.locationAlertMessage' as TranslationKeys),
-        [
-          { text: t('experiences.warnings.cancel' as TranslationKeys), style: 'cancel' },
-          { text: t('experiences.warnings.continue' as TranslationKeys), onPress: onConfirm },
-        ],
-      );
-    }
-  };
-
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (showBypassWarning) {
-      triggerBypassAlert(() => player.play());
+      const ok = await confirm({
+        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
+        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
+        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
+        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
+      });
+      if (!ok) return;
     } else if (isPlaybackBlocked) {
-      showGeofenceBlockedAlert();
-    } else {
-      player.play();
+      openBlockedAlert();
+      return;
     }
+    player.play();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (showBypassWarning) {
-      triggerBypassAlert(() => handlePlayAndDownload());
+      const ok = await confirm({
+        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
+        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
+        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
+        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
+      });
+      if (!ok) return;
     } else if (isPlaybackBlocked) {
-      showGeofenceBlockedAlert();
-    } else {
-      handlePlayAndDownload();
+      openBlockedAlert();
+      return;
     }
+    handlePlayAndDownload();
   };
 
   const cardBg = colors.homeExploreRoutesBg + 'CC';
@@ -299,6 +283,38 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
         status={feedback.feedbackStatus}
         errorMsg={feedback.feedbackError}
       />
+
+      {confirmComponent}
+
+      <BottomModal
+        visible={showGeofenceBlockedAlert}
+        onDismiss={() => setShowGeofenceBlockedAlert(false)}
+      >
+        <TwView className="px-6 pb-2">
+          <ThemedText type="subtitle" className="mb-2">
+            {t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
+          </ThemedText>
+          <ThemedText className="mb-6">
+            {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
+              radius: geofence.requiredRadiusMeters,
+              distance: formatDistance(
+                geofence.distanceMeters,
+                t('experiences.geofenceBlocked.notAvailable'),
+              ),
+            })}
+          </ThemedText>
+          <TwPressable
+            testID="geofence-blocked-alert-ok"
+            accessibilityLabel={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            className="bg-blue-500 rounded-xl py-3 items-center"
+            onPress={() => setShowGeofenceBlockedAlert(false)}
+          >
+            <ThemedText className="text-white font-semibold">
+              {t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            </ThemedText>
+          </TwPressable>
+        </TwView>
+      </BottomModal>
     </TwView>
   );
 }

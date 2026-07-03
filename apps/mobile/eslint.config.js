@@ -19,7 +19,7 @@ module.exports = defineConfig([
     plugins: { i18next: i18nextPlugin },
     rules: {
       '@typescript-eslint/no-unused-vars': 'error',
-      'no-console': 'warn',
+      'no-console': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       '@typescript-eslint/ban-ts-comment': [

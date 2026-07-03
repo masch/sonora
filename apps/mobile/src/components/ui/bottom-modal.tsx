@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useRef } from 'react';
-import { KeyboardAvoidingView, Modal } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTranslation } from '@/hooks/use-translation';
+import { ModalPrimitive } from '@/components/ui/modal-primitive';
 import { TwPressable, TwView } from '@/tw';
 
 interface BottomModalProps {
@@ -45,13 +46,7 @@ export function BottomModal({
   }, [visible, autoDismissTrigger, autoDismissDelay]);
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onDismiss}
-      statusBarTranslucent={true}
-    >
+    <ModalPrimitive visible={visible} dismissable onDismiss={onDismiss}>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <TwView className="flex-1 justify-end">
           <TwPressable
@@ -70,6 +65,6 @@ export function BottomModal({
           </TwView>
         </TwView>
       </KeyboardAvoidingView>
-    </Modal>
+    </ModalPrimitive>
   );
 }
