@@ -66,7 +66,7 @@ describe('MessagesScreen', () => {
   });
 
   it('renders messages header title and lists community feeds', async () => {
-    const { getByText } = render(<MessagesScreen />);
+    const { getByText } = await render(<MessagesScreen />);
 
     await waitFor(() => {
       expect(getByText('messages.title')).toBeTruthy();
@@ -76,7 +76,7 @@ describe('MessagesScreen', () => {
   });
 
   it('filters by proximity (Cercanos tab)', async () => {
-    const { getByText, getByTestId, queryByText } = render(<MessagesScreen />);
+    const { getByText, getByTestId, queryByText } = await render(<MessagesScreen />);
 
     await waitFor(() => {
       expect(getByText('"Escuché un zorzal cerca del puente"')).toBeTruthy();
@@ -84,7 +84,7 @@ describe('MessagesScreen', () => {
 
     // Switch to Cercanos tab
     const tabCercanos = getByTestId('tab-cercanos');
-    fireEvent.press(tabCercanos);
+    await fireEvent.press(tabCercanos);
 
     await waitFor(() => {
       // msg-1 is at the exact same mock coordinates, so it should be visible
@@ -95,7 +95,7 @@ describe('MessagesScreen', () => {
   });
 
   it('opens submission modal when Mensaje nuevo is tapped', async () => {
-    const { getByTestId } = render(<MessagesScreen />);
+    const { getByTestId } = await render(<MessagesScreen />);
 
     // Wait for feed to load first so the button is rendered on the screen
     await waitFor(() => {
@@ -103,7 +103,7 @@ describe('MessagesScreen', () => {
     });
 
     const newBtn = getByTestId('new-message-button');
-    fireEvent.press(newBtn);
+    await fireEvent.press(newBtn);
 
     await waitFor(() => {
       expect(getByTestId('feedback-input')).toBeTruthy();
@@ -111,7 +111,7 @@ describe('MessagesScreen', () => {
   });
 
   it('closes modal and refetches feed on successful submission', async () => {
-    const { getByTestId, queryByTestId } = render(<MessagesScreen />);
+    const { getByTestId, queryByTestId } = await render(<MessagesScreen />);
 
     // Wait for feed to load
     await waitFor(() => {
@@ -119,15 +119,15 @@ describe('MessagesScreen', () => {
     });
 
     // Open the modal
-    fireEvent.press(getByTestId('new-message-button'));
+    await fireEvent.press(getByTestId('new-message-button'));
     await waitFor(() => {
       expect(getByTestId('feedback-input')).toBeTruthy();
     });
 
     // Type a message and press submit
     const input = getByTestId('feedback-input');
-    fireEvent.changeText(input, 'Test message');
-    fireEvent.press(getByTestId('feedback-submit-button'));
+    await fireEvent.changeText(input, 'Test message');
+    await fireEvent.press(getByTestId('feedback-submit-button'));
 
     // Step 1 — wait for the submission to succeed (sent state appears, input hides)
     await waitFor(

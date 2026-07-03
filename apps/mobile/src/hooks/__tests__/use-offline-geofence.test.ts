@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react-native';
 import { useOfflineGeofence } from '../use-offline-geofence';
 import { useLocationStore } from '@/store/location-store';
 import { useRemoteConfig } from '../use-remote-config';
@@ -32,7 +32,7 @@ describe('useOfflineGeofence hook', () => {
     });
   });
 
-  it('should initialize in initializing state', () => {
+  it('should initialize in initializing state', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: null,
       accuracy: null,
@@ -40,7 +40,7 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    const { result } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     expect(result.current.gpsStatus).toBe('initializing');
     expect(result.current.isNearStart).toBe(false);
@@ -48,7 +48,7 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.requiredRadiusMeters).toBe(50);
   });
 
-  it('should handle location permission denial', () => {
+  it('should handle location permission denial', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: null,
       accuracy: null,
@@ -56,13 +56,13 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: 'Permission to access location was denied',
     });
 
-    const { result } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     expect(result.current.gpsStatus).toBe('weak');
     expect(result.current.errorMsg).toBe('Permission to access location was denied');
   });
 
-  it('should update state to ready and near when coordinates match closely', () => {
+  it('should update state to ready and near when coordinates match closely', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.979, longitude: -64.635 },
       accuracy: 5,
@@ -70,7 +70,7 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    const { result } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     expect(result.current.gpsStatus).toBe('ready');
     expect(result.current.isNearStart).toBe(true);
@@ -78,7 +78,7 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.userCoordinates).toEqual({ latitude: -31.979, longitude: -64.635 });
   });
 
-  it('should flag weak status when accuracy exceeds threshold', () => {
+  it('should flag weak status when accuracy exceeds threshold', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.979, longitude: -64.635 },
       accuracy: 45,
@@ -86,13 +86,13 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    const { result } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     expect(result.current.gpsStatus).toBe('weak');
     expect(result.current.isNearStart).toBe(true);
   });
 
-  it('should use geofence radius from useRemoteConfig', () => {
+  it('should use geofence radius from useRemoteConfig', async () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
         geofence: { radiusMeters: 200, bypassGeofence: false },
@@ -111,13 +111,13 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    const { result } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     expect(result.current.requiredRadiusMeters).toBe(200);
     expect(result.current.isNearStart).toBe(true);
   });
 
-  it('should update geofence radius when remote config changes between renders', () => {
+  it('should update geofence radius when remote config changes between renders', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.979, longitude: -64.635 },
       accuracy: 5,
@@ -125,7 +125,7 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    const { result, rerender } = renderHook(() => useOfflineGeofence(targetCoords));
+    const { result, rerender } = await renderHook(() => useOfflineGeofence(targetCoords));
 
     // Initial radius from beforeEach default
     expect(result.current.requiredRadiusMeters).toBe(50);
@@ -142,7 +142,7 @@ describe('useOfflineGeofence hook', () => {
       refetch: jest.fn(),
     });
 
-    rerender();
+    await rerender(undefined);
 
     expect(result.current.requiredRadiusMeters).toBe(500);
     expect(result.current.isNearStart).toBe(true);

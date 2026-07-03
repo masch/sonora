@@ -47,7 +47,11 @@ export function BottomModal({
 
   return (
     <ModalPrimitive visible={visible} dismissable onDismiss={onDismiss}>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={{ flex: 1 }}
+        testID="bottom-modal-keyboard-view"
+      >
         <TwView className="flex-1 justify-end">
           <TwPressable
             onPress={onDismiss}

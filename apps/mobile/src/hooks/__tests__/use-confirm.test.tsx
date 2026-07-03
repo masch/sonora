@@ -27,16 +27,17 @@ function TestHarness({
   const { confirm, component } = useConfirm();
   const [result, setResult] = useState<boolean | null>(null);
 
-  const handleTrigger = async () => {
-    const ok = await confirm({
+  const handleTrigger = () => {
+    confirm({
       title: 'Test Title',
       message: 'Test Message',
       confirmLabel: 'Confirm',
       cancelLabel: 'Cancel',
       destructive,
+    }).then((ok) => {
+      setResult(ok);
+      onResult?.(ok);
     });
-    setResult(ok);
-    onResult?.(ok);
   };
 
   return (
@@ -52,9 +53,9 @@ function TestHarness({
 
 describe('useConfirm', () => {
   it('shows confirm dialog when trigger is pressed', async () => {
-    const { getByTestId, findByText } = render(<TestHarness />);
+    const { getByTestId, findByText } = await render(<TestHarness />);
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
 
     expect(await findByText('Test Title')).toBeTruthy();
     expect(await findByText('Test Message')).toBeTruthy();
@@ -62,10 +63,10 @@ describe('useConfirm', () => {
 
   it('resolves to true when confirm is pressed', async () => {
     const onResult = jest.fn();
-    const { getByTestId, findByTestId } = render(<TestHarness onResult={onResult} />);
+    const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
-    fireEvent.press(getByTestId('trigger'));
-    fireEvent.press(await findByTestId('confirm-button'));
+    await fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(await findByTestId('confirm-button'));
 
     await waitFor(() => {
       expect(getByTestId('result')).toHaveTextContent('confirmed');
@@ -75,10 +76,10 @@ describe('useConfirm', () => {
 
   it('resolves to false when cancel is pressed', async () => {
     const onResult = jest.fn();
-    const { getByTestId, findByTestId } = render(<TestHarness onResult={onResult} />);
+    const { getByTestId, findByTestId } = await render(<TestHarness onResult={onResult} />);
 
-    fireEvent.press(getByTestId('trigger'));
-    fireEvent.press(await findByTestId('confirm-cancel-button'));
+    await fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(await findByTestId('confirm-cancel-button'));
 
     await waitFor(() => {
       expect(getByTestId('result')).toHaveTextContent('cancelled');
@@ -87,16 +88,18 @@ describe('useConfirm', () => {
   });
 
   it('applies destructive testID when destructive is true', async () => {
-    const { getByTestId, findByTestId } = render(<TestHarness destructive onResult={jest.fn()} />);
+    const { getByTestId, findByTestId } = await render(
+      <TestHarness destructive onResult={jest.fn()} />,
+    );
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
     expect(await findByTestId('confirm-destructive-button')).toBeTruthy();
   });
 
   it('shows both cancel and confirm buttons', async () => {
-    const { getByTestId, findByTestId } = render(<TestHarness />);
+    const { getByTestId, findByTestId } = await render(<TestHarness />);
 
-    fireEvent.press(getByTestId('trigger'));
+    await fireEvent.press(getByTestId('trigger'));
 
     expect(await findByTestId('confirm-cancel-button')).toBeTruthy();
     expect(await findByTestId('confirm-button')).toBeTruthy();

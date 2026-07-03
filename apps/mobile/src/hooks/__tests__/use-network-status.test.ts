@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useNetworkStatus } from '../use-network-status';
 
@@ -37,53 +37,53 @@ describe('useNetworkStatus', () => {
     jest.clearAllMocks();
   });
 
-  it('should register a NetInfo listener on mount', () => {
-    renderHook(() => useNetworkStatus());
+  it('should register a NetInfo listener on mount', async () => {
+    await renderHook(() => useNetworkStatus());
     expect(NetInfo.addEventListener).toHaveBeenCalledTimes(1);
     expect(typeof (NetInfo.addEventListener as jest.Mock).mock.calls[0][0]).toBe('function');
   });
 
-  it('should initialize as online', () => {
+  it('should initialize as online', async () => {
     // The mock in jest.setup.ts calls the handler immediately with online state
-    const { result } = renderHook(() => useNetworkStatus());
+    const { result } = await renderHook(() => useNetworkStatus());
     expect(result.current.isOnline).toBe(true);
   });
 
-  it('should reflect offline state when NetInfo fires disconnect event', () => {
-    const { result } = renderHook(() => useNetworkStatus());
+  it('should reflect offline state when NetInfo fires disconnect event', async () => {
+    const { result } = await renderHook(() => useNetworkStatus());
 
-    act(() => {
+    await act(() => {
       simulateNetInfoState({ isConnected: false, isInternetReachable: false });
     });
 
     expect(result.current.isOnline).toBe(false);
   });
 
-  it('should toggle between online and offline states', () => {
-    const { result } = renderHook(() => useNetworkStatus());
+  it('should toggle between online and offline states', async () => {
+    const { result } = await renderHook(() => useNetworkStatus());
 
-    act(() => {
+    await act(() => {
       simulateNetInfoState({ isConnected: false, isInternetReachable: false });
     });
     expect(result.current.isOnline).toBe(false);
 
-    act(() => {
+    await act(() => {
       simulateNetInfoState({ isConnected: true, isInternetReachable: true });
     });
     expect(result.current.isOnline).toBe(true);
 
-    act(() => {
+    await act(() => {
       simulateNetInfoState({ isConnected: false, isInternetReachable: false });
     });
     expect(result.current.isOnline).toBe(false);
   });
 
-  it('should clean up the NetInfo listener on unmount', () => {
+  it('should clean up the NetInfo listener on unmount', async () => {
     const unsubscribe = jest.fn();
     (NetInfo.addEventListener as jest.Mock).mockReturnValueOnce(unsubscribe);
 
-    const { unmount } = renderHook(() => useNetworkStatus());
-    unmount();
+    const { unmount } = await renderHook(() => useNetworkStatus());
+    await unmount();
 
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });

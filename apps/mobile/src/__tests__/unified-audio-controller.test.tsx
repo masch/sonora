@@ -14,9 +14,9 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('UnifiedAudioController', () => {
-  it('renders download & play initial button when undownloaded and idle', () => {
+  it('renders download & play initial button when undownloaded and idle', async () => {
     const onDownload = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <UnifiedAudioController
         downloadStatus="idle"
         downloadProgress={0}
@@ -36,12 +36,12 @@ describe('UnifiedAudioController', () => {
     const btn = getByTestId('play-download-button');
     expect(btn).toBeTruthy();
 
-    fireEvent.press(btn);
+    await fireEvent.press(btn);
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('renders duration when durationMs > 0 in idle state', () => {
-    const { getByText } = render(
+  it('renders duration when durationMs > 0 in idle state', async () => {
+    const { getByText } = await render(
       <UnifiedAudioController
         downloadStatus="idle"
         downloadProgress={0}
@@ -60,9 +60,9 @@ describe('UnifiedAudioController', () => {
     expect(getByText('0:00 / 2:00')).toBeTruthy();
   });
 
-  it('renders downloading state with progress bar and cancel button', () => {
+  it('renders downloading state with progress bar and cancel button', async () => {
     const onCancel = jest.fn();
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getByText } = await render(
       <UnifiedAudioController
         downloadStatus="downloading"
         downloadProgress={45}
@@ -86,15 +86,15 @@ describe('UnifiedAudioController', () => {
     expect(fill.props.style.width).toBe('45%');
 
     const cancelBtn = getByTestId('cancel-download-button');
-    fireEvent.press(cancelBtn);
+    await fireEvent.press(cancelBtn);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('renders AudioMediaControls once download is completed and handles rewind & reset', () => {
+  it('renders AudioMediaControls once download is completed and handles rewind & reset', async () => {
     const onPlay = jest.fn();
     const onRewind = jest.fn();
     const onReset = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <UnifiedAudioController
         downloadStatus="completed"
         downloadProgress={100}
@@ -114,15 +114,15 @@ describe('UnifiedAudioController', () => {
 
     expect(getByTestId('audio-media-controls')).toBeTruthy();
     const playBtn = getByTestId('audio-play-button');
-    fireEvent.press(playBtn);
+    await fireEvent.press(playBtn);
     expect(onPlay).toHaveBeenCalledTimes(1);
 
     const rewindBtn = getByTestId('audio-rewind-button');
-    fireEvent.press(rewindBtn);
+    await fireEvent.press(rewindBtn);
     expect(onRewind).toHaveBeenCalledTimes(1);
 
     const resetBtn = getByTestId('audio-reset-button');
-    fireEvent.press(resetBtn);
+    await fireEvent.press(resetBtn);
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 });

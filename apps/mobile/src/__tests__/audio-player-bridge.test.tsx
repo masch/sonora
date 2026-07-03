@@ -61,33 +61,33 @@ beforeEach(() => {
 });
 
 describe('AudioPlayerBridge', () => {
-  it('creates an AudioPlayer and registers it in the store on mount', () => {
+  it('creates an AudioPlayer and registers it in the store on mount', async () => {
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    render(<AudioPlayerBridge />);
+    await render(<AudioPlayerBridge />);
 
     expect(mockCreateAudioPlayer).toHaveBeenCalledWith(null);
     const state = useAudioPlayerStore.getState();
     expect(state._player).not.toBeNull();
   });
 
-  it('removes the player and clears the store on unmount', () => {
+  it('removes the player and clears the store on unmount', async () => {
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    const { unmount } = render(<AudioPlayerBridge />);
+    const { unmount } = await render(<AudioPlayerBridge />);
 
     expect(useAudioPlayerStore.getState()._player).not.toBeNull();
 
-    unmount();
+    await unmount();
 
     expect(mockRemove).toHaveBeenCalledTimes(1);
     expect(useAudioPlayerStore.getState()._player).toBeNull();
   });
 
-  it('calls setAudioModeAsync with background playback config on mount', () => {
+  it('calls setAudioModeAsync with background playback config on mount', async () => {
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    render(<AudioPlayerBridge />);
+    await render(<AudioPlayerBridge />);
 
     expect(mockSetAudioModeAsync).toHaveBeenCalledWith({
       playsInSilentMode: true,
@@ -96,30 +96,30 @@ describe('AudioPlayerBridge', () => {
     });
   });
 
-  it('requests notification permissions on Android', () => {
+  it('requests notification permissions on Android', async () => {
     platform.OS = 'android';
 
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    render(<AudioPlayerBridge />);
+    await render(<AudioPlayerBridge />);
 
     expect(mockRequestNotificationPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT request notification permissions on iOS', () => {
+  it('does NOT request notification permissions on iOS', async () => {
     platform.OS = 'ios';
 
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    render(<AudioPlayerBridge />);
+    await render(<AudioPlayerBridge />);
 
     expect(mockRequestNotificationPermissionsAsync).not.toHaveBeenCalled();
   });
 
-  it('syncs initial player status to the store', () => {
+  it('syncs initial player status to the store', async () => {
     const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
 
-    render(<AudioPlayerBridge />);
+    await render(<AudioPlayerBridge />);
 
     const state = useAudioPlayerStore.getState();
     // With isLoaded=true, playing=false, not buffering → idle

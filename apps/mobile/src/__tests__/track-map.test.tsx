@@ -99,7 +99,7 @@ describe('TrackMap native component', () => {
   });
 
   it('renders track cards when tracks exist', async () => {
-    const { getByText } = render(<TrackMap />);
+    const { getByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     });
@@ -107,7 +107,7 @@ describe('TrackMap native component', () => {
   });
 
   it('renders view track link per track', async () => {
-    const { getByTestId } = render(<TrackMap />);
+    const { getByTestId } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByTestId('view-track-umepay-bosque')).toBeTruthy();
     });
@@ -116,14 +116,14 @@ describe('TrackMap native component', () => {
 
   it('renders empty state when no tracks', async () => {
     mockTracksData = [];
-    const { getByText } = render(<TrackMap />);
+    const { getByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByText('map.noTracksTitle')).toBeTruthy();
     });
   });
 
   it('renders instructions card', async () => {
-    const { getByText } = render(<TrackMap />);
+    const { getByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByText('map.instructionsTitle')).toBeTruthy();
     });
@@ -140,7 +140,7 @@ describe('TrackMap native component', () => {
       return selector ? selector(state) : state;
     });
 
-    const { getAllByText } = render(<TrackMap />);
+    const { getAllByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getAllByText(/map\.distanceFromYou/).length).toBe(2);
     });
@@ -153,7 +153,7 @@ describe('TrackMap native component', () => {
       canAskAgain: true,
     });
 
-    const { queryByText, getByText } = render(<TrackMap />);
+    const { queryByText, getByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     });
@@ -170,7 +170,7 @@ describe('TrackMap native component', () => {
       .mocked(Location.getCurrentPositionAsync)
       .mockRejectedValue(new Error('Location unavailable'));
 
-    const { queryByText, getByText } = render(<TrackMap />);
+    const { queryByText, getByText } = await render(<TrackMap />);
     await waitFor(() => {
       expect(getByText('Umepay Bosque Antiguo')).toBeTruthy();
     });

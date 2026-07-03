@@ -18,8 +18,8 @@ jest.mock('expo-symbols', () => {
 });
 
 describe('Collapsible component', () => {
-  it('renders title and toggles open state showing children', () => {
-    const { getByText, queryByText } = render(
+  it('renders title and toggles open state showing children', async () => {
+    const { getByText, queryByText } = await render(
       <Collapsible title="Test Collapsible">
         <Text>Hidden Child Content</Text>
       </Collapsible>,
@@ -30,11 +30,11 @@ describe('Collapsible component', () => {
     expect(queryByText('Hidden Child Content')).toBeNull();
 
     // Tap to open
-    fireEvent.press(getByText('Test Collapsible'));
+    await fireEvent.press(getByText('Test Collapsible'));
     expect(getByText('Hidden Child Content')).toBeTruthy();
 
     // Tap to close
-    fireEvent.press(getByText('Test Collapsible'));
+    await fireEvent.press(getByText('Test Collapsible'));
     expect(queryByText('Hidden Child Content')).toBeNull();
   });
 });

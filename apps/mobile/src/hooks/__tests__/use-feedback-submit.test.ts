@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 
 import { ApiClient } from '@/services/api-client';
 
@@ -40,8 +40,8 @@ jest.mock('@/store/location-store', () => ({
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-function renderSubmitHook() {
-  return renderHook(() => {
+async function renderSubmitHook() {
+  return await renderHook(() => {
     const { useFeedbackSubmit } = jest.requireActual('@/hooks/use-feedback-submit');
     return useFeedbackSubmit();
   });
@@ -55,8 +55,8 @@ describe('useFeedbackSubmit', () => {
     mockCoordsContainer.value = null;
   });
 
-  it('should start with idle state', () => {
-    const { result } = renderSubmitHook();
+  it('should start with idle state', async () => {
+    const { result } = await renderSubmitHook();
 
     expect(result.current.feedbackStatus).toBeUndefined();
     expect(result.current.feedbackError).toBeNull();
@@ -70,11 +70,11 @@ describe('useFeedbackSubmit', () => {
     });
     jest.spyOn(ApiClient, 'post').mockReturnValueOnce(apiPromise);
 
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     // Start submission — will pause at the API call
     let submitPromise: Promise<void>;
-    act(() => {
+    await act(() => {
       submitPromise = result.current.submitFeedback('exp-1', 'Message');
     });
 
@@ -93,7 +93,7 @@ describe('useFeedbackSubmit', () => {
 
   it('should set status to sent on successful API call', async () => {
     jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');
@@ -114,7 +114,7 @@ describe('useFeedbackSubmit', () => {
   it('should queue feedback when API call fails', async () => {
     jest.spyOn(ApiClient, 'post').mockRejectedValueOnce(new Error('Network error'));
     mockEnqueue.mockResolvedValueOnce('00000000-0000-0000-0000-000000000000');
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');
@@ -131,7 +131,7 @@ describe('useFeedbackSubmit', () => {
   it('should set error when both API and queue fail', async () => {
     jest.spyOn(ApiClient, 'post').mockRejectedValueOnce(new Error('Network error'));
     mockEnqueue.mockRejectedValueOnce(new Error('SQLite full'));
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');
@@ -144,7 +144,7 @@ describe('useFeedbackSubmit', () => {
   it('should log both API and enqueue errors', async () => {
     jest.spyOn(ApiClient, 'post').mockRejectedValueOnce(new Error('Network error'));
     mockEnqueue.mockRejectedValueOnce(new Error('SQLite full'));
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Message');
@@ -160,10 +160,10 @@ describe('useFeedbackSubmit', () => {
     );
   });
 
-  it('should reset state on dismiss', () => {
-    const { result } = renderSubmitHook();
+  it('should reset state on dismiss', async () => {
+    const { result } = await renderSubmitHook();
 
-    act(() => {
+    await act(() => {
       result.current.dismissFeedback();
     });
 
@@ -173,7 +173,7 @@ describe('useFeedbackSubmit', () => {
 
   it('should allow submitting again after dismiss', async () => {
     jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     // First submit
     await act(async () => {
@@ -182,7 +182,7 @@ describe('useFeedbackSubmit', () => {
     expect(result.current.feedbackStatus).toBe('sent');
 
     // Dismiss
-    act(() => {
+    await act(() => {
       result.current.dismissFeedback();
     });
     expect(result.current.feedbackStatus).toBeUndefined();
@@ -198,7 +198,7 @@ describe('useFeedbackSubmit', () => {
 
   it('should support sequential submissions without dismiss', async () => {
     jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'First');
@@ -219,7 +219,7 @@ describe('useFeedbackSubmit', () => {
   it('should include latitude and longitude when coords are available', async () => {
     mockCoordsContainer.value = { latitude: -34.61, longitude: -58.38 };
     jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');
@@ -239,7 +239,7 @@ describe('useFeedbackSubmit', () => {
   it('should include null latitude and longitude when coords are null', async () => {
     mockCoordsContainer.value = null;
     jest.spyOn(ApiClient, 'post').mockResolvedValueOnce(undefined);
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');
@@ -260,7 +260,7 @@ describe('useFeedbackSubmit', () => {
     mockCoordsContainer.value = { latitude: -34.61, longitude: -58.38 };
     jest.spyOn(ApiClient, 'post').mockRejectedValueOnce(new Error('Network error'));
     mockEnqueue.mockResolvedValueOnce('00000000-0000-0000-0000-000000000000');
-    const { result } = renderSubmitHook();
+    const { result } = await renderSubmitHook();
 
     await act(async () => {
       await result.current.submitFeedback('exp-1', 'Great track!');

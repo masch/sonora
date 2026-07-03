@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import Storage from 'expo-sqlite/kv-store';
 import NetInfo from '@react-native-community/netinfo';
 import { useFeedbackSync } from '../use-feedback-sync';
@@ -69,12 +69,12 @@ describe('useFeedbackSync', () => {
     const mockFetch = jest.fn().mockResolvedValue({ status: 201, json: () => ({ status: 'ok' }) });
     globalThis.fetch = mockFetch;
 
-    renderHook(() => useFeedbackSync());
+    await renderHook(() => useFeedbackSync());
 
     // Trigger online transition
     await tick();
     if (netInfoHandler) {
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: true });
       });
     }
@@ -108,11 +108,11 @@ describe('useFeedbackSync', () => {
     });
     globalThis.fetch = mockFetch;
 
-    renderHook(() => useFeedbackSync());
+    await renderHook(() => useFeedbackSync());
 
     await tick();
     if (netInfoHandler) {
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: true });
       });
     }
@@ -135,11 +135,11 @@ describe('useFeedbackSync', () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch;
 
-    renderHook(() => useFeedbackSync());
+    await renderHook(() => useFeedbackSync());
 
     await tick();
     if (netInfoHandler) {
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: true });
       });
     }
@@ -161,19 +161,19 @@ describe('useFeedbackSync', () => {
     );
     globalThis.fetch = mockFetch;
 
-    renderHook(() => useFeedbackSync());
+    await renderHook(() => useFeedbackSync());
 
     await tick();
 
     // Rapid toggle: online → offline → online before first flush completes
     if (netInfoHandler) {
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: true });
       });
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: false });
       });
-      act(() => {
+      await act(() => {
         netInfoHandler!({ isConnected: true });
       });
     }
@@ -194,7 +194,7 @@ describe('useFeedbackSync', () => {
     const mockFetch = jest.fn().mockResolvedValue({ status: 201, json: () => ({ status: 'ok' }) });
     globalThis.fetch = mockFetch;
 
-    renderHook(() => useFeedbackSync());
+    await renderHook(() => useFeedbackSync());
 
     expect(mockFetch).not.toHaveBeenCalled();
 

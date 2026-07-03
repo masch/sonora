@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react-hooks';
+import { act, renderHook } from '@testing-library/react-native';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
 
@@ -53,8 +53,8 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     });
   });
 
-  it('returns idle status when localAudioUri is null', () => {
-    const { result } = renderHook(() => useImmersionPlayer(null, {}));
+  it('returns idle status when localAudioUri is null', async () => {
+    const { result } = await renderHook(() => useImmersionPlayer(null, {}));
 
     expect(result.current.status).toBe('idle');
     expect(result.current.positionMs).toBe(0);
@@ -66,7 +66,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     expect(typeof result.current.seekTo).toBe('function');
   });
 
-  it('returns store status when localAudioUri is set', () => {
+  it('returns store status when localAudioUri is set', async () => {
     useAudioPlayerStore.setState({ currentUri: 'file://audio.mp3' });
     useAudioPlayerStore.getState()._syncStatus({
       status: 'playing',
@@ -74,97 +74,97 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
       durationMs: 120000,
     });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     expect(result.current.status).toBe('playing');
     expect(result.current.positionMs).toBe(15000);
     expect(result.current.durationMs).toBe(120000);
   });
 
-  it('forwards idle status from store when URI is set but store is idle', () => {
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+  it('forwards idle status from store when URI is set but store is idle', async () => {
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     expect(result.current.status).toBe('idle');
   });
 
-  it('play() calls store play with localAudioUri', () => {
+  it('play() calls store play with localAudioUri', async () => {
     const storePlay = jest.fn();
     const originalPlay = useAudioPlayerStore.getState().play;
     useAudioPlayerStore.setState({ play: storePlay as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.play();
 
     expect(storePlay).toHaveBeenCalledWith('file://audio.mp3');
 
     // Restore inside act to avoid <act(...)> warning on zustand subscriber
-    act(() => {
+    await act(() => {
       useAudioPlayerStore.setState({ play: originalPlay as never });
     });
   });
 
-  it('play() does nothing when localAudioUri is null', () => {
+  it('play() does nothing when localAudioUri is null', async () => {
     const storePlay = jest.fn();
     const originalPlay = useAudioPlayerStore.getState().play;
     useAudioPlayerStore.setState({ play: storePlay as never });
 
-    const { result } = renderHook(() => useImmersionPlayer(null, {}));
+    const { result } = await renderHook(() => useImmersionPlayer(null, {}));
     result.current.play();
 
     expect(storePlay).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(() => {
       useAudioPlayerStore.setState({ play: originalPlay as never });
     });
   });
 
-  it('pause() delegates to store.pause()', () => {
+  it('pause() delegates to store.pause()', async () => {
     const storePause = jest.fn();
     const originalPause = useAudioPlayerStore.getState().pause;
     useAudioPlayerStore.setState({ pause: storePause as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.pause();
 
     expect(storePause).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(() => {
       useAudioPlayerStore.setState({ pause: originalPause as never });
     });
   });
 
-  it('stop() delegates to store.stop()', () => {
+  it('stop() delegates to store.stop()', async () => {
     const storeStop = jest.fn();
     const originalStop = useAudioPlayerStore.getState().stop;
     useAudioPlayerStore.setState({ stop: storeStop as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.stop();
 
     expect(storeStop).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(() => {
       useAudioPlayerStore.setState({ stop: originalStop as never });
     });
   });
 
-  it('seekTo() delegates to store.seekTo()', () => {
+  it('seekTo() delegates to store.seekTo()', async () => {
     const storeSeekTo = jest.fn();
     const originalSeekTo = useAudioPlayerStore.getState().seekTo;
     useAudioPlayerStore.setState({ seekTo: storeSeekTo as never });
 
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
     result.current.seekTo(30000);
 
     expect(storeSeekTo).toHaveBeenCalledWith(30000);
 
-    act(() => {
+    await act(() => {
       useAudioPlayerStore.setState({ seekTo: originalSeekTo as never });
     });
   });
 
-  it('returns same interface shape as original ImmersionPlayerState', () => {
-    const { result } = renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
+  it('returns same interface shape as original ImmersionPlayerState', async () => {
+    const { result } = await renderHook(() => useImmersionPlayer('file://audio.mp3', {}));
 
     const keys = Object.keys(result.current).sort();
     expect(keys).toEqual(

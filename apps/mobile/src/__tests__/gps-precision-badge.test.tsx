@@ -4,8 +4,8 @@ import { render } from '@testing-library/react-native';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 
 describe('GpsPrecisionBadge', () => {
-  it('renders the badge container with testID', () => {
-    const { getByTestId } = render(
+  it('renders the badge container with testID', async () => {
+    const { getByTestId } = await render(
       <GpsPrecisionBadge
         gpsStatus="initializing"
         gpsAccuracy={null}
@@ -19,8 +19,8 @@ describe('GpsPrecisionBadge', () => {
   });
 
   describe('initializing state', () => {
-    it('shows initializing status text', () => {
-      const { getByText } = render(
+    it('shows initializing status text', async () => {
+      const { getByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="initializing"
           gpsAccuracy={null}
@@ -35,8 +35,8 @@ describe('GpsPrecisionBadge', () => {
   });
 
   describe('weak signal state', () => {
-    it('shows weak GPS signal message', () => {
-      const { getByText } = render(
+    it('shows weak GPS signal message', async () => {
+      const { getByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -49,8 +49,8 @@ describe('GpsPrecisionBadge', () => {
       expect(getByText('components.gpsBadge.statusWeak')).toBeTruthy();
     });
 
-    it('shows accuracy value when provided', () => {
-      const { getAllByText } = render(
+    it('shows accuracy value when provided', async () => {
+      const { getAllByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -63,8 +63,8 @@ describe('GpsPrecisionBadge', () => {
       expect(getAllByText('map.distanceMeters')).toHaveLength(3);
     });
 
-    it('shows distance in meters when under 1000', () => {
-      const { getAllByText } = render(
+    it('shows distance in meters when under 1000', async () => {
+      const { getAllByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -77,8 +77,8 @@ describe('GpsPrecisionBadge', () => {
       expect(getAllByText('map.distanceMeters')).toHaveLength(3);
     });
 
-    it('shows distance in km when 1000 or more', () => {
-      const { getByText } = render(
+    it('shows distance in km when 1000 or more', async () => {
+      const { getByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="weak"
           gpsAccuracy={45}
@@ -93,8 +93,8 @@ describe('GpsPrecisionBadge', () => {
   });
 
   describe('ready state', () => {
-    it('shows ready status text', () => {
-      const { getByText } = render(
+    it('shows ready status text', async () => {
+      const { getByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="ready"
           gpsAccuracy={10}
@@ -107,8 +107,8 @@ describe('GpsPrecisionBadge', () => {
       expect(getByText('components.gpsBadge.statusReady')).toBeTruthy();
     });
 
-    it('shows near start indicator when isNearStart is true', () => {
-      const { getByText } = render(
+    it('shows near start indicator when isNearStart is true', async () => {
+      const { getByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="ready"
           gpsAccuracy={10}
@@ -123,8 +123,8 @@ describe('GpsPrecisionBadge', () => {
   });
 
   describe('null values', () => {
-    it('shows notAvailable key for both accuracy and distance when both are null', () => {
-      const { getAllByText } = render(
+    it('shows notAvailable key for both accuracy and distance when both are null', async () => {
+      const { getAllByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="initializing"
           gpsAccuracy={null}
@@ -138,8 +138,8 @@ describe('GpsPrecisionBadge', () => {
       expect(naElements).toHaveLength(2);
     });
 
-    it('shows no notAvailable when both accuracy and distance are provided', () => {
-      const { queryByText } = render(
+    it('shows no notAvailable when both accuracy and distance are provided', async () => {
+      const { queryByText } = await render(
         <GpsPrecisionBadge
           gpsStatus="ready"
           gpsAccuracy={10}

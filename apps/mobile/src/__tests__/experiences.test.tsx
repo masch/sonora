@@ -90,7 +90,7 @@ jest.mock('expo-symbols', () => ({
 
 describe('ExperiencesScreen', () => {
   it('renders all layout elements correctly', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = render(<ExperiencesScreen />);
+    const { getByText, getByPlaceholderText, getByTestId } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByTestId('type-chip-track')).toBeTruthy();
@@ -108,28 +108,28 @@ describe('ExperiencesScreen', () => {
   });
 
   it('filters tracks by search query', async () => {
-    const { getByPlaceholderText, queryByText } = render(<ExperiencesScreen />);
+    const { getByPlaceholderText, queryByText } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByPlaceholderText('Search tracks...')).toBeTruthy();
     });
 
     const searchInput = getByPlaceholderText('Search tracks...');
-    fireEvent.changeText(searchInput, 'arroyo');
+    await fireEvent.changeText(searchInput, 'arroyo');
 
     expect(queryByText('El arroyo')).toBeTruthy();
     expect(queryByText('Tacuarita Azul')).toBeNull();
   });
 
   it('filters tracks by theme chip selection', async () => {
-    const { getByText, queryByText } = render(<ExperiencesScreen />);
+    const { getByText, queryByText } = await render(<ExperiencesScreen />);
 
     await waitFor(() => {
       expect(getByText('Landscapes')).toBeTruthy();
     });
 
     const landscapesChip = getByText('Landscapes');
-    fireEvent.press(landscapesChip);
+    await fireEvent.press(landscapesChip);
 
     expect(queryByText('Tacuarita Azul')).toBeTruthy();
     expect(queryByText('El arroyo')).toBeNull();

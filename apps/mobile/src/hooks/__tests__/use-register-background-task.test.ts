@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 
@@ -31,7 +31,7 @@ describe('useRegisterBackgroundTask', () => {
     (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
 
     await act(async () => {
-      renderHook(() => useRegisterBackgroundTask(taskName, { minimumInterval: 300 }));
+      await renderHook(() => useRegisterBackgroundTask(taskName, { minimumInterval: 300 }));
     });
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(taskName);
@@ -47,7 +47,7 @@ describe('useRegisterBackgroundTask', () => {
     (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(true);
 
     await act(async () => {
-      renderHook(() => useRegisterBackgroundTask(taskName));
+      await renderHook(() => useRegisterBackgroundTask(taskName));
     });
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(taskName);
