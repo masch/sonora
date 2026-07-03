@@ -142,7 +142,7 @@ describe('useOfflineGeofence hook', () => {
       refetch: jest.fn(),
     });
 
-    await rerender();
+    await rerender(undefined);
 
     expect(result.current.requiredRadiusMeters).toBe(500);
     expect(result.current.isNearStart).toBe(true);
