@@ -3,6 +3,7 @@ import {
   doublePrecision,
   integer,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -66,12 +67,18 @@ export const feedback = sonoraSchema.table('feedbacks', {
   longitude: doublePrecision('longitude'),
 });
 
-export const translations = sonoraSchema.table('translations', {
-  lang: text('lang').notNull(),
-  key: text('key').notNull(),
-  value: text('value').notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const translations = sonoraSchema.table(
+  'translations',
+  {
+    lang: text('lang').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.lang, table.key] }),
+  }),
+);
 
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
@@ -81,3 +88,5 @@ export type Waypoint = typeof waypoints.$inferSelect;
 export type NewWaypoint = typeof waypoints.$inferInsert;
 export type Feedback = typeof feedback.$inferSelect;
 export type NewFeedback = typeof feedback.$inferInsert;
+export type Translation = typeof translations.$inferSelect;
+export type NewTranslation = typeof translations.$inferInsert;
