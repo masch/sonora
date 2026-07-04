@@ -26,4 +26,36 @@ instance.use(initReactI18next).init({
   },
 });
 
+/**
+ * Convert flat `{ "common.learnMore": "..." }` to nested `{ common: { learnMore: "..." } }`.
+ * Supports dot-separated keys (e.g., "common.learnMore", "player.play").
+ */
+function flattenToNested(entries: Record<string, string>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [flatKey, value] of Object.entries(entries)) {
+    const parts = flatKey.split('.');
+    let current = result;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!(part in current)) {
+        current[part] = {};
+      }
+      current = current[part] as Record<string, unknown>;
+    }
+    current[parts[parts.length - 1]] = value;
+  }
+  return result;
+}
+
+/**
+ * Add remote translation overrides into i18next's resource bundles.
+ * Each language's flat key-value pairs are converted to nested objects
+ * and merged with overwrite (remote values take precedence).
+ */
+export function addResources(resources: Record<string, Record<string, string>>): void {
+  for (const [lang, entries] of Object.entries(resources)) {
+    instance.addResourceBundle(lang, 'translation', flattenToNested(entries), true, true);
+  }
+}
+
 export default i18next;
