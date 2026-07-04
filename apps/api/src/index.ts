@@ -8,6 +8,7 @@ import { themesRouter } from './routes/themes';
 import { experiencesRouter } from './routes/experiences';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
+import { translationsRouter } from './routes/translations';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -50,6 +51,7 @@ app.route('/themes', themesRouter);
 app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
+app.route('/api/translations', translationsRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
