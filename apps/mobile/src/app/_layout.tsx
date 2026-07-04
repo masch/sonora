@@ -19,6 +19,8 @@ import { UpdateRequiredModal } from '@/components/update-required-modal';
 import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { useTranslationStore } from '@/store/translation-store';
+import { addResources } from '@/i18n';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
@@ -52,10 +54,20 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Initialise remote config on app load
+  // Initialise remote config and translation overrides on app load
   useEffect(() => {
     useRemoteConfigStore.getState().init();
+    useTranslationStore.getState().init();
   }, []);
+
+  // Subscribe to translation overrides and push into i18next when they change
+  const overridesByLang = useTranslationStore((s) => s.overridesByLang);
+
+  useEffect(() => {
+    if (Object.keys(overridesByLang).length > 0) {
+      addResources(overridesByLang);
+    }
+  }, [overridesByLang]);
 
   // Subscribe to version status
   const versionStatus = useRemoteConfigStore((s) => s.versionStatus);
