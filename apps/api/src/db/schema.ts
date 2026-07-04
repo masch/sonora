@@ -66,6 +66,13 @@ export const feedback = sonoraSchema.table('feedbacks', {
   longitude: doublePrecision('longitude'),
 });
 
+export const translations = sonoraSchema.table('translations', {
+  lang: text('lang').notNull(),
+  key: text('key').notNull(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
 export type Experience = typeof experiences.$inferSelect;

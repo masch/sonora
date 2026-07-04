@@ -1,0 +1,1 @@
+ALTER TABLE "sonora"."translations" ADD CONSTRAINT "translations_lang_check" CHECK ("sonora"."translations"."lang" IN ('en', 'es'));
