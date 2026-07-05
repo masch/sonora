@@ -73,11 +73,9 @@ jobs:
           echo "Tree: $TREE_SHA"
 
           # 4. Create a commit via API (GitHub marks it "Verified")
-          COMMIT_SHA=$(gh api repos/$OWNER_REPO/git/commits \
-            -f message="chore: sync translations from admin panel" \
-            -f tree="$TREE_SHA" \
-            -f parents[0]="$BASE_SHA" \
-            --jq '.sha')
+          # Use printf + --input - for JSON body (--field breaks arrays)
+          COMMIT_SHA=$(printf '{"message": "chore: sync translations from admin panel", "tree": "%s", "parents": ["%s"]}' "$TREE_SHA" "$BASE_SHA" | \
+            gh api repos/$OWNER_REPO/git/commits --input - --jq '.sha')
           echo "Commit: $COMMIT_SHA"
 
           # 5. Create or update the branch
