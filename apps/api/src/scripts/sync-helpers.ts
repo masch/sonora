@@ -38,6 +38,9 @@ export function setNested(obj: Record<string, unknown>, key: string, value: stri
 /**
  * Recursively serialize a nested object back to TypeScript source.
  * Matches the format: single quotes, trailing commas, 2-space indent.
+ *
+ * The first call should use indent=0 (level before the opening `{`).
+ * Each child level adds 1 indent (2 spaces).
  */
 export function serializeToTS(obj: Record<string, unknown>, indent = 0): string {
   const childPad = '  '.repeat(indent + 1);
@@ -49,7 +52,7 @@ export function serializeToTS(obj: Record<string, unknown>, indent = 0): string 
       entries.push(`${childPad}${key}: '${escaped}',`);
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       entries.push(`${childPad}${key}: {`);
-      entries.push(serializeToTS(value as Record<string, unknown>, indent + 2));
+      entries.push(serializeToTS(value as Record<string, unknown>, indent + 1));
       entries.push(`${childPad}},`);
     }
   }
@@ -59,10 +62,12 @@ export function serializeToTS(obj: Record<string, unknown>, indent = 0): string 
 
 /**
  * Render the full .ts file content from an object.
+ * Preserves 2-space indent, as const assertion, and type export.
  */
 export function renderTSFile(exportName: string, obj: Record<string, unknown>): string {
-  const body = serializeToTS(obj, 1);
-  return `export const ${exportName} = {\n${body}\n};\n`;
+  const body = serializeToTS(obj, 0);
+  const typeName = `${exportName.charAt(0).toUpperCase()}${exportName.slice(1)}Dict`;
+  return `export const ${exportName} = {\n${body}\n} as const;\n\nexport type ${typeName} = typeof ${exportName};\n`;
 }
 
 /**

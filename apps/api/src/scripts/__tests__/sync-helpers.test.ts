@@ -63,34 +63,95 @@ describe('setNested', () => {
 });
 
 describe('serializeToTS', () => {
-  it('serializes a flat object', () => {
+  it('serializes a flat object with indent=0 yields 2-space indent', () => {
     const input = { key: 'value' };
-    const result = serializeToTS(input, 1);
-    expect(result).toBe("    key: 'value',");
+    const result = serializeToTS(input, 0);
+    expect(result).toBe("  key: 'value',");
   });
 
-  it('serializes nested objects with proper indentation', () => {
-    const input = { common: { learnMore: 'Learn' } };
-    const result = serializeToTS(input, 1);
-    expect(result).toContain('common: {');
-    expect(result).toContain("learnMore: 'Learn',");
-    expect(result).toContain('},');
+  it('nested children indent +1 level (2 spaces) each', () => {
+    const input = { a: { b: { c: 'deep' } } };
+    const result = serializeToTS(input, 0);
+    const lines = result.split('\n');
+    // 0: "  a: {"
+    // 1: "    b: {"
+    // 2: "      c: 'deep',"
+    // 3: "    },"
+    // 4: "  },"
+    expect(lines[0]).toBe('  a: {');
+    expect(lines[1]).toBe('    b: {');
+    expect(lines[2]).toBe("      c: 'deep',");
+    expect(lines[3]).toBe('    },');
+    expect(lines[4]).toBe('  },');
   });
 
   it('escapes single quotes in values', () => {
     const input = { key: "it's fine" };
-    const result = serializeToTS(input, 1);
+    const result = serializeToTS(input, 0);
     expect(result).toContain("key: 'it\\'s fine',");
   });
 });
 
 describe('renderTSFile', () => {
-  it('renders a complete .ts file with correct export name', () => {
+  it('renders a complete .ts file with as const and type export', () => {
     const input = { key: 'value' };
     const result = renderTSFile('en', input);
     expect(result).toContain('export const en = {');
     expect(result).toContain("key: 'value',");
-    expect(result.trim()).toMatch(/};$/);
+    expect(result).toContain('} as const;');
+    expect(result).toContain('export type EnDict = typeof en;');
+  });
+
+  it('preserves 2-space indentation across the full file', () => {
+    const input = { a: { b: { c: 'deep' } } };
+    const result = renderTSFile('en', input);
+    const lines = result.split('\n');
+    // Line 0: "export const en = {"
+    // Line 1:  2 spaces = "  a: {"
+    // Line 2:  4 spaces = "    b: {"
+    // Line 3:  6 spaces = "      c: 'deep',"
+    // Line 4:  4 spaces = "    },"
+    // Line 5:  2 spaces = "  },"
+    // Line 6: "} as const;"
+    expect(lines[0]).toBe('export const en = {');
+    expect(lines[1]).toBe('  a: {');
+    expect(lines[2]).toBe('    b: {');
+    expect(lines[3]).toBe("      c: 'deep',");
+    expect(lines[4]).toBe('    },');
+    expect(lines[5]).toBe('  },');
+    expect(lines[6]).toBe('} as const;');
+    expect(lines[lines.length - 1]).toBe('');
+  });
+
+  it('full pipeline: flatten -> merge -> render produces minimal diff', () => {
+    // Simulate a locale file with one DB override
+    const original = {
+      common: { learnMore: 'Learn more', dismiss: 'Dismiss' },
+      home: { instructionsName: 'How to use Sonora' },
+    };
+    const dbOverrides = { 'home.instructionsName': 'How to use web' };
+
+    // Merge DB override into original
+    const merged = structuredClone(original);
+    for (const [key, value] of Object.entries(dbOverrides)) {
+      setNested(merged, key, value);
+    }
+
+    const result = renderTSFile('en', merged);
+
+    // Should not reformat — indent remains 2-space
+    expect(result).toContain('  common: {');
+    expect(result).toContain("    learnMore: 'Learn more',");
+    expect(result).toContain('  home: {');
+    expect(result).toContain("    instructionsName: 'How to use web',");
+
+    // Only the overridden key has 'web'
+    expect(result).toContain("instructionsName: 'How to use web'");
+    expect(result).not.toContain("instructionsName: 'How to use Sonora'");
+
+    // Preserves as const and type export
+    expect(result).toContain('} as const;');
+    expect(result).toContain('export type EnDict = typeof en;');
   });
 });
 
