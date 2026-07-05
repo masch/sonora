@@ -25,7 +25,7 @@ const detectBrowserLanguage = (): string => {
 
     // 2. Fallback to navigator language
     if (typeof navigator !== 'undefined') {
-      const lang = navigator.language || (navigator as any).userLanguage;
+      const lang = navigator.language || (navigator as { userLanguage?: string }).userLanguage;
       if (lang && lang.startsWith('es')) {
         return 'es';
       }

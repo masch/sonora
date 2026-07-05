@@ -10,10 +10,8 @@ describe('Admin i18n', () => {
   });
 
   afterEach(() => {
-    // @ts-ignore
-    globalThis.window = originalWindow;
-    // @ts-ignore
-    globalThis.navigator = originalNavigator;
+    (globalThis as unknown as { window: unknown }).window = originalWindow;
+    (globalThis as unknown as { navigator: unknown }).navigator = originalNavigator;
   });
 
   it('contains expected namespaces in en and es locales', () => {
@@ -27,54 +25,46 @@ describe('Admin i18n', () => {
   });
 
   it('initializes with fallback language if window/navigator are undefined', () => {
-    // @ts-ignore
-    delete globalThis.window;
-    // @ts-ignore
-    delete globalThis.navigator;
+    delete (globalThis as unknown as Record<string, unknown>).window;
+    delete (globalThis as unknown as Record<string, unknown>).navigator;
 
     const i18nInstance = require('../index').default;
     expect(i18nInstance.language).toBe('en');
   });
 
   it('detects spanish language from navigator', () => {
-    // @ts-ignore
-    delete globalThis.window;
-    // @ts-ignore
-    globalThis.navigator = {
+    delete (globalThis as unknown as Record<string, unknown>).window;
+    (globalThis as unknown as { navigator: unknown }).navigator = {
       language: 'es-ES',
-    } as any;
+    } as unknown as Navigator;
 
     const i18nInstance = require('../index').default;
     expect(i18nInstance.language).toBe('es');
   });
 
   it('detects spanish language from URL query parameter lng', () => {
-    // @ts-ignore
-    globalThis.window = {
+    (globalThis as unknown as { window: unknown }).window = {
       location: {
         search: '?lng=es',
       },
-    } as any;
-    // @ts-ignore
-    globalThis.navigator = {
+    } as unknown as Window & typeof globalThis;
+    (globalThis as unknown as { navigator: unknown }).navigator = {
       language: 'en-US',
-    } as any;
+    } as unknown as Navigator;
 
     const i18nInstance = require('../index').default;
     expect(i18nInstance.language).toBe('es');
   });
 
   it('detects english language from URL query parameter lang', () => {
-    // @ts-ignore
-    globalThis.window = {
+    (globalThis as unknown as { window: unknown }).window = {
       location: {
         search: '?lang=en',
       },
-    } as any;
-    // @ts-ignore
-    globalThis.navigator = {
+    } as unknown as Window & typeof globalThis;
+    (globalThis as unknown as { navigator: unknown }).navigator = {
       language: 'es-ES',
-    } as any;
+    } as unknown as Navigator;
 
     const i18nInstance = require('../index').default;
     expect(i18nInstance.language).toBe('en');
