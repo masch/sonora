@@ -48,8 +48,24 @@ export function serializeToTS(obj: Record<string, unknown>, indent = 0): string 
 
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {
-      const escaped = value.replace(/'/g, "\\'");
-      entries.push(`${childPad}${key}: '${escaped}',`);
+      // Choose delimiters to minimize diff noise and avoid invalid TS:
+      // double quotes when value contains single quotes (avoids escaping '),
+      // single quotes otherwise. Always escape newlines/backslashes/tabs.
+      const useDouble = value.includes("'") && !value.includes('"');
+      const quote = useDouble ? '"' : "'";
+      const escaped = useDouble
+        ? value
+            .replace(/\\/g, '\\\\')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t')
+        : value
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t');
+      entries.push(`${childPad}${key}: ${quote}${escaped}${quote},`);
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       entries.push(`${childPad}${key}: {`);
       entries.push(serializeToTS(value as Record<string, unknown>, indent + 1));

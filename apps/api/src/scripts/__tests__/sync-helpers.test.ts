@@ -85,10 +85,24 @@ describe('serializeToTS', () => {
     expect(lines[4]).toBe('  },');
   });
 
-  it('escapes single quotes in values', () => {
+  it('uses double quotes when value contains single quotes', () => {
     const input = { key: "it's fine" };
     const result = serializeToTS(input, 0);
-    expect(result).toContain("key: 'it\\'s fine',");
+    expect(result).toContain('key: "it\'s fine",');
+  });
+
+  it('uses single quotes when value has no single quotes', () => {
+    const input = { key: 'hello world' };
+    const result = serializeToTS(input, 0);
+    expect(result).toContain("key: 'hello world',");
+  });
+
+  it('escapes newlines in multiline values', () => {
+    const input = { overlayTitle: 'SONORA\nGUIDED' };
+    const result = serializeToTS(input, 0);
+    // Must produce a valid single-line TS string, not literal newlines
+    expect(result).toBe("  overlayTitle: 'SONORA\\nGUIDED',");
+    expect(result.split('\n')).toHaveLength(1);
   });
 });
 
