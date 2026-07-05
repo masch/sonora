@@ -1,0 +1,69 @@
+name: Sync Translations from Admin Panel
+
+on:
+  schedule:
+    # Weekly: Monday 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile --minimum-release-age=0
+
+      - name: Run sync script
+        id: sync
+        continue-on-error: false
+        env:
+          API_URL: https://sonora-api.sonora-api.workers.dev
+        run: |
+          cd apps/api && bun run scripts/sync-translations.ts --api-url "$API_URL" 2>&1 | tee /tmp/sync-output.log
+          exit_code="${PIPESTATUS[0]}"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+
+          # Extract changed keys from script output (between "key(s) differ:" and next blank or section)
+          echo "diff<<EOF" >> "$GITHUB_OUTPUT"
+          grep '•' /tmp/sync-output.log || echo '(none)'
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        id: pr
+        if: steps.sync.outputs.exit_code == '1'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT_PR_ONLY }}
+          commit-message: 'chore: sync translations from admin panel'
+          branch: chore/sync-translations-${{ github.run_id }}
+          title: 'chore: sync translations from admin panel — ${{ github.event.repository.updated_at }}'
+          body: |
+            Automated sync of DB translation overrides back into git-tracked locale files.
+
+            **Changed keys:**
+            ```
+            ${{ steps.sync.outputs.diff }}
+            ```
+
+            > [!IMPORTANT]
+            > Manual review required before merging. Verify each changed value matches expected copy.
+          labels: type:chore
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.sync.outputs.exit_code }}" = "0" ]; then
+            echo "✅ No translation changes detected. All local files match DB."
+          elif [ "${{ steps.pr.outputs.pull-request-number }}" != "" ]; then
+            echo "📦 PR #${{ steps.pr.outputs.pull-request-number }} created with synced translations."
+          else
+            echo "⚠️ Translation changes detected but no PR was created."
+          fi

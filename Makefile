@@ -174,6 +174,36 @@ admin-dev: ## Launch Expo dev server for Admin Web
 admin-dev-staging: ## Launch Expo dev server for Admin Web pointing to staging API
 	cd apps/admin && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" bunx expo start --web
 
+.PHONY: sync-translations-staging
+sync-translations-staging: ## Sync DB translations from staging back into .ts locale files (dry-run)
+	cd apps/api && API_URL="https://sonora-api-staging.sonora-api.workers.dev" bun run scripts/sync-translations.ts --dry-run; \
+	status=$$?; \
+	if [ $$status -eq 1 ]; then \
+		echo "ℹ️  Cambios detectados (exit 1 — esperado en dry-run, significa que hay diff)"; \
+	elif [ $$status -ne 0 ]; then \
+		exit $$status; \
+	fi
+
+.PHONY: sync-translations-staging-apply
+sync-translations-staging-apply: ## Sync DB translations from staging: write changes to .ts files
+	cd apps/api && API_URL="https://sonora-api-staging.sonora-api.workers.dev" bun run scripts/sync-translations.ts; \
+	status=$$?; \
+	if [ $$status -eq 1 ]; then \
+		echo "✅ Archivos actualizados. Revisá el diff con 'git diff' antes de commitear."; \
+	elif [ $$status -ne 0 ]; then \
+		exit $$status; \
+	fi
+
+.PHONY: sync-translations-production
+sync-translations-production: ## Sync DB translations from production back into .ts locale files (dry-run)
+	cd apps/api && API_URL="https://sonora-api.sonora-api.workers.dev" bun run scripts/sync-translations.ts --dry-run; \
+	status=$$?; \
+	if [ $$status -eq 1 ]; then \
+		echo "ℹ️  Cambios detectados (exit 1 — esperado en dry-run, significa que hay diff)"; \
+	elif [ $$status -ne 0 ]; then \
+		exit $$status; \
+	fi
+
 
 
 # ── Backend API ───────────────────────────────
