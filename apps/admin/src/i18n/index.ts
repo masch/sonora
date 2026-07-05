@@ -12,9 +12,33 @@ const resources = {
   },
 };
 
+const detectBrowserLanguage = (): string => {
+  try {
+    // 1. Check URL query param bypass (e.g., ?lng=es or ?lang=es)
+    if (typeof window !== 'undefined' && window.location) {
+      const params = new URLSearchParams(window.location.search);
+      const urlLng = params.get('lng') || params.get('lang');
+      if (urlLng === 'es' || urlLng === 'en') {
+        return urlLng;
+      }
+    }
+
+    // 2. Fallback to navigator language
+    if (typeof navigator !== 'undefined') {
+      const lang = navigator.language || (navigator as any).userLanguage;
+      if (lang && lang.startsWith('es')) {
+        return 'es';
+      }
+    }
+    return 'en';
+  } catch {
+    return 'en';
+  }
+};
+
 i18next.use(initReactI18next).init({
   resources,
-  lng: 'en',
+  lng: detectBrowserLanguage(),
   fallbackLng: 'en',
   interpolation: {
     escapeValue: false,
