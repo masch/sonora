@@ -16,8 +16,7 @@ export const en = {
     distanceFromYou: '{{distance}} away',
     distanceMeters: '{{value}} m',
     distanceKilometers: '{{value}} km',
-    overlayTitle:
-      'SONORA ES UNA EXPERIENCIA\nGUIDED THROUGH HEADPHONES\nASSISTED WITH A MAP\nWE INVITE YOU TO DISCOVER\nWHAT IS AROUND YOU',
+    overlayTitle: 'SONORA ES UNA EXPERIENCIA\nGUIDED THROUGH HEADPHONES\nASSISTED WITH A MAP\nWE INVITE YOU TO DISCOVER\nWHAT IS AROUND YOU',
     instructionDuration: '5 min',
     instructionsTitle: 'INSTRUCTIONS',
     instructionsSub: '(how to use Sonora App)',
@@ -72,19 +71,16 @@ export const en = {
     },
     geofenceBlocked: {
       bannerTitle: "You're too far from the starting point",
-      bannerDescription:
-        'You need to be within {{radius}} meters of the starting point to listen to this trip.',
+      bannerDescription: 'You need to be within {{radius}} meters of the starting point to listen to this trip.',
       bannerDistance: 'Current distance: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: "Can't play",
-      blockedAlertMessage:
-        'You need to be within {{radius}} meters of the starting point to listen to this trip. Current distance: {{distance}}.',
+      blockedAlertMessage: 'You need to be within {{radius}} meters of the starting point to listen to this trip. Current distance: {{distance}}.',
       blockedAlertOk: 'Got it',
     },
     warnings: {
       locationAlertTitle: 'Location Warning',
-      locationAlertMessage:
-        'You are not near the starting location. Playing now will bypass this location check. Do you wish to continue?',
+      locationAlertMessage: 'You are not near the starting location. Playing now will bypass this location check. Do you wish to continue?',
       cancel: 'Cancel',
       continue: 'Continue',
     },
@@ -107,7 +103,7 @@ export const en = {
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsTitle: 'Instructions',
-    instructionsName: 'How to use Sonora',
+    instructionsName: 'How to use web',
     instructionsSubtitle: 'Load instructions to listen',
   },
   index: {
