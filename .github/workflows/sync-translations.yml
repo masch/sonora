@@ -110,7 +110,7 @@ jobs:
               --title "chore: sync translations from admin panel — ${{ github.event.repository.updated_at }}" \
               --body-file /tmp/pr-body.md \
               --label "type:chore"
-            PR_NUMBER=$(gh pr view --json number --jq '.number')
+            PR_NUMBER=$(gh pr view --head "$BRANCH" --json number --jq '.number')
           fi
           echo "pull-request-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
