@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Sonora Admin",
+    "slug": "sonora-admin",
+    "version": "1.0.0",
+    "platforms": ["web"],
+    "web": {
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "owner": "sonoraderivapoeticas-team",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1bf00f4-2e37-429e-ba70-ad3c907ead27"
+      }
+    }
+  }
+}

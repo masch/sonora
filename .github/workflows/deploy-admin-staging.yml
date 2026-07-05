@@ -1,0 +1,24 @@
+name: Deploy Admin Staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy-admin:
+    name: Deploy Admin Web Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - name: Deploy Admin Staging to EAS Hosting
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: make eas-build-admin-staging

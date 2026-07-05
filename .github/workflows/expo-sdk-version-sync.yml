@@ -25,44 +25,60 @@ jobs:
 
       - name: Check Expo SDK version mismatches
         id: check
-        working-directory: apps/mobile
         continue-on-error: true
         run: |
-          # bash -e kills the script on non-zero exit; disable temporarily
           set +e
-          npx expo install --check > /tmp/expo-check.log 2>&1
-          exit_code=$?
+          cd apps/mobile && npx expo install --check > /tmp/expo-check-mobile.log 2>&1
+          exit_mobile=$?
+          cd ../admin && npx expo install --check > /tmp/expo-check-admin.log 2>&1
+          exit_admin=$?
           set -e
+
+          if [ $exit_mobile -ne 0 ] || [ $exit_admin -ne 0 ]; then
+            exit_code=1
+          else
+            exit_code=0
+          fi
+
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           echo "output<<EOF" >> "$GITHUB_OUTPUT"
-          cat /tmp/expo-check.log >> "$GITHUB_OUTPUT"
+          echo "### 📱 Mobile App:" >> "$GITHUB_OUTPUT"
+          cat /tmp/expo-check-mobile.log >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "### 💼 Admin Portal:" >> "$GITHUB_OUTPUT"
+          cat /tmp/expo-check-admin.log >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Apply Expo SDK version fixes
         if: steps.check.outputs.exit_code != '0'
-        working-directory: apps/mobile
         env:
           BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE: '0'
         run: |
-          # expo install --fix internally spawns bun add which does NOT inherit
-          # BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE — it reads bunfig.toml instead.
-          # Temporarily override minimumReleaseAge so the subprocess sees 0.
-          cp ../../bunfig.toml /tmp/bunfig.toml.bak
-          sed -i 's/minimumReleaseAge = 345600/minimumReleaseAge = 0/' ../../bunfig.toml
-          npx expo install --fix
-          mv /tmp/bunfig.toml.bak ../../bunfig.toml
-          # Strip tilde/caret ranges from expo deps — pin exact versions only
-          node -e "
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          const tracked = Object.keys(pkg.dependencies || {}).filter(
-            k => k.startsWith('expo') || k.startsWith('@expo/') || k === 'react-native-webview'
-          );
-          for (const k of tracked) {
-            pkg.dependencies[k] = pkg.dependencies[k].replace(/^[\^~]/, '');
+          fix_expo_deps() {
+            local dir=$1
+            echo "Applying fixes in $dir..."
+            cd "$dir"
+            cp ../../bunfig.toml /tmp/bunfig.toml.bak
+            sed -i 's/minimumReleaseAge = 345600/minimumReleaseAge = 0/' ../../bunfig.toml
+            npx expo install --fix
+            mv /tmp/bunfig.toml.bak ../../bunfig.toml
+
+            node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const tracked = Object.keys(pkg.dependencies || {}).filter(
+              k => k.startsWith('expo') || k.startsWith('@expo/') || k === 'react-native-webview'
+            );
+            for (const k of tracked) {
+              pkg.dependencies[k] = pkg.dependencies[k].replace(/^[\^~]/, '');
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+            cd - > /dev/null
           }
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
+
+          fix_expo_deps "apps/mobile"
+          fix_expo_deps "apps/admin"
 
       - name: Sync bun lockfile after expo install
         if: steps.check.outputs.exit_code != '0'
@@ -78,7 +94,7 @@ jobs:
           branch: chore/expo-sdk-version-sync
           title: 'chore: sync expo sdk dependency versions'
           body: |
-            Automated sync of Expo SDK dependency versions via `expo install --fix`.
+            Automated sync of Expo SDK dependency versions via `expo install --fix` for Mobile and Admin Portal.
 
             **Mismatches detected:**
             ```
@@ -97,6 +113,8 @@ jobs:
           gh workflow run deploy-mobile-staging.yml \
             --ref chore/expo-sdk-version-sync \
             -f build_android=true
+          gh workflow run deploy-admin-staging.yml \
+            --ref chore/expo-sdk-version-sync
 
       - name: Summary
         if: always()

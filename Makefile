@@ -164,6 +164,17 @@ format-check: ## Check code formatting using prettier
 typecheck: ## Run TypeScript type checks across workspaces
 	bun --filter @sonora/mobile typecheck
 	bun --filter @sonora/api typecheck
+	bun --filter @sonora/admin typecheck
+
+.PHONY: admin-dev
+admin-dev: ## Launch Expo dev server for Admin Web
+	bun --filter @sonora/admin dev
+
+.PHONY: admin-dev-staging
+admin-dev-staging: ## Launch Expo dev server for Admin Web pointing to staging API
+	cd apps/admin && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" bunx expo start --web
+
+
 
 # ── Backend API ───────────────────────────────
 
@@ -430,8 +441,12 @@ test-back: ## Run backend API tests (Vitest, alias for api-test)
 test-shared: ## Run shared package tests (Vitest)
 	cd packages/shared && bunx vitest run
 
+.PHONY: test-admin
+test-admin: ## Run admin app tests (Jest, one-shot)
+	cd apps/admin && bunx jest --passWithNoTests --watchAll=false
+
 .PHONY: test
-test: test-front test-back test-shared ## Run all tests (frontend + backend + shared)
+test: test-front test-back test-shared test-admin ## Run all tests (frontend + backend + shared + admin)
 
 # ── CI ────────────────────────────────────────
 
@@ -508,11 +523,19 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 
 .PHONY: eas-build-web-production
 eas-build-web-production: eas-whoami ## Export web app and deploy to EAS Hosting production
-	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	cd apps/mobile && EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-web-staging
 eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting staging (alias: staging)
-	cd apps/mobile && bunx expo export --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+	cd apps/mobile && EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+
+.PHONY: eas-build-admin-production
+eas-build-admin-production: eas-whoami ## Export admin web app and deploy to EAS Hosting production
+	cd apps/admin && EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+
+.PHONY: eas-build-admin-staging
+eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Hosting staging
+	cd apps/admin && EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 # ── Firebase App Distribution ────────────
 
@@ -530,8 +553,8 @@ FIREBASE_APK_PATH ?= $(shell ls -t apps/mobile/build-*.apk apps/mobile/android/a
 # Firebase App Distribution groups
 FIREBASE_GROUP_DEV    := dev-team
 FIREBASE_GROUP_SONORA := sonora-team
-# Release notes — auto-generates "Build <versionCode> - <date>"
-FIREBASE_RELEASE_NOTES ?= Build $(or $(APP_VERSION_CODE),unknown) - $(shell date '+%Y-%m-%d')
+# Release notes — dynamically generates multiline list of the last 3 commit messages
+FIREBASE_RELEASE_NOTES_CMD = $$(git log -3 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
 
 .PHONY: firebase-login-ci
 firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
@@ -543,20 +566,22 @@ firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN
 firebase-distribute-staging-dev: ## [staging] Upload APK to dev-team group
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_STAGING)" \
-		--groups "$(FIREBASE_GROUP_DEV)"
+		--groups "$(FIREBASE_GROUP_DEV)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 .PHONY: firebase-distribute-staging-sonora
 firebase-distribute-staging-sonora: ## [staging] Upload APK to sonora-team group
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_STAGING)" \
-		--groups "$(FIREBASE_GROUP_SONORA)"
+		--groups "$(FIREBASE_GROUP_SONORA)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 .PHONY: firebase-distribute-staging-all
 firebase-distribute-staging-all: ## [staging] Upload APK to dev-team + sonora-team
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_STAGING)" \
 		--groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" \
-		--release-notes "$(FIREBASE_RELEASE_NOTES)"
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 # ── Production distribution ───────────────────────────────────────────────────
 
@@ -564,20 +589,22 @@ firebase-distribute-staging-all: ## [staging] Upload APK to dev-team + sonora-te
 firebase-distribute-prod-dev: ## [production] Upload APK to dev-team group
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
-		--groups "$(FIREBASE_GROUP_DEV)"
+		--groups "$(FIREBASE_GROUP_DEV)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 .PHONY: firebase-distribute-prod-sonora
 firebase-distribute-prod-sonora: ## [production] Upload APK to sonora-team group
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
-		--groups "$(FIREBASE_GROUP_SONORA)"
+		--groups "$(FIREBASE_GROUP_SONORA)" \
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 .PHONY: firebase-distribute-prod-all
 firebase-distribute-prod-all: ## [production] Upload APK to dev-team + sonora-team
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_APP_ID_PRODUCTION)" \
 		--groups "$(FIREBASE_GROUP_DEV),$(FIREBASE_GROUP_SONORA)" \
-		--release-notes "$(FIREBASE_RELEASE_NOTES)"
+		--release-notes "$(FIREBASE_RELEASE_NOTES_CMD)"
 
 # ── Emulator ───────────────────────────────
 

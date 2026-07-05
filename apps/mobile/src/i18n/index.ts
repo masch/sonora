@@ -56,6 +56,8 @@ export function addResources(resources: Record<string, Record<string, string>>):
   for (const [lang, entries] of Object.entries(resources)) {
     instance.addResourceBundle(lang, 'translation', flattenToNested(entries), true, true);
   }
+  // Force react-i18next to notify observers and re-render components with the new translations
+  instance.changeLanguage(instance.language);
 }
 
 export default i18next;

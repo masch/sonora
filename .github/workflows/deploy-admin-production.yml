@@ -1,0 +1,25 @@
+name: Deploy Admin Production
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy-admin:
+    name: Deploy Admin Web Production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - name: Deploy Admin Production to EAS Hosting
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: make eas-build-admin-production
