@@ -19,6 +19,7 @@
  *   6. Exit 0 if no changes, 1 if changes made
  */
 
+import { execSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -121,6 +122,8 @@ async function main(): Promise<number> {
     } else {
       const filePath = resolve(LOCALES_DIR, `${lang}.ts`);
       writeFileSync(filePath, content);
+      // Run prettier to normalize formatting — ensures clean diffs
+      execSync(`bunx prettier --write "${filePath}"`, { stdio: 'inherit' });
       console.log(`  ✅ Wrote ${filePath}`);
     }
 
