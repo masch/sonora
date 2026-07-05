@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, act } from '@testing-library/react-native';
 
 const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({
@@ -8,14 +8,35 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'login.title': 'SONORA ADMIN',
+        'login.subtitle': 'Enter your API Admin Key to manage translations.',
+        'login.keyLabel': 'API Admin Key',
+        'login.placeholder': 'bearer_token_key...',
+        'login.loginBtn': 'Log in',
+        'login.errorEmpty': 'Please enter your API Key',
+        'login.keyInputLabel': 'API Admin Key input',
+        'login.loginBtnLabel': 'Log in button',
+      };
+      return translations[key] || key;
+    },
+    i18n: { language: 'en' },
+  }),
+}));
+
 jest.mock('@/tw', () => {
   const React = require('react');
   const { View, Text, TouchableOpacity, TextInput, ScrollView } = require('react-native');
   return {
     TwView: View,
-    TwText: ({ className, ...props }: any) => React.createElement(Text, props),
-    TwPressable: ({ className, ...props }: any) => React.createElement(TouchableOpacity, props),
-    TwTextInput: ({ className, ...props }: any) => React.createElement(TextInput, props),
+    TwText: ({ className, ...props }: Record<string, unknown>) => React.createElement(Text, props),
+    TwPressable: ({ className, ...props }: Record<string, unknown>) =>
+      React.createElement(TouchableOpacity, props),
+    TwTextInput: ({ className, ...props }: Record<string, unknown>) =>
+      React.createElement(TextInput, props),
     TwScrollView: ScrollView,
   };
 });

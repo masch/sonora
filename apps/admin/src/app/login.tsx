@@ -1,17 +1,20 @@
 import { AdminApiClient } from '@/services/admin-api-client';
+import { ScreenWrapper } from '@/components/screen-wrapper';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const handleLogin = () => {
     const trimmed = apiKey.trim();
     if (!trimmed) {
-      setError('Please enter your API Key');
+      setError(t('login.errorEmpty'));
       return;
     }
     const sanitized = trimmed.replace(/[^\x20-\x7E]/g, '');
@@ -20,18 +23,22 @@ export default function LoginScreen() {
   };
 
   return (
-    <TwView className="flex-1 items-center justify-center bg-background px-three">
+    <ScreenWrapper className="items-center justify-center px-three">
       <TwView className="w-full max-w-[400px] card-container-solid rounded-xl p-five shadow-md">
-        <TwText className="text-2xl font-bold text-text mb-one text-center">SONORA ADMIN</TwText>
+        <TwText className="text-2xl font-bold text-text mb-one text-center">
+          {t('login.title')}
+        </TwText>
         <TwText className="text-sm text-textSecondary mb-five text-center">
-          Enter your API Admin Key to manage translations.
+          {t('login.subtitle')}
         </TwText>
 
         <TwView className="mb-four">
-          <TwText className="text-xs font-semibold text-textSecondary mb-two">API Admin Key</TwText>
+          <TwText className="text-xs font-semibold text-textSecondary mb-two">
+            {t('login.keyLabel')}
+          </TwText>
           <TwTextInput
             className="w-full h-11 border border-[#dfd7c8] rounded-lg px-three text-text bg-background focus:border-link"
-            placeholder="bearer_token_key..."
+            placeholder={t('login.placeholder')}
             placeholderTextColor="#76706b"
             value={apiKey}
             onChangeText={(text) => {
@@ -39,6 +46,8 @@ export default function LoginScreen() {
               setError(null);
             }}
             secureTextEntry
+            accessibilityLabel={t('login.keyInputLabel')}
+            testID="api-key-input"
           />
           {error && <TwText className="text-xs text-red-500 mt-one font-medium">{error}</TwText>}
         </TwView>
@@ -46,12 +55,12 @@ export default function LoginScreen() {
         <TwPressable
           className="w-full h-11 bg-link items-center justify-center rounded-lg active:opacity-90"
           onPress={handleLogin}
-          accessibilityLabel="Log in button"
+          accessibilityLabel={t('login.loginBtnLabel')}
           testID="login-button"
         >
-          <TwText className="text-base font-bold text-white">Log in</TwText>
+          <TwText className="text-base font-bold text-white">{t('login.loginBtn')}</TwText>
         </TwPressable>
       </TwView>
-    </TwView>
+    </ScreenWrapper>
   );
 }
