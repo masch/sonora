@@ -107,7 +107,7 @@ export const en = {
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsTitle: 'Instructions',
-    instructionsName: 'How to use Sonora',
+    instructionsName: 'How to use web',
     instructionsSubtitle: 'Load instructions to listen',
   },
   index: {
@@ -233,19 +233,23 @@ export const en = {
       },
       platforms: {
         title: 'Android, iOS, and web support',
-        desc: 'You can open this project on Android, iOS, and the web. To open the web version, press <bold>w</bold> in the terminal running this project.',
+        desc:
+          'You can open this project on Android, iOS, and the web. To open the web version, press <bold>w</bold> in the terminal running this project.',
       },
       images: {
         title: 'Images',
-        desc: 'For static images, you can use the <0>@2x</0> and <0>@3x</0> suffixes to provide files for different screen densities.',
+        desc:
+          'For static images, you can use the <0>@2x</0> and <0>@3x</0> suffixes to provide files for different screen densities.',
       },
       theme: {
         title: 'Light and dark mode components',
-        desc: "This template has light and dark mode support. The <0>useColorScheme()</0> hook lets you inspect what the user's current color scheme is, and so you can adjust UI colors accordingly.",
+        desc:
+          "This template has light and dark mode support. The <0>useColorScheme()</0> hook lets you inspect what the user's current color scheme is, and so you can adjust UI colors accordingly.",
       },
       animations: {
         title: 'Animations',
-        desc: 'This template includes an example of an animated component. The <0>src/components/ui/collapsible.tsx</0> component uses the powerful <0>react-native-reanimated</0> library to animate this hint.',
+        desc:
+          'This template includes an example of an animated component. The <0>src/components/ui/collapsible.tsx</0> component uses the powerful <0>react-native-reanimated</0> library to animate this hint.',
       },
     },
   },
