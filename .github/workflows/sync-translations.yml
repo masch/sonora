@@ -28,7 +28,8 @@ jobs:
           API_URL: https://sonora-api.sonora-api.workers.dev
         run: |
           cd apps/api && bun run scripts/sync-translations.ts --api-url "$API_URL" 2>&1 | tee /tmp/sync-output.log
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit_code="${PIPESTATUS[0]}"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
 
           # Extract changed keys from script output (between "key(s) differ:" and next blank or section)
           echo "diff<<EOF" >> "$GITHUB_OUTPUT"
