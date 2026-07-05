@@ -16,7 +16,7 @@ export const configureCors = (): MiddlewareHandler => {
 
     const methods = allowedMethods
       ? allowedMethods.split(',').map((m) => m.trim())
-      : ['POST', 'GET', 'OPTIONS', 'HEAD'];
+      : ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
     const headers = allowedHeaders
       ? allowedHeaders.split(',').map((h) => h.trim())
       : ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma'];

@@ -6,8 +6,15 @@ Universal Expo app targeting iOS, Android, and Web.
 
 ## Environments (Web Access)
 
-- **Production:** [https://sonoraderivapoeticas-team-sonora.expo.app/](https://sonoraderivapoeticas-team-sonora.expo.app/) (main web application)
-- **Staging:** [https://sonoraderivapoeticas-team-sonora--staging.expo.app/](https://sonoraderivapoeticas-team-sonora--staging.expo.app/) (pull request preview builds)
+### 🟢 Production
+
+- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora.expo.app/](https://sonoraderivapoeticas-team-sonora.expo.app/)
+- **Admin Portal:** [https://sonora-admin.expo.app/](https://sonora-admin.expo.app/)
+
+### 🟡 Staging (Preview builds)
+
+- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora--staging.expo.app/](https://sonoraderivapoeticas-team-sonora--staging.expo.app/)
+- **Admin Portal:** [https://sonora-admin--staging.expo.app/](https://sonora-admin--staging.expo.app/)
 
 ## Prerequisites
 
