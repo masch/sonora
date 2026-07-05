@@ -104,6 +104,39 @@ describe('serializeToTS', () => {
     expect(result).toBe("  overlayTitle: 'SONORA\\nGUIDED',");
     expect(result.split('\n')).toHaveLength(1);
   });
+
+  it('wraps long string values to next line with extra indent', () => {
+    const value =
+      'A very long string value that definitely exceeds one hundred characters when combined with the key and formatting';
+    const input = { longKey: value };
+    const result = serializeToTS(input, 0);
+    const lines = result.split('\n');
+    expect(lines[0]).toBe('  longKey:');
+    expect(lines[1]).toBe(
+      "    'A very long string value that definitely exceeds one hundred characters when combined with the key and formatting',",
+    );
+  });
+
+  it('does NOT wrap short string values', () => {
+    const input = { key: 'short value' };
+    const result = serializeToTS(input, 0);
+    expect(result).toBe("  key: 'short value',");
+    expect(result.split('\n')).toHaveLength(1);
+  });
+
+  it('wrapping at nested indent uses correct spacing', () => {
+    const value =
+      'A very long string value that definitely exceeds one hundred characters when combined with the key and formatting';
+    const input = { outer: { longKey: value } };
+    const result = serializeToTS(input, 0);
+    const lines = result.split('\n');
+    expect(lines[0]).toBe('  outer: {');
+    expect(lines[1]).toBe('    longKey:');
+    expect(lines[2]).toBe(
+      "      'A very long string value that definitely exceeds one hundred characters when combined with the key and formatting',",
+    );
+    expect(lines[3]).toBe('  },');
+  });
 });
 
 describe('renderTSFile', () => {
