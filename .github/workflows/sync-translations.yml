@@ -36,26 +36,85 @@ jobs:
           grep '•' /tmp/sync-output.log || echo '(none)'
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Create Pull Request
+      - name: Create Verified Commit and Pull Request via API
         id: pr
         if: steps.sync.outputs.exit_code == '1'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.PAT_PR_ONLY }}
-          commit-message: 'chore: sync translations from admin panel'
-          branch: chore/sync-translations-${{ github.run_id }}
-          title: 'chore: sync translations from admin panel — ${{ github.event.repository.updated_at }}'
-          body: |
-            Automated sync of DB translation overrides back into git-tracked locale files.
+        env:
+          GH_TOKEN: ${{ secrets.PAT_PR_ONLY }}
+          BRANCH: chore/sync-translations-${{ github.run_id }}
+          OWNER_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
 
-            **Changed keys:**
-            ```
-            ${{ steps.sync.outputs.diff }}
-            ```
+          # 1. Get base commit and tree from main
+          BASE_SHA=$(gh api repos/$OWNER_REPO/git/refs/heads/main --jq '.object.sha')
+          BASE_TREE=$(gh api repos/$OWNER_REPO/git/commits/$BASE_SHA --jq '.tree.sha')
+          echo "Base commit: $BASE_SHA"
 
-            > [!IMPORTANT]
-            > Manual review required before merging. Verify each changed value matches expected copy.
-          labels: type:chore
+          # 2. Create blobs for changed locale files and build tree entries
+          TREE_ENTRIES="[]"
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            CONTENT=$(base64 -w0 "$file")
+            BLOB_SHA=$(gh api repos/$OWNER_REPO/git/blobs \
+              -f content="$CONTENT" \
+              -f encoding="base64" \
+              --jq '.sha')
+            TREE_ENTRIES=$(echo "$TREE_ENTRIES" | jq \
+              --arg path "$file" \
+              --arg sha "$BLOB_SHA" \
+              '. + [{"path": $path, "mode": "100644", "type": "blob", "sha": $sha}]')
+            echo "  + blob $BLOB_SHA → $file"
+          done < <(git diff --name-only)
+
+          # 3. Create a tree with the new blobs (pipe JSON body — --field breaks arrays)
+          TREE_SHA=$(printf '{"base_tree": "%s", "tree": %s}' "$BASE_TREE" "$TREE_ENTRIES" | \
+            gh api repos/$OWNER_REPO/git/trees --input - --jq '.sha')
+          echo "Tree: $TREE_SHA"
+
+          # 4. Create a commit via API (GitHub marks it "Verified")
+          COMMIT_SHA=$(gh api repos/$OWNER_REPO/git/commits \
+            -f message="chore: sync translations from admin panel" \
+            -f tree="$TREE_SHA" \
+            -f parents[0]="$BASE_SHA" \
+            --jq '.sha')
+          echo "Commit: $COMMIT_SHA"
+
+          # 5. Create or update the branch
+          if gh api repos/$OWNER_REPO/git/refs/heads/"$BRANCH" &>/dev/null; then
+            gh api repos/$OWNER_REPO/git/refs/heads/"$BRANCH" \
+              -X PATCH -f sha="$COMMIT_SHA" -f force=true
+            echo "Branch updated: $BRANCH"
+          else
+            gh api repos/$OWNER_REPO/git/refs \
+              -f ref="refs/heads/$BRANCH" \
+              -f sha="$COMMIT_SHA"
+            echo "Branch created: $BRANCH"
+          fi
+
+          # 6. Create PR if not exists
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -z "$PR_NUMBER" ]; then
+            # Build PR body
+            echo "Automated sync of DB translation overrides back into git-tracked locale files." > /tmp/pr-body.md
+            echo "" >> /tmp/pr-body.md
+            echo "**Changed keys:**" >> /tmp/pr-body.md
+            echo '```' >> /tmp/pr-body.md
+            grep '•' /tmp/sync-output.log >> /tmp/pr-body.md || true
+            echo '```' >> /tmp/pr-body.md
+            echo "" >> /tmp/pr-body.md
+            echo "> [!IMPORTANT]" >> /tmp/pr-body.md
+            echo "> Manual review required before merging. Verify each changed value matches expected copy." >> /tmp/pr-body.md
+
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: sync translations from admin panel — ${{ github.event.repository.updated_at }}" \
+              --body-file /tmp/pr-body.md \
+              --label "type:chore"
+            PR_NUMBER=$(gh pr view --json number --jq '.number')
+          fi
+          echo "pull-request-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Summary
         if: always()
