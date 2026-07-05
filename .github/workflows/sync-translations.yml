@@ -67,11 +67,9 @@ jobs:
             echo "  + blob $BLOB_SHA → $file"
           done < <(git diff --name-only)
 
-          # 3. Create a tree with the new blobs
-          TREE_SHA=$(gh api repos/$OWNER_REPO/git/trees \
-            --field base_tree="$BASE_TREE" \
-            --field tree="$TREE_ENTRIES" \
-            --jq '.sha')
+          # 3. Create a tree with the new blobs (pipe JSON body — --field breaks arrays)
+          TREE_SHA=$(printf '{"base_tree": "%s", "tree": %s}' "$BASE_TREE" "$TREE_ENTRIES" | \
+            gh api repos/$OWNER_REPO/git/trees --input - --jq '.sha')
           echo "Tree: $TREE_SHA"
 
           # 4. Create a commit via API (GitHub marks it "Verified")
