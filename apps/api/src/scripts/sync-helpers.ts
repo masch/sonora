@@ -65,14 +65,7 @@ export function serializeToTS(obj: Record<string, unknown>, indent = 0): string 
             .replace(/\n/g, '\\n')
             .replace(/\r/g, '\\r')
             .replace(/\t/g, '\\t');
-      const inlineLine = `${childPad}${key}: ${quote}${escaped}${quote},`;
-      // Wrap lines that exceed ~100 chars — key on one line, value on next with extra indent
-      if (inlineLine.length > 100) {
-        entries.push(`${childPad}${key}:`);
-        entries.push(`${childPad}  ${quote}${escaped}${quote},`);
-      } else {
-        entries.push(inlineLine);
-      }
+      entries.push(`${childPad}${key}: ${quote}${escaped}${quote},`);
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       entries.push(`${childPad}${key}: {`);
       entries.push(serializeToTS(value as Record<string, unknown>, indent + 1));
