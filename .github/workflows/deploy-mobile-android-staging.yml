@@ -15,6 +15,11 @@ on:
         required: false
         type: string
         default: 'dev-team'
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -105,7 +110,7 @@ jobs:
         id: release-notes
         run: |
           git fetch --tags --force
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "stg-android-build-*" 2>/dev/null || echo "")
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "stg-v*" 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
             echo "No previous tag found. Using fallback of last 5 commits."
             NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
@@ -140,8 +145,23 @@ jobs:
             GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
             FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"
       - name: Tag deployment
+        if: ${{ inputs.skip_tagging != true }}
         run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BASE_TAG="stg-v$VERSION"
+          git fetch --tags --force
+          if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
+            TAG_NAME="$BASE_TAG"
+          else
+            LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+            if [ -z "$LAST_REV" ]; then
+              NEW_REV=1
+            else
+              NEW_REV=$((LAST_REV + 1))
+            fi
+            TAG_NAME="$BASE_TAG-$NEW_REV"
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag stg-android-build-${{ github.run_number }}
-          git push origin stg-android-build-${{ github.run_number }}
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"

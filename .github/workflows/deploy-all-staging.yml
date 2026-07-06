@@ -21,18 +21,24 @@ jobs:
   deploy-web:
     name: Deploy Web Staging
     uses: ./.github/workflows/deploy-mobile-web-staging.yml
+    with:
+      skip_tagging: true
     secrets: inherit
 
   deploy-admin:
     name: Deploy Admin Staging
     needs: deploy-web
     uses: ./.github/workflows/deploy-admin-staging.yml
+    with:
+      skip_tagging: true
     secrets: inherit
 
   deploy-api:
     name: Deploy API Staging
     needs: deploy-admin
     uses: ./.github/workflows/deploy-api-staging.yml
+    with:
+      skip_tagging: true
     secrets: inherit
 
   deploy-android:
@@ -43,4 +49,38 @@ jobs:
     uses: ./.github/workflows/deploy-mobile-android-staging.yml
     with:
       firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
+      skip_tagging: true
     secrets: inherit
+
+  tag-release:
+    name: Tag Release
+    needs: [deploy-web, deploy-admin, deploy-api, deploy-android]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Create and Push Unified Tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BASE_TAG="stg-v$VERSION"
+          git fetch --tags --force
+          if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
+            TAG_NAME="$BASE_TAG"
+          else
+            LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+            if [ -z "$LAST_REV" ]; then
+              NEW_REV=1
+            else
+              NEW_REV=$((LAST_REV + 1))
+            fi
+            TAG_NAME="$BASE_TAG-$NEW_REV"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"

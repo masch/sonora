@@ -9,9 +9,15 @@ on:
       - '.github/actions/setup/action.yml'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -27,8 +33,31 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Deploy Admin Staging to EAS Hosting
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: make eas-build-admin-staging
+      - name: Tag deployment
+        if: ${{ inputs.skip_tagging != true }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BASE_TAG="stg-v$VERSION"
+          git fetch --tags --force
+          if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
+            TAG_NAME="$BASE_TAG"
+          else
+            LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+            if [ -z "$LAST_REV" ]; then
+              NEW_REV=1
+            else
+              NEW_REV=$((LAST_REV + 1))
+            fi
+            TAG_NAME="$BASE_TAG-$NEW_REV"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
