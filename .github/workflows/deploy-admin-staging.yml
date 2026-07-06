@@ -15,9 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - name: Deploy Admin Staging to EAS Hosting
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

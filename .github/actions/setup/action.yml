@@ -1,0 +1,62 @@
+# Composite action: checkout + Bun setup + cache + install
+# Replaces inline checkout → setup-bun → cache → bun install
+# across all 14 workflows.
+name: Bun Setup
+description: Checkout, setup Bun, restore cache, and install dependencies
+
+inputs:
+  fetch-depth:
+    description: Git clone depth (0 for full history)
+    required: false
+    default: '1'
+  frozen:
+    description: Use --frozen-lockfile
+    required: false
+    default: 'true'
+  minimum-release-age:
+    description: Override bun minimum release age in seconds (0 to disable the guard)
+    required: false
+    default: ''
+  skip-if-cache-hit:
+    description: Skip bun install when cache fully restores node_modules
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+
+    - uses: oven-sh/setup-bun@v2
+
+    - uses: actions/cache/restore@v5
+      id: bun-cache
+      continue-on-error: true
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: bun-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-
+
+    - name: Install dependencies
+      if: inputs.skip-if-cache-hit != 'true' || steps.bun-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        FROZEN="${{ inputs.frozen == 'true' && '--frozen-lockfile' || '' }}"
+        REL_AGE="${{ inputs.minimum-release-age != '' && format('--minimum-release-age={0}', inputs.minimum-release-age) || '' }}"
+        bun install $FROZEN $REL_AGE
+
+    - name: Save cache
+      if: steps.bun-cache.outcome == 'success' && steps.bun-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: bun-${{ hashFiles('bun.lock') }}

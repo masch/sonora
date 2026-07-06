@@ -26,11 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/setup
       - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
         run: rm -f tsconfig.json
-      - run: bun install --frozen-lockfile
       - run: make api-validate
       - name: Apply pending DB migrations (idempotent)
         run: make api-db-migrate-ci

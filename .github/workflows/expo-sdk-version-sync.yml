@@ -19,9 +19,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
 
       - name: Check Expo SDK version mismatches
         id: check
@@ -82,7 +80,9 @@ jobs:
 
       - name: Sync bun lockfile after expo install
         if: steps.check.outputs.exit_code != '0'
-        run: bun install --minimum-release-age=0
+        env:
+          BUN_CONFIG_INSTALL_MINIMUM_RELEASE_AGE: '0'
+        run: bun install
 
       - name: Create Pull Request
         id: pr
@@ -112,7 +112,7 @@ jobs:
         run: |
           gh workflow run deploy-mobile-staging.yml \
             --ref chore/expo-sdk-version-sync \
-            -f build_android=true
+            -f deploy_web=true -f deploy_android=true -f firebase_team=internal
           gh workflow run deploy-admin-staging.yml \
             --ref chore/expo-sdk-version-sync
 

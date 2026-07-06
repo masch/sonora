@@ -27,13 +27,11 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
       - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
         run: rm -f tsconfig.json
-      - run: bun install --frozen-lockfile
       - run: make api-validate
       - name: Detect change type
         id: change-type

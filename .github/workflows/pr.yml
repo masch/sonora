@@ -40,12 +40,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make format-check
 
   validate-mobile:
@@ -53,14 +48,9 @@ jobs:
     if: ${{ needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
       - run: make test-front
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
@@ -78,12 +68,7 @@ jobs:
     if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make api-test
       - run: make test-shared
       - run: bun --filter @sonora/api typecheck
@@ -93,12 +78,7 @@ jobs:
     if: ${{ needs.changes.outputs.admin == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make test-admin
       - run: make test-shared
       - run: bun --filter @sonora/admin lint
