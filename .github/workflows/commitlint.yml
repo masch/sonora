@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Validate PR title
         run: |
           TITLE="${{ github.event.pull_request.title }}"

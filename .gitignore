@@ -79,3 +79,5 @@ dist/
 firebase-sa-key.json
 
 example
+# Local Pi runtime state
+.atl/

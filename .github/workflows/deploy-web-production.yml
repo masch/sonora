@@ -17,8 +17,7 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make check
       - name: Deploy to EAS Hosting
         env:

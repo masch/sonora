@@ -41,11 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make format-check
 
   validate-mobile:
@@ -56,11 +52,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make test-front
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
@@ -79,11 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make api-test
       - run: make test-shared
       - run: bun --filter @sonora/api typecheck
@@ -94,11 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      # TEMP: --minimum-release-age=0 bypasses minimumReleaseAge in bunfig.toml
-      # Lockfile pinned expo 56.x packages published 2026-06-15 (< 4 days).
-      # Remove when packages are > 4 days old (~Jun 19). Tracked in #127.
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make test-admin
       - run: make test-shared
       - run: bun --filter @sonora/admin lint

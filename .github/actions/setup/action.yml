@@ -1,0 +1,49 @@
+# Composite action: Bun setup + cache + install
+# Does NOT include checkout — each workflow must checkout first
+# so GitHub Actions can find this local action file.
+name: Bun Setup
+description: Setup Bun, restore cache, and install dependencies
+
+inputs:
+  minimum-release-age:
+    description: Override bun minimum release age in seconds (0 to disable the guard)
+    required: false
+    default: ''
+  skip-if-cache-hit:
+    description: Skip bun install when cache fully restores node_modules
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+
+    - uses: actions/cache/restore@v5
+      id: bun-cache
+      continue-on-error: true
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: bun-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-
+
+    - name: Install dependencies
+      if: inputs.skip-if-cache-hit != 'true' || steps.bun-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        REL_AGE="${{ inputs.minimum-release-age != '' && format('--minimum-release-age={0}', inputs.minimum-release-age) || '' }}"
+        bun install --frozen-lockfile $REL_AGE
+
+    - name: Save cache
+      if: steps.bun-cache.outcome == 'success' && steps.bun-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: bun-${{ hashFiles('bun.lock') }}

@@ -3,11 +3,24 @@ name: Deploy Mobile Staging
 on:
   workflow_dispatch:
     inputs:
-      build_android:
-        description: 'Manual: Compile and deploy Android App (Firebase App Distribution)'
-        required: true
+      deploy_web:
+        description: 'Deploy web to EAS Hosting staging'
+        required: false
         type: boolean
         default: true
+      deploy_android:
+        description: 'Build and deploy Android to Firebase App Distribution'
+        required: false
+        type: boolean
+        default: false
+      firebase_team:
+        description: 'Firebase App Distribution tester group'
+        required: false
+        type: choice
+        options:
+          - internal
+          - external
+        default: internal
 
 permissions:
   contents: read
@@ -23,12 +36,14 @@ concurrency:
 jobs:
   deploy-web:
     name: Deploy Web Staging
+    if: |
+      github.event_name != 'workflow_dispatch' ||
+      inputs.deploy_web
     runs-on: ubuntu-latest
     environment: staging
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make check
       - name: Deploy Staging to EAS Hosting
         env:
@@ -46,7 +61,7 @@ jobs:
     name: Deploy Android Staging (Manual)
     if: |
       github.event_name == 'workflow_dispatch' &&
-      inputs.build_android == true
+      inputs.deploy_android
     runs-on: ubuntu-latest
     environment: staging
     outputs:
@@ -55,8 +70,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
+      - uses: ./.github/actions/setup
       - run: make check
       - name: Setup Java SDK
         uses: actions/setup-java@v4
@@ -110,11 +124,10 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.1'
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile --minimum-release-age=0
       - name: Download Android APK Artifact
         uses: actions/download-artifact@v4
         with:
@@ -136,6 +149,6 @@ jobs:
           node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
             appdistribution:distribute "$APK_PATH" \
             --app "1:967212589494:android:602e693b852146f814e117" \
-            --groups "dev-team" \
+            --groups "${{ inputs.firebase_team == 'external' && 'external-testers' || 'dev-team' }}" \
             --release-notes "$FIREBASE_RELEASE_NOTES" \
             --non-interactive
