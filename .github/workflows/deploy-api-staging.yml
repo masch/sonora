@@ -53,16 +53,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Tag deployment
-        if: ${{ inputs.skip_tagging != true }}
-        run: |
-          git fetch --tags --force
-          LAST_NUM=$(git tag -l "stg-release-*" | sed 's/stg-release-//' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
-          if [ -z "$LAST_NUM" ]; then
-            NEW_NUM=1
-          else
-            NEW_NUM=$((LAST_NUM + 1))
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "stg-release-$NEW_NUM"
-          git push origin "stg-release-$NEW_NUM"
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}

@@ -1,0 +1,44 @@
+name: 'Tag Release'
+description: 'Calculate and push dynamic SemVer tags with revision increments'
+inputs:
+  environment:
+    description: 'Target environment (staging or production)'
+    required: true
+  skip_tagging:
+    description: 'Skip tagging'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create and Push Tag
+      if: ${{ inputs.skip_tagging != 'true' }}
+      shell: bash
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          BASE_TAG="prod-v$VERSION"
+        else
+          BASE_TAG="stg-v$VERSION"
+        fi
+
+        git fetch --tags --force
+        if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
+          TAG_NAME="$BASE_TAG"
+        else
+          LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+          if [ -z "$LAST_REV" ]; then
+            NEW_REV=1
+          else
+            NEW_REV=$((LAST_REV + 1))
+          fi
+          TAG_NAME="$BASE_TAG-$NEW_REV"
+        fi
+
+        echo "Creating tag $TAG_NAME"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag "$TAG_NAME"
+        git push origin "$TAG_NAME"

@@ -64,23 +64,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Create and Push Unified Tag
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          BASE_TAG="stg-v$VERSION"
-          git fetch --tags --force
-          if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
-            TAG_NAME="$BASE_TAG"
-          else
-            LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
-            if [ -z "$LAST_REV" ]; then
-              NEW_REV=1
-            else
-              NEW_REV=$((LAST_REV + 1))
-            fi
-            TAG_NAME="$BASE_TAG-$NEW_REV"
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG_NAME"
-          git push origin "$TAG_NAME"
+      - name: Tag release
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging

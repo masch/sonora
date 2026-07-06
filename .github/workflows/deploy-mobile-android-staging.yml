@@ -145,23 +145,7 @@ jobs:
             GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
             FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"
       - name: Tag deployment
-        if: ${{ inputs.skip_tagging != true }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          BASE_TAG="stg-v$VERSION"
-          git fetch --tags --force
-          if ! git rev-parse "$BASE_TAG" >/dev/null 2>&1; then
-            TAG_NAME="$BASE_TAG"
-          else
-            LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1)
-            if [ -z "$LAST_REV" ]; then
-              NEW_REV=1
-            else
-              NEW_REV=$((LAST_REV + 1))
-            fi
-            TAG_NAME="$BASE_TAG-$NEW_REV"
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG_NAME"
-          git push origin "$TAG_NAME"
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}
