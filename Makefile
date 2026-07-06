@@ -607,7 +607,7 @@ firebase-distribute: ## Upload APK to Firebase App Distribution. Requires: GROUP
 	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_TARGET_APP_ID)" \
 		--groups "$(GROUPS)" \
-		--release-notes "$(FIREBASE_RELEASE_NOTES)" \
+		--release-notes "$$FIREBASE_RELEASE_NOTES" \
 		--non-interactive
 
 # ── Staging distribution ──────────────────────────────────────────────────────

@@ -121,8 +121,7 @@ jobs:
           make firebase-distribute \
             APP_ENV=production \
             FIREBASE_APK_PATH="$APK_PATH" \
-            GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
-            FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"
+            GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}"
       - name: Tag deployment
         uses: ./.github/actions/tag-release
         with:
