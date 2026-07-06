@@ -3,21 +3,18 @@ name: 2-STG Mobile Android
 on:
   workflow_dispatch:
     inputs:
-      firebase_team:
-        description: 'Firebase App Distribution tester group'
-        required: false
-        type: choice
-        options:
-          - internal
-          - external
-        default: internal
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: true
+        type: string
+        default: 'dev-team'
   workflow_call:
     inputs:
-      firebase_team:
-        description: 'Firebase App Distribution tester group'
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
         required: false
         type: string
-        default: 'internal'
+        default: 'dev-team'
 
 permissions:
   contents: read
@@ -118,5 +115,5 @@ jobs:
           make firebase-distribute \
             APP_ENV=staging \
             FIREBASE_APK_PATH="$APK_PATH" \
-            GROUPS="${{ inputs.firebase_team == 'external' && 'external-testers' || 'dev-team' }}" \
+            GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
             FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"

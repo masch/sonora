@@ -8,14 +8,11 @@ on:
         required: true
         type: boolean
         default: true
-      firebase_team:
-        description: 'Firebase App Distribution tester group'
-        required: false
-        type: choice
-        options:
-          - internal
-          - external
-        default: internal
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: true
+        type: string
+        default: 'dev-team'
 
 jobs:
   deploy-web:
@@ -42,5 +39,5 @@ jobs:
       github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true'
     uses: ./.github/workflows/deploy-mobile-android-staging.yml
     with:
-      firebase_team: ${{ github.event.inputs.firebase_team || 'internal' }}
+      firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
     secrets: inherit
