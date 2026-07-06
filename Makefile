@@ -584,7 +584,6 @@ FIREBASE_APK_PATH ?= $(shell ls -t apps/mobile/build-*.apk apps/mobile/android/a
 # Firebase App Distribution groups
 FIREBASE_GROUP_DEV      := dev-team
 FIREBASE_GROUP_SONORA   := sonora-team
-FIREBASE_GROUP_EXTERNAL := external-testers
 
 # Dynamic App ID lookup based on APP_ENV (defaults to staging)
 APP_ENV ?= staging
