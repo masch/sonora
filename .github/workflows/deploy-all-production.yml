@@ -1,4 +1,4 @@
-name: Deploy Production (API & Mobile)
+name: 1-PROD Deploy All
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Auto Assign Reviewers
+name: 4-CI Auto Assign
 
 on:
   pull_request:

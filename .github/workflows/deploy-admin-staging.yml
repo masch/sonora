@@ -1,4 +1,4 @@
-name: Deploy Admin Staging
+name: 2-STG Admin
 
 on:
   workflow_dispatch:

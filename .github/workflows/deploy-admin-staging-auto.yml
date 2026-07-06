@@ -1,4 +1,4 @@
-name: Deploy Admin Staging (Auto)
+name: 2-STG Admin (Auto)
 
 on:
   push:

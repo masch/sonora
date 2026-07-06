@@ -1,4 +1,4 @@
-name: Validate API Staging
+name: 4-CI API Validate
 # Validates API code on PRs without requiring secrets.
 # Complements pr.yml's validate-api job (which runs api-test + typecheck)
 # by running the broader api-validate suite (lint + typecheck + api-test + shared-test).

@@ -1,4 +1,4 @@
-name: Admin Cleanup (Monthly)
+name: 3-ADMIN Cleanup
 
 on:
   schedule:
