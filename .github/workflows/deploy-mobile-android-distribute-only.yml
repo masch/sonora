@@ -1,0 +1,72 @@
+name: 3-Mobile Android Distribute Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'GitHub Actions Run ID of the build run'
+        required: true
+        type: string
+      app_env:
+        description: 'Target Environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated, leave blank for defaults)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  distribute-firebase:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.app_env }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup
+
+      - name: Download Android APK Artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          run_id: ${{ inputs.run_id }}
+          name: android-apk
+          path: apps/mobile
+
+      - name: Distribute Android APK to Firebase
+        env:
+          FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          # Write service account key
+          mkdir -p apps/mobile
+          echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
+
+          # Resolve release notes (use run_id commit if available)
+          export FIREBASE_RELEASE_NOTES="Re-distributed Build from Run ID ${{ inputs.run_id }}"
+
+          # Determine groups (input fallback to env defaults)
+          RESOLVED_GROUPS="${{ inputs.firebase_groups }}"
+          if [ -z "$RESOLVED_GROUPS" ]; then
+            if [ "${{ inputs.app_env }}" = "production" ]; then
+              RESOLVED_GROUPS="sonora-team"
+            else
+              RESOLVED_GROUPS="dev-team"
+            fi
+          fi
+
+          make firebase-distribute \
+            APP_ENV=${{ inputs.app_env }} \
+            GROUPS="$RESOLVED_GROUPS" \
+            FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"
