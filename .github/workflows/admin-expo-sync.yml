@@ -1,4 +1,4 @@
-name: Expo SDK Version Sync
+name: 3-ADMIN Expo SDK Sync
 
 on:
   schedule:

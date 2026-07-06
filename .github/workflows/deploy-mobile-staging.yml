@@ -1,4 +1,4 @@
-name: Deploy Mobile Staging
+name: 2-STG Mobile
 
 on:
   workflow_dispatch:

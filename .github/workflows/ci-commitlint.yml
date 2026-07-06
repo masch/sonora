@@ -1,4 +1,4 @@
-name: Commitlint
+name: 4-CI Commitlint
 
 on:
   workflow_dispatch:

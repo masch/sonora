@@ -1,4 +1,4 @@
-name: Socket Security
+name: 4-CI Socket Security
 
 on:
   workflow_dispatch:

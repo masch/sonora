@@ -1,4 +1,4 @@
-name: Database and Audio Backup (Weekly)
+name: 3-ADMIN DB Backup
 
 on:
   schedule:

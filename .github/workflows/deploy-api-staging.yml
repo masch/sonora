@@ -1,4 +1,4 @@
-name: Deploy API Staging
+name: 2-STG API
 
 permissions:
   contents: read

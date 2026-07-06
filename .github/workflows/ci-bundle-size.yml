@@ -1,4 +1,4 @@
-name: Bundle Size Check
+name: 4-CI Bundle Size
 
 on:
   pull_request:

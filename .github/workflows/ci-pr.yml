@@ -1,4 +1,4 @@
-name: PR Check
+name: 4-CI PR Check
 
 on:
   workflow_dispatch:

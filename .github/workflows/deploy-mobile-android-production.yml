@@ -1,4 +1,4 @@
-name: Deploy Android Production
+name: 1-PROD Mobile Android
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Sync Translations from Admin Panel
+name: 3-ADMIN Sync Translations
 
 on:
   schedule:
