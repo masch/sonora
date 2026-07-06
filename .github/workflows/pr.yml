@@ -40,6 +40,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make format-check
 
@@ -48,9 +49,10 @@ jobs:
     if: ${{ needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/setup
       - run: make test-front
       - run: make test-shared
       - run: bun --filter @sonora/mobile lint
@@ -68,6 +70,7 @@ jobs:
     if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make api-test
       - run: make test-shared
@@ -78,6 +81,7 @@ jobs:
     if: ${{ needs.changes.outputs.admin == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make test-admin
       - run: make test-shared

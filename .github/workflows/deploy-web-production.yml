@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make check
       - name: Deploy to EAS Hosting

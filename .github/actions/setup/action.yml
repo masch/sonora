@@ -1,14 +1,10 @@
-# Composite action: checkout + Bun setup + cache + install
-# Replaces inline checkout → setup-bun → cache → bun install
-# across all 14 workflows.
+# Composite action: Bun setup + cache + install
+# Does NOT include checkout — each workflow must checkout first
+# so GitHub Actions can find this local action file.
 name: Bun Setup
-description: Checkout, setup Bun, restore cache, and install dependencies
+description: Setup Bun, restore cache, and install dependencies
 
 inputs:
-  fetch-depth:
-    description: Git clone depth (0 for full history)
-    required: false
-    default: '1'
   minimum-release-age:
     description: Override bun minimum release age in seconds (0 to disable the guard)
     required: false
@@ -21,10 +17,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
-
     - uses: oven-sh/setup-bun@v2
 
     - uses: actions/cache/restore@v5

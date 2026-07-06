@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make check
       - name: Deploy Staging to EAS Hosting
@@ -66,9 +67,10 @@ jobs:
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/setup
       - run: make check
       - name: Setup Java SDK
         uses: actions/setup-java@v4
@@ -121,6 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - uses: actions/setup-node@v4
         with:

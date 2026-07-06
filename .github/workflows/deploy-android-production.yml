@@ -30,9 +30,10 @@ jobs:
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/setup
       - run: make check
       - name: Setup Java SDK
         uses: actions/setup-java@v4
@@ -84,6 +85,7 @@ jobs:
     needs: build-android
     environment: production
     steps:
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - uses: actions/setup-node@v4
         with:

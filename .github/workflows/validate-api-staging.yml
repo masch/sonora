@@ -27,9 +27,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/setup
       - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
         run: rm -f tsconfig.json
       - run: make api-validate
