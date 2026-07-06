@@ -7,14 +7,14 @@ on:
         description: 'Firebase App Distribution Groups (comma-separated)'
         required: true
         type: string
-        default: 'all'
+        default: 'sonora-team'
   workflow_call:
     inputs:
       firebase_groups:
         description: 'Firebase App Distribution Groups (comma-separated)'
         required: false
         type: string
-        default: 'all'
+        default: 'sonora-team'
 
 permissions:
   contents: read
