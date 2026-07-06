@@ -18,20 +18,19 @@ env:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup
 
-      # TODO: verify R2 bucket names and Neon DATABASE_URL secret name
+      # TODO: Create missing secrets before this workflow can run:
+      #   BACKUP_ENCRYPTION_KEY  — passphrase for GPG AES256 encryption
+      #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account ID (for R2 wrangler ops)
+      # DATABASE_URL is already set in the production environment.
 
       - name: Database backup — pg_dump → gzip → GPG → R2
         shell: bash
-        env:
-          PGUSER: ${{ secrets.PGUSER }}
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-          PGHOST: ${{ secrets.PGHOST }}
-          PGDATABASE: ${{ secrets.PGDATABASE }}
         run: |
           DATE_TAG=$(date +%Y-%m-%d)
           BACKUP_FILE="sonora-db-${DATE_TAG}.sql.gz.gpg"
