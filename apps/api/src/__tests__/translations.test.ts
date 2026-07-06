@@ -158,4 +158,47 @@ describe('Translations API', () => {
       expect(res.status).toBe(422);
     });
   });
+
+  describe('POST /api/translations/validate', () => {
+    it('returns 200 with valid auth header', async () => {
+      const res = await app.request(
+        '/api/translations/validate',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-admin-key-123',
+          },
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { valid: boolean };
+      expect(body.valid).toBe(true);
+    });
+
+    it('returns 401 with invalid auth header', async () => {
+      const res = await app.request(
+        '/api/translations/validate',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer wrong-key',
+          },
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 without auth header', async () => {
+      const res = await app.request(
+        '/api/translations/validate',
+        {
+          method: 'POST',
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(401);
+    });
+  });
 });

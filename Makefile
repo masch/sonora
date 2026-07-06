@@ -151,6 +151,7 @@ install: ## Install all workspace dependencies and configure git hooks
 .PHONY: lint
 lint: ## Run linters across workspaces
 	bun --filter @sonora/mobile lint
+	bun --filter @sonora/admin lint
 
 .PHONY: format
 format: ## Run prettier to format code

@@ -18,6 +18,7 @@ jest.mock('react-i18next', () => ({
         'login.placeholder': 'bearer_token_key...',
         'login.loginBtn': 'Log in',
         'login.errorEmpty': 'Please enter your API Key',
+        'login.errorInvalid': 'Invalid API key. Please check it and try again.',
         'login.keyInputLabel': 'API Admin Key input',
         'login.loginBtnLabel': 'Log in button',
       };
@@ -44,6 +45,7 @@ jest.mock('@/tw', () => {
 jest.mock('@/services/admin-api-client', () => ({
   AdminApiClient: {
     setAuthKey: jest.fn(),
+    validateKey: jest.fn().mockResolvedValue(true),
   },
 }));
 
@@ -94,5 +96,25 @@ describe('LoginScreen', () => {
 
     expect(AdminApiClient.setAuthKey).toHaveBeenCalledWith('test-secret-api-key');
     expect(mockReplace).toHaveBeenCalledWith('/');
+  });
+
+  it('shows error if API key is invalid', async () => {
+    (AdminApiClient.validateKey as jest.Mock).mockResolvedValueOnce(false);
+    const { getByPlaceholderText, getByTestId, getByText } = await render(<LoginScreen />);
+
+    const input = getByPlaceholderText('bearer_token_key...');
+    const button = getByTestId('login-button');
+
+    await act(async () => {
+      input.props.onChangeText('wrong-api-key');
+    });
+
+    await act(async () => {
+      button.props.onClick();
+    });
+
+    expect(getByText('Invalid API key. Please check it and try again.')).toBeTruthy();
+    expect(AdminApiClient.setAuthKey).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

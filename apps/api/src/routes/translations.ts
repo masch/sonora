@@ -38,6 +38,25 @@ translationsRouter.get('/:lang', async (c) => {
   }
 });
 
+// POST /api/translations/validate — admin, Bearer auth, checks if the token is valid
+translationsRouter.post('/validate', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  const adminKey =
+    c.env?.ADMIN_API_KEY ||
+    (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
+
+  if (!adminKey) {
+    console.error('ADMIN_API_KEY variable de entorno no configurada.');
+    return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
+  }
+
+  if (authHeader !== `Bearer ${adminKey}`) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  return c.json({ valid: true }, 200);
+});
+
 // PUT /api/translations — admin, Bearer auth, bulk upsert
 translationsRouter.put('/', async (c) => {
   // Admin auth check (same pattern as audio.ts)

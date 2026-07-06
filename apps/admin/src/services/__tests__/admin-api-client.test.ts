@@ -126,4 +126,33 @@ describe('AdminApiClient', () => {
     );
     expect(result).toEqual({ updated: 3 });
   });
+
+  /* ─── Validate Key Method ─── */
+
+  it('returns true when validation returns 200', async () => {
+    mockFetchOk({ valid: true });
+    const result = await AdminApiClient.validateKey('valid-key');
+    expect(result).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/translations/validate'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer valid-key',
+        }),
+      }),
+    );
+  });
+
+  it('returns false when validation returns non-200 status', async () => {
+    mockFetchFail(401);
+    const result = await AdminApiClient.validateKey('invalid-key');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when fetch fails entirely', async () => {
+    globalThis.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+    const result = await AdminApiClient.validateKey('key');
+    expect(result).toBe(false);
+  });
 });
