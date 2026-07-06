@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: shufo/auto-assign-reviewer-by-files@v1
+      - uses: shufo/auto-assign-reviewer-by-files@v1.2.1
         with:
           config: |
             # TODO: add actual reviewer usernames or teams after workflow is verified
