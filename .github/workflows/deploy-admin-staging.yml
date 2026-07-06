@@ -8,6 +8,7 @@ on:
       - 'apps/admin/**'
       - '.github/actions/setup/action.yml'
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

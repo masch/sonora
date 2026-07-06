@@ -11,6 +11,13 @@ on:
           - internal
           - external
         default: internal
+  workflow_call:
+    inputs:
+      firebase_team:
+        description: 'Firebase App Distribution tester group'
+        required: false
+        type: string
+        default: 'internal'
 
 permissions:
   contents: read

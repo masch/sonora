@@ -1,0 +1,46 @@
+name: 2-STG Deploy All
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Build and deploy Android APK to Firebase App Distribution'
+        required: true
+        type: boolean
+        default: true
+      firebase_team:
+        description: 'Firebase App Distribution tester group'
+        required: false
+        type: choice
+        options:
+          - internal
+          - external
+        default: internal
+
+jobs:
+  deploy-web:
+    name: Deploy Web Staging
+    uses: ./.github/workflows/deploy-mobile-web-staging.yml
+    secrets: inherit
+
+  deploy-admin:
+    name: Deploy Admin Staging
+    needs: deploy-web
+    uses: ./.github/workflows/deploy-admin-staging.yml
+    secrets: inherit
+
+  deploy-api:
+    name: Deploy API Staging
+    needs: deploy-admin
+    uses: ./.github/workflows/deploy-api-staging.yml
+    secrets: inherit
+
+  deploy-android:
+    name: Deploy Android Staging
+    needs: deploy-api
+    if: |
+      github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true'
+    uses: ./.github/workflows/deploy-mobile-android-staging.yml
+    with:
+      firebase_team: ${{ github.event.inputs.firebase_team || 'internal' }}
+    secrets: inherit
