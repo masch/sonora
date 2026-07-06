@@ -1,18 +1,8 @@
-name: 2-STG Mobile
+name: 2-STG Mobile Android
 
 on:
   workflow_dispatch:
     inputs:
-      deploy_web:
-        description: 'Deploy web to EAS Hosting staging'
-        required: false
-        type: boolean
-        default: true
-      deploy_android:
-        description: 'Build and deploy Android to Firebase App Distribution'
-        required: false
-        type: boolean
-        default: false
       firebase_team:
         description: 'Firebase App Distribution tester group'
         required: false
@@ -30,38 +20,11 @@ env:
   EXPO_PUBLIC_API_URL: https://sonora-api-staging.sonora-api.workers.dev
 
 concurrency:
-  group: deploy-staging-${{ github.ref }}
+  group: deploy-android-staging
   cancel-in-progress: true
 
 jobs:
-  deploy-web:
-    name: Deploy Web Staging
-    if: |
-      github.event_name != 'workflow_dispatch' ||
-      inputs.deploy_web
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
-      - run: make check
-      - name: Deploy Staging to EAS Hosting
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
-          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-        run: make eas-build-web-staging
-
-  deploy-android:
-    name: Deploy Android Staging (Manual)
-    if: |
-      github.event_name == 'workflow_dispatch' &&
-      inputs.deploy_android
+  build-android:
     runs-on: ubuntu-latest
     environment: staging
     outputs:
@@ -117,10 +80,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  distribute-android:
-    name: Distribute Android to Firebase Staging
-    needs: deploy-android
+  distribute-firebase:
     runs-on: ubuntu-latest
+    needs: build-android
     environment: staging
     steps:
       - uses: actions/checkout@v5
@@ -138,7 +100,7 @@ jobs:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          APK_PATH: ${{ needs.deploy-android.outputs.apk_path }}
+          APK_PATH: ${{ needs.build-android.outputs.apk_path }}
         run: |
           # Write service account key
           mkdir -p apps/mobile
