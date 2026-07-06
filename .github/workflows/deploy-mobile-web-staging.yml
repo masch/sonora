@@ -2,6 +2,7 @@ name: 2-STG Mobile Web
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
