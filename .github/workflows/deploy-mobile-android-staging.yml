@@ -3,21 +3,18 @@ name: 2-STG Mobile Android
 on:
   workflow_dispatch:
     inputs:
-      firebase_team:
-        description: 'Firebase App Distribution tester group'
-        required: false
-        type: choice
-        options:
-          - internal
-          - external
-        default: internal
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
+        required: true
+        type: string
+        default: 'dev-team'
   workflow_call:
     inputs:
-      firebase_team:
-        description: 'Firebase App Distribution tester group'
+      firebase_groups:
+        description: 'Firebase App Distribution Groups (comma-separated)'
         required: false
         type: string
-        default: 'internal'
+        default: 'dev-team'
 
 permissions:
   contents: read
@@ -105,7 +102,6 @@ jobs:
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           APK_PATH: ${{ needs.build-android.outputs.apk_path }}
         run: |
@@ -115,9 +111,9 @@ jobs:
 
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Staging Build ${{ github.run_number }} - $CLEAN_MSG"
-          node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
-            appdistribution:distribute "$APK_PATH" \
-            --app "1:967212589494:android:602e693b852146f814e117" \
-            --groups "${{ inputs.firebase_team == 'external' && 'external-testers' || 'dev-team' }}" \
-            --release-notes "$FIREBASE_RELEASE_NOTES" \
-            --non-interactive
+
+          make firebase-distribute \
+            APP_ENV=staging \
+            FIREBASE_APK_PATH="$APK_PATH" \
+            GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
+            FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"

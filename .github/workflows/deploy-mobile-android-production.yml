@@ -7,14 +7,14 @@ on:
         description: 'Firebase App Distribution Groups (comma-separated)'
         required: true
         type: string
-        default: 'all'
+        default: 'sonora-team'
   workflow_call:
     inputs:
       firebase_groups:
         description: 'Firebase App Distribution Groups (comma-separated)'
         required: false
         type: string
-        default: 'all'
+        default: 'sonora-team'
 
 permissions:
   contents: read
@@ -98,7 +98,6 @@ jobs:
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/apps/mobile/firebase-sa-key.json
           RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           APK_PATH: ${{ needs.build-android.outputs.apk_path }}
         run: |
@@ -108,9 +107,9 @@ jobs:
 
           CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
           export FIREBASE_RELEASE_NOTES="Build ${{ github.run_number }} - $CLEAN_MSG"
-          node apps/mobile/node_modules/firebase-tools/lib/bin/firebase.js \
-            appdistribution:distribute "$APK_PATH" \
-            --app "1:967054219260:android:aad883fdf7059bec060479" \
-            --groups "${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
-            --release-notes "$FIREBASE_RELEASE_NOTES" \
-            --non-interactive
+
+          make firebase-distribute \
+            APP_ENV=production \
+            FIREBASE_APK_PATH="$APK_PATH" \
+            GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
+            FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"

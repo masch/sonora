@@ -12,7 +12,7 @@ on:
         description: 'Firebase App Distribution Groups (comma-separated)'
         required: true
         type: string
-        default: 'dev-team'
+        default: 'sonora-team'
   schedule:
     - cron: '0 0 */3 * *'
 
@@ -66,5 +66,5 @@ jobs:
       (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true')
     uses: ./.github/workflows/deploy-mobile-android-production.yml
     with:
-      firebase_groups: ${{ github.event.inputs.firebase_groups || 'dev-team' }}
+      firebase_groups: ${{ github.event.inputs.firebase_groups || 'sonora-team' }}
     secrets: inherit
