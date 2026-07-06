@@ -5,8 +5,8 @@ import LoadingView from '@/components/loading-view';
 import { TwView, TwText, TwPressable, TwScrollView, TwTextInput } from '@/tw';
 import { AdminApiClient } from '@/services/admin-api-client';
 import { useTranslation } from 'react-i18next';
-import { en } from '../../../mobile/src/i18n/locales/en';
-import { es } from '../../../mobile/src/i18n/locales/es';
+import { en } from '../../../../mobile/src/i18n/locales/en';
+import { es } from '../../../../mobile/src/i18n/locales/es';
 
 type LocaleData = Record<string, string>;
 
@@ -163,17 +163,17 @@ export default function TranslationEditorScreen() {
   return (
     <ScreenWrapper>
       {/* Header bar */}
-      <TwView className="w-full h-16 bg-[#ebe4d8] border-b border-[#dfd7c8] flex-row items-center justify-between px-five">
+      <TwView className="w-full h-16 bg-backgroundElement border-b border-backgroundSelected flex-row items-center justify-between px-five">
         <TwView className="flex-row items-center">
           <TwText className="text-xl font-bold text-text">{t('dashboard.title')}</TwText>
-          <TwView className="ml-three bg-[#dfd7c8] px-two py-[2px] rounded-md">
+          <TwView className="ml-three bg-backgroundSelected px-two py-[2px] rounded-md">
             <TwText className="text-xs font-semibold text-textSecondary">
               {t('dashboard.tag')}
             </TwText>
           </TwView>
         </TwView>
         <TwPressable
-          className="bg-transparent border border-[#76706b] px-three py-two rounded-lg hover:bg-backgroundSelected"
+          className="bg-transparent border border-textSecondary px-three py-two rounded-lg hover:bg-backgroundSelected"
           onPress={handleLogout}
           accessibilityLabel={t('dashboard.logout')}
           testID="logout-button"
@@ -188,7 +188,7 @@ export default function TranslationEditorScreen() {
       <TwView className="flex-1 p-five max-w-[1200px] w-full mx-auto">
         <TwView className="flex-row items-center justify-between mb-four flex-wrap gap-three">
           {/* Language Selector Tabs */}
-          <TwView className="flex-row bg-[#ebe4d8] p-[3px] rounded-lg border border-[#dfd7c8]">
+          <TwView className="flex-row bg-backgroundElement p-[3px] rounded-lg border border-backgroundSelected">
             <TwPressable
               className={`px-four py-two rounded-md ${activeLang === 'en' ? 'bg-background shadow-sm' : ''}`}
               onPress={() => setActiveLang('en')}
@@ -217,7 +217,7 @@ export default function TranslationEditorScreen() {
 
           {/* Search Input */}
           <TwTextInput
-            className="w-full max-w-[300px] h-10 border border-[#dfd7c8] rounded-lg px-three text-text bg-background focus:border-link"
+            className="w-full max-w-[300px] h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
             placeholder={t('dashboard.searchPlaceholder')}
             placeholderTextColor="#76706b"
             value={searchQuery}
@@ -316,7 +316,7 @@ export default function TranslationEditorScreen() {
 
         {/* Sticky footer action bar */}
         {unsavedCount > 0 && (
-          <TwView className="w-full mt-four bg-[#ebe4d8] border border-[#dfd7c8] rounded-xl p-four flex-row items-center justify-between shadow-sm">
+          <TwView className="w-full mt-four bg-backgroundElement border border-backgroundSelected rounded-xl p-four flex-row items-center justify-between shadow-sm">
             <TwText className="text-sm font-bold text-text">
               {unsavedCount} {t('dashboard.modifiedStatus')}
             </TwText>

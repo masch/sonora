@@ -46,7 +46,7 @@ export default function RootLayout() {
         },
       }}
     >
-      <Stack.Screen name="index" options={{ title: t('dashboard.title') }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ title: t('login.title'), headerShown: false }} />
     </Stack>
   );

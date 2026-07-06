@@ -9,17 +9,31 @@ export default function LoginScreen() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const trimmed = apiKey.trim();
     if (!trimmed) {
       setError(t('login.errorEmpty'));
       return;
     }
     const sanitized = trimmed.replace(/[^\x20-\x7E]/g, '');
-    AdminApiClient.setAuthKey(sanitized);
-    router.replace('/');
+    setIsLoading(true);
+    setError(null);
+    try {
+      const isValid = await AdminApiClient.validateKey(sanitized);
+      if (!isValid) {
+        setError(t('login.errorInvalid'));
+        return;
+      }
+      AdminApiClient.setAuthKey(sanitized);
+      router.replace('/');
+    } catch (err) {
+      setError(t('common.somethingWentWrong'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,6 +60,7 @@ export default function LoginScreen() {
               setError(null);
             }}
             secureTextEntry
+            editable={!isLoading}
             accessibilityLabel={t('login.keyInputLabel')}
             testID="api-key-input"
           />
@@ -53,12 +68,15 @@ export default function LoginScreen() {
         </TwView>
 
         <TwPressable
-          className="w-full h-11 bg-link items-center justify-center rounded-lg active:opacity-90"
+          className={`w-full h-11 bg-link items-center justify-center rounded-lg active:opacity-90 ${isLoading ? 'opacity-50' : ''}`}
           onPress={handleLogin}
+          disabled={isLoading}
           accessibilityLabel={t('login.loginBtnLabel')}
           testID="login-button"
         >
-          <TwText className="text-base font-bold text-white">{t('login.loginBtn')}</TwText>
+          <TwText className="text-base font-bold text-white">
+            {isLoading ? t('dashboard.savingBtn') : t('login.loginBtn')}
+          </TwText>
         </TwPressable>
       </TwView>
     </ScreenWrapper>

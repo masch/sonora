@@ -57,4 +57,19 @@ export const AdminApiClient = {
       body: JSON.stringify(payload),
     });
   },
+
+  async validateKey(key: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${APP_CONFIG.apiBaseUrl}/api/translations/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+      });
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  },
 };
