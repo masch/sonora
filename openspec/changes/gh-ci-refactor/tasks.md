@@ -9,13 +9,13 @@
 | Chained PRs recommended | Yes                   |
 | Suggested split         | PR 1 → PR 2 → PR 3    |
 | Delivery strategy       | ask-on-risk           |
-| Chain strategy          | pending               |
+| Chain strategy          | stacked-to-main       |
 
 ```
-Decision needed before apply: Yes
+Decision needed before apply: Resolved
 Chained PRs recommended: Yes
-Chain strategy: pending
-400-line budget risk: High
+Chain strategy: stacked-to-main
+400-line budget risk: High (split across 3 PRs)
 ```
 
 ### Suggested Work Units
@@ -38,18 +38,18 @@ Chain strategy: pending
 
 ## PR 2: File renames + ref updates
 
-- [ ] 2.1 `git mv` 9 workflow files to `{category}-{app}(-{env})(-{platform}).yml` convention
-- [ ] 2.2 Update `workflow_call` refs in `deploy-all-production.yml` to renamed file targets
-- [ ] 2.3 Update `gh workflow run` refs in `admin-expo-sync.yml` to use renamed filenames
-- [ ] 2.4 Verify `gh workflow run` refs in remaining unchanged files target correct renamed paths
+- [x] 2.1 `git mv` 9 workflow files to `{category}-{app}(-{env})(-{platform}).yml` convention
+- [x] 2.2 Update `workflow_call` refs in `deploy-all-production.yml` to renamed file targets
+- [x] 2.3 Update `gh workflow run` refs in `admin-expo-sync.yml` to use renamed filenames
+- [x] 2.4 Verify `gh workflow run` refs in remaining unchanged files target correct renamed paths
 
 ## PR 3: 5 new workflows
 
-- [ ] 3.1 Create `ci-bundle-size.yml` — PR trigger, composite action, bundle size diff threshold
-- [ ] 3.2 Create `ci-auto-assign.yml` — PR events, path-based reviewer auto-assignment
-- [ ] 3.3 Create `deploy-admin-staging-auto.yml` — push to main, auto-deploy admin web staging
-- [ ] 3.4 Create `admin-cleanup.yml` — monthly cron, stale issues/branches/artifacts cleanup
-- [ ] 3.5 Create `admin-db-backup.yml` — weekly cron with two backup stages: (a) **DB**: `pg_dump` (schema+data) → gzip → GPG AES256 → `wrangler r2 object put` to `sonora-db-backups/db/sonora-db-{date}.sql.gz.gpg`, delete `.sql.gz.gpg` older than 90 days; (b) **Audio**: rclone copy r2:audio-bucket → r2:sonora-db-backups/audio/latest/ with `--backup-dir r2:sonora-db-backups/audio/archive/{date}/`, never delete
+- [x] 3.1 Create `ci-bundle-size.yml` — PR trigger, composite action, bundle size diff threshold
+- [x] 3.2 Create `ci-auto-assign.yml` — PR events, path-based reviewer auto-assignment
+- [x] 3.3 Create `deploy-admin-staging-auto.yml` — push to main, auto-deploy admin web staging
+- [x] 3.4 Create `admin-cleanup.yml` — monthly cron, stale issues/branches/artifacts cleanup
+- [x] 3.5 Create `admin-db-backup.yml` — weekly cron with two backup stages: (a) **DB**: `pg_dump` (schema+data) → gzip → GPG AES256 → `wrangler r2 object put` to `sonora-db-backups/db/sonora-db-{date}.sql.gz.gpg`, delete `.sql.gz.gpg` older than 90 days; (b) **Audio**: rclone copy r2:audio-bucket → r2:sonora-db-backups/audio/latest/ with `--backup-dir r2:sonora-db-backups/audio/archive/{date}/`, never delete
 
 ## Verification
 

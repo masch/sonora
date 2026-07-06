@@ -1,0 +1,33 @@
+name: Auto Assign Reviewers
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shufo/auto-assign-reviewer-by-files@v1.2.1
+        with:
+          config: |
+            # TODO: add actual reviewer usernames or teams after workflow is verified
+            apps/mobile/**:
+              - # add mobile reviewers
+            apps/api/**:
+              - # add API reviewers
+            apps/admin/**:
+              - # add admin reviewers
+            .github/**:
+              - # add CI/repo reviewers
+            packages/**:
+              - # add shared package reviewers
+          failIfCannotAssign: false
