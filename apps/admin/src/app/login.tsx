@@ -29,7 +29,7 @@ export default function LoginScreen() {
       }
       AdminApiClient.setAuthKey(sanitized);
       router.replace('/');
-    } catch (err) {
+    } catch {
       setError(t('common.somethingWentWrong'));
     } finally {
       setIsLoading(false);

@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 import { ActivityIndicator } from 'react-native';
 import { TwText, TwView } from '@/tw';
 
