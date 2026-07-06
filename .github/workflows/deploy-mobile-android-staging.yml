@@ -17,7 +17,7 @@ on:
         default: 'dev-team'
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -90,6 +90,8 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - uses: actions/setup-node@v4
         with:
@@ -99,21 +101,47 @@ jobs:
         with:
           name: android-apk
           path: apps/mobile
+      - name: Generate Tag-Based Release Notes
+        id: release-notes
+        run: |
+          git fetch --tags --force
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "stg-android-build-*" 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tag found. Using fallback of last 5 commits."
+            NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+          else
+            echo "Generating release notes from $LAST_TAG to HEAD"
+            NOTES=$(git log $LAST_TAG..HEAD --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+          fi
+
+          # Clean release notes and format to avoid quotes issues
+          # Use GITHUB_OUTPUT to pass the multi-line string safely
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "Staging Build ${{ github.run_number }}" >> $GITHUB_OUTPUT
+          if [ -n "$NOTES" ]; then
+            echo "$NOTES" >> $GITHUB_OUTPUT
+          else
+            echo "- No new commits" >> $GITHUB_OUTPUT
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          RAW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           APK_PATH: ${{ needs.build-android.outputs.apk_path }}
+          FIREBASE_RELEASE_NOTES: ${{ steps.release-notes.outputs.notes }}
         run: |
           # Write service account key
           mkdir -p apps/mobile
           echo "$FIREBASE_SA_KEY" > apps/mobile/firebase-sa-key.json
-
-          CLEAN_MSG=$(echo "$RAW_COMMIT_MESSAGE" | head -n 1 | sed 's/"/\\"/g')
-          export FIREBASE_RELEASE_NOTES="Staging Build ${{ github.run_number }} - $CLEAN_MSG"
 
           make firebase-distribute \
             APP_ENV=staging \
             FIREBASE_APK_PATH="$APK_PATH" \
             GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}" \
             FIREBASE_RELEASE_NOTES="$FIREBASE_RELEASE_NOTES"
+      - name: Tag deployment
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag stg-android-build-${{ github.run_number }}
+          git push origin stg-android-build-${{ github.run_number }}
