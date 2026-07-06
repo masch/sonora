@@ -9,10 +9,6 @@ inputs:
     description: Git clone depth (0 for full history)
     required: false
     default: '1'
-  frozen:
-    description: Use --frozen-lockfile
-    required: false
-    default: 'true'
   minimum-release-age:
     description: Override bun minimum release age in seconds (0 to disable the guard)
     required: false
@@ -47,9 +43,8 @@ runs:
       if: inputs.skip-if-cache-hit != 'true' || steps.bun-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        FROZEN="${{ inputs.frozen == 'true' && '--frozen-lockfile' || '' }}"
         REL_AGE="${{ inputs.minimum-release-age != '' && format('--minimum-release-age={0}', inputs.minimum-release-age) || '' }}"
-        bun install $FROZEN $REL_AGE
+        bun install --frozen-lockfile $REL_AGE
 
     - name: Save cache
       if: steps.bun-cache.outcome == 'success' && steps.bun-cache.outputs.cache-hit != 'true'
