@@ -1,0 +1,39 @@
+name: 'Generate Release Notes'
+description: 'Generate release notes based on git tags'
+inputs:
+  tag_pattern:
+    description: 'Tag pattern to match (e.g. stg-v* or prod-v*)'
+    required: true
+  title_prefix:
+    description: 'Title prefix (e.g. Staging Build or Build)'
+    required: true
+outputs:
+  notes:
+    description: 'Generated release notes'
+    value: ${{ steps.notes.outputs.notes }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate Notes
+      id: notes
+      shell: bash
+      run: |
+        git fetch --tags --force
+        LAST_TAG=$(git describe --tags --abbrev=0 --match "${{ inputs.tag_pattern }}" 2>/dev/null || echo "")
+        if [ -z "$LAST_TAG" ]; then
+          echo "No previous tag found. Using fallback of last 5 commits."
+          NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        else
+          echo "Generating release notes from $LAST_TAG to HEAD"
+          NOTES=$(git log $LAST_TAG..HEAD --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        fi
+
+        echo "notes<<EOF" >> $GITHUB_OUTPUT
+        echo "${{ inputs.title_prefix }} ${{ github.run_number }}" >> $GITHUB_OUTPUT
+        if [ -n "$NOTES" ]; then
+          echo "$NOTES" >> $GITHUB_OUTPUT
+        else
+          echo "- No new commits" >> $GITHUB_OUTPUT
+        fi
+        echo "EOF" >> $GITHUB_OUTPUT

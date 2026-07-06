@@ -80,6 +80,8 @@ jobs:
   tag-release:
     name: Tag Release
     needs: [deploy-web, deploy-api, deploy-android]
+    # Run even if some jobs were skipped (e.g. deploy-android is optional),
+    # but only tag if no executed jobs failed or were cancelled.
     if: |
       always() &&
       !contains(needs.*.result, 'failure') &&

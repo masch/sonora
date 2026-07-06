@@ -108,27 +108,10 @@ jobs:
           path: apps/mobile
       - name: Generate Tag-Based Release Notes
         id: release-notes
-        run: |
-          git fetch --tags --force
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "stg-v*" 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            echo "No previous tag found. Using fallback of last 5 commits."
-            NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
-          else
-            echo "Generating release notes from $LAST_TAG to HEAD"
-            NOTES=$(git log $LAST_TAG..HEAD --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
-          fi
-
-          # Clean release notes and format to avoid quotes issues
-          # Use GITHUB_OUTPUT to pass the multi-line string safely
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "Staging Build ${{ github.run_number }}" >> $GITHUB_OUTPUT
-          if [ -n "$NOTES" ]; then
-            echo "$NOTES" >> $GITHUB_OUTPUT
-          else
-            echo "- No new commits" >> $GITHUB_OUTPUT
-          fi
-          echo "EOF" >> $GITHUB_OUTPUT
+        uses: ./.github/actions/generate-release-notes
+        with:
+          tag_pattern: 'stg-v*'
+          title_prefix: 'Staging Build'
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
