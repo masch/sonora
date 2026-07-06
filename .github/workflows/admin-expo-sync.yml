@@ -111,9 +111,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run deploy-mobile-staging.yml \
+          gh workflow run deploy-mobile-web-staging.yml \
+            --ref chore/expo-sdk-version-sync
+          gh workflow run deploy-mobile-android-staging.yml \
             --ref chore/expo-sdk-version-sync \
-            -f deploy_web=true -f deploy_android=true -f firebase_team=internal
+            -f firebase_team=internal
           gh workflow run deploy-admin-staging.yml \
             --ref chore/expo-sdk-version-sync
 
