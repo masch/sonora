@@ -47,45 +47,10 @@ jobs:
             fi
           fi
 
-  deploy-web:
-    name: Deploy Web
-    needs: check-changes
-    if: needs.check-changes.outputs.has_changes == 'true'
-    uses: ./.github/workflows/deploy-mobile-web-production.yml
-    with:
-      skip_tagging: true
-    secrets: inherit
-
-  deploy-api:
-    name: Deploy API
-    needs: [check-changes, deploy-web]
-    if: needs.check-changes.outputs.has_changes == 'true'
-    uses: ./.github/workflows/deploy-api-production.yml
-    with:
-      skip_tagging: true
-    secrets: inherit
-
-  deploy-android:
-    name: Deploy Android
-    needs: [check-changes, deploy-api]
-    if: |
-      needs.check-changes.outputs.has_changes == 'true' &&
-      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true')
-    uses: ./.github/workflows/deploy-mobile-android-production.yml
-    with:
-      firebase_groups: ${{ github.event.inputs.firebase_groups || 'sonora-team' }}
-      skip_tagging: true
-    secrets: inherit
-
   tag-release:
     name: Tag Release
-    needs: [deploy-web, deploy-api, deploy-android]
-    # Run even if some jobs were skipped (e.g. deploy-android is optional),
-    # but only tag if no executed jobs failed or were cancelled.
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -95,3 +60,36 @@ jobs:
         uses: ./.github/actions/tag-release
         with:
           environment: production
+
+  deploy-web:
+    name: Deploy Web
+    needs: [check-changes, tag-release]
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/deploy-mobile-web-production.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-api:
+    name: Deploy API
+    needs: [check-changes, deploy-web, tag-release]
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/deploy-api-production.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-android:
+    name: Deploy Android
+    needs: [check-changes, deploy-api, tag-release]
+    if: |
+      always() &&
+      needs.check-changes.outputs.has_changes == 'true' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true') &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/deploy-mobile-android-production.yml
+    with:
+      firebase_groups: ${{ github.event.inputs.firebase_groups || 'sonora-team' }}
+      skip_tagging: true
+    secrets: inherit

@@ -38,12 +38,24 @@ jobs:
     environment: staging
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
+      tag_name: ${{ steps.get-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - run: make check
+      - name: Tag deployment
+        if: ${{ (inputs.skip_tagging || 'false') != 'true' }}
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+      - name: Determine Tag Name
+        id: get-tag
+        run: |
+          git fetch --tags --force
+          TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 || echo "stg-v1.0.0-temp")
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
       - name: Setup Java SDK
         uses: actions/setup-java@v4
         with:
@@ -77,15 +89,13 @@ jobs:
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
         run: |
-          make eas-build-android-preview-ci
-          # Export the exact APK path that was generated
-          APK_PATH=$(ls -t apps/mobile/build-*.apk 2>/dev/null | head -1)
-          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          make eas-build-android-preview-ci OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}.apk"
+          echo "apk_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk" >> "$GITHUB_OUTPUT"
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: apps/mobile/build-*.apk
+          path: apps/mobile/sonora-*.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -115,7 +125,7 @@ jobs:
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          APK_PATH: ${{ needs.build-android.outputs.apk_path }}
+          APK_PATH: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk
           FIREBASE_RELEASE_NOTES: ${{ steps.release-notes.outputs.notes }}
         run: |
           # Write service account key
@@ -126,8 +136,3 @@ jobs:
             APP_ENV=staging \
             FIREBASE_APK_PATH="$APK_PATH" \
             GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}"
-      - name: Tag deployment
-        uses: ./.github/actions/tag-release
-        with:
-          environment: staging
-          skip_tagging: ${{ inputs.skip_tagging || 'false' }}

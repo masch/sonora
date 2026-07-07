@@ -18,49 +18,8 @@ permissions:
   contents: write
 
 jobs:
-  deploy-web:
-    name: Deploy Web Staging
-    uses: ./.github/workflows/deploy-mobile-web-staging.yml
-    with:
-      skip_tagging: true
-    secrets: inherit
-
-  deploy-admin:
-    name: Deploy Admin Staging
-    needs: deploy-web
-    uses: ./.github/workflows/deploy-admin-staging.yml
-    with:
-      skip_tagging: true
-    secrets: inherit
-
-  deploy-api:
-    name: Deploy API Staging
-    needs: deploy-admin
-    uses: ./.github/workflows/deploy-api-staging.yml
-    with:
-      skip_tagging: true
-    secrets: inherit
-
-  deploy-android:
-    name: Deploy Android Staging
-    needs: deploy-api
-    if: |
-      github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true'
-    uses: ./.github/workflows/deploy-mobile-android-staging.yml
-    with:
-      firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
-      skip_tagging: true
-    secrets: inherit
-
   tag-release:
     name: Tag Release
-    needs: [deploy-web, deploy-admin, deploy-api, deploy-android]
-    # Run even if some jobs were skipped (e.g. deploy-android is optional),
-    # but only tag if no executed jobs failed or were cancelled.
-    if: |
-      always() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -70,3 +29,41 @@ jobs:
         uses: ./.github/actions/tag-release
         with:
           environment: staging
+
+  deploy-web:
+    name: Deploy Web Staging
+    needs: tag-release
+    uses: ./.github/workflows/deploy-mobile-web-staging.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-admin:
+    name: Deploy Admin Staging
+    needs: [deploy-web, tag-release]
+    uses: ./.github/workflows/deploy-admin-staging.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-api:
+    name: Deploy API Staging
+    needs: [deploy-admin, tag-release]
+    uses: ./.github/workflows/deploy-api-staging.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-android:
+    name: Deploy Android Staging
+    needs: [deploy-api, tag-release]
+    if: |
+      always() &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.build_android == 'true') &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/deploy-mobile-android-staging.yml
+    with:
+      firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
+      skip_tagging: true
+    secrets: inherit
