@@ -37,6 +37,14 @@ runs:
 
         TAG_NAME="$PREFIX$MAJOR_MINOR.$PATCH"
 
+        LAST_TAG=$(git describe --tags --abbrev=0 --match "$PREFIX*" HEAD^ 2>/dev/null || echo "")
+
+        if [ -z "$LAST_TAG" ]; then
+          NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        else
+          NOTES=$(git log $LAST_TAG..HEAD --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        fi
+
         TAG_COUNT=$(git tag -l "$PREFIX*" | wc -l)
         VERSION_CODE=$((TAG_COUNT + 1))
 
@@ -44,12 +52,15 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-        ANNOTATION_MSG="Created by GitHub Actions
-        Workflow: $GITHUB_WORKFLOW
-        Run Number: $GITHUB_RUN_NUMBER
-        Run ID: $GITHUB_RUN_ID
-        Run URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-        Version Code (APK): $VERSION_CODE"
+        ANNOTATION_MSG=$(printf "Created by GitHub Actions\nWorkflow: %s\nRun Number: %s\nRun ID: %s\nRun URL: %s/%s/actions/runs/%s\nVersion Code (APK): %s\n\nRelease Notes:\n%s" \
+          "$GITHUB_WORKFLOW" \
+          "$GITHUB_RUN_NUMBER" \
+          "$GITHUB_RUN_ID" \
+          "$GITHUB_SERVER_URL" \
+          "$GITHUB_REPOSITORY" \
+          "$GITHUB_RUN_ID" \
+          "$VERSION_CODE" \
+          "$NOTES")
 
         git tag -a "$TAG_NAME" -m "$ANNOTATION_MSG"
         git push origin "$TAG_NAME"
