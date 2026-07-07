@@ -15,6 +15,8 @@ runs:
     - name: Create and Push Tag
       if: ${{ inputs.skip_tagging != 'true' }}
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         VERSION=$(node -p "require('./package.json').version")
 
@@ -64,3 +66,9 @@ runs:
 
         git tag -a "$TAG_NAME" -m "$ANNOTATION_MSG"
         git push origin "$TAG_NAME"
+
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$ANNOTATION_MSG"
+        else
+          gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$ANNOTATION_MSG" --prerelease
+        fi

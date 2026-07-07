@@ -135,3 +135,10 @@ jobs:
             APP_ENV=production \
             FIREBASE_APK_PATH="$APK_PATH" \
             GROUPS="${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}"
+      - name: Upload APK to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.build-android.outputs.tag_name }}
+          APK_PATH: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk
+        run: |
+          gh release upload "$TAG_NAME" "$APK_PATH" --clobber
