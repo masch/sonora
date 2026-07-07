@@ -67,8 +67,9 @@ jobs:
       - name: Calculate Version Code
         id: version-code
         run: |
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          echo "val=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
+          git fetch --tags --force
+          VERSION_CODE=$(git tag -l "prod-v*" | wc -l)
+          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: Build Android Preview APK
         id: build-apk
         env:

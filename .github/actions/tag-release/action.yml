@@ -18,23 +18,38 @@ runs:
       run: |
         VERSION=$(node -p "require('./package.json').version")
 
+        MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+
         if [ "${{ inputs.environment }}" = "production" ]; then
-          BASE_TAG="prod-v$VERSION"
+          PREFIX="prod-v"
         else
-          BASE_TAG="stg-v$VERSION"
+          PREFIX="stg-v"
         fi
 
         git fetch --tags --force
-        LAST_REV=$(git tag -l "$BASE_TAG-*" | sed "s/$BASE_TAG-//" | grep -E '^[0-9]+$' | sort -n | tail -n 1 || true)
-        if [ -z "$LAST_REV" ]; then
-          TAG_NAME="$BASE_TAG-0"
+        LAST_PATCH=$(git tag -l "$PREFIX$MAJOR_MINOR.*" | sed "s/$PREFIX$MAJOR_MINOR.//" | grep -E '^[0-9]+$' | sort -n | tail -n 1 || true)
+
+        if [ -z "$LAST_PATCH" ]; then
+          PATCH=0
         else
-          NEW_REV=$((LAST_REV + 1))
-          TAG_NAME="$BASE_TAG-$NEW_REV"
+          PATCH=$((LAST_PATCH + 1))
         fi
 
-        echo "Creating tag $TAG_NAME"
+        TAG_NAME="$PREFIX$MAJOR_MINOR.$PATCH"
+
+        TAG_COUNT=$(git tag -l "$PREFIX*" | wc -l)
+        VERSION_CODE=$((TAG_COUNT + 1))
+
+        echo "Creating annotated tag $TAG_NAME"
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git tag "$TAG_NAME"
+
+        ANNOTATION_MSG="Created by GitHub Actions
+        Workflow: $GITHUB_WORKFLOW
+        Run Number: $GITHUB_RUN_NUMBER
+        Run ID: $GITHUB_RUN_ID
+        Run URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+        Version Code (APK): $VERSION_CODE"
+
+        git tag -a "$TAG_NAME" -m "$ANNOTATION_MSG"
         git push origin "$TAG_NAME"

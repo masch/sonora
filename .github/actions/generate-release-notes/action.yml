@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         git fetch --tags --force
-        LAST_TAG=$(git describe --tags --abbrev=0 --match "${{ inputs.tag_pattern }}" 2>/dev/null || echo "")
+        LAST_TAG=$(git describe --tags --abbrev=0 --match "${{ inputs.tag_pattern }}" HEAD^ 2>/dev/null || echo "")
         if [ -z "$LAST_TAG" ]; then
           echo "No previous tag found. Using fallback of last 5 commits."
           NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
