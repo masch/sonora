@@ -8,6 +8,10 @@ inputs:
     description: 'Skip tagging'
     required: false
     default: 'false'
+  package_path:
+    description: 'Path to package.json to read the version from'
+    required: false
+    default: './apps/mobile/package.json'
 
 runs:
   using: 'composite'
@@ -16,7 +20,7 @@ runs:
       if: ${{ inputs.skip_tagging != 'true' }}
       shell: bash
       run: |
-        VERSION=$(node -p "require('./package.json').version")
+        VERSION=$(node -p "require('${{ inputs.package_path }}').version")
 
         if [ "${{ inputs.environment }}" = "production" ]; then
           BASE_TAG="prod-v$VERSION"
