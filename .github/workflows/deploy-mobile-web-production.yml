@@ -3,9 +3,15 @@ name: 1-PROD Mobile Web
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,6 +23,8 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - run: make check
       - name: Deploy to EAS Hosting
@@ -30,3 +38,8 @@ jobs:
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
         run: make eas-build-web-production
+      - name: Tag deployment
+        uses: ./.github/actions/tag-release
+        with:
+          environment: production
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}

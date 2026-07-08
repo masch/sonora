@@ -1,0 +1,74 @@
+name: 'Tag Release'
+description: 'Calculate and push dynamic SemVer tags with revision increments'
+inputs:
+  environment:
+    description: 'Target environment (staging or production)'
+    required: true
+  skip_tagging:
+    description: 'Skip tagging'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create and Push Tag
+      if: ${{ inputs.skip_tagging != 'true' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+
+        MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          PREFIX="prod-v"
+        else
+          PREFIX="stg-v"
+        fi
+
+        git fetch --tags --force
+        LAST_PATCH=$(git tag -l "$PREFIX$MAJOR_MINOR.*" | sed "s/$PREFIX$MAJOR_MINOR.//" | grep -E '^[0-9]+$' | sort -n | tail -n 1 || true)
+
+        if [ -z "$LAST_PATCH" ]; then
+          PATCH=0
+        else
+          PATCH=$((LAST_PATCH + 1))
+        fi
+
+        TAG_NAME="$PREFIX$MAJOR_MINOR.$PATCH"
+
+        LAST_TAG=$(git describe --tags --abbrev=0 --match "$PREFIX*" HEAD^ 2>/dev/null || echo "")
+
+        if [ -z "$LAST_TAG" ]; then
+          NOTES=$(git log -5 --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        else
+          NOTES=$(git log $LAST_TAG..HEAD --pretty=format:'- %s' 2>/dev/null | tr -d '\"'\''')
+        fi
+
+        TAG_COUNT=$(git tag -l "$PREFIX*" | wc -l)
+        VERSION_CODE=$((TAG_COUNT + 1))
+
+        echo "Creating annotated tag $TAG_NAME"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        ANNOTATION_MSG=$(printf "Created by GitHub Actions\nWorkflow: %s\nRun Number: %s\nRun ID: %s\nRun URL: %s/%s/actions/runs/%s\nVersion Code (APK): %s\n\nRelease Notes:\n%s" \
+          "$GITHUB_WORKFLOW" \
+          "$GITHUB_RUN_NUMBER" \
+          "$GITHUB_RUN_ID" \
+          "$GITHUB_SERVER_URL" \
+          "$GITHUB_REPOSITORY" \
+          "$GITHUB_RUN_ID" \
+          "$VERSION_CODE" \
+          "$NOTES")
+
+        git tag -a "$TAG_NAME" -m "$ANNOTATION_MSG"
+        git push origin "$TAG_NAME"
+
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$ANNOTATION_MSG"
+        else
+          gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$ANNOTATION_MSG" --prerelease
+        fi

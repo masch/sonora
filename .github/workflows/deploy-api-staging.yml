@@ -1,11 +1,17 @@
 name: 2-STG API
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
   push:
     paths:
       - 'apps/api/**'
@@ -28,6 +34,8 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Clean root tsconfig (prevents Wrangler warnings about missing expo/tsconfig.base)
         run: rm -f tsconfig.json
@@ -44,3 +52,8 @@ jobs:
         run: make api-deploy-staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Tag deployment
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}

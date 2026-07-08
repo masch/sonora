@@ -9,9 +9,15 @@ on:
       - '.github/actions/setup/action.yml'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -27,8 +33,15 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Deploy Admin Staging to EAS Hosting
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: make eas-build-admin-staging
+      - name: Tag deployment
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}
