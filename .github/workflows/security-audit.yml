@@ -100,11 +100,8 @@ jobs:
       - name: Write step summary
         run: |
           echo "✅ No vulnerabilities above **moderate+**" > "$GITHUB_STEP_SUMMARY"
-
-      - name: Verify summary written
-        run: |
-          cat "$GITHUB_STEP_SUMMARY"
-          wc -c "$GITHUB_STEP_SUMMARY"
+          echo "Written $(wc -c < "$GITHUB_STEP_SUMMARY") bytes to:"
+          echo "  $GITHUB_STEP_SUMMARY"
 
       - name: Fail on threshold breach
         if: steps.check.outputs.should_fail == 'true'
