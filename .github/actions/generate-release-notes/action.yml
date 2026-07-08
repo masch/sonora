@@ -11,6 +11,9 @@ outputs:
   notes:
     description: 'Generated release notes'
     value: ${{ steps.notes.outputs.notes }}
+  commits:
+    description: 'Calculated commit list only'
+    value: ${{ steps.notes.outputs.commits }}
 
 runs:
   using: 'composite'
@@ -31,6 +34,14 @@ runs:
 
         echo "notes<<EOF" >> $GITHUB_OUTPUT
         echo "${{ inputs.title_prefix }} ${{ github.run_number }}" >> $GITHUB_OUTPUT
+        if [ -n "$NOTES" ]; then
+          echo "$NOTES" >> $GITHUB_OUTPUT
+        else
+          echo "- No new commits" >> $GITHUB_OUTPUT
+        fi
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        echo "commits<<EOF" >> $GITHUB_OUTPUT
         if [ -n "$NOTES" ]; then
           echo "$NOTES" >> $GITHUB_OUTPUT
         else

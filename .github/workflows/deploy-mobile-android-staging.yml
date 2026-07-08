@@ -117,19 +117,17 @@ jobs:
         with:
           name: android-apk
           path: apps/mobile
-      - name: Get Release Notes from Tag
+      - name: Generate Tag-Based Release Notes
         id: release-notes
-        run: |
-          git fetch --tags --force
-          NOTES=$(git tag -l --format='%(contents)' "${{ needs.build-android.outputs.tag_name }}")
-          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/generate-release-notes
+        with:
+          tag_pattern: 'stg-v*'
+          title_prefix: 'Staging Build'
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           APK_PATH: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk
-          FIREBASE_RELEASE_NOTES: ${{ steps.release-notes.outputs.notes }}
+          FIREBASE_RELEASE_NOTES: ${{ steps.release-notes.outputs.commits }}
         run: |
           # Write service account key
           mkdir -p apps/mobile
