@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["bun"],
+  "rangeStrategy": "pin",
+  "schedule": ["before 6am on Monday"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard (Renovate)",
+  "labels": ["dependencies"],
+  "assignees": [],
+  "reviewers": [],
+  "automerge": false,
+  "bun": {
+    "fileMatch": ["(^|/)package\\.json$"]
+  }
+}
