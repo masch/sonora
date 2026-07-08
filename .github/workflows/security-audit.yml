@@ -107,7 +107,13 @@ jobs:
             }
 
             core.setOutput('summary', summary);
-            await core.summary.addRaw(summary).write();
+
+            // Write summary file for later use by a shell step
+            const summaryPath = process.env.RUNNER_TEMP + '/audit-summary.md';
+            fs.writeFileSync(summaryPath, summary);
+
+      - name: Write step summary
+        run: cat "${{ runner.temp }}/audit-summary.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail on threshold breach
         if: steps.check.outputs.should_fail == 'true'
