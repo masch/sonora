@@ -107,7 +107,7 @@ jobs:
             }
 
             core.setOutput('summary', summary);
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
+            await core.summary.addRaw(summary).write();
 
       - name: Fail on threshold breach
         if: steps.check.outputs.should_fail == 'true'
