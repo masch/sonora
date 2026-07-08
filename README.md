@@ -64,6 +64,8 @@ make dev-android # Expo dev server for Android
 | `gga`                                 | Run GGA code review on staged files                           |
 | `gga-full`                            | Run GGA on all source files (stages, reviews, unstages)       |
 | `doctor`                              | Run `expo-doctor` diagnostics                                 |
+| `pin-deps`                            | Pin all workspace deps to exact versions from bun.lock        |
+| `scripts-typecheck`                   | Type-check scripts/ with tsc                                  |
 | `clean`                               | Remove build artifacts and `node_modules`                     |
 | `reset`                               | Full reset: `clean` + `install`                               |
 | `help`                                | Print all targets                                             |
@@ -253,3 +255,40 @@ Each change requires a redeploy: `make api-deploy-staging`.
 | iOS      | Native via Expo dev client |
 | Android  | Native via Expo dev client |
 | Web      | Static output via Expo     |
+
+## Dependency Management & Security
+
+### Version pinning
+
+All workspace `package.json` files use **exact pinned versions** (no `^`, `~`, or `*`). This ensures deterministic installs and lets Dependabot correctly identify advisory status.
+
+**`scripts/pin-deps.ts`** is a one-time script that replaces any range specifier with the exact resolved version from `bun.lock`.
+
+| When                                   | Why                                                                     | How             |
+| -------------------------------------- | ----------------------------------------------------------------------- | --------------- |
+| **Never in daily work**                | Renovate already creates PRs with exact versions (`rangeStrategy: pin`) | —               |
+| **After a manual `bun add`**           | You added a dependency without an exact version                         | `make pin-deps` |
+| **After editing package.json by hand** | You accidentally added a `^` or `*`                                     | `make pin-deps` |
+| **When bootstrapping a new workspace** | To pin all new dependencies cleanly                                     | `make pin-deps` |
+
+### Renovate
+
+We use **Renovate Community Cloud** (free tier) for automated dependency updates. Configuration in `renovate.json`:
+
+- `enabledManagers: ["bun"]` — Bun-only, won't interfere with other managers
+- `rangeStrategy: "pin"` — updates use exact versions (no caret)
+- `schedule: ["before 6am on Monday"]` — weekly
+- `dependencyDashboard: true` — visibility into all pending updates
+
+**Post-merge:** install the [Renovate GitHub App](https://github.com/apps/renovate) on the repository.
+
+### Security audit
+
+The `.github/workflows/security-audit.yml` workflow runs `bun audit` weekly (Monday 06:00 UTC) and supports manual execution via `workflow_dispatch`.
+
+| Feature           | Detail                                                          |
+| ----------------- | --------------------------------------------------------------- |
+| Default threshold | `moderate` (configurable: low/moderate/high/critical)           |
+| Output            | `$GITHUB_STEP_SUMMARY` with findings table                      |
+| Issue creation    | Optional, only on `workflow_dispatch` with `create-issue: true` |
+| Fallback          | If `bun audit --format=json` fails, parses plain text           |

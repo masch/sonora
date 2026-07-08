@@ -141,6 +141,13 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
+.PHONY: pin-deps scripts-typecheck
+pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
+	bun run scripts/pin-deps.ts
+
+scripts-typecheck: ## Type-check scripts/ with tsc
+	bunx tsc --project scripts/tsconfig.json --noEmit
+
 # ── Utilities ─────────────────────────────────
 
 .PHONY: install
@@ -482,7 +489,7 @@ test: test-front test-back test-shared test-admin ## Run all tests (frontend + b
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format test lint typecheck api-typecheck gga ## Run full development gate (tests + lint + typecheck + gga)
+validate: format test lint typecheck api-typecheck scripts-typecheck gga ## Run full development gate (tests + lint + typecheck + gga)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck
