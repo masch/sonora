@@ -108,12 +108,14 @@ jobs:
 
             core.setOutput('summary', summary);
 
-            // Write summary file for later use by a shell step
-            const summaryPath = process.env.RUNNER_TEMP + '/audit-summary.md';
-            fs.writeFileSync(summaryPath, summary);
-
-      - name: Write step summary
-        run: cat "${{ runner.temp }}/audit-summary.md" >> "$GITHUB_STEP_SUMMARY"
+            // Write step summary directly to GITHUB_STEP_SUMMARY
+            const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+            if (summaryFile) {
+              fs.appendFileSync(summaryFile, summary + '\n');
+              console.log('Summary written to: ' + summaryFile);
+            } else {
+              console.log('GITHUB_STEP_SUMMARY not set');
+            }
 
       - name: Fail on threshold breach
         if: steps.check.outputs.should_fail == 'true'
