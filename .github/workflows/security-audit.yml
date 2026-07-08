@@ -46,7 +46,7 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
-          bun audit --format=json > audit-output.json 2>&1 || true
+          bun audit --json 2>/dev/null > audit-output.json || true
           echo "audit_exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Parse audit results and check severity threshold
@@ -55,7 +55,9 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const threshold = '${{ github.event.inputs.severity-threshold || 'moderate' }}';
+            const rawThreshold =
+              '${{ github.event.inputs.severity-threshold || 'moderate' }}';
+            const threshold = rawThreshold;
             const SEVERITY_ORDER = ['low', 'moderate', 'high', 'critical'];
             const minIndex = SEVERITY_ORDER.indexOf(threshold);
 
@@ -63,48 +65,48 @@ jobs:
             let summary = '';
 
             try {
-              const data = JSON.parse(fs.readFileSync('audit-output.json', 'utf8'));
+              const raw = fs.readFileSync('audit-output.json', 'utf8').trim();
+              const data = JSON.parse(raw);
 
-              if (data.vulnerabilities && data.vulnerabilities.length > 0) {
-                findings = data.vulnerabilities.filter(v => {
-                  const sevIdx = SEVERITY_ORDER.indexOf(v.severity);
-                  return sevIdx >= minIndex && sevIdx !== -1;
-                });
+              // bun audit --json shape: { pkg: [{id, severity, title, url}] }
+              for (const [pkg, advisories] of Object.entries(data)) {
+                for (const adv of advisories) {
+                  const sevIdx = SEVERITY_ORDER.indexOf(adv.severity);
+                  if (sevIdx >= minIndex && sevIdx !== -1) {
+                    findings.push({
+                      packageName: pkg,
+                      severity: adv.severity,
+                      advisory: adv.title,
+                      url: adv.url,
+                    });
+                  }
+                }
               }
-            } catch {
-              // Fallback: parse plain text output
+            } catch (err) {
+              console.log('Parse error:', err.message);
               const text = fs.readFileSync('audit-output.json', 'utf8');
-              const severityPattern = new RegExp(
-                `(${SEVERITY_ORDER.slice(minIndex).join('|')})`,
-                'gi'
-              );
-              const matches = text.match(severityPattern);
-              if (matches) {
-                findings = matches.map(s => ({
-                  severity: s.toLowerCase(),
-                  packageName: 'unknown (text parse)',
-                  advisory: text.split('\n').find(l => l.toLowerCase().includes(s.toLowerCase())) || 'N/A'
-                }));
-              }
+              console.log('Raw output (first 500):', text.slice(0, 500));
             }
 
-            // Build step summary
             if (findings.length === 0) {
-              summary = '✅ No vulnerabilities found above threshold (' + threshold + '+)';
+              summary = '✅ No vulnerabilities above threshold ('
+                + threshold + '+)';
               core.setOutput('should_fail', 'false');
             } else {
-              summary = `❌ ${findings.length} vulnerability(ies) found at or above **${threshold}**\n\n`;
-              summary += '| Package | Severity | Advisory |\n|---------|----------|----------|\n';
+              summary = '❌ ' + findings.length
+                + ' vulnerability(ies) at or above **'
+                + threshold + '**\n\n';
+              summary += '| Package | Severity | Advisory |\n';
+              summary += '|---------|----------|----------|\n';
               for (const f of findings) {
-                summary += `| ${f.packageName || f.name} | ${f.severity} | ${f.advisory || f.url || 'N/A'} |\n`;
+                summary += '| ' + f.packageName + ' | ' + f.severity + ' | '
+                  + f.advisory + ' |\n';
               }
               core.setOutput('should_fail', 'true');
               core.setOutput('findings', JSON.stringify(findings));
             }
 
             core.setOutput('summary', summary);
-
-            // Write to GITHUB_STEP_SUMMARY
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
 
       - name: Fail on threshold breach
@@ -123,18 +125,24 @@ jobs:
           script: |
             const findings = JSON.parse('${{ steps.check.outputs.findings }}');
             let body = '## Security Audit Findings\n\n';
-            body += 'Vulnerabilities found at or above **${{ github.event.inputs.severity-threshold || 'moderate' }}** threshold.\n\n';
-            body += '| Package | Severity | Advisory |\n|---------|----------|----------|\n';
+            body += 'Vulnerabilities at or above **'
+              + '${{ github.event.inputs.severity-threshold || 'moderate' }}'
+              + '** threshold.\n\n';
+            body += '| Package | Severity | Advisory |\n';
+            body += '|---------|----------|----------|\n';
             for (const f of findings) {
-              body += `| ${f.packageName || f.name} | ${f.severity} | ${f.advisory || f.url || 'N/A'} |\n`;
+              body += '| ' + f.packageName + ' | ' + f.severity + ' | ['
+                + f.advisory + '](' + f.url + ') |\n';
             }
             body += '\n---\n';
-            body += '_Generated by security-audit workflow on ${{ github.ref_name }}_';
+            body += '_Generated by security-audit workflow on '
+              + '${{ github.ref_name }}_';
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `Security Audit: ${findings.length} vulnerability(ies) found`,
+              title: 'Security Audit: '
+                + findings.length + ' vulnerability(ies) found',
               body: body,
               labels: ['security']
             });
