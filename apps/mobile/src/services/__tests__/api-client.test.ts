@@ -249,7 +249,7 @@ describe('ApiClient', () => {
       { id: 2, active: false },
     ];
     mockFetchOk(rawData);
-    const onlyActive = (data: Array<{ active: boolean }>) => data.filter((d) => d.active);
+    const onlyActive = (data: { active: boolean }[]) => data.filter((d) => d.active);
 
     const result = await ApiClient.get('/items', {
       cacheKey: 'items',

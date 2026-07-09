@@ -114,21 +114,5 @@ describe('AnalyticsService', () => {
         delete (globalThis as any).window;
       }
     });
-
-    it('enables native promise rejection tracking on native platform', () => {
-      platform.OS = 'ios';
-      const mockEnable = jest.fn();
-      jest.mock(
-        'promise/setimmediate/rejection-tracking',
-        () => ({
-          enable: mockEnable,
-        }),
-        { virtual: true },
-      );
-
-      AnalyticsService.initializeGlobalErrorTracking();
-      // Since it requires the module dynamically, we can check if it loaded correctly
-      // internally through require call.
-    });
   });
 });

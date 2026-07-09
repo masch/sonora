@@ -39,6 +39,7 @@ module.exports = defineConfig([
     rules: {
       'i18next/no-literal-string': 'off',
       'import/first': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

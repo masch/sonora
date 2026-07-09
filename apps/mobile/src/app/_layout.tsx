@@ -1,6 +1,6 @@
 import { fontConfig } from '@/config/font';
 import '@/global.css';
-import '@/i18n';
+import { addResources } from '@/i18n';
 
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, ErrorBoundaryProps } from 'expo-router';
@@ -20,7 +20,6 @@ import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
-import { addResources } from '@/i18n';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)

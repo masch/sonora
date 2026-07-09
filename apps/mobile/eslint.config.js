@@ -41,6 +41,13 @@ module.exports = defineConfig([
     rules: {
       'i18next/no-literal-string': 'off',
       'import/first': 'off', // jest.mock() must appear before module imports
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['src/services/analytics.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

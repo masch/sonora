@@ -36,7 +36,6 @@ jest.mock('@/constants/tabs', () => ({
 }));
 
 jest.mock('expo-router/ui', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView } = require('react-native');
   return {
     Tabs: ({ children }: { children: React.ReactNode }) => <RNView>{children}</RNView>,

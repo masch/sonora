@@ -1,10 +1,11 @@
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { Collapsible } from '@/components/ui/collapsible';
 
+import type { ViewStyle } from 'react-native';
+
 interface MockSymbolProps {
-  style?: object | unknown[];
+  style?: ViewStyle | ViewStyle[] | undefined;
   testID?: string;
 }
 

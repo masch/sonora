@@ -31,7 +31,7 @@ function ensureWebInitialized() {
         webAnalytics = getAnalytics(app);
       } else {
         logger.warn(
-          'Faltan credenciales de Firebase Web. Las analíticas web se imprimirán en consola.',
+          'Faltan credeciales de Firebase Web. Las analíticas web se imprimirán en consola.',
         );
       }
     } catch (err) {
@@ -146,21 +146,6 @@ export const AnalyticsService = {
         });
       }
       return;
-    }
-
-    try {
-      const rejectionTracking = require('promise/setimmediate/rejection-tracking');
-      rejectionTracking.enable({
-        all: true,
-        onUnhandled: (id: unknown, error: unknown) => {
-          AnalyticsService.recordError(
-            error instanceof Error ? error : new Error(String(error)),
-            `Unhandled promise rejection (id: ${id})`,
-          );
-        },
-      });
-    } catch (err) {
-      logger.warn('No se pudo habilitar el seguimiento global de promesas rechazadas:', err);
     }
   },
 };

@@ -36,7 +36,6 @@ jest.mock('@/constants/tabs', () => ({
 }));
 
 jest.mock('expo-router/unstable-native-tabs', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View: RNView, Text: RNText } = require('react-native');
 
   const NativeTabsMock = (props: Record<string, unknown>) => (

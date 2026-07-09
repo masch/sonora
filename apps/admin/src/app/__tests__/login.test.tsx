@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, act } from '@testing-library/react-native';
 
 const mockReplace = jest.fn();
@@ -29,15 +28,13 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/tw', () => {
-  const React = require('react');
   const { View, Text, TouchableOpacity, TextInput, ScrollView } = require('react-native');
+  const React = require('react');
   return {
     TwView: View,
-    TwText: ({ className, ...props }: Record<string, unknown>) => React.createElement(Text, props),
-    TwPressable: ({ className, ...props }: Record<string, unknown>) =>
-      React.createElement(TouchableOpacity, props),
-    TwTextInput: ({ className, ...props }: Record<string, unknown>) =>
-      React.createElement(TextInput, props),
+    TwPressable: (props: Record<string, unknown>) => React.createElement(TouchableOpacity, props),
+    TwTextInput: (props: Record<string, unknown>) => React.createElement(TextInput, props),
+    TwText: (props: Record<string, unknown>) => React.createElement(Text, props),
     TwScrollView: ScrollView,
   };
 });

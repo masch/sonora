@@ -50,7 +50,6 @@ jest.mock('@/data/experiences', () => ({
 
 const mockPush = jest.fn();
 const MockLink = ({ children, testID, ...props }: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const RN = require('react-native');
   return (
     <RN.TouchableOpacity testID={testID} onPress={() => mockPush(props.href)}>

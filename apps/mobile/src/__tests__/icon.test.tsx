@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ViewStyle } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { Icon, ICON_MAP } from '@/components/icon';
 
@@ -7,23 +7,22 @@ interface MockSymbolViewProps {
   size?: number;
   tintColor?: string;
   weight?: string;
-  style?: object | unknown[];
+  style?: ViewStyle | ViewStyle[] | undefined;
 }
 
 jest.mock('expo-symbols', () => {
   const { View } = require('react-native');
   return {
     SymbolView: ({ name, size, tintColor, weight, style }: MockSymbolViewProps) => {
-      return (
-        <View
-          testID="mock-symbol-view"
-          name={typeof name === 'string' ? name : JSON.stringify(name)}
-          size={size}
-          tintColor={tintColor}
-          weight={weight}
-          style={style}
-        />
-      );
+      const viewProps: Record<string, unknown> = {
+        testID: 'mock-symbol-view',
+        name: typeof name === 'string' ? name : JSON.stringify(name),
+        size,
+        tintColor,
+        weight,
+        style,
+      };
+      return <View {...viewProps} />;
     },
   };
 });
