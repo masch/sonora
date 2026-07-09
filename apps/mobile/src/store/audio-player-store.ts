@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import type { AudioPlayer, AudioMetadata, AudioLockScreenOptions } from 'expo-audio';
 
+import { AnalyticsService } from '@/services/analytics';
+
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
 export interface PendingPlayRequest {
@@ -62,8 +64,6 @@ function disableLockScreenControls(player: AudioPlayer) {
     }
   }
 }
-
-import { AnalyticsService } from '@/services/analytics';
 
 function getTrackIdFromUri(uri: string | null): string {
   if (!uri) return 'unknown';

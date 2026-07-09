@@ -3,6 +3,12 @@ import NetInfo from '@react-native-community/netinfo';
 import { APP_CONFIG } from '../config/app-config';
 
 /**
+ * Monitors network connectivity using @react-native-community/netinfo.
+ * Exposes `isOnline` boolean that auto-updates on connectivity changes.
+ */
+import { AnalyticsService } from '@/services/analytics';
+
+/**
  * On web, NetInfo checks connectivity by sending a HEAD request to a
  * reachability URL. Default is the page origin, which gets aborted during
  * initial page load (causing harmless NS_BINDING_ABORTED in Firefox,
@@ -17,12 +23,6 @@ NetInfo.configure({
 export interface NetworkStatusState {
   isOnline: boolean;
 }
-
-/**
- * Monitors network connectivity using @react-native-community/netinfo.
- * Exposes `isOnline` boolean that auto-updates on connectivity changes.
- */
-import { AnalyticsService } from '@/services/analytics';
 
 export function useNetworkStatus(): NetworkStatusState {
   const [isOnline, setIsOnline] = useState(true);

@@ -1,9 +1,13 @@
+import { initializeApp } from 'firebase/app';
+import { getAnalytics, logEvent, type Analytics } from 'firebase/analytics';
+import firebaseAnalytics from '@react-native-firebase/analytics';
+import firebaseCrashlytics from '@react-native-firebase/crashlytics';
+
 import { logger } from '@/utils/logger';
 import { Platform } from 'react-native';
 
-// Firebase Web SDK instances
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let webAnalytics: any = null;
+// Firebase Web SDK instance
+let webAnalytics: Analytics | null = null;
 let isWebInitialized = false;
 
 function ensureWebInitialized() {
@@ -13,9 +17,6 @@ function ensureWebInitialized() {
 
   if (typeof window !== 'undefined') {
     try {
-      const { initializeApp } = require('firebase/app');
-      const { getAnalytics } = require('firebase/analytics');
-
       const firebaseConfig = {
         apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -31,7 +32,7 @@ function ensureWebInitialized() {
         webAnalytics = getAnalytics(app);
       } else {
         logger.warn(
-          'Faltan credenciales de Firebase Web. Las analíticas web se imprimirán en consola.',
+          'Faltan credeciales de Firebase Web. Las analíticas web se imprimirán en consola.',
         );
       }
     } catch (err) {
@@ -96,7 +97,6 @@ export const AnalyticsService = {
     if (Platform.OS === 'web') {
       if (webAnalytics) {
         try {
-          const { logEvent } = require('firebase/analytics');
           logEvent(webAnalytics, eventName, extendedParams);
         } catch (err) {
           logger.warn(`Firebase Web logEvent error for ${eventName}:`, err);
@@ -108,8 +108,7 @@ export const AnalyticsService = {
     }
 
     try {
-      const analytics = require('@react-native-firebase/analytics').default;
-      analytics().logEvent(eventName, extendedParams);
+      firebaseAnalytics().logEvent(eventName, extendedParams);
     } catch (err) {
       logger.warn(`Firebase logEvent error for ${eventName}:`, err);
     }
@@ -124,17 +123,16 @@ export const AnalyticsService = {
     }
 
     try {
-      const crashlytics = require('@react-native-firebase/crashlytics').default;
       if (customDescription) {
-        crashlytics().setAttribute('custom_description', customDescription);
+        firebaseCrashlytics().setAttribute('custom_description', customDescription);
       }
-      crashlytics().recordError(error);
+      firebaseCrashlytics().recordError(error);
     } catch (err) {
       logger.warn('Firebase Crashlytics recordError error:', err);
     }
   },
 
-  initializeGlobalErrorTracking: () => {
+  initializeGlobalErrorTracking: async () => {
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined') {
         window.addEventListener('unhandledrejection', (event) => {
@@ -149,13 +147,13 @@ export const AnalyticsService = {
     }
 
     try {
-      const rejectionTracking = require('promise/setimmediate/rejection-tracking');
+      const rejectionTracking = await import('promise/setimmediate/rejection-tracking');
       rejectionTracking.enable({
         all: true,
         onUnhandled: (id: unknown, error: unknown) => {
           AnalyticsService.recordError(
             error instanceof Error ? error : new Error(String(error)),
-            `Unhandled promise rejection (id: ${id})`,
+            `Unhandled promise rejection (id: ${String(id)})`,
           );
         },
       });

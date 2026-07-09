@@ -6,6 +6,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 // react-doctor-disable-next-line react-doctor/rn-no-legacy-expo-packages — actively maintained in SDK 56, backgroundImage CSS is experimental
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { LOGO_GLOW, EXPO_LOGO } from '@/constants/images';
+
 const DURATION = 600;
 
 // react-doctor-disable-next-line deslop/unused-export — false positive: used in _layout.tsx via @/ alias
@@ -74,8 +76,6 @@ const glowKeyframe = new Keyframe({
     transform: [{ rotateZ: '7200deg' }],
   },
 });
-
-import { LOGO_GLOW, EXPO_LOGO } from '@/constants/images';
 
 // react-doctor-disable-next-line deslop/unused-export — false positive: used externally via @/ alias
 export function AnimatedIcon() {

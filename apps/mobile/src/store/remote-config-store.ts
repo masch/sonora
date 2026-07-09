@@ -70,7 +70,7 @@ function mergeRemoteConfig(
   const result = { ...defaults };
   const shape = RemoteConfigPayloadSchema.shape;
 
-  for (const key of Object.keys(shape) as Array<keyof typeof shape>) {
+  for (const key of Object.keys(shape) as (keyof typeof shape)[]) {
     const value = remote[key as keyof RemoteConfigPayload];
     if (value === undefined) continue;
 
@@ -108,7 +108,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
         // Deep-merge cache into defaults so nested partial values
         // (e.g. geofence with only radiusMeters) don't lose default fields.
         const merged: Record<string, unknown> = { ...DEFAULT_REMOTE_CONFIG };
-        for (const key of Object.keys(cached) as Array<keyof RemoteConfigPayload>) {
+        for (const key of Object.keys(cached) as (keyof RemoteConfigPayload)[]) {
           const val = cached[key];
           if (val !== undefined && typeof val === 'object' && val !== null && !Array.isArray(val)) {
             (merged as Record<string, unknown>)[key] = {

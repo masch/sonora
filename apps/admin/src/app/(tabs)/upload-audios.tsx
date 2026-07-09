@@ -117,7 +117,7 @@ export default function UploadAudiosScreen() {
               </TwText>
               <TwTextInput
                 className="w-full h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
-                /* eslint-disable-next-line i18next/no-literal-string */
+
                 placeholder={targetType === 'trip' ? 'e.g., trip-123' : 'e.g., track-123'}
                 placeholderTextColor="#a59e99"
                 value={targetId}
@@ -133,7 +133,7 @@ export default function UploadAudiosScreen() {
               </TwText>
               <TwTextInput
                 className="w-full h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
-                /* eslint-disable-next-line i18next/no-literal-string */
+
                 placeholder="e.g., Intro Guide, Chapter 1..."
                 placeholderTextColor="#a59e99"
                 value={audioTitle}

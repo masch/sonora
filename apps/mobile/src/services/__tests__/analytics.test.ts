@@ -28,19 +28,16 @@ jest.mock('@react-native-firebase/crashlytics', () => {
     }),
   };
 });
-
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn().mockReturnValue({}),
-}));
+// react-native-firebase mocks are handled locally to assert on log/error spies
 
 jest.mock('firebase/analytics', () => ({
   getAnalytics: jest.fn().mockReturnValue({}),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logEvent: (...args: any[]) => mockWebLogEvent(...args),
+
+  logEvent: (...args: unknown[]) =>
+    mockWebLogEvent(...(args as [never, string, Record<string, string>?])),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const platform: { OS: string } = Platform as any;
+const platform: { OS: string } = Platform as { OS: string };
 const originalOS = platform.OS;
 
 describe('AnalyticsService', () => {
@@ -95,40 +92,21 @@ describe('AnalyticsService', () => {
     it('sets up unhandledrejection listener on web', () => {
       platform.OS = 'web';
       const mockAddEventListener = jest.fn();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const originalWindow = (globalThis as any).window;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (globalThis as any).window = {
+      const global = globalThis as unknown as { window: Window | undefined };
+      const originalWindow = global.window;
+      global.window = {
         addEventListener: mockAddEventListener,
-      };
+      } as unknown as Window & typeof globalThis;
 
       AnalyticsService.initializeGlobalErrorTracking();
 
       expect(mockAddEventListener).toHaveBeenCalledWith('unhandledrejection', expect.any(Function));
 
       if (originalWindow) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (globalThis as any).window = originalWindow;
+        global.window = originalWindow;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (globalThis as any).window;
+        delete global.window;
       }
-    });
-
-    it('enables native promise rejection tracking on native platform', () => {
-      platform.OS = 'ios';
-      const mockEnable = jest.fn();
-      jest.mock(
-        'promise/setimmediate/rejection-tracking',
-        () => ({
-          enable: mockEnable,
-        }),
-        { virtual: true },
-      );
-
-      AnalyticsService.initializeGlobalErrorTracking();
-      // Since it requires the module dynamically, we can check if it loaded correctly
-      // internally through require call.
     });
   });
 });

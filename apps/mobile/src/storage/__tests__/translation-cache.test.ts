@@ -7,7 +7,7 @@ const CACHE_KEY_ES = 'translations:es';
 
 // Helper to reimport translation-cache fresh for each test
 function importModule() {
-  return require('../translation-cache') as typeof import('../translation-cache');
+  return jest.requireActual('../translation-cache') as typeof import('../translation-cache');
 }
 
 beforeEach(() => {
