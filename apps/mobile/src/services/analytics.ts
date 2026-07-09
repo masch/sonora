@@ -1,4 +1,8 @@
-import { type Analytics } from 'firebase/analytics';
+import { initializeApp } from 'firebase/app';
+import { getAnalytics, logEvent, type Analytics } from 'firebase/analytics';
+import firebaseAnalytics from '@react-native-firebase/analytics';
+import firebaseCrashlytics from '@react-native-firebase/crashlytics';
+
 import { logger } from '@/utils/logger';
 import { Platform } from 'react-native';
 
@@ -13,9 +17,6 @@ function ensureWebInitialized() {
 
   if (typeof window !== 'undefined') {
     try {
-      const { initializeApp } = require('firebase/app');
-      const { getAnalytics } = require('firebase/analytics');
-
       const firebaseConfig = {
         apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -96,7 +97,6 @@ export const AnalyticsService = {
     if (Platform.OS === 'web') {
       if (webAnalytics) {
         try {
-          const { logEvent } = require('firebase/analytics');
           logEvent(webAnalytics, eventName, extendedParams);
         } catch (err) {
           logger.warn(`Firebase Web logEvent error for ${eventName}:`, err);
@@ -108,8 +108,7 @@ export const AnalyticsService = {
     }
 
     try {
-      const analytics = require('@react-native-firebase/analytics').default;
-      analytics().logEvent(eventName, extendedParams);
+      firebaseAnalytics().logEvent(eventName, extendedParams);
     } catch (err) {
       logger.warn(`Firebase logEvent error for ${eventName}:`, err);
     }
@@ -124,11 +123,10 @@ export const AnalyticsService = {
     }
 
     try {
-      const crashlytics = require('@react-native-firebase/crashlytics').default;
       if (customDescription) {
-        crashlytics().setAttribute('custom_description', customDescription);
+        firebaseCrashlytics().setAttribute('custom_description', customDescription);
       }
-      crashlytics().recordError(error);
+      firebaseCrashlytics().recordError(error);
     } catch (err) {
       logger.warn('Firebase Crashlytics recordError error:', err);
     }
