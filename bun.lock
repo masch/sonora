@@ -39,7 +39,7 @@
         "@types/jest": "29.5.14",
         "@types/react": "19.2.15",
         "eslint": "9.39.4",
-        "eslint-config-expo": "56.0.4",
+        "eslint-config-expo": "57.0.0",
         "eslint-plugin-i18next": "6.1.4",
         "jest": "29.7.0",
         "jest-expo": "56.0.5",
@@ -130,7 +130,7 @@
         "@types/leaflet": "1.9.21",
         "@types/react": "19.2.15",
         "eslint": "9.39.4",
-        "eslint-config-expo": "56.0.4",
+        "eslint-config-expo": "57.0.0",
         "eslint-plugin-i18next": "6.1.4",
         "firebase-tools": "15.22.2",
         "jest": "29.7.0",
@@ -1790,7 +1790,7 @@
 
     "eslint": ["eslint@9.39.4", "", { "dependencies": { "@eslint-community/eslint-utils": "^4.8.0", "@eslint-community/regexpp": "^4.12.1", "@eslint/config-array": "^0.21.2", "@eslint/config-helpers": "^0.4.2", "@eslint/core": "^0.17.0", "@eslint/eslintrc": "^3.3.5", "@eslint/js": "9.39.4", "@eslint/plugin-kit": "^0.4.1", "@humanfs/node": "^0.16.6", "@humanwhocodes/module-importer": "^1.0.1", "@humanwhocodes/retry": "^0.4.2", "@types/estree": "^1.0.6", "ajv": "^6.14.0", "chalk": "^4.0.0", "cross-spawn": "^7.0.6", "debug": "^4.3.2", "escape-string-regexp": "^4.0.0", "eslint-scope": "^8.4.0", "eslint-visitor-keys": "^4.2.1", "espree": "^10.4.0", "esquery": "^1.5.0", "esutils": "^2.0.2", "fast-deep-equal": "^3.1.3", "file-entry-cache": "^8.0.0", "find-up": "^5.0.0", "glob-parent": "^6.0.2", "ignore": "^5.2.0", "imurmurhash": "^0.1.4", "is-glob": "^4.0.0", "json-stable-stringify-without-jsonify": "^1.0.1", "lodash.merge": "^4.6.2", "minimatch": "^3.1.5", "natural-compare": "^1.4.0", "optionator": "^0.9.3" }, "peerDependencies": { "jiti": "*" }, "optionalPeers": ["jiti"], "bin": { "eslint": "bin/eslint.js" } }, "sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ=="],
 
-    "eslint-config-expo": ["eslint-config-expo@56.0.4", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "^8.59.0", "@typescript-eslint/parser": "^8.59.0", "eslint-import-resolver-typescript": "^3.6.3", "eslint-plugin-expo": "^1.0.1", "eslint-plugin-import": "^2.30.0", "eslint-plugin-react": "^7.37.3", "eslint-plugin-react-hooks": "^7.0.0", "globals": "^16.0.0" }, "peerDependencies": { "eslint": ">=8.10" } }, "sha512-1OD7rJMxCchKHxq+U+OQsAxVtzAxeUb9875g6+15KsSD9fqKTgq7DEEWYwunzU9r9E8kYJ+mh7+j86vF9m9NMw=="],
+    "eslint-config-expo": ["eslint-config-expo@57.0.0", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "^8.59.0", "@typescript-eslint/parser": "^8.59.0", "eslint-import-resolver-typescript": "^3.6.3", "eslint-plugin-expo": "^1.1.0", "eslint-plugin-import": "^2.30.0", "eslint-plugin-react": "^7.37.3", "eslint-plugin-react-hooks": "^7.0.0", "globals": "^16.0.0" }, "peerDependencies": { "eslint": ">=8.10" } }, "sha512-T7OTN9xrSZYjLw4qTkL1Mn2WfAUVmMGY38+OYAcraI1uiTFVH6jfkSkv84WLTqnneblLcb6AsMDV+SHcUj3hGw=="],
 
     "eslint-import-resolver-node": ["eslint-import-resolver-node@0.3.10", "", { "dependencies": { "debug": "^3.2.7", "is-core-module": "^2.16.1", "resolve": "^2.0.0-next.6" } }, "sha512-tRrKqFyCaKict5hOd244sL6EQFNycnMQnBe+j8uqGNXYzsImGbGUU4ibtoaBmv5FLwJwcFJNeg1GeVjQfbMrDQ=="],
 
@@ -1798,7 +1798,7 @@
 
     "eslint-module-utils": ["eslint-module-utils@2.13.0", "", { "dependencies": { "debug": "^3.2.7" } }, "sha512-bLohSkT6469rRs8czj0tLTD8vaeIS/whvPRJVjDr7IuoTT1k5DYDERlNycjDj/HkOlvQdYurmfZ/g3fG5bgeLQ=="],
 
-    "eslint-plugin-expo": ["eslint-plugin-expo@1.0.3", "", { "dependencies": { "@typescript-eslint/types": "^8.29.1", "@typescript-eslint/utils": "^8.29.1", "eslint": "^9.24.0" } }, "sha512-C1v9NPvpDET36+7Klpp/+53Jl+VzOfpbDxpKtL/pAPhCDwTX0kW6Swo425PT0uc4AMT5jpQbB7hSKFjKOGMl4A=="],
+    "eslint-plugin-expo": ["eslint-plugin-expo@1.1.0", "", { "dependencies": { "@typescript-eslint/types": "^8.59.0", "@typescript-eslint/utils": "^8.59.0", "eslint": "^9.24.0" } }, "sha512-vPP0EPx7IA7ZfP49dY4rq9RV5jqkFWG+Pih3/oGjzIRjMI+ogcOE8i6isYkLXAdw/yvFV2BRZkTaQaiOGQqn6Q=="],
 
     "eslint-plugin-i18next": ["eslint-plugin-i18next@6.1.4", "", { "dependencies": { "lodash": "^4.17.21", "requireindex": "~1.1.0" } }, "sha512-BekXQu1VaVFkREepQGsntBYoKuPsf89V16n/s2xpKMtsw0/lDseds1wBhj3RtO1dKnHsfTPaG+xul1vF0R7LEQ=="],
 
