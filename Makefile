@@ -469,19 +469,19 @@ api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
 
 .PHONY: test-front
 test-front: ## Run frontend tests (Jest with jest-expo preset, one-shot)
-	cd apps/mobile && bunx jest --passWithNoTests --watchAll=false
+	cd apps/mobile && bun run jest --passWithNoTests --watchAll=false
 
 .PHONY: test-back
 test-back: ## Run backend API tests (Vitest, alias for api-test)
 	$(MAKE) api-test
 
 .PHONY: test-shared
-test-shared: ## Run shared package tests (Vitest)
-	cd packages/shared && bunx vitest run
+test-shared: ## Run shared package tests (Bun)
+	cd packages/shared && bun run test
 
 .PHONY: test-admin
 test-admin: ## Run admin app tests (Jest, one-shot)
-	cd apps/admin && bunx jest --passWithNoTests --watchAll=false
+	cd apps/admin && bun run jest --passWithNoTests --watchAll=false
 
 .PHONY: test
 test: test-front test-back test-shared test-admin ## Run all tests (frontend + backend + shared + admin)

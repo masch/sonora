@@ -85,3 +85,39 @@ jest.mock('expo-audio', () => ({
   useAudioPlayerStatus: jest.fn(() => ({})),
   setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
+
+// Mock react-native-firebase packages globally
+jest.mock('@react-native-firebase/app', () => ({
+  __esModule: true,
+  default: {
+    apps: [],
+    initializeApp: jest.fn(),
+  },
+}));
+
+jest.mock('@react-native-firebase/analytics', () => ({
+  __esModule: true,
+  default: () => ({
+    logEvent: jest.fn(),
+  }),
+}));
+
+jest.mock('@react-native-firebase/crashlytics', () => ({
+  __esModule: true,
+  default: () => ({
+    recordError: jest.fn(),
+    setAttribute: jest.fn(),
+  }),
+}));
+
+// Mock web firebase SDK packages globally to prevent CJS/ESM loading crashes
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock('firebase/analytics', () => ({
+  getAnalytics: jest.fn().mockReturnValue({}),
+  logEvent: jest.fn(),
+}));
+
+

@@ -28,10 +28,7 @@ jest.mock('@react-native-firebase/crashlytics', () => {
     }),
   };
 });
-
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn().mockReturnValue({}),
-}));
+// react-native-firebase mocks are handled locally to assert on log/error spies
 
 jest.mock('firebase/analytics', () => ({
   getAnalytics: jest.fn().mockReturnValue({}),
