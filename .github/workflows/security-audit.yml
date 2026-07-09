@@ -24,6 +24,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read
 
 concurrency:
   group: security-audit-${{ github.ref }}
@@ -48,7 +49,7 @@ jobs:
 
       - name: Parse audit results and check severity threshold
         id: check
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -110,7 +111,7 @@ jobs:
           steps.check.outputs.should_fail == 'true' &&
           github.event_name == 'workflow_dispatch' &&
           github.event.inputs.create-issue == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const findings = JSON.parse(
