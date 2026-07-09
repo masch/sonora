@@ -21,7 +21,9 @@
     "@opentelemetry/core": "2.8.0"
   },
   "devDependencies": {
-    "@types/node": "^26.1.0",
+    "@types/node": "26.1.0",
+    "eslint-plugin-package-json-dependencies": "1.0.20",
+    "jsonc-eslint-parser": "3.1.0",
     "lightningcss": "1.30.1"
   }
 }

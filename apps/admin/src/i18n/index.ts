@@ -1,4 +1,4 @@
-import i18next from 'i18next';
+import { use as i18nUse, default as i18nInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { en } from './locales/en';
 import { es } from './locales/es';
@@ -36,7 +36,7 @@ const detectBrowserLanguage = (): string => {
   }
 };
 
-i18next.use(initReactI18next).init({
+i18nUse(initReactI18next).init({
   resources,
   lng: detectBrowserLanguage(),
   fallbackLng: 'en',
@@ -45,4 +45,4 @@ i18next.use(initReactI18next).init({
   },
 });
 
-export default i18next;
+export default i18nInstance;

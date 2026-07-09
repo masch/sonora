@@ -7,7 +7,13 @@ import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 import LoadingView from '@/components/loading-view';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
+import {
+  TRACK_IMAGES,
+  DEFAULT_TRACK_IMAGE,
+  SONORA_LOGO,
+  SONORA_BANNER_BG,
+  SONORA_INSTRUCTIONS_BG,
+} from '@/constants/images';
 import { fetchExperiences, type Experience } from '@/data/experiences';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
@@ -16,8 +22,6 @@ import { TwImage } from '@/tw/image';
 import { getHaversineDistance } from '@/utils/haversine';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { logger } from '@/utils/logger';
-
-import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_INSTRUCTIONS_BG } from '@/constants/images';
 
 function formatDistance(
   meters: number,

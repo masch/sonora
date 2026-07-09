@@ -1,19 +1,20 @@
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { Collapsible } from '@/components/ui/collapsible';
 
+import type { ViewStyle } from 'react-native';
+
 interface MockSymbolProps {
-  style?: object | unknown[];
+  style?: ViewStyle | ViewStyle[] | undefined;
   testID?: string;
 }
 
 jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
+  const React = jest.requireActual('react');
+  const h = React.createElement;
   return {
-    SymbolView: ({ style, testID }: MockSymbolProps) => {
-      return <View testID={testID || 'mock-symbol'} style={style} />;
-    },
+    SymbolView: ({ style, testID }: MockSymbolProps) =>
+      h('View', { testID: testID || 'mock-symbol', style }),
   };
 });
 

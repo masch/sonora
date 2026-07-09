@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { render } from '@testing-library/react-native';
 
+import { AudioPlayerBridge } from '@/components/audio-player-bridge';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
 
 // --- Mocks for expo-audio ---
@@ -62,8 +63,6 @@ beforeEach(() => {
 
 describe('AudioPlayerBridge', () => {
   it('creates an AudioPlayer and registers it in the store on mount', async () => {
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     await render(<AudioPlayerBridge />);
 
     expect(mockCreateAudioPlayer).toHaveBeenCalledWith(null);
@@ -72,8 +71,6 @@ describe('AudioPlayerBridge', () => {
   });
 
   it('removes the player and clears the store on unmount', async () => {
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     const { unmount } = await render(<AudioPlayerBridge />);
 
     expect(useAudioPlayerStore.getState()._player).not.toBeNull();
@@ -85,8 +82,6 @@ describe('AudioPlayerBridge', () => {
   });
 
   it('calls setAudioModeAsync with background playback config on mount', async () => {
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     await render(<AudioPlayerBridge />);
 
     expect(mockSetAudioModeAsync).toHaveBeenCalledWith({
@@ -99,8 +94,6 @@ describe('AudioPlayerBridge', () => {
   it('requests notification permissions on Android', async () => {
     platform.OS = 'android';
 
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     await render(<AudioPlayerBridge />);
 
     expect(mockRequestNotificationPermissionsAsync).toHaveBeenCalledTimes(1);
@@ -109,16 +102,12 @@ describe('AudioPlayerBridge', () => {
   it('does NOT request notification permissions on iOS', async () => {
     platform.OS = 'ios';
 
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     await render(<AudioPlayerBridge />);
 
     expect(mockRequestNotificationPermissionsAsync).not.toHaveBeenCalled();
   });
 
   it('syncs initial player status to the store', async () => {
-    const { AudioPlayerBridge } = require('@/components/audio-player-bridge');
-
     await render(<AudioPlayerBridge />);
 
     const state = useAudioPlayerStore.getState();
