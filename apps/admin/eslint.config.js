@@ -38,8 +38,8 @@ module.exports = defineConfig([
     files: ['**/__tests__/**'],
     rules: {
       'i18next/no-literal-string': 'off',
-      'import/first': 'off',
-      '@typescript-eslint/no-require-imports': 'off',
+      'import/first': 'off', // jest.mock() must appear before module imports
+      '@typescript-eslint/no-require-imports': 'off', // Bun jest.mock() needs require() inside factory
     },
   },
   {

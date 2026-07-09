@@ -37,11 +37,12 @@ module.exports = defineConfig([
     },
   },
   {
+    // Overrides for test files and analytics (conditional platform loading)
     files: ['**/__tests__/**', 'src/services/analytics.ts'],
     rules: {
       'i18next/no-literal-string': 'off',
-      'import/first': 'off',
-      '@typescript-eslint/no-require-imports': 'off',
+      'import/first': 'off', // jest.mock() must appear before module imports
+      '@typescript-eslint/no-require-imports': 'off', // Bun jest.mock() needs require() inside factory; analytics uses require() for conditional web SDK loading
     },
   },
   {

@@ -35,11 +35,11 @@ jest.mock('firebase/app', () => ({
 
 jest.mock('firebase/analytics', () => ({
   getAnalytics: jest.fn().mockReturnValue({}),
-   
-  logEvent: (...args: unknown[]) => mockWebLogEvent(...args as [never, string, Record<string, string>?]),
+
+  logEvent: (...args: unknown[]) =>
+    mockWebLogEvent(...(args as [never, string, Record<string, string>?])),
 }));
 
- 
 const platform: { OS: string } = Platform as { OS: string };
 const originalOS = platform.OS;
 
@@ -100,11 +100,11 @@ describe('AnalyticsService', () => {
       global.window = {
         addEventListener: mockAddEventListener,
       } as unknown as Window & typeof globalThis;
-    
+
       AnalyticsService.initializeGlobalErrorTracking();
-    
+
       expect(mockAddEventListener).toHaveBeenCalledWith('unhandledrejection', expect.any(Function));
-    
+
       if (originalWindow) {
         global.window = originalWindow;
       } else {
