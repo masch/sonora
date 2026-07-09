@@ -11,7 +11,8 @@ interface MockSymbolViewProps {
 }
 
 jest.mock('expo-symbols', () => {
-  const { View } = require('react-native');
+  const React = jest.requireActual('react');
+  const h = React.createElement;
   return {
     SymbolView: ({ name, size, tintColor, weight, style }: MockSymbolViewProps) => {
       const viewProps: Record<string, unknown> = {
@@ -22,7 +23,7 @@ jest.mock('expo-symbols', () => {
         weight,
         style,
       };
-      return <View {...viewProps} />;
+      return h('View', viewProps);
     },
   };
 });

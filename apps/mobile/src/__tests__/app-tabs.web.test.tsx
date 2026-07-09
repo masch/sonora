@@ -36,18 +36,15 @@ jest.mock('@/constants/tabs', () => ({
 }));
 
 jest.mock('expo-router/ui', () => {
-  const { View: RNView } = require('react-native');
+  const React = jest.requireActual('react');
+  const h = React.createElement;
   return {
-    Tabs: ({ children }: { children: React.ReactNode }) => <RNView>{children}</RNView>,
-    TabList: ({ children, ...props }: Record<string, unknown>) => (
-      <RNView {...props}>{children as React.ReactNode}</RNView>
-    ),
-    TabSlot: ({ style }: { style?: Record<string, unknown> }) => <RNView style={style} />,
-    TabTrigger: ({ children, name, ...props }: Record<string, unknown>) => (
-      <RNView {...props} testID={`tab-trigger-${name as string}`}>
-        {children as React.ReactNode}
-      </RNView>
-    ),
+    Tabs: ({ children }: { children: React.ReactNode }) => h('View', null, children),
+    TabList: ({ children, ...props }: Record<string, unknown>) =>
+      h('View', props as Record<string, unknown>, children as React.ReactNode),
+    TabSlot: ({ style }: { style?: Record<string, unknown> }) => h('View', { style }),
+    TabTrigger: ({ children, name, ...props }: Record<string, unknown>) =>
+      h('View', { ...props, testID: `tab-trigger-${name as string}` }, children as React.ReactNode),
   };
 });
 

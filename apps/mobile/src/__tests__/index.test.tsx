@@ -49,14 +49,12 @@ jest.mock('@/data/experiences', () => ({
 }));
 
 const mockPush = jest.fn();
-const MockLink = ({ children, testID, ...props }: Record<string, unknown>) => {
-  const RN = require('react-native');
-  return (
-    <RN.TouchableOpacity testID={testID} onPress={() => mockPush(props.href)}>
-      {children}
-    </RN.TouchableOpacity>
+const MockLink = ({ children, testID, ...props }: Record<string, unknown>) =>
+  React.createElement(
+    'TouchableOpacity',
+    { testID, onPress: () => mockPush(props.href as string) },
+    children as React.ReactNode,
   );
-};
 jest.mock('expo-router', () => ({
   Link: MockLink,
   useRouter: () => ({ push: mockPush }),

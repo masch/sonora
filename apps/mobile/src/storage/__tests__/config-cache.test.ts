@@ -6,7 +6,7 @@ const CONFIG_CACHE_KEY = 'remote-config';
 
 // Helper to reimport config-cache fresh for each test
 function importModule() {
-  return require('../config-cache') as typeof import('../config-cache');
+  return jest.requireActual('../config-cache') as typeof import('../config-cache');
 }
 
 beforeEach(() => {

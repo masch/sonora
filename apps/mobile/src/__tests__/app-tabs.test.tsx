@@ -36,21 +36,18 @@ jest.mock('@/constants/tabs', () => ({
 }));
 
 jest.mock('expo-router/unstable-native-tabs', () => {
-  const { View: RNView, Text: RNText } = require('react-native');
+  const React = jest.requireActual('react');
+  const h = React.createElement;
 
-  const NativeTabsMock = (props: Record<string, unknown>) => (
-    <RNView {...props} testID="native-tabs">
-      {props.children as React.ReactNode}
-    </RNView>
-  );
+  const NativeTabsMock = (props: Record<string, unknown>) =>
+    h('View', { ...props, testID: 'native-tabs' }, props.children as React.ReactNode);
   NativeTabsMock.displayName = 'NativeTabs';
 
-  const Trigger = ({ children, name }: { children?: React.ReactNode; name: string }) => (
-    <RNView testID={`native-trigger-${name}`}>{children}</RNView>
-  );
+  const Trigger = ({ children, name }: { children?: React.ReactNode; name: string }) =>
+    h('View', { testID: `native-trigger-${name}` }, children);
   Trigger.displayName = 'Trigger';
 
-  const Label = ({ children }: { children?: React.ReactNode }) => <RNText>{children}</RNText>;
+  const Label = ({ children }: { children?: React.ReactNode }) => h('Text', null, children);
   Label.displayName = 'Label';
 
   const Icon = () => null;

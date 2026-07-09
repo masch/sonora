@@ -37,13 +37,10 @@ module.exports = defineConfig([
     },
   },
   {
-    // Test files need require() because Bun's jest.mock() factories are
-    // hoisted above imports and don't support dynamic import().
     files: ['**/__tests__/**'],
     rules: {
       'i18next/no-literal-string': 'off',
       'import/first': 'off', // jest.mock() must appear before module imports
-      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

@@ -28,16 +28,17 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/tw', () => {
-  const { View, Text, TouchableOpacity, TextInput, ScrollView } = require('react-native');
-  const React = require('react');
-  return {
-    TwView: View,
-    TwPressable: (props: Record<string, unknown>) => React.createElement(TouchableOpacity, props),
-    TwTextInput: (props: Record<string, unknown>) => React.createElement(TextInput, props),
-    TwText: (props: Record<string, unknown>) => React.createElement(Text, props),
-    TwScrollView: ScrollView,
-  };
-});
+      const React = jest.requireActual('react');
+      const h = React.createElement;
+      return {
+        TwView: (props: Record<string, unknown>) => h('View', props, props.children),
+        TwPressable: (props: Record<string, unknown>) =>
+          h('TouchableOpacity', { ...props, onClick: props.onPress }, props.children),
+        TwTextInput: (props: Record<string, unknown>) => h('TextInput', props),
+        TwText: (props: Record<string, unknown>) => h('Text', props, props.children),
+        TwScrollView: (props: Record<string, unknown>) => h('ScrollView', props, props.children),
+      };
+    });
 
 jest.mock('@/services/admin-api-client', () => ({
   AdminApiClient: {

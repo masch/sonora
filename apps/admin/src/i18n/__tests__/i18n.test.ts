@@ -28,7 +28,7 @@ describe('Admin i18n', () => {
     delete (globalThis as unknown as Record<string, unknown>).window;
     delete (globalThis as unknown as Record<string, unknown>).navigator;
 
-    const i18nInstance = require('../index').default;
+    const i18nInstance = jest.requireActual('../index').default;
     expect(i18nInstance.language).toBe('en');
   });
 
@@ -38,7 +38,7 @@ describe('Admin i18n', () => {
       language: 'es-ES',
     } as unknown as Navigator;
 
-    const i18nInstance = require('../index').default;
+    const i18nInstance = jest.requireActual('../index').default;
     expect(i18nInstance.language).toBe('es');
   });
 
@@ -52,7 +52,7 @@ describe('Admin i18n', () => {
       language: 'en-US',
     } as unknown as Navigator;
 
-    const i18nInstance = require('../index').default;
+    const i18nInstance = jest.requireActual('../index').default;
     expect(i18nInstance.language).toBe('es');
   });
 
@@ -66,7 +66,7 @@ describe('Admin i18n', () => {
       language: 'es-ES',
     } as unknown as Navigator;
 
-    const i18nInstance = require('../index').default;
+    const i18nInstance = jest.requireActual('../index').default;
     expect(i18nInstance.language).toBe('en');
   });
 });
