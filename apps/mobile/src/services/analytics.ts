@@ -132,7 +132,7 @@ export const AnalyticsService = {
     }
   },
 
-  initializeGlobalErrorTracking: () => {
+  initializeGlobalErrorTracking: async () => {
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined') {
         window.addEventListener('unhandledrejection', (event) => {
@@ -144,6 +144,22 @@ export const AnalyticsService = {
         });
       }
       return;
+    }
+
+    try {
+      const REJECTION_TRACKING_PATH = 'promise/setimmediate/rejection-tracking';
+      const rejectionTracking = await import(REJECTION_TRACKING_PATH);
+      rejectionTracking.enable({
+        all: true,
+        onUnhandled: (id: unknown, error: unknown) => {
+          AnalyticsService.recordError(
+            error instanceof Error ? error : new Error(String(error)),
+            `Unhandled promise rejection (id: ${String(id)})`,
+          );
+        },
+      });
+    } catch {
+      // promise package not installed — tracking is optional
     }
   },
 };
