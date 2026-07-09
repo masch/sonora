@@ -119,5 +119,3 @@ jest.mock('firebase/analytics', () => ({
   getAnalytics: jest.fn().mockReturnValue({}),
   logEvent: jest.fn(),
 }));
-
-
