@@ -1,9 +1,9 @@
+import { type Analytics } from 'firebase/analytics';
 import { logger } from '@/utils/logger';
 import { Platform } from 'react-native';
 
-// Firebase Web SDK instances
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let webAnalytics: any = null;
+// Firebase Web SDK instance
+let webAnalytics: Analytics | null = null;
 let isWebInitialized = false;
 
 function ensureWebInitialized() {
