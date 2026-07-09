@@ -159,7 +159,7 @@ export const AnalyticsService = {
         },
       });
     } catch {
-      // promise package not installed — tracking is optional
+      // promise package is optional; tracking gracefully degrades
     }
   },
 };
