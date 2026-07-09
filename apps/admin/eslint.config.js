@@ -38,7 +38,7 @@ module.exports = defineConfig([
     files: ['**/__tests__/**'],
     rules: {
       'i18next/no-literal-string': 'off',
-      'import/first': 'off', // jest.mock() must appear before module imports
+      'import/first': 'off',
     },
   },
   {
