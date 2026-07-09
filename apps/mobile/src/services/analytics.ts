@@ -147,8 +147,7 @@ export const AnalyticsService = {
     }
 
     try {
-      const REJECTION_TRACKING_PATH = 'promise/setimmediate/rejection-tracking';
-      const rejectionTracking = await import(REJECTION_TRACKING_PATH);
+      const rejectionTracking = await import('promise/setimmediate/rejection-tracking');
       rejectionTracking.enable({
         all: true,
         onUnhandled: (id: unknown, error: unknown) => {
@@ -158,8 +157,8 @@ export const AnalyticsService = {
           );
         },
       });
-    } catch {
-      // promise package is optional; tracking gracefully degrades
+    } catch (err) {
+      logger.warn('No se pudo habilitar el seguimiento global de promesas rechazadas:', err);
     }
   },
 };
