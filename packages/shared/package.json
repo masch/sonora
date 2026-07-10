@@ -5,9 +5,11 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "@babel/runtime": "7.29.7"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "4.1.10",
     "vitest": "4.1.9"
   },
   "scripts": {

@@ -6,5 +6,7 @@
   "default_language": "en",
   "delivery_strategy": "ask-on-risk",
   "execution_mode": "interactive",
-  "review_budget_lines": 400
+  "review_budget_lines": 400,
+  "chained_pr_strategy": "ask-always",
+  "engram_available": true
 }

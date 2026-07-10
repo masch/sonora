@@ -1,5 +1,15 @@
 import { APP_CONFIG } from '@/config/app-config';
-import type { TranslationBulkPayload } from '@sonora/shared';
+import { BaseApiClient, type TranslationBulkPayload } from '@sonora/shared';
+
+const client = new BaseApiClient({
+  baseUrl: APP_CONFIG.apiBaseUrl,
+  getAuthToken: () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('admin_key');
+    }
+    return null;
+  },
+});
 
 export const AdminApiClient = {
   getAuthKey(): string | null {
@@ -22,40 +32,15 @@ export const AdminApiClient = {
   },
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const url = path.startsWith('http') ? path : `${APP_CONFIG.apiBaseUrl}${path}`;
-    const key = this.getAuthKey();
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    if (key) {
-      headers['Authorization'] = `Bearer ${key}`;
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorMsg = await response.text().catch(() => 'Request failed');
-      throw new Error(errorMsg || `Request failed with status ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
+    return client.request<T>(path, options);
   },
 
   async getTranslations(lang: string): Promise<Record<string, string>> {
-    return this.request<Record<string, string>>(`/api/translations/${lang}`);
+    return client.get<Record<string, string>>(`/api/translations/${lang}`);
   },
 
   async setTranslations(payload: TranslationBulkPayload): Promise<{ updated: number }> {
-    return this.request<{ updated: number }>('/api/translations', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
+    return client.put<{ updated: number }>('/api/translations', payload);
   },
 
   async validateKey(key: string): Promise<boolean> {

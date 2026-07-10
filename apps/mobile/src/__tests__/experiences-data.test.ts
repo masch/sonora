@@ -1,16 +1,18 @@
 import { fetchExperiences, fetchThemes } from '@/data/experiences';
-import * as storage from '@/storage/feedback-storage';
+import { appStorage as storage } from '@/storage/app-storage';
 
 // Mock storage
 let mockStore: Record<string, string> = {};
-jest.mock('@/storage/feedback-storage', () => ({
-  getItem: jest.fn(async (key: string) => mockStore[key] || null),
-  setItem: jest.fn(async (key: string, value: string) => {
-    mockStore[key] = value;
-  }),
-  removeItem: jest.fn(async (key: string) => {
-    delete mockStore[key];
-  }),
+jest.mock('@/storage/app-storage', () => ({
+  appStorage: {
+    getItem: jest.fn(async (key: string) => mockStore[key] || null),
+    setItem: jest.fn(async (key: string, value: string) => {
+      mockStore[key] = value;
+    }),
+    removeItem: jest.fn(async (key: string) => {
+      delete mockStore[key];
+    }),
+  },
 }));
 
 const mockFetch = jest.fn();
