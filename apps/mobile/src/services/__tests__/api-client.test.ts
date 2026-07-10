@@ -1,10 +1,14 @@
 import { ApiClient } from '../api-client';
-import { getItem, setItem } from '@/storage/feedback-storage';
+import { appStorage } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
 
-jest.mock('@/storage/feedback-storage', () => ({
-  getItem: jest.fn(),
-  setItem: jest.fn().mockResolvedValue(undefined),
+jest.mock('@/storage/app-storage', () => ({
+  appStorage: {
+    getItem: jest.fn(),
+    setItem: jest.fn().mockResolvedValue(undefined),
+    removeItem: jest.fn().mockResolvedValue(undefined),
+    clear: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 jest.mock('@/utils/logger', () => ({
@@ -151,7 +155,7 @@ describe('ApiClient', () => {
       expect.objectContaining({ method: 'GET' }),
     );
     expect(result).toEqual(mockData);
-    expect(setItem).not.toHaveBeenCalled();
+    expect(appStorage.setItem).not.toHaveBeenCalled();
   });
 
   it('throws on non-ok response in non-cached path', async () => {
@@ -179,25 +183,25 @@ describe('ApiClient', () => {
     const result = await ApiClient.get('/data', { cacheKey: 'k1' });
 
     expect(result).toEqual(mockData);
-    expect(setItem).toHaveBeenCalledWith('k1', JSON.stringify(mockData));
+    expect(appStorage.setItem).toHaveBeenCalledWith('k1', JSON.stringify(mockData));
   });
 
   it('falls back to cache when network fails and cacheKey is provided', async () => {
     const cached = { fromCache: true };
     mockFetchNetworkError();
-    (getItem as jest.Mock).mockResolvedValue(JSON.stringify(cached));
+    (appStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(cached));
 
     const result = await ApiClient.get('/data', { cacheKey: 'k1' });
 
     expect(result).toEqual(cached);
-    expect(getItem).toHaveBeenCalledWith('k1');
+    expect(appStorage.getItem).toHaveBeenCalledWith('k1');
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[Offline Mode]'));
   });
 
   it('falls back to cache when server returns non-ok status with cacheKey', async () => {
     const cached = { fromCache: true };
     mockFetchFail(500);
-    (getItem as jest.Mock).mockResolvedValue(JSON.stringify(cached));
+    (appStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(cached));
 
     const result = await ApiClient.get('/data', { cacheKey: 'k1' });
 
@@ -206,14 +210,14 @@ describe('ApiClient', () => {
 
   it('throws original error when network fails and cache is empty', async () => {
     mockFetchNetworkError('Connection refused');
-    (getItem as jest.Mock).mockResolvedValue(null);
+    (appStorage.getItem as jest.Mock).mockResolvedValue(null);
 
     await expect(ApiClient.get('/data', { cacheKey: 'k1' })).rejects.toThrow('Connection refused');
   });
 
   it('throws original error when network fails and cache read throws', async () => {
     mockFetchNetworkError('Offline');
-    (getItem as jest.Mock).mockRejectedValue(new Error('SQLite locked'));
+    (appStorage.getItem as jest.Mock).mockRejectedValue(new Error('SQLite locked'));
 
     await expect(ApiClient.get('/data', { cacheKey: 'k1' })).rejects.toThrow('Offline');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to read cache'));
@@ -221,7 +225,7 @@ describe('ApiClient', () => {
 
   it('uses customErrorMessage when server returns non-ok in cached path', async () => {
     mockFetchFail(404);
-    (getItem as jest.Mock).mockResolvedValue(null);
+    (appStorage.getItem as jest.Mock).mockResolvedValue(null);
 
     await expect(
       ApiClient.get('/missing', { cacheKey: 'k1', customErrorMessage: 'Not found' }),
@@ -231,7 +235,7 @@ describe('ApiClient', () => {
   it('logs warning but still returns data when setItem fails', async () => {
     const mockData = { id: 1 };
     mockFetchOk(mockData);
-    (setItem as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
+    (appStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
 
     const result = await ApiClient.get('/data', { cacheKey: 'k1' });
 
@@ -257,7 +261,10 @@ describe('ApiClient', () => {
     });
 
     expect(result).toEqual([{ id: 1, active: true }]);
-    expect(setItem).toHaveBeenCalledWith('items', JSON.stringify([{ id: 1, active: true }]));
+    expect(appStorage.setItem).toHaveBeenCalledWith(
+      'items',
+      JSON.stringify([{ id: 1, active: true }]),
+    );
   });
 
   /* ─── response.ok fallback ─── */
@@ -332,14 +339,17 @@ describe('ApiClient', () => {
     const result = await ApiClient.get('/data', { cacheKey: 'ok-undef' });
 
     expect(result).toEqual({ cached: 'ok-undefined' });
-    expect(setItem).toHaveBeenCalledWith('ok-undef', JSON.stringify({ cached: 'ok-undefined' }));
+    expect(appStorage.setItem).toHaveBeenCalledWith(
+      'ok-undef',
+      JSON.stringify({ cached: 'ok-undefined' }),
+    );
   });
 
   /* ─── Branch: non-Error thrown by setItem catch (L47) ─── */
 
   it('handles non-Error rejection from setItem using String()', async () => {
     mockFetchOk({ id: 1 });
-    (setItem as jest.Mock).mockRejectedValueOnce('string error');
+    (appStorage.setItem as jest.Mock).mockRejectedValueOnce('string error');
 
     const result = await ApiClient.get('/data', { cacheKey: 'k1' });
 
@@ -352,7 +362,7 @@ describe('ApiClient', () => {
 
   it('handles non-Error rejection from getItem using String()', async () => {
     mockFetchNetworkError('Offline');
-    (getItem as jest.Mock).mockRejectedValue('not an error object');
+    (appStorage.getItem as jest.Mock).mockRejectedValue('not an error object');
 
     await expect(ApiClient.get('/data', { cacheKey: 'k1' })).rejects.toThrow('Offline');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not an error object'));

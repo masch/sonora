@@ -92,6 +92,25 @@ async function performWebDownload(
   url: string,
   onProgress: (progress: number) => void,
 ): Promise<{ localUri: string }> {
+  // Check Cache Storage first — avoids a network round-trip for already-downloaded tracks.
+  // This is the primary guard against offline failures: after a page refresh the Zustand
+  // store is empty (ephemeral) even when the file was previously cached, so we must
+  // re-check the Cache API before touching the network.
+  if (typeof caches !== 'undefined') {
+    try {
+      const cache = await caches.open('sonora-audio-cache');
+      const cacheKey = `https://sonora.local/tracks/${trackId}`;
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const blob = await cached.blob();
+        onProgress(100);
+        return { localUri: URL.createObjectURL(blob) };
+      }
+    } catch {
+      // Cache miss or storage error — fall through to network download
+    }
+  }
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch audio: ${response.statusText}`);

@@ -182,4 +182,101 @@ describe('DownloadManagerStore', () => {
     useDownloadManagerStore.getState().cancel('nonexistent');
     expect(useDownloadManagerStore.getState().downloads['nonexistent']).toBeUndefined();
   });
+
+  describe('performWebDownload — Cache API pre-check (offline recovery)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Platform = require('react-native').Platform as { OS: string };
+    const originalFetch = globalThis.fetch;
+    const originalCaches = (globalThis as Record<string, unknown>).caches;
+
+    beforeEach(() => {
+      // Run as web platform so performWebDownload is chosen
+      Platform.OS = 'web';
+      // URL.createObjectURL is not available in jsdom
+      globalThis.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+    });
+
+    afterEach(() => {
+      Platform.OS = 'ios';
+      globalThis.fetch = originalFetch;
+      (globalThis as Record<string, unknown>).caches = originalCaches;
+    });
+
+    it('resolves from Cache API without fetching network when track is already cached', async () => {
+      const mockBlob = new Blob(['audio'], { type: 'audio/mpeg' });
+      const mockCachedResponse = {
+        blob: jest.fn().mockResolvedValue(mockBlob),
+        headers: { get: jest.fn().mockReturnValue(null) },
+      };
+      const mockCache = {
+        match: jest.fn().mockResolvedValue(mockCachedResponse),
+        put: jest.fn().mockResolvedValue(undefined),
+      };
+      (globalThis as Record<string, unknown>).caches = {
+        open: jest.fn().mockResolvedValue(mockCache),
+      };
+      globalThis.fetch = jest.fn();
+
+      useDownloadManagerStore
+        .getState()
+        .enqueue('cached-track', 'https://remote.com/audio.mp3', 'Cached Track');
+
+      // Let the async download complete
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Network should NOT have been called
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      // Store should be completed
+      expect(useDownloadManagerStore.getState().downloads['cached-track'].status).toBe('completed');
+    });
+
+    it('falls back to network fetch when Cache API has no entry for the track', async () => {
+      const mockCache = {
+        match: jest.fn().mockResolvedValue(undefined), // cache miss
+        put: jest.fn().mockResolvedValue(undefined),
+      };
+      (globalThis as Record<string, unknown>).caches = {
+        open: jest.fn().mockResolvedValue(mockCache),
+      };
+
+      const mockBlob = new Blob(['audio'], { type: 'audio/mpeg' });
+      globalThis.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: jest.fn().mockReturnValue(null) },
+        body: null, // triggers fallback blob path
+        blob: jest.fn().mockResolvedValue(mockBlob),
+      } as unknown as Response);
+
+      useDownloadManagerStore
+        .getState()
+        .enqueue('new-track', 'https://remote.com/audio.mp3', 'New Track');
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Fetch was invoked because the cache had no entry
+      expect(globalThis.fetch).toHaveBeenCalledWith('https://remote.com/audio.mp3');
+    });
+
+    it('falls back to network when Cache API open throws', async () => {
+      (globalThis as Record<string, unknown>).caches = {
+        open: jest.fn().mockRejectedValue(new Error('Cache API unavailable')),
+      };
+
+      const mockBlob = new Blob(['audio'], { type: 'audio/mpeg' });
+      globalThis.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: jest.fn().mockReturnValue(null) },
+        body: null,
+        blob: jest.fn().mockResolvedValue(mockBlob),
+      } as unknown as Response);
+
+      useDownloadManagerStore
+        .getState()
+        .enqueue('error-track', 'https://remote.com/audio.mp3', 'Error Track');
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(globalThis.fetch).toHaveBeenCalledWith('https://remote.com/audio.mp3');
+    });
+  });
 });
