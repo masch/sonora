@@ -551,12 +551,23 @@ eas-build-android-preview-local: eas-whoami ## Build test APK for sideload local
 	@read -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
 	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
+.PHONY: eas-build-android-release-ci
+eas-build-android-release-ci: ## Build APK + AAB from single prebuild+Gradle (requires KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD)
+	cd apps/mobile && \
+	  npx expo prebuild --platform android --clean && \
+	  node scripts/patch-android-signing.js && \
+	  cd android && \
+	  ./gradlew :app:assembleRelease :app:bundleRelease && \
+	  cd .. && \
+	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release.apk) && \
+	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release.aab)
+
 .PHONY: eas-build-android-preview-ci
-eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (uses APP_VERSION_CODE from env)
+eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local $(if $(OUTPUT_APK),--output="$(OUTPUT_APK)")
 
 .PHONY: eas-build-android-aab-ci
-eas-build-android-aab-ci: eas-whoami ## Build signed AAB for Google Play in CI (requires KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD from env)
+eas-build-android-aab-ci: eas-whoami ## Build signed AAB (kept for backward compat, use eas-build-android-release-ci for production)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile aab --local $(if $(OUTPUT_AAB),--output="$(OUTPUT_AAB)")
 
 .PHONY: eas-upload-apk
