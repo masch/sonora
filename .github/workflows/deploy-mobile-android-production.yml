@@ -100,8 +100,25 @@ jobs:
       - name: Write production keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile/sonora-production-keystore.jks
+          node -e "
+            const fs = require('fs');
+            const creds = {
+              android: {
+                keystore: {
+                  keystorePath: 'sonora-production-keystore.jks',
+                  keystorePassword: process.env.KEYSTORE_PASSWORD,
+                  keyAlias: process.env.KEY_ALIAS,
+                  keyPassword: process.env.KEY_PASSWORD,
+                },
+              },
+            };
+            fs.writeFileSync('apps/mobile/credentials.json', JSON.stringify(creds, null, 2));
+          "
 
       - name: Build Android AAB
         id: build-aab
