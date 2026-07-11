@@ -34,6 +34,7 @@ jobs:
     environment: production
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
+      aab_path: ${{ steps.build-aab.outputs.aab_path }}
       tag_name: ${{ steps.get-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
@@ -93,6 +94,35 @@ jobs:
         with:
           name: android-apk
           path: apps/mobile/sonora-*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Write production keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile/sonora-production-keystore.jks
+
+      - name: Build Android AAB
+        id: build-aab
+        env:
+          APP_ENV: production
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_INTERACTIVE: '1'
+          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
+          EXPO_NO_DOCTOR: '1'
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          make eas-build-android-aab-ci OUTPUT_AAB="sonora-${{ steps.get-tag.outputs.tag }}.aab"
+          echo "aab_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.aab" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Android AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: apps/mobile/sonora-*.aab
           if-no-files-found: error
           retention-days: 7
 
