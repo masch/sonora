@@ -555,6 +555,10 @@ eas-build-android-preview-local: eas-whoami ## Build test APK for sideload local
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (uses APP_VERSION_CODE from env)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local $(if $(OUTPUT_APK),--output="$(OUTPUT_APK)")
 
+.PHONY: eas-build-android-aab-ci
+eas-build-android-aab-ci: eas-whoami ## Build signed AAB for Google Play in CI (requires KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD from env)
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile aab --local $(if $(OUTPUT_AAB),--output="$(OUTPUT_AAB)")
+
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
