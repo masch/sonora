@@ -28,29 +28,9 @@ if (!fs.existsSync(BUILD_GRADLE)) {
 
 let content = fs.readFileSync(BUILD_GRADLE, 'utf8');
 
-// 1. Add a release signing config entry inside the signingConfigs block
-const RELEASE_SIGNING = `
-        release {
-            storeFile file("\${projectRoot}/sonora-production-keystore.jks")
-            storePassword System.getenv('KEYSTORE_PASSWORD')
-            keyAlias System.getenv('KEY_ALIAS')
-            keyPassword System.getenv('KEY_PASSWORD')
-        }
-`;
-
-const signingConfigsMatch = content.match(/signingConfigs\s*\{[\s\S]*?debug\s*\{[\s\S]*?\}\s*\}/);
-if (!signingConfigsMatch) {
-  console.error(
-    '[patch-android-signing] Could not find signingConfigs.debug block in build.gradle',
-  );
-  process.exit(1);
-}
-
-// Insert release signing config right after the closing } of signingConfigs,
-// before the closing } of the enclosing block
-content = content.replace(signingConfigsMatch[0], signingConfigsMatch[0] + RELEASE_SIGNING);
-
-// 2. Change the release build type's signingConfig from debug to release
+// 1. Change the release build type's signingConfig from debug to release
+// Do this BEFORE inserting the new signingConfigs.release block so the regex
+// only finds the ONE 'release {' with 'signingConfigs.debug' in the file.
 const debugSigningInRelease = /(release\s*\{[\s\S]*?)signingConfig\s+signingConfigs\.debug/;
 if (!debugSigningInRelease.test(content)) {
   console.error(
@@ -59,10 +39,39 @@ if (!debugSigningInRelease.test(content)) {
   process.exit(1);
 }
 
-content = content.replace(
-  debugSigningInRelease,
-  (_, before) => before + 'signingConfig signingConfigs.release',
-);
+content = content.replace(debugSigningInRelease, '$1signingConfig signingConfigs.release');
+
+// 2. Add a release signing config entry inside the signingConfigs block
+// Indentation matches generated build.gradle (4-space base)
+const RELEASE_SIGNING =
+  '\n        release {' +
+  '\n            storeFile file("${projectRoot}/sonora-production-keystore.jks")' +
+  "\n            storePassword System.getenv('KEYSTORE_PASSWORD')" +
+  "\n            keyAlias System.getenv('KEY_ALIAS')" +
+  "\n            keyPassword System.getenv('KEY_PASSWORD')" +
+  '\n        }';
+
+// Find signingConfigs block and its matching closing brace
+const signingConfigsStart = content.match(/signingConfigs\s*\{/);
+if (!signingConfigsStart) {
+  console.error('[patch-android-signing] Could not find signingConfigs block in build.gradle');
+  process.exit(1);
+}
+
+// Count braces to find the matching closing } of signingConfigs
+const blockStart = signingConfigsStart.index + signingConfigsStart[0].length - 1; // position of {
+let depth = 1;
+let pos = blockStart + 1;
+while (depth > 0 && pos < content.length) {
+  if (content[pos] === '{') depth++;
+  if (content[pos] === '}') depth--;
+  pos++;
+}
+// pos is now past the closing } of signingConfigs
+// Insert release signing config before that closing }
+const insertPos = pos - 1; // position of signingConfigs closing }
+content =
+  content.substring(0, insertPos) + RELEASE_SIGNING + '\n    ' + content.substring(insertPos);
 
 fs.writeFileSync(BUILD_GRADLE, content);
 console.log(
