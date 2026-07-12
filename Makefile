@@ -328,6 +328,16 @@ api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: m
 api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker. Usage: make api-deploy-production-set-origin ORIGIN="https://example.com"
 	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN
 
+.PHONY: api-deploy-staging-log-toggle
+api-deploy-staging-log-toggle: ## Toggle API logging on staging interactively
+	@read -p "Enable API logging on staging? (true/false): " ENABLED; \
+	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING --config wrangler.staging.toml
+
+.PHONY: api-deploy-production-log-toggle
+api-deploy-production-log-toggle: ## Toggle API logging on production interactively
+	@read -p "Enable API logging on production? (true/false): " ENABLED; \
+	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING
+
 # ── Backend API — Test deployed Workers ─────────────
 
 API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev

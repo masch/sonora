@@ -3,6 +3,12 @@ import { logger } from '@sonora/shared';
 
 export const customLogger = (): MiddlewareHandler => {
   return async (c, next) => {
+    const enableLogging = c.env?.ENABLE_API_LOGGING !== 'false';
+    if (!enableLogging) {
+      await next();
+      return;
+    }
+
     const method = c.req.method;
     const url = c.req.url;
     const startTime = Date.now();

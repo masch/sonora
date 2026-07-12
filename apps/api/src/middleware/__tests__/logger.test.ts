@@ -44,6 +44,15 @@ describe('customLogger middleware', () => {
     );
   });
 
+  it('does not log when ENABLE_API_LOGGING is false', async () => {
+    app.get('/test', (c) => c.text('ok'));
+
+    const res = await app.request('/test', {}, { ENABLE_API_LOGGING: 'false' });
+    expect(res.status).toBe(200);
+
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+
   it('logs POST requests with valid JSON body', async () => {
     app.post('/submit', async (c) => {
       const body = await c.req.json();

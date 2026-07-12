@@ -1,9 +1,9 @@
-import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
-import { experiences, purchases, experienceAccesses } from '../db/schema';
-import { createPaymentProviders } from '../payments';
-import type { Env, Variables } from '../index';
 import type { AccessSource } from '@sonora/shared';
+import { and, eq } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { experienceAccesses, experiences, purchases } from '../db/schema';
+import type { Env, Variables } from '../index';
+import { createPaymentProviders } from '../payments';
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -50,7 +50,7 @@ paymentsRouter.post('/create', async (c) => {
     .values({
       experienceId: experience.id,
       provider: defaultProvider,
-      providerPaymentId: '',
+      providerPaymentId: `pending-${crypto.randomUUID()}`,
       amount: experience.price,
       currency: 'ARS',
       status: 'pending',

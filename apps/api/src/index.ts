@@ -34,6 +34,7 @@ export interface Env {
   MERCADO_PAGO_ACCESS_TOKEN?: string;
   MERCADO_PAGO_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
+  ENABLE_API_LOGGING?: string;
 }
 
 export interface Variables {
