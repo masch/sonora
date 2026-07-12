@@ -38,7 +38,7 @@
     "typescript": "6.0.3"
   },
   "scripts": {
-    "dev": "expo start --web",
+    "dev": "expo start --web --port 8082",
     "web": "expo export --platform web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",

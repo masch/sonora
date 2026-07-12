@@ -13,7 +13,7 @@ export const TranslationEntrySchema = z.object({
       message: 'ERR_LANG_UNSUPPORTED',
     }),
   key: z.string({ required_error: 'ERR_KEY_REQUIRED' }).min(1, 'ERR_KEY_REQUIRED'),
-  value: z.string({ required_error: 'ERR_VALUE_REQUIRED' }).min(1, 'ERR_VALUE_REQUIRED'),
+  value: z.string({ required_error: 'ERR_VALUE_REQUIRED' }),
 });
 
 export type TranslationEntry = z.infer<typeof TranslationEntrySchema>;

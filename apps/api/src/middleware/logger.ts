@@ -38,34 +38,38 @@ export const customLogger = (): MiddlewareHandler => {
       body: parsedRequestBody,
     });
 
+    let responseBody: any = undefined;
+
     await next();
 
     const duration = Date.now() - startTime;
 
-    let responseBody = '';
-    try {
-      if (c.res && c.res.body) {
-        const clonedRes = c.res.clone();
-        responseBody = await clonedRes.text();
-      }
-    } catch (e) {
-      logger.warn(`Failed to read response body for logging: ${method} ${url}`, e);
-    }
-
-    let parsedResponseBody: unknown;
-    if (responseBody) {
-      try {
-        parsedResponseBody = c.res.headers.get('content-type')?.includes('application/json')
-          ? JSON.parse(responseBody)
-          : responseBody;
-      } catch (e) {
-        parsedResponseBody = responseBody;
+    // Buffer and reconstruct the response body to log it without draining/locking the stream
+    if (c.res && c.res.body) {
+      const contentType = c.res.headers.get('content-type');
+      if (
+        contentType &&
+        (contentType.includes('application/json') || contentType.includes('text/'))
+      ) {
+        try {
+          const bodyBytes = await c.res.arrayBuffer();
+          const text = new TextDecoder().decode(bodyBytes);
+          try {
+            responseBody = JSON.parse(text);
+          } catch {
+            responseBody = text;
+          }
+          // Reconstruct response using the buffered bodyBytes to prevent stream drainage/locking
+          c.res = new Response(bodyBytes, c.res);
+        } catch (e) {
+          logger.warn('Failed to buffer response body for logging', e);
+        }
       }
     }
 
     logger.info(`[API Response] ${method} ${url} - ${c.res.status} (${duration}ms)`, {
       status: c.res.status,
-      body: parsedResponseBody,
+      body: responseBody,
     });
   };
 };

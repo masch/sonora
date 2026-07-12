@@ -59,7 +59,7 @@ describe('TranslationStore', () => {
   });
 
   describe('fetchLanguage', () => {
-    it('reads cache first, then fetches API, merges with API values winning', async () => {
+    it('reads cache first, then fetches API, replacing cache with API values', async () => {
       mockGetCachedTranslations.mockResolvedValue(EN_TRANSLATIONS);
       mockApiGet.mockResolvedValue({ 'common.hello': 'Hey' });
 
@@ -74,19 +74,17 @@ describe('TranslationStore', () => {
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
 
-      // Final state: API values merged over cache (API wins)
+      // Final state: API values replace cache (API is source of truth)
       const state = useTranslationStore.getState();
       expect(state.overridesByLang.en).toEqual({
         'common.hello': 'Hey',
-        'common.goodbye': 'Goodbye',
       });
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
 
-      // Merged result was cached
+      // Result was cached
       expect(mockSetCachedTranslations).toHaveBeenCalledWith('en', {
         'common.hello': 'Hey',
-        'common.goodbye': 'Goodbye',
       });
     });
 
@@ -109,7 +107,7 @@ describe('TranslationStore', () => {
       mockApiGet.mockResolvedValue({
         'common.valid': 'Valid value',
         '': 'Empty key',
-        'common.emptyValue': '',
+        'common.invalidValue': 123,
       });
 
       await useTranslationStore.getState().fetchLanguage('en');

@@ -162,7 +162,7 @@ export const en = {
   },
   audio: {
     interruptModalTitle: 'Audio already playing',
-    interruptModalMessage: 'Cancel the current audio and play the new one?',
+    interruptModalMessage: 'Cancel the current audio and play the one?',
   },
   components: {
     downloadCard: {
@@ -330,6 +330,4 @@ export const en = {
       restore: 'Could not restore purchases. Please try again.',
     },
   },
-} as const;
-
-export type EnDict = typeof en;
+};

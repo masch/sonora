@@ -90,9 +90,9 @@ describe('TranslationEntrySchema', () => {
   });
 
   describe('value validation', () => {
-    it('rejects empty value', () => {
+    it('allows empty value (interpreted as deletion/restoring default)', () => {
       const result = TranslationEntrySchema.safeParse({ ...validEntry, value: '' });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('rejects missing value', () => {

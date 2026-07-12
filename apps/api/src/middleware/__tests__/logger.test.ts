@@ -150,40 +150,52 @@ describe('customLogger middleware', () => {
     );
   });
 
-  it('handles response body read failures gracefully', async () => {
-    app.get('/error-res', (c) => {
-      const response = c.text('ok');
-      vi.spyOn(response, 'clone').mockImplementation(() => {
-        throw new Error('Response clone failed');
-      });
-      return response;
+  it('handles raw Response objects gracefully without crashing', async () => {
+    app.get('/raw-res', (c) => {
+      return new Response('raw-content');
     });
 
-    const res = await app.request('/error-res');
-    expect(res.status).toBe(200);
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to read response body for logging'),
-      expect.any(Error),
-    );
-  });
-
-  it('handles malformed JSON response body gracefully', async () => {
-    app.get('/invalid-json-res', (c) => {
-      return new Response('{invalid-json', {
-        headers: { 'content-type': 'application/json' },
-      });
-    });
-
-    const res = await app.request('/invalid-json-res');
+    const res = await app.request('/raw-res');
     expect(res.status).toBe(200);
 
     expect(logger.info).toHaveBeenCalledWith(
-      expect.stringContaining('[API Response] GET http://localhost/invalid-json-res - 200'),
+      expect.stringContaining('[API Response] GET http://localhost/raw-res - 200'),
       expect.objectContaining({
         status: 200,
-        body: '{invalid-json',
+        body: 'raw-content',
       }),
     );
+  });
+
+  it('does not disturb the response body stream for a real network client', async () => {
+    const { serve } = await import('@hono/node-server');
+    const testApp = new Hono();
+    testApp.use('*', customLogger());
+    testApp.get('/real-stream', (c) => c.json({ data: 'real-node-server-data' }));
+
+    // Start a real node server on a random port
+    const server = serve({
+      fetch: testApp.fetch,
+      port: 0,
+      hostname: '127.0.0.1',
+    });
+
+    // Wait for server to bind
+    await new Promise<void>((resolve) => {
+      server.on('listening', resolve);
+    });
+
+    // Get the assigned port
+    const address = server.address();
+    const port = typeof address === 'string' ? 0 : address?.port;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/real-stream`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual({ data: 'real-node-server-data' });
+    } finally {
+      server.close();
+    }
   });
 });

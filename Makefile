@@ -60,15 +60,15 @@ start-headless: ## Launch Expo dev server without interactive TTY
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
-	bun --filter @sonora/mobile web
+	cd apps/mobile && bun run web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
-	bun --filter @sonora/mobile android-dev
+	cd apps/mobile && bun run android-dev
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	bun --filter @sonora/mobile ios
+	cd apps/mobile && bun run ios
 
 # ── Native ─────────────────────────────────────
 
@@ -176,7 +176,7 @@ typecheck: ## Run TypeScript type checks across workspaces
 
 .PHONY: admin-dev
 admin-dev: ## Launch Expo dev server for Admin Web
-	bun --filter @sonora/admin dev
+	cd apps/admin && EXPO_PUBLIC_API_URL="http://localhost:3000" bun run dev
 
 .PHONY: admin-dev-staging
 admin-dev-staging: ## Launch Expo dev server for Admin Web pointing to staging API

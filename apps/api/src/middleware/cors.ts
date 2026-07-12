@@ -35,8 +35,9 @@ export const configureCors = (): MiddlewareHandler => {
         if (!allowedOrigin) {
           return origin;
         }
-        // Strict check against configured origin
-        return origin === allowedOrigin ? origin : null;
+        // Check against comma-separated list of allowed origins
+        const origins = allowedOrigin.split(',').map((o) => o.trim());
+        return origins.includes(origin) ? origin : null;
       },
       allowMethods: methods,
       allowHeaders: headers,

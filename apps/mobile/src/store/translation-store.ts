@@ -68,10 +68,8 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
         }
       }
 
-      // Merge: API wins over cache
-      merged = { ...(cached ?? {}), ...validEntries };
-
-      // Write merged result back to cache
+      // API is the source of truth for overrides. Replace cache entirely.
+      merged = validEntries;
       await setCachedTranslations(lang, merged);
     } catch (err) {
       apiError = err;
