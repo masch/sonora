@@ -1,9 +1,11 @@
+import { logger } from '@sonora/shared';
+
 export class HttpError extends Error {
   constructor(
     public status: number,
-    public body: string,
+    public body?: string,
   ) {
-    super(`HTTP ${status}: ${body.slice(0, 200)}`);
+    super(`HTTP ${status}: ${(body || '').slice(0, 200)}`);
     this.name = 'HttpError';
   }
 }
@@ -31,25 +33,53 @@ export class HttpClient {
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = `${this.config.baseUrl}${path}`;
     const timeout = options.timeout ?? this.defaultTimeout;
+    const method = options.method ?? 'GET';
+    const startTime = Date.now();
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+    const headers = {
+      'Content-Type': 'application/json',
+      ...this.config.headers,
+      ...options.headers,
+    };
+    const bodyString = options.body ? JSON.stringify(options.body) : undefined;
+
+    logger.info(`[HTTP Request] ${method} ${url}`, {
+      headers,
+      body: options.body,
+    });
+
     try {
       const res = await fetch(url, {
-        method: options.method ?? 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.config.headers,
-          ...options.headers,
-        },
-        body: options.body ? JSON.stringify(options.body) : undefined,
+        method,
+        headers,
+        body: bodyString,
         signal: controller.signal,
       });
 
+      const duration = Date.now() - startTime;
+
+      let responseText = '';
+      try {
+        if (typeof res.clone === 'function') {
+          const clonedRes = res.clone();
+          responseText = await clonedRes.text();
+        } else if (typeof res.text === 'function') {
+          responseText = await res.text();
+        }
+      } catch (e) {
+        logger.warn('Failed to read response body text for logging:', e);
+      }
+
+      logger.info(`[HTTP Response] ${method} ${url} - ${res.status} (${duration}ms)`, {
+        status: res.status,
+        body: responseText,
+      });
+
       if (!res.ok) {
-        const text = await res.text();
-        throw new HttpError(res.status, text);
+        throw new HttpError(res.status, responseText || res.statusText);
       }
 
       // Handle 204 No Content
@@ -59,6 +89,8 @@ export class HttpClient {
 
       return (await res.json()) as T;
     } catch (err) {
+      const duration = Date.now() - startTime;
+      logger.error(`[HTTP Request Error] ${method} ${url} - Failed after ${duration}ms:`, err);
       if (err instanceof HttpError) throw err;
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new HttpError(408, `Request timeout after ${timeout}ms`);

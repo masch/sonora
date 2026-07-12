@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { customLogger } from './middleware/logger';
+import { logger } from '@sonora/shared';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
@@ -45,6 +47,7 @@ export { isUniqueViolation } from './utils/db-errors';
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Mount Middlewares
+app.use('*', customLogger());
 app.use('*', configureCors());
 app.use('*', injectDb());
 
@@ -60,7 +63,7 @@ app.route('/payments', paymentsRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   return c.json<FeedbackResponse>({ status: 'error', errors: ['Internal server error'] }, 500);
 });
 

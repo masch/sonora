@@ -384,7 +384,7 @@ api-db-generate: ## Generate Drizzle migration from schema changes
 	cd $(API_DIR) && bun run db:generate
 
 .PHONY: api-db-migrate
-api-db-migrate: api-db-generate ## Apply pending Drizzle migrations
+api-db-migrate: ## Apply pending Drizzle migrations
 	cd $(API_DIR) && bun run db:migrate
 
 .PHONY: api-db-seed
@@ -401,15 +401,15 @@ ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run db:migrate
 
 .PHONY: api-db-migrate-production
 api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run db:migrate
 
 .PHONY: api-db-migrate-ci
 api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
-	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bun run db:migrate
 
 .PHONY: api-db-seed-ci
 api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI)
@@ -462,7 +462,7 @@ api-dev-local: ## Run Hono API locally with Docker Postgres
 	cd $(API_DIR) && bun run dev:local
 
 .PHONY: api-dev-full
-api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
+api-dev-full: api-db-up api-db-migrate api-db-seed api-dev-local ## Start Postgres, migrate, seed, and run Hono API locally
 
 
 # ── Test ──────────────────────────────────────
