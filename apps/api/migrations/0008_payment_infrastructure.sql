@@ -72,4 +72,6 @@ CREATE TABLE IF NOT EXISTS sonora.experience_accesses (
 
 -- Alter translations.lang to use language enum
 -- Safe because existing values ('en', 'es') are valid in the enum
+-- Drop the check constraint first to prevent "operator does not exist: sonora.language = text" error during type conversion
+ALTER TABLE sonora.translations DROP CONSTRAINT IF EXISTS translations_lang_check;
 ALTER TABLE sonora.translations ALTER COLUMN lang TYPE sonora.language USING lang::sonora.language;
