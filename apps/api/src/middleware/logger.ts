@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
 import { logger } from '@sonora/shared';
+import type { MiddlewareHandler } from 'hono';
 
 export const customLogger = (): MiddlewareHandler => {
   return async (c, next) => {
@@ -13,7 +13,6 @@ export const customLogger = (): MiddlewareHandler => {
     const url = c.req.url;
     const startTime = Date.now();
 
-    // 1. Clonar y leer el body del Request
     let requestBody = '';
     try {
       const contentType = c.req.header('content-type');
@@ -43,7 +42,6 @@ export const customLogger = (): MiddlewareHandler => {
 
     const duration = Date.now() - startTime;
 
-    // 2. Clonar y leer el body del Response
     let responseBody = '';
     try {
       if (c.res && c.res.body) {
