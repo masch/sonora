@@ -515,19 +515,21 @@ api-db-restore: ## Download and restore database backup from R2. Usage: make api
 	echo "Downloading backup $$BACKUP_FILE from R2..."; \
 	bun --cwd apps/api wrangler r2 object get "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" --remote || { rm -rf "$$TEMP_DIR"; exit 1; }; \
 	echo "Decrypting and restoring to database..."; \
-	gpg --decrypt --batch --passphrase "$$KEY" "$$TEMP_FILE" \
-	  | gunzip \
-	  | ( \
-	      if command -v psql >/dev/null 2>&1; then \
-	        psql "$$TARGET_DB_URL"; \
-	      elif command -v podman >/dev/null 2>&1; then \
-	        podman run -i --rm --network host postgres:18-alpine psql "$$TARGET_DB_URL"; \
-	      elif command -v docker >/dev/null 2>&1; then \
-	        docker run -i --rm --network host postgres:18-alpine psql "$$TARGET_DB_URL"; \
-	      else \
-	        echo "Error: psql, podman, or docker is required to restore"; exit 1; \
-	      fi \
-	    ) || { rm -rf "$$TEMP_DIR"; exit 1; }; \
+	PSQL_CMD="psql"; \
+	if command -v psql >/dev/null 2>&1; then \
+	  PSQL_CMD="psql"; \
+	elif command -v podman >/dev/null 2>&1; then \
+	  PSQL_CMD="podman run -i --rm --network host postgres:18-alpine psql"; \
+	elif command -v docker >/dev/null 2>&1; then \
+	  PSQL_CMD="docker run -i --rm --network host postgres:18-alpine psql"; \
+	else \
+	  echo "Error: psql, podman, or docker is required to restore"; rm -rf "$$TEMP_DIR"; exit 1; \
+	fi; \
+	( \
+	  echo "DROP SCHEMA IF EXISTS sonora CASCADE;"; \
+	  echo "DROP SCHEMA IF EXISTS sonora_db_migrations CASCADE;"; \
+	  gpg --decrypt --batch --passphrase "$$KEY" "$$TEMP_FILE" | gunzip \
+	) | $$PSQL_CMD "$$TARGET_DB_URL" || { rm -rf "$$TEMP_DIR"; exit 1; }; \
 	rm -rf "$$TEMP_DIR"; \
 	echo "Restore completed successfully."
 
