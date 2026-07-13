@@ -58,15 +58,15 @@ jobs:
                 LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
 
                 echo "Downloading $key..."
-                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH"
+                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
 
                 echo "Uploading to backup bucket (latest)..."
                 bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
-                  --file "$LOCAL_PATH"
+                  --file "$LOCAL_PATH" --remote
 
                 echo "Archiving to date-stamped path..."
                 bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
-                  --file "$LOCAL_PATH"
+                  --file "$LOCAL_PATH" --remote
               done
 
           rm -rf "$TEMP_DIR"

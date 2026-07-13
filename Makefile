@@ -441,61 +441,81 @@ api-deploy-production-full: api-db-migrate-production api-db-seed-production api
 
 .PHONY: api-db-backup
 api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and prune old backups (>90 days)
-	@if [ -z "$$DATABASE_URL" ]; then echo "Error: DATABASE_URL environment variable is required"; exit 1; fi
-	@if [ -z "$$BACKUP_ENCRYPTION_KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY environment variable is required"; exit 1; fi
-	@if [ -z "$$CLOUDFLARE_API_TOKEN" ]; then echo "Error: CLOUDFLARE_API_TOKEN environment variable is required"; exit 1; fi
-	@if [ -z "$$CLOUDFLARE_ACCOUNT_ID" ]; then echo "Error: CLOUDFLARE_ACCOUNT_ID environment variable is required"; exit 1; fi
+	@DB_URL="$(DB_URL)"; \
+	if [ -z "$$DB_URL" ]; then \
+	  DB_URL="$(DATABASE_URL)"; \
+	fi; \
+	if [ -z "$$DB_URL" ]; then \
+	  read -p "Enter DATABASE_URL: " DB_URL; \
+	fi; \
+	if [ -z "$$DB_URL" ]; then echo "Error: DATABASE_URL is required"; exit 1; fi; \
+	KEY="$(BACKUP_ENCRYPTION_KEY)"; \
+	if [ -z "$$KEY" ]; then \
+	  read -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
+	fi; \
+	if [ -z "$$KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY is required"; exit 1; fi; \
 	DATE_TAG=$$(date +%Y-%m-%d); \
 	BACKUP_FILE="sonora-db-$$DATE_TAG.sql.gz.gpg"; \
 	TEMP_DIR=$$(mktemp -d); \
 	TEMP_FILE="$$TEMP_DIR/$$BACKUP_FILE"; \
 	echo "Dumping database..."; \
 	export PATH="/usr/lib/postgresql/18/bin:$$PATH"; \
-	pg_dump --no-owner --no-acl "$$DATABASE_URL" \
+	pg_dump --no-owner --no-acl "$$DB_URL" \
 	  | gzip \
-	  | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$$BACKUP_ENCRYPTION_KEY" \
+	  | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$$KEY" \
 	  > "$$TEMP_FILE" && \
 	echo "Uploading to R2..." && \
-	bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" && \
-	echo "Cleaning up backups older than 90 days from R2..." && \
-	CUTOFF=$$(date -d "90 days ago" +%Y-%m-%d); \
-	curl -s -H "Authorization: Bearer $$CLOUDFLARE_API_TOKEN" \
-	  "https://api.cloudflare.com/client/v4/accounts/$$CLOUDFLARE_ACCOUNT_ID/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
-	  | jq -r '.result.objects[]?.key' \
-	  | while read -r key; do \
-	      DATE_PART=$$(echo "$$key" | grep -oP '\d{4}-\d{2}-\d{2}'); \
-	      if [ -n "$$DATE_PART" ] && [[ "$$DATE_PART" < "$$CUTOFF" ]]; then \
-	        echo "Deleting old backup: $$key"; \
-	        bun --cwd apps/api wrangler r2 object delete "sonora-db-backups/$$key"; \
-	      fi \
-	    done; \
+	bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" --remote && \
+	TOKEN="$(CLOUDFLARE_API_TOKEN)"; \
+	ACCOUNT="$(CLOUDFLARE_ACCOUNT_ID)"; \
+	if [ -n "$$TOKEN" ] && [ -n "$$ACCOUNT" ]; then \
+	  echo "Cleaning up backups older than 90 days from R2..." && \
+	  CUTOFF=$$(date -d "90 days ago" +%Y-%m-%d); \
+	  curl -s -H "Authorization: Bearer $$TOKEN" \
+	    "https://api.cloudflare.com/client/v4/accounts/$$ACCOUNT/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
+	    | jq -r '.result.objects[]?.key' \
+	    | while read -r key; do \
+	        DATE_PART=$$(echo "$$key" | grep -oP '\d{4}-\d{2}-\d{2}'); \
+	        if [ -n "$$DATE_PART" ] && [[ "$$DATE_PART" < "$$CUTOFF" ]]; then \
+	          echo "Deleting old backup: $$key"; \
+	          bun --cwd apps/api wrangler r2 object delete "sonora-db-backups/$$key" --remote; \
+	        fi \
+	      done; \
+	else \
+	  echo "Skipping pruning of old backups (CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID not set)"; \
+	fi; \
 	rm -rf "$$TEMP_DIR"; \
 	echo "Backup process finished."
 
 .PHONY: api-db-restore
 api-db-restore: ## Download and restore database backup from R2. Usage: make api-db-restore DATE="2026-07-13" [DB_URL="postgresql://..."]
-	@if [ -z "$$BACKUP_ENCRYPTION_KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY environment variable is required"; exit 1; fi
-	@if [ -z "$$CLOUDFLARE_API_TOKEN" ]; then echo "Error: CLOUDFLARE_API_TOKEN environment variable is required"; exit 1; fi
-	@if [ -z "$$CLOUDFLARE_ACCOUNT_ID" ]; then echo "Error: CLOUDFLARE_ACCOUNT_ID environment variable is required"; exit 1; fi
-	@TARGET_DATE="$(DATE)"; \
+	@KEY="$(BACKUP_ENCRYPTION_KEY)"; \
+	if [ -z "$$KEY" ]; then \
+	  read -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
+	fi; \
+	if [ -z "$$KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY is required"; exit 1; fi; \
+	TARGET_DATE="$(DATE)"; \
 	if [ -z "$$TARGET_DATE" ]; then \
 	  TARGET_DATE=$$(date +%Y-%m-%d); \
 	  echo "No DATE specified. Using today's date ($$TARGET_DATE). Usage: make api-db-restore DATE=YYYY-MM-DD"; \
 	fi; \
 	TARGET_DB_URL="$(DB_URL)"; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
-	  TARGET_DB_URL="$$DATABASE_URL"; \
+	  TARGET_DB_URL="$(DATABASE_URL)"; \
 	fi; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
-	  echo "Error: DB_URL or DATABASE_URL environment variable is required"; exit 1; \
+	  read -p "Enter DATABASE_URL to restore into: " TARGET_DB_URL; \
+	fi; \
+	if [ -z "$$TARGET_DB_URL" ]; then \
+	  echo "Error: DATABASE_URL is required"; exit 1; \
 	fi; \
 	BACKUP_FILE="sonora-db-$$TARGET_DATE.sql.gz.gpg"; \
 	TEMP_DIR=$$(mktemp -d); \
 	TEMP_FILE="$$TEMP_DIR/$$BACKUP_FILE"; \
 	echo "Downloading backup $$BACKUP_FILE from R2..."; \
-	bun --cwd apps/api wrangler r2 object get "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" || { rm -rf "$$TEMP_DIR"; exit 1; }; \
+	bun --cwd apps/api wrangler r2 object get "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" --remote || { rm -rf "$$TEMP_DIR"; exit 1; }; \
 	echo "Decrypting and restoring to database..."; \
-	gpg --decrypt --batch --passphrase "$$BACKUP_ENCRYPTION_KEY" "$$TEMP_FILE" \
+	gpg --decrypt --batch --passphrase "$$KEY" "$$TEMP_FILE" \
 	  | gunzip \
 	  | psql "$$TARGET_DB_URL" || { rm -rf "$$TEMP_DIR"; exit 1; }; \
 	rm -rf "$$TEMP_DIR"; \
