@@ -14,7 +14,7 @@ export function GlobalAudioPlayer() {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const handleRewind = useAudioRewind();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { experienceId, isPlaying, isPaused, metadata: currentMetadata } = useCurrentExperience();
