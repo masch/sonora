@@ -4,6 +4,7 @@
   "enabledManagers": ["bun"],
   "rangeStrategy": "pin",
   "schedule": ["before 6am on Monday"],
+  "stabilityDays": 4,
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Dependency Dashboard (Renovate)",
   "labels": ["dependencies"],
