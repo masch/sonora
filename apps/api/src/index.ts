@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
-import { type DbClient } from './db';
+import { customLogger } from './middleware/logger';
+import { logger } from '@sonora/shared';
+import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
 import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
@@ -9,6 +11,7 @@ import { experiencesRouter } from './routes/experiences';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
 import { translationsRouter } from './routes/translations';
+import { paymentsRouter } from './routes/payments';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -28,6 +31,10 @@ export interface Env {
   BLOCK_OLDER_VERSIONS: string;
   GRACE_PERIOD_START?: string;
   GRACE_PERIOD_END?: string;
+  MERCADO_PAGO_ACCESS_TOKEN?: string;
+  MERCADO_PAGO_WEBHOOK_SECRET?: string;
+  DEFAULT_PAYMENT_PROVIDER?: string;
+  ENABLE_API_LOGGING?: string;
 }
 
 export interface Variables {
@@ -41,6 +48,7 @@ export { isUniqueViolation } from './utils/db-errors';
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Mount Middlewares
+app.use('*', customLogger());
 app.use('*', configureCors());
 app.use('*', injectDb());
 
@@ -52,10 +60,11 @@ app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/api/translations', translationsRouter);
+app.route('/payments', paymentsRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   return c.json<FeedbackResponse>({ status: 'error', errors: ['Internal server error'] }, 500);
 });
 

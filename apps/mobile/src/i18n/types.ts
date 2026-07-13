@@ -1,4 +1,4 @@
-import type { en } from './locales/en';
+import { en } from '@sonora/shared';
 
 /** Recursively extracts dot-separated key paths from a nested object type. */
 export type RecursiveKeyOf<TObj extends Record<string, unknown>> = {

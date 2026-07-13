@@ -26,6 +26,43 @@ describe('CORS behavior', () => {
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });
 
+  it('allows request when ALLOWED_ORIGIN contains multiple comma-separated origins and matches one of them', async () => {
+    const origins = 'http://localhost:8081,http://localhost:8082';
+
+    // First origin match
+    const req1 = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    const res1 = await app.fetch(req1, { ALLOWED_ORIGIN: origins } as never);
+    expect(res1.headers.get('access-control-allow-origin')).toBe('http://localhost:8081');
+
+    // Second origin match
+    const req2 = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8082',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    const res2 = await app.fetch(req2, { ALLOWED_ORIGIN: origins } as never);
+    expect(res2.headers.get('access-control-allow-origin')).toBe('http://localhost:8082');
+
+    // Non-matching origin
+    const req3 = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8083',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    const res3 = await app.fetch(req3, { ALLOWED_ORIGIN: origins } as never);
+    expect(res3.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
   it('sets custom ALLOWED_METHODS and ALLOWED_HEADERS', async () => {
     const req = new Request('http://localhost/feedback', {
       method: 'OPTIONS',

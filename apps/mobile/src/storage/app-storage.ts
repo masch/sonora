@@ -1,5 +1,6 @@
 import SqliteStorage from 'expo-sqlite/kv-store';
 import { type KeyValueStorage } from '@sonora/shared';
+import { createStorageFunctions } from './app-storage-common';
 
 export const appStorage: KeyValueStorage & {
   removeItem(key: string): Promise<void>;
@@ -21,3 +22,8 @@ export const appStorage: KeyValueStorage & {
     return SqliteStorage.clear();
   },
 };
+
+const { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } =
+  createStorageFunctions(appStorage);
+
+export { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail };

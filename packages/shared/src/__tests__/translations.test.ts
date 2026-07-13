@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { SUPPORTED_LANGUAGES } from '../enums';
 import {
-  SUPPORTED_LANGUAGES,
-  TranslationEntrySchema,
   TranslationBulkPayloadSchema,
+  TranslationEntrySchema,
   TranslationsMapSchema,
   type SupportedLanguage,
-  type TranslationEntry,
   type TranslationBulkPayload,
+  type TranslationEntry,
   type TranslationsMap,
 } from '../schemas/translations';
 
@@ -90,9 +90,9 @@ describe('TranslationEntrySchema', () => {
   });
 
   describe('value validation', () => {
-    it('rejects empty value', () => {
+    it('allows empty value (interpreted as deletion/restoring default)', () => {
       const result = TranslationEntrySchema.safeParse({ ...validEntry, value: '' });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('rejects missing value', () => {

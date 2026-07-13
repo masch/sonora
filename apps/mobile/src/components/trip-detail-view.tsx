@@ -22,13 +22,12 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
+import { PaymentPrompt } from '@/components/payment-prompt';
+import { usePurchase } from '@/hooks/use-purchase';
+import { PaymentClient } from '@/services/payment-client';
+import { getUserEmail } from '@/storage/app-storage';
 import type { TranslationKeys } from '@/i18n/types';
-
-function formatDistance(d: number | null, fallbackText: string): string {
-  if (d === null) return fallbackText;
-  if (d >= 1000) return `${(d / 1000).toFixed(1)} km`;
-  return `${Math.round(d)} m`;
-}
+import { formatDistance } from '@/utils/format-distance';
 
 interface TripDetailViewProps {
   track: TripExperience;
@@ -61,6 +60,10 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const handlePlayAndDownload = () => {
     userInitiatedPlayRef.current = true;
     download.startDownload();
+    // Fire-and-forget access log
+    getUserEmail().then((email) => {
+      PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
+    });
   };
 
   const mappedTrackForFeedback = {
@@ -97,6 +100,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
   const isBypassable = track.geofenceBypassable === true;
   const bypassGeofence = useRemoteConfigStore((s) => s.config.geofence.bypassGeofence);
   const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
+  const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
   const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
 
@@ -234,23 +238,36 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
           )}
 
           {/* Unified Audio Controller: Download & Play in one flow */}
-          <UnifiedAudioController
-            downloadStatus={download.status}
-            downloadProgress={download.progress}
-            downloadError={download.errorMsg}
-            playerStatus={player.status}
-            positionMs={player.positionMs}
-            durationMs={player.durationMs || track.durationSeconds * 1000}
-            playerError={player.errorMsg}
-            onPlay={handlePlay}
-            onPause={player.pause}
-            onStop={player.stop}
-            onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
-            onReset={() => player.seekTo(0)}
-            onDownload={handleDownload}
-            onCancelDownload={download.deleteTrackLocal}
-            disabled={!track.audioUrl}
-          />
+          {purchaseState.status === 'paid' ? (
+            <PaymentPrompt
+              price={purchaseState.price || 0}
+              currency={track.currency}
+              onPay={purchaseActions.pay}
+              onRestore={async (email) => {
+                return purchaseActions.restore(email);
+              }}
+              loading={purchaseState.paying}
+              error={purchaseState.error}
+            />
+          ) : (
+            <UnifiedAudioController
+              downloadStatus={download.status}
+              downloadProgress={download.progress}
+              downloadError={download.errorMsg}
+              playerStatus={player.status}
+              positionMs={player.positionMs}
+              durationMs={player.durationMs || track.durationSeconds * 1000}
+              playerError={player.errorMsg}
+              onPlay={handlePlay}
+              onPause={player.pause}
+              onStop={player.stop}
+              onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
+              onReset={() => player.seekTo(0)}
+              onDownload={handleDownload}
+              onCancelDownload={download.deleteTrackLocal}
+              disabled={!track.audioUrl || purchaseState.status === 'loading'}
+            />
+          )}
 
           {/* Manual feedback button */}
           <TwView className="self-stretch">
@@ -299,6 +316,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
               radius: geofence.requiredRadiusMeters,
               distance: formatDistance(
                 geofence.distanceMeters,
+                t,
                 t('experiences.geofenceBlocked.notAvailable'),
               ),
             })}

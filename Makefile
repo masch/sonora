@@ -60,15 +60,15 @@ start-headless: ## Launch Expo dev server without interactive TTY
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
-	bun --filter @sonora/mobile web
+	cd apps/mobile && bun run web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
-	bun --filter @sonora/mobile android-dev
+	cd apps/mobile && bun run android-dev
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	bun --filter @sonora/mobile ios
+	cd apps/mobile && bun run ios
 
 # ── Native ─────────────────────────────────────
 
@@ -176,7 +176,7 @@ typecheck: ## Run TypeScript type checks across workspaces
 
 .PHONY: admin-dev
 admin-dev: ## Launch Expo dev server for Admin Web
-	bun --filter @sonora/admin dev
+	cd apps/admin && EXPO_PUBLIC_API_URL="http://localhost:3000" bun run dev
 
 .PHONY: admin-dev-staging
 admin-dev-staging: ## Launch Expo dev server for Admin Web pointing to staging API
@@ -328,6 +328,16 @@ api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: m
 api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker. Usage: make api-deploy-production-set-origin ORIGIN="https://example.com"
 	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN
 
+.PHONY: api-deploy-staging-log-toggle
+api-deploy-staging-log-toggle: ## Toggle API logging on staging interactively
+	@read -p "Enable API logging on staging? (true/false): " ENABLED; \
+	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING --config wrangler.staging.toml
+
+.PHONY: api-deploy-production-log-toggle
+api-deploy-production-log-toggle: ## Toggle API logging on production interactively
+	@read -p "Enable API logging on production? (true/false): " ENABLED; \
+	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING
+
 # ── Backend API — Test deployed Workers ─────────────
 
 API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev
@@ -384,7 +394,7 @@ api-db-generate: ## Generate Drizzle migration from schema changes
 	cd $(API_DIR) && bun run db:generate
 
 .PHONY: api-db-migrate
-api-db-migrate: api-db-generate ## Apply pending Drizzle migrations
+api-db-migrate: ## Apply pending Drizzle migrations
 	cd $(API_DIR) && bun run db:migrate
 
 .PHONY: api-db-seed
@@ -401,15 +411,15 @@ ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run db:migrate
 
 .PHONY: api-db-migrate-production
 api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run db:migrate
 
 .PHONY: api-db-migrate-ci
 api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
-	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bunx drizzle-kit migrate
+	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bun run db:migrate
 
 .PHONY: api-db-seed-ci
 api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI)
@@ -462,7 +472,7 @@ api-dev-local: ## Run Hono API locally with Docker Postgres
 	cd $(API_DIR) && bun run dev:local
 
 .PHONY: api-dev-full
-api-dev-full: api-db-up api-dev-local ## Start Postgres and run Hono API locally
+api-dev-full: api-db-up api-db-migrate api-db-seed api-dev-local ## Start Postgres, migrate, seed, and run Hono API locally
 
 
 # ── Test ──────────────────────────────────────

@@ -22,6 +22,4 @@ AUDIO_LINK_EXPIRY_SECONDS = "900"
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "sonora-audio-bucket-staging"
-preview_bucket_name = "sonora-audio-bucket-staging"
-
 
