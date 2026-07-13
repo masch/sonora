@@ -29,37 +29,20 @@ jobs:
       #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account ID (for R2 wrangler ops)
       # DATABASE_URL is already set in the production environment.
 
-      - name: Database backup — pg_dump → gzip → GPG → R2
+      - name: Install PostgreSQL 18 client (pg_dump compatible with server 18.x)
         shell: bash
         run: |
-          DATE_TAG=$(date +%Y-%m-%d)
-          BACKUP_FILE="sonora-db-${DATE_TAG}.sql.gz.gpg"
-          TEMP_DIR=$(mktemp -d)
-          TEMP_FILE="${TEMP_DIR}/${BACKUP_FILE}"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18 2>/dev/null || {
+            # Fallback: add official PostgreSQL apt repo
+            sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client-18
+          }
 
-          echo "Dumping database..."
-          pg_dump --no-owner --no-acl "$DATABASE_URL" \
-            | gzip \
-            | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$BACKUP_ENCRYPTION_KEY" \
-            > "$TEMP_FILE"
-
-          echo "Uploading to R2..."
-          wrangler r2 object put "sonora-db-backups/db/${BACKUP_FILE}" \
-            --file "$TEMP_FILE"
-
-          echo "Cleaning up backups older than 90 days from R2..."
-          CUTOFF=$(date -d "90 days ago" +%Y-%m-%d)
-          wrangler r2 object list sonora-db-backups/db/ --delimiter / \
-            | jq -r '.objects[] | .key' \
-            | while read -r key; do
-                DATE_PART=$(echo "$key" | grep -oP '\d{4}-\d{2}-\d{2}')
-                if [ -n "$DATE_PART" ] && [[ "$DATE_PART" < "$CUTOFF" ]]; then
-                  echo "Deleting old backup: $key"
-                  wrangler r2 object delete "sonora-db-backups/db/${key}"
-                fi
-              done
-
-          rm -rf "$TEMP_DIR"
+      - name: Database backup — pg_dump → gzip → GPG → R2
+        run: make api-db-backup
 
       - name: Audio backup — wrangler copy to backup bucket
         shell: bash
@@ -68,21 +51,22 @@ jobs:
           TEMP_DIR=$(mktemp -d)
 
           echo "Listing objects in audio-bucket..."
-          wrangler r2 object list audio-bucket --delimiter / \
-            | jq -r '.objects[] | .key' \
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
+            | jq -r '.result.objects[]?.key' \
             | while read -r key; do
                 LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
 
                 echo "Downloading $key..."
-                wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH"
+                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
 
                 echo "Uploading to backup bucket (latest)..."
-                wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
-                  --file "$LOCAL_PATH"
+                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
+                  --file "$LOCAL_PATH" --remote
 
                 echo "Archiving to date-stamped path..."
-                wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
-                  --file "$LOCAL_PATH"
+                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
+                  --file "$LOCAL_PATH" --remote
               done
 
           rm -rf "$TEMP_DIR"
