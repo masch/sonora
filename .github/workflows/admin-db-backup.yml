@@ -50,6 +50,7 @@ jobs:
           TEMP_FILE="${TEMP_DIR}/${BACKUP_FILE}"
 
           echo "Dumping database..."
+          export PATH="/usr/lib/postgresql/18/bin:$PATH"
           pg_dump --no-owner --no-acl "$DATABASE_URL" \
             | gzip \
             | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$BACKUP_ENCRYPTION_KEY" \
