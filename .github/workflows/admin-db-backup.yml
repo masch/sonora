@@ -29,6 +29,18 @@ jobs:
       #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account ID (for R2 wrangler ops)
       # DATABASE_URL is already set in the production environment.
 
+      - name: Install PostgreSQL 18 client (pg_dump compatible with server 18.x)
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18 2>/dev/null || {
+            # Fallback: add official PostgreSQL apt repo
+            sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client-18
+          }
+
       - name: Database backup — pg_dump → gzip → GPG → R2
         shell: bash
         run: |
