@@ -1,45 +1,22 @@
-import { initializeApp } from 'firebase/app';
-import { getAnalytics, logEvent, type Analytics } from 'firebase/analytics';
-import firebaseAnalytics from '@react-native-firebase/analytics';
-import firebaseCrashlytics from '@react-native-firebase/crashlytics';
-
 import { logger } from '@/utils/logger';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
+import analytics from '@react-native-firebase/analytics';
+import crashlytics from '@react-native-firebase/crashlytics';
 
-// Firebase Web SDK instance
-let webAnalytics: Analytics | null = null;
-let isWebInitialized = false;
+const isFirebaseAvailable = () => {
+  // If RNFBAppModule is not present, native Firebase is not linked/configured in this binary
+  return !!NativeModules.RNFBAppModule;
+};
 
-function ensureWebInitialized() {
-  if (Platform.OS !== 'web') return;
-  if (isWebInitialized) return;
-  isWebInitialized = true;
+const getFirebaseAnalytics = () => {
+  if (!isFirebaseAvailable()) return null;
+  return analytics;
+};
 
-  if (typeof window !== 'undefined') {
-    try {
-      const firebaseConfig = {
-        apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-        authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-        measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
-      };
-
-      if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-        const app = initializeApp(firebaseConfig);
-        webAnalytics = getAnalytics(app);
-      } else {
-        logger.warn(
-          'Faltan credeciales de Firebase Web. Las analíticas web se imprimirán en consola.',
-        );
-      }
-    } catch (err) {
-      logger.warn('Error al inicializar Firebase Web SDK:', err);
-    }
-  }
-}
+const getFirebaseCrashlytics = () => {
+  if (!isFirebaseAvailable()) return null;
+  return crashlytics;
+};
 
 export interface AppLifecycleEvents {
   app_open: Record<string, never> | undefined;
@@ -87,65 +64,40 @@ export interface AnalyticsEventMap
 
 export const AnalyticsService = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
-    ensureWebInitialized();
-
     const extendedParams = {
       ...params,
       platform: Platform.OS,
     };
 
-    if (Platform.OS === 'web') {
-      if (webAnalytics) {
-        try {
-          logEvent(webAnalytics, eventName, extendedParams);
-        } catch (err) {
-          logger.warn(`Firebase Web logEvent error for ${eventName}:`, err);
-        }
-      } else {
-        logger.info(`[Analytics Web] Event: ${eventName}`, extendedParams);
-      }
-      return;
-    }
-
     try {
-      firebaseAnalytics().logEvent(eventName, extendedParams);
+      const analytics = getFirebaseAnalytics();
+      if (analytics) {
+        analytics().logEvent(eventName, extendedParams);
+      } else {
+        logger.info(`[Analytics Native - Disabled] Event: ${eventName}`, extendedParams);
+      }
     } catch (err) {
       logger.warn(`Firebase logEvent error for ${eventName}:`, err);
     }
   },
 
   recordError: (error: Error, customDescription?: string) => {
-    ensureWebInitialized();
-
-    if (Platform.OS === 'web') {
-      logger.error('[Web Error]', error, customDescription);
-      return;
-    }
-
     try {
-      if (customDescription) {
-        firebaseCrashlytics().setAttribute('custom_description', customDescription);
+      const crashlytics = getFirebaseCrashlytics();
+      if (crashlytics) {
+        if (customDescription) {
+          crashlytics().setAttribute('custom_description', customDescription);
+        }
+        crashlytics().recordError(error);
+      } else {
+        logger.error('[Native Error - Disabled]', error, customDescription);
       }
-      firebaseCrashlytics().recordError(error);
     } catch (err) {
       logger.warn('Firebase Crashlytics recordError error:', err);
     }
   },
 
   initializeGlobalErrorTracking: async () => {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.addEventListener('unhandledrejection', (event) => {
-          const reason = event.reason;
-          AnalyticsService.recordError(
-            reason instanceof Error ? reason : new Error(String(reason)),
-            'Unhandled web promise rejection',
-          );
-        });
-      }
-      return;
-    }
-
     try {
       const rejectionTracking = await import('promise/setimmediate/rejection-tracking');
       rejectionTracking.enable({

@@ -6,6 +6,11 @@ import type { PlayerStatus } from '@/store/audio-player-store';
 
 export type { PlayerStatus };
 
+export interface ImmersionMetadata extends AudioMetadata {
+  id?: string;
+  slug?: string;
+}
+
 export interface ImmersionPlayerState {
   status: PlayerStatus;
   positionMs: number;
@@ -15,7 +20,7 @@ export interface ImmersionPlayerState {
   pause: () => void;
   stop: () => void;
   seekTo: (positionMs: number) => void;
-  setMediaMetadata: (metadata: AudioMetadata) => void;
+  setMediaMetadata: (metadata: ImmersionMetadata) => void;
 }
 
 /**
@@ -34,7 +39,7 @@ export interface ImmersionPlayerState {
  */
 export function useImmersionPlayer(
   localAudioUri: string | null,
-  mediaMetadata: AudioMetadata,
+  mediaMetadata: ImmersionMetadata,
 ): ImmersionPlayerState {
   const storeStatus = useAudioPlayerStore((s) => s.status);
   const positionMs = useAudioPlayerStore((s) => s.positionMs);

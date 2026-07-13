@@ -3,10 +3,19 @@ import Constants from 'expo-constants';
 import type { RemoteConfigPayload } from '@sonora/shared';
 import { DEFAULT_REMOTE_CONFIG, RemoteConfigPayloadSchema, gte } from '@sonora/shared';
 import { getCachedConfig, setCachedConfig } from '../storage/config-cache';
+import { APP_CONFIG } from '../config/app-config';
 import { ApiClient } from '../services/api-client';
 import { logger } from '../utils/logger';
 
 const CONFIG_TIMEOUT_MS = 3000;
+
+const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
+  ...DEFAULT_REMOTE_CONFIG,
+  geofence: {
+    ...DEFAULT_REMOTE_CONFIG.geofence,
+    bypassGeofence: APP_CONFIG.geofence.bypassGeofence,
+  },
+};
 
 export type VersionStatus = 'ok' | 'warn' | 'block';
 
@@ -107,7 +116,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
       if (cached) {
         // Deep-merge cache into defaults so nested partial values
         // (e.g. geofence with only radiusMeters) don't lose default fields.
-        const merged: Record<string, unknown> = { ...DEFAULT_REMOTE_CONFIG };
+        const merged: Record<string, unknown> = { ...INITIAL_REMOTE_CONFIG };
         for (const key of Object.keys(cached) as (keyof RemoteConfigPayload)[]) {
           const val = cached[key];
           if (val !== undefined && typeof val === 'object' && val !== null && !Array.isArray(val)) {
@@ -133,7 +142,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
     let apiError: unknown = null;
     try {
       const raw = await ApiClient.get<Partial<RemoteConfigPayload>>('/config', { signal });
-      const merged = mergeRemoteConfig(DEFAULT_REMOTE_CONFIG, cached ? { ...cached, ...raw } : raw);
+      const merged = mergeRemoteConfig(INITIAL_REMOTE_CONFIG, cached ? { ...cached, ...raw } : raw);
       await setCachedConfig(merged);
       set({ config: merged, error: null });
     } catch (err) {
@@ -169,7 +178,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
   }
 
   return {
-    config: DEFAULT_REMOTE_CONFIG,
+    config: INITIAL_REMOTE_CONFIG,
     isLoading: true,
     error: null,
     versionStatus: 'ok',
