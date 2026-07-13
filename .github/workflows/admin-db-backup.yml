@@ -62,13 +62,13 @@ jobs:
 
           echo "Cleaning up backups older than 90 days from R2..."
           CUTOFF=$(date -d "90 days ago" +%Y-%m-%d)
-          bunx wrangler r2 object list sonora-db-backups/db/ --delimiter / \
+          bunx wrangler r2 object list sonora-db-backups --prefix db/ --delimiter / \
             | jq -r '.objects[] | .key' \
             | while read -r key; do
                 DATE_PART=$(echo "$key" | grep -oP '\d{4}-\d{2}-\d{2}')
                 if [ -n "$DATE_PART" ] && [[ "$DATE_PART" < "$CUTOFF" ]]; then
                   echo "Deleting old backup: $key"
-                  bunx wrangler r2 object delete "sonora-db-backups/db/${key}"
+                  bunx wrangler r2 object delete "sonora-db-backups/${key}"
                 fi
               done
 
