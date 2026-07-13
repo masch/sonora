@@ -57,18 +57,19 @@ jobs:
             > "$TEMP_FILE"
 
           echo "Uploading to R2..."
-          bunx wrangler r2 object put "sonora-db-backups/db/${BACKUP_FILE}" \
+          bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/${BACKUP_FILE}" \
             --file "$TEMP_FILE"
 
           echo "Cleaning up backups older than 90 days from R2..."
           CUTOFF=$(date -d "90 days ago" +%Y-%m-%d)
-          bunx wrangler r2 object list sonora-db-backups --prefix db/ --delimiter / \
-            | jq -r '.objects[] | .key' \
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
+            | jq -r '.result.objects[]?.key' \
             | while read -r key; do
                 DATE_PART=$(echo "$key" | grep -oP '\d{4}-\d{2}-\d{2}')
                 if [ -n "$DATE_PART" ] && [[ "$DATE_PART" < "$CUTOFF" ]]; then
                   echo "Deleting old backup: $key"
-                  bunx wrangler r2 object delete "sonora-db-backups/${key}"
+                  bun --cwd apps/api wrangler r2 object delete "sonora-db-backups/${key}"
                 fi
               done
 
@@ -81,20 +82,21 @@ jobs:
           TEMP_DIR=$(mktemp -d)
 
           echo "Listing objects in audio-bucket..."
-          bunx wrangler r2 object list audio-bucket --delimiter / \
-            | jq -r '.objects[] | .key' \
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
+            | jq -r '.result.objects[]?.key' \
             | while read -r key; do
                 LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
 
                 echo "Downloading $key..."
-                bunx wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH"
+                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH"
 
                 echo "Uploading to backup bucket (latest)..."
-                bunx wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
+                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
                   --file "$LOCAL_PATH"
 
                 echo "Archiving to date-stamped path..."
-                bunx wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
+                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
                   --file "$LOCAL_PATH"
               done
 
