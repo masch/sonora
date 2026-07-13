@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@sonora/shared": "workspace:*",
-    "hono": "4.12.27",
+    "hono": "4.12.28",
     "drizzle-orm": "0.45.2",
     "pg": "8.22.0",
     "@neondatabase/serverless": "1.1.0",
