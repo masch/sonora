@@ -42,38 +42,7 @@ jobs:
           }
 
       - name: Database backup — pg_dump → gzip → GPG → R2
-        shell: bash
-        run: |
-          DATE_TAG=$(date +%Y-%m-%d)
-          BACKUP_FILE="sonora-db-${DATE_TAG}.sql.gz.gpg"
-          TEMP_DIR=$(mktemp -d)
-          TEMP_FILE="${TEMP_DIR}/${BACKUP_FILE}"
-
-          echo "Dumping database..."
-          export PATH="/usr/lib/postgresql/18/bin:$PATH"
-          pg_dump --no-owner --no-acl "$DATABASE_URL" \
-            | gzip \
-            | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$BACKUP_ENCRYPTION_KEY" \
-            > "$TEMP_FILE"
-
-          echo "Uploading to R2..."
-          bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/${BACKUP_FILE}" \
-            --file "$TEMP_FILE"
-
-          echo "Cleaning up backups older than 90 days from R2..."
-          CUTOFF=$(date -d "90 days ago" +%Y-%m-%d)
-          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
-            | jq -r '.result.objects[]?.key' \
-            | while read -r key; do
-                DATE_PART=$(echo "$key" | grep -oP '\d{4}-\d{2}-\d{2}')
-                if [ -n "$DATE_PART" ] && [[ "$DATE_PART" < "$CUTOFF" ]]; then
-                  echo "Deleting old backup: $key"
-                  bun --cwd apps/api wrangler r2 object delete "sonora-db-backups/${key}"
-                fi
-              done
-
-          rm -rf "$TEMP_DIR"
+        run: make api-db-backup
 
       - name: Audio backup — wrangler copy to backup bucket
         shell: bash
