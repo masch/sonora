@@ -460,7 +460,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	TEMP_FILE="$$TEMP_DIR/$$BACKUP_FILE"; \
 	echo "Dumping database..."; \
 	export PATH="/usr/lib/postgresql/18/bin:$$PATH"; \
-	pg_dump --no-owner --no-acl "$$DB_URL" \
+	pg_dump --clean --if-exists --inserts --no-owner --no-acl "$$DB_URL" \
 	  | gzip \
 	  | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$$KEY" \
 	  > "$$TEMP_FILE" && \
@@ -517,7 +517,17 @@ api-db-restore: ## Download and restore database backup from R2. Usage: make api
 	echo "Decrypting and restoring to database..."; \
 	gpg --decrypt --batch --passphrase "$$KEY" "$$TEMP_FILE" \
 	  | gunzip \
-	  | psql "$$TARGET_DB_URL" || { rm -rf "$$TEMP_DIR"; exit 1; }; \
+	  | ( \
+	      if command -v psql >/dev/null 2>&1; then \
+	        psql "$$TARGET_DB_URL"; \
+	      elif command -v podman >/dev/null 2>&1; then \
+	        podman run -i --rm --network host postgres:18-alpine psql "$$TARGET_DB_URL"; \
+	      elif command -v docker >/dev/null 2>&1; then \
+	        docker run -i --rm --network host postgres:18-alpine psql "$$TARGET_DB_URL"; \
+	      else \
+	        echo "Error: psql, podman, or docker is required to restore"; exit 1; \
+	      fi \
+	    ) || { rm -rf "$$TEMP_DIR"; exit 1; }; \
 	rm -rf "$$TEMP_DIR"; \
 	echo "Restore completed successfully."
 
