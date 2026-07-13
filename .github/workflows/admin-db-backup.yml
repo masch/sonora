@@ -2,7 +2,7 @@ name: 3-ADMIN DB Backup
 
 on:
   schedule:
-    - cron: '0 2 * * 0' # Sunday 02:00 UTC
+    - cron: '0 5 * * 0' # Sunday 02:00 ART (05:00 UTC)
   workflow_dispatch:
 
 permissions:
