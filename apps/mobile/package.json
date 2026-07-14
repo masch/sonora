@@ -60,7 +60,7 @@
     "@types/jest": "29.5.14",
     "@types/leaflet": "1.9.21",
     "@types/react": "19.2.15",
-    "eslint": "9.39.4",
+    "eslint": "9.39.5",
     "eslint-config-expo": "56.0.4",
     "eslint-plugin-i18next": "6.1.5",
     "firebase-tools": "15.22.4",
