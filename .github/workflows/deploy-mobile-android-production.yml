@@ -31,10 +31,7 @@ env:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    environment: production
     outputs:
-      apk_path: ${{ steps.sign-release.outputs.apk_path }}
-      aab_path: ${{ steps.sign-release.outputs.aab_path }}
       tag_name: ${{ steps.get-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
@@ -71,14 +68,6 @@ jobs:
           git fetch --tags --force
           VERSION_CODE=$(git tag -l "prod-v*" | wc -l)
           echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-      - name: Write production keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile/sonora-production-keystore.jks
 
       - name: Build Android APK + AAB (Unsigned)
         id: build-release
@@ -97,6 +86,52 @@ jobs:
             OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.apk" \
             OUTPUT_AAB="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.aab"
 
+      - name: Upload Unsigned APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unsigned-apk
+          path: apps/mobile/sonora-*-unsigned.apk
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Unsigned AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unsigned-aab
+          path: apps/mobile/sonora-*-unsigned.aab
+          if-no-files-found: error
+          retention-days: 1
+
+  sign-android:
+    runs-on: ubuntu-latest
+    needs: build-android
+    environment: production
+    outputs:
+      apk_path: ${{ steps.sign-release.outputs.apk_path }}
+      aab_path: ${{ steps.sign-release.outputs.aab_path }}
+      tag_name: ${{ needs.build-android.outputs.tag_name }}
+    steps:
+      - name: Download Unsigned APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-unsigned-apk
+          path: apps/mobile
+      - name: Download Unsigned AAB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-unsigned-aab
+          path: apps/mobile
+      - name: Setup Java SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Write production keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile/sonora-production-keystore.jks
+
       - name: Sign Android Artifacts
         id: sign-release
         env:
@@ -112,19 +147,19 @@ jobs:
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass pass:"$KEYSTORE_PASSWORD" \
             --key-pass pass:"$KEY_PASSWORD" \
-            --out apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk \
-            apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}-unsigned.apk
-            
+            --out apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk \
+            apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}-unsigned.apk
+
           # Sign AAB
           jarsigner -keystore apps/mobile/sonora-production-keystore.jks \
             -storepass "$KEYSTORE_PASSWORD" \
             -keypass "$KEY_PASSWORD" \
-            -signedjar apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.aab \
-            apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}-unsigned.aab \
+            -signedjar apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.aab \
+            apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}-unsigned.aab \
             "$KEY_ALIAS"
-            
-          echo "apk_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk" >> "$GITHUB_OUTPUT"
-          echo "aab_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.aab" >> "$GITHUB_OUTPUT"
+
+          echo "apk_path=apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk" >> "$GITHUB_OUTPUT"
+          echo "aab_path=apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.aab" >> "$GITHUB_OUTPUT"
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
@@ -144,7 +179,7 @@ jobs:
 
   deploy-firebase:
     runs-on: ubuntu-latest
-    needs: build-android
+    needs: sign-android
     environment: production
     steps:
       - uses: actions/checkout@v5
@@ -168,7 +203,7 @@ jobs:
       - name: Distribute Android APK to Firebase
         env:
           FIREBASE_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          APK_PATH: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk
+          APK_PATH: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.apk
           FIREBASE_RELEASE_NOTES: ${{ steps.release-notes.outputs.commits }}
         run: |
           # Write service account key
@@ -182,7 +217,7 @@ jobs:
       - name: Upload APK to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ needs.build-android.outputs.tag_name }}
-          APK_PATH: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}.apk
+          TAG_NAME: ${{ needs.sign-android.outputs.tag_name }}
+          APK_PATH: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.apk
         run: |
           gh release upload "$TAG_NAME" "$APK_PATH" --clobber
