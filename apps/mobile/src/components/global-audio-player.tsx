@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSegments, usePathname } from 'expo-router';
-import { useAudioPlayerStore } from '@/store/audio-player-store';
+import { useAudioPlayerStore, cleanExperienceId } from '@/store/audio-player-store';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
@@ -31,7 +31,7 @@ export function GlobalAudioPlayer() {
   const routeIdParam = pathParts[1] === 'tracks' ? pathParts[2] : undefined;
 
   // Normalize route param ID to match clean experience ID formats
-  const cleanSegmentId = routeIdParam?.replace(/^(track|trip)-/, '');
+  const cleanSegmentId = cleanExperienceId(routeIdParam) ?? undefined;
 
   // Hide the global audio player if the local audio player is already visible:
   // 1. Playing instructions on the Home tab screen

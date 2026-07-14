@@ -1,12 +1,17 @@
-import type { AudioMetadata } from 'expo-audio';
-import { useAudioPlayerStore, getTrackIdFromUri } from '@/store/audio-player-store';
+import {
+  useAudioPlayerStore,
+  getTrackIdFromUri,
+  cleanExperienceId,
+  type PlayerStatus,
+  type ExperienceAudioMetadata,
+} from '@/store/audio-player-store';
 
 export interface CurrentExperience {
   experienceId: string | null;
-  status: string;
+  status: PlayerStatus;
   isPlaying: boolean;
   isPaused: boolean;
-  metadata: (AudioMetadata & { id?: string; slug?: string }) | null;
+  metadata: ExperienceAudioMetadata | null;
 }
 
 export function useCurrentExperience(): CurrentExperience {
@@ -15,7 +20,7 @@ export function useCurrentExperience(): CurrentExperience {
   const currentMetadata = useAudioPlayerStore((s) => s.currentMetadata);
 
   const playingTrackId = currentUri ? getTrackIdFromUri(currentUri) : null;
-  const cleanPlayingId = playingTrackId?.replace(/^(track|trip)-/, '') ?? null;
+  const cleanPlayingId = cleanExperienceId(playingTrackId);
 
   return {
     experienceId: cleanPlayingId,

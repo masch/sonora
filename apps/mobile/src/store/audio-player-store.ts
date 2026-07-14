@@ -6,6 +6,11 @@ import { AnalyticsService } from '@/services/analytics';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
+export type ExperienceAudioMetadata = AudioMetadata & {
+  id?: string;
+  slug?: string;
+};
+
 export interface PendingPlayRequest {
   uri: string;
   resume?: boolean;
@@ -18,7 +23,7 @@ export interface AudioPlayerState {
   errorMsg: string | null;
   currentUri: string | null;
   pendingPlayRequest: PendingPlayRequest | null;
-  currentMetadata: AudioMetadata | null;
+  currentMetadata: ExperienceAudioMetadata | null;
 }
 
 export interface AudioPlayerActions {
@@ -29,7 +34,7 @@ export interface AudioPlayerActions {
   rewind: (offsetMs: number) => void;
   confirmInterrupt: () => void;
   cancelInterrupt: () => void;
-  setNowPlayingMetadata: (metadata: AudioMetadata) => void;
+  setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => void;
   _setPlayer: (player: AudioPlayer | null) => void;
   _syncStatus: (partial: {
     status?: PlayerStatus;
@@ -46,7 +51,7 @@ const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   showSeekForward: false,
 };
 
-function enableLockScreenControls(player: AudioPlayer, metadata: AudioMetadata | null) {
+function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
     try {
       player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
@@ -82,6 +87,11 @@ export function getTrackIdFromUri(uri: string | null): string {
   const parts = uri.split('/');
   const lastPart = parts[parts.length - 1] || 'unknown';
   return lastPart.replace(/\.[^/.]+$/, ''); // strip extension
+}
+
+export function cleanExperienceId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return id.replace(/^(track|trip)-/, '');
 }
 
 export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPlayer | null }>(
@@ -197,7 +207,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
       set({ pendingPlayRequest: null });
     },
 
-    setNowPlayingMetadata: (metadata: AudioMetadata) => {
+    setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => {
       const { _player, status } = get();
       set({ currentMetadata: metadata });
       if (_player && status === 'playing') {
