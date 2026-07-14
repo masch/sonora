@@ -20,7 +20,8 @@ export function useCurrentExperience(): CurrentExperience {
   const currentMetadata = useAudioPlayerStore((s) => s.currentMetadata);
 
   const playingTrackId = currentUri ? getTrackIdFromUri(currentUri) : null;
-  const cleanPlayingId = cleanExperienceId(playingTrackId);
+  const cleanPlayingId =
+    currentMetadata?.id || currentMetadata?.slug || cleanExperienceId(playingTrackId);
 
   return {
     experienceId: cleanPlayingId,

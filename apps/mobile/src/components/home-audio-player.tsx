@@ -20,6 +20,7 @@ export function HomeAudioPlayer() {
   const download = useTrackDownload('instructions', instructionsUrl, t('home.instructionsName'));
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
+    id: 'instructions',
   });
 
   // Auto-play when download completes if requested by user

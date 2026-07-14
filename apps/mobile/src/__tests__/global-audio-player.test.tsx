@@ -2,6 +2,8 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 
+import { ExperienceAudioMetadata } from '@/store/audio-player-store';
+
 let mockSegments = ['(tabs)', 'index'];
 let mockPathname = '/(tabs)/index';
 
@@ -20,7 +22,7 @@ const mockState = {
   positionMs: 0,
   durationMs: 0,
   currentUri: null as string | null,
-  currentMetadata: null as { title: string } | null,
+  currentMetadata: null as ExperienceAudioMetadata | null,
   play: mockPlay,
   pause: mockPause,
   stop: mockStop,
@@ -136,11 +138,33 @@ describe('GlobalAudioPlayer', () => {
     expect(mockRewind).toHaveBeenCalledWith(10000);
   });
 
-  it('hides when playing instructions on the Home tab screen', async () => {
+  it.each([
+    ['/', ['(tabs)']],
+    ['/index', ['(tabs)', 'index']],
+    ['/(tabs)', ['(tabs)']],
+    ['/(tabs)/index', ['(tabs)', 'index']],
+  ])(
+    'hides when playing instructions on the Home screen with pathname "%s"',
+    async (pathname, segments) => {
+      mockSegments = segments;
+      mockPathname = pathname;
+      mockState.status = 'playing';
+      mockState.currentUri = 'file://instructions.mp3';
+
+      const { queryByTestId } = await render(<GlobalAudioPlayer />);
+      expect(queryByTestId('global-audio-player')).toBeNull();
+    },
+  );
+
+  it('hides when playing instructions on the Home tab screen with a blob URI but metadata id instructions', async () => {
     mockSegments = ['(tabs)', 'index'];
     mockPathname = '/(tabs)/index';
     mockState.status = 'playing';
-    mockState.currentUri = 'file://instructions.mp3';
+    mockState.currentUri = 'blob:http://localhost:8081/b279c3d6-f2c0-4b7c-8406-bb5127bbc0e2';
+    mockState.currentMetadata = {
+      title: 'Instructions',
+      id: 'instructions',
+    };
 
     const { queryByTestId } = await render(<GlobalAudioPlayer />);
     expect(queryByTestId('global-audio-player')).toBeNull();

@@ -1,14 +1,14 @@
-import { Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSegments, usePathname } from 'expo-router';
-import { useAudioPlayerStore, cleanExperienceId } from '@/store/audio-player-store';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useCurrentExperience } from '@/hooks/use-current-experience';
-import { TwView, TwPressable, TwText } from '@/tw';
 import { Icon } from '@/components/icon';
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
+import { useCurrentExperience } from '@/hooks/use-current-experience';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { cleanExperienceId, useAudioPlayerStore } from '@/store/audio-player-store';
+import { TwPressable, TwText, TwView } from '@/tw';
+import { usePathname, useSegments } from 'expo-router';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function GlobalAudioPlayer() {
   const { t } = useAppTranslation();
@@ -38,8 +38,10 @@ export function GlobalAudioPlayer() {
   // 2. Viewing the track details page of the currently playing track
   const isLocalControllerVisible =
     (experienceId === 'instructions' &&
-      segments[0] === '(tabs)' &&
-      (segments[1] === undefined || (segments[1] as string) === 'index')) ||
+      (pathname === '/' || // Standard root path on Web/Mobile
+        pathname === '/index' || // Direct index route fallback
+        pathname === '/(tabs)' || // Tab group root segment path
+        pathname === '/(tabs)/index')) || // Explicit tab index path (e.g. deep-links / test environments)
     (segments[0] === 'tracks' &&
       cleanSegmentId !== undefined &&
       (experienceId === cleanSegmentId ||
