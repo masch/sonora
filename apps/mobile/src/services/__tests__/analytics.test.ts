@@ -2,8 +2,16 @@
 process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'test-api-key';
 process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'test-project-id';
 
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
+
+// Mock RNFBAppModule so that isFirebaseAvailable() returns true on native tests
+NativeModules.RNFBAppModule = {};
+
 import { AnalyticsService } from '../analytics';
+
+const { AnalyticsService: AnalyticsServiceWeb } = jest.requireActual<{
+  AnalyticsService: typeof AnalyticsService;
+}>('../analytics.web');
 
 const mockLogEvent = jest.fn();
 const mockRecordError = jest.fn();
@@ -66,7 +74,7 @@ describe('AnalyticsService', () => {
 
   it('tracks events on web platform using Web Firebase SDK', () => {
     platform.OS = 'web';
-    AnalyticsService.trackEvent('test_web_event', { foo: 'web_bar' });
+    AnalyticsServiceWeb.trackEvent('test_web_event', { foo: 'web_bar' });
     expect(mockLogEvent).not.toHaveBeenCalled();
     expect(mockWebLogEvent).toHaveBeenCalledWith(expect.any(Object), 'test_web_event', {
       foo: 'web_bar',
@@ -78,7 +86,7 @@ describe('AnalyticsService', () => {
     platform.OS = 'web';
     const error = new Error('Web test error');
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    AnalyticsService.recordError(error, 'Web custom description');
+    AnalyticsServiceWeb.recordError(error, 'Web custom description');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[ERROR]',
       '[Web Error]',
@@ -98,7 +106,7 @@ describe('AnalyticsService', () => {
         addEventListener: mockAddEventListener,
       } as unknown as Window & typeof globalThis;
 
-      AnalyticsService.initializeGlobalErrorTracking();
+      AnalyticsServiceWeb.initializeGlobalErrorTracking();
 
       expect(mockAddEventListener).toHaveBeenCalledWith('unhandledrejection', expect.any(Function));
 

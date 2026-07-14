@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
 import UnifiedAudioController from '@/components/unified-audio-controller';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type TrackExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
@@ -38,11 +38,15 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
-  const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
+  const rewind = useAudioRewind();
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
 
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
-  const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
+  const player = useImmersionPlayer(download.localAudioUri, {
+    title: track.title,
+    id: track.id,
+    slug: track.slug,
+  });
 
   // Auto-play when download completes if the user initiated it
   useEffect(() => {
@@ -207,7 +211,7 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
                 onPlay={player.play}
                 onPause={player.pause}
                 onStop={player.stop}
-                onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
+                onRewind={rewind}
                 onReset={() => player.seekTo(0)}
                 onDownload={handlePlayAndDownload}
                 onCancelDownload={download.deleteTrackLocal}

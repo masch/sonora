@@ -6,6 +6,11 @@ import { AnalyticsService } from '@/services/analytics';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
+export type ExperienceAudioMetadata = AudioMetadata & {
+  id?: string;
+  slug?: string;
+};
+
 export interface PendingPlayRequest {
   uri: string;
   resume?: boolean;
@@ -18,7 +23,7 @@ export interface AudioPlayerState {
   errorMsg: string | null;
   currentUri: string | null;
   pendingPlayRequest: PendingPlayRequest | null;
-  currentMetadata: AudioMetadata | null;
+  currentMetadata: ExperienceAudioMetadata | null;
 }
 
 export interface AudioPlayerActions {
@@ -26,9 +31,10 @@ export interface AudioPlayerActions {
   pause: () => void;
   stop: () => void;
   seekTo: (positionMs: number) => void;
+  rewind: (offsetMs: number) => void;
   confirmInterrupt: () => void;
   cancelInterrupt: () => void;
-  setNowPlayingMetadata: (metadata: AudioMetadata) => void;
+  setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => void;
   _setPlayer: (player: AudioPlayer | null) => void;
   _syncStatus: (partial: {
     status?: PlayerStatus;
@@ -45,7 +51,7 @@ const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   showSeekForward: false,
 };
 
-function enableLockScreenControls(player: AudioPlayer, metadata: AudioMetadata | null) {
+function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
     try {
       player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
@@ -65,11 +71,27 @@ function disableLockScreenControls(player: AudioPlayer) {
   }
 }
 
-function getTrackIdFromUri(uri: string | null): string {
+export function getTrackIdFromUri(uri: string | null): string {
   if (!uri) return 'unknown';
+
+  // For local cached files, the track ID is the parent directory name: /tracks/{trackId}/audio.mp3
+  if (uri.includes('/tracks/')) {
+    const parts = uri.split('/tracks/');
+    const afterTracks = parts[1];
+    if (afterTracks) {
+      const trackId = afterTracks.split('/')[0];
+      if (trackId) return trackId;
+    }
+  }
+
   const parts = uri.split('/');
   const lastPart = parts[parts.length - 1] || 'unknown';
   return lastPart.replace(/\.[^/.]+$/, ''); // strip extension
+}
+
+export function cleanExperienceId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return id.replace(/^(track|trip)-/, '');
 }
 
 export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPlayer | null }>(
@@ -129,7 +151,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
       _player?.pause();
       _player?.seekTo(0);
       if (_player) disableLockScreenControls(_player);
-      set({ status: 'stopped', positionMs: 0 });
+      set({ status: 'stopped', positionMs: 0, currentUri: null, currentMetadata: null });
 
       AnalyticsService.trackEvent('audio_playback_stopped', {
         track_id: getTrackIdFromUri(currentUri),
@@ -147,6 +169,11 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
         position_ms: positionMs,
         title: currentMetadata?.title ?? 'unknown',
       });
+    },
+
+    rewind: (offsetMs: number) => {
+      const { positionMs, seekTo } = get();
+      seekTo(Math.max(0, positionMs - offsetMs));
     },
 
     confirmInterrupt: () => {
@@ -180,7 +207,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
       set({ pendingPlayRequest: null });
     },
 
-    setNowPlayingMetadata: (metadata: AudioMetadata) => {
+    setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => {
       const { _player, status } = get();
       set({ currentMetadata: metadata });
       if (_player && status === 'playing') {

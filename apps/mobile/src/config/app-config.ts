@@ -1,6 +1,6 @@
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -74,10 +74,9 @@ export const APP_CONFIG = {
     radiusMeters: DEFAULT_REMOTE_CONFIG.geofence.radiusMeters,
     /**
      * Build-time env override to bypass geofence restriction entirely.
-     * @note the logic is inverted: setting the env var to "false" actually enables bypass.
      * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'false',
+    bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true',
   },
   feedback: {
     /**

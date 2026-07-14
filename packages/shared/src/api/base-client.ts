@@ -71,17 +71,16 @@ export class BaseApiClient {
 
   protected async getErrorBody(response: Response): Promise<unknown> {
     try {
-      if (typeof response.json === 'function') {
-        return await response.json();
+      if (typeof response.clone === 'function') {
+        return await response.clone().json();
       }
+      return await response.json();
     } catch (err) {
-      logger.error('Failed to parse error response as JSON', err);
+      logger.debug('Failed to parse error response as JSON, falling back to text', err);
     }
 
     try {
-      if (typeof response.text === 'function') {
-        return await response.text();
-      }
+      return await response.text();
     } catch (err) {
       logger.error('Failed to parse error response as text', err);
     }

@@ -8,6 +8,7 @@ import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailMap from './track-detail-map';
 import UnifiedAudioController from '@/components/unified-audio-controller';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
 import { type TripExperience } from '@/data/experiences';
@@ -47,7 +48,11 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
     longitude: track.longitude,
   });
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
-  const player = useImmersionPlayer(download.localAudioUri, { title: track.title });
+  const player = useImmersionPlayer(download.localAudioUri, {
+    title: track.title,
+    id: track.id,
+    slug: track.slug,
+  });
 
   // Auto-play when download completes if the user initiated it
   useEffect(() => {
@@ -99,7 +104,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
 
   const isBypassable = track.geofenceBypassable === true;
   const bypassGeofence = useRemoteConfigStore((s) => s.config.geofence.bypassGeofence);
-  const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
+  const rewind = useAudioRewind();
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
   const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
@@ -261,7 +266,7 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
               onPlay={handlePlay}
               onPause={player.pause}
               onStop={player.stop}
-              onRewind={() => player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs))}
+              onRewind={rewind}
               onReset={() => player.seekTo(0)}
               onDownload={handleDownload}
               onCancelDownload={download.deleteTrackLocal}

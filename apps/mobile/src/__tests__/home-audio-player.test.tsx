@@ -55,6 +55,11 @@ jest.mock('expo-symbols', () => ({
   SymbolView: 'SymbolView',
 }));
 
+const mockRewind = jest.fn();
+jest.mock('@/hooks/use-audio-rewind', () => ({
+  useAudioRewind: () => mockRewind,
+}));
+
 describe('HomeAudioPlayer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -111,7 +116,7 @@ describe('HomeAudioPlayer', () => {
 
     const rewindBtn = getByTestId('home-player-rewind-button');
     await fireEvent.press(rewindBtn);
-    expect(mockSeekTo).toHaveBeenCalledWith(20000); // 30s - 10s = 20s
+    expect(mockRewind).toHaveBeenCalledTimes(1);
 
     const resetBtn = getByTestId('home-player-reset-button');
     await fireEvent.press(resetBtn);
