@@ -61,9 +61,18 @@ jobs:
         with:
           environment: production
 
+  deploy-admin:
+    name: Deploy Admin
+    needs: [check-changes, tag-release]
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/deploy-admin-production.yml
+    with:
+      skip_tagging: true
+    secrets: inherit
+
   deploy-web:
     name: Deploy Web
-    needs: [check-changes, tag-release]
+    needs: [check-changes, deploy-admin, tag-release]
     if: needs.check-changes.outputs.has_changes == 'true'
     uses: ./.github/workflows/deploy-mobile-web-production.yml
     with:
