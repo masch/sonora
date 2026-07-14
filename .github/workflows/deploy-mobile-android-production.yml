@@ -33,8 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     outputs:
-      apk_path: ${{ steps.build-release.outputs.apk_path }}
-      aab_path: ${{ steps.build-release.outputs.aab_path }}
+      apk_path: ${{ steps.sign-release.outputs.apk_path }}
+      aab_path: ${{ steps.sign-release.outputs.aab_path }}
       tag_name: ${{ steps.get-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
@@ -80,7 +80,7 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > apps/mobile/sonora-production-keystore.jks
 
-      - name: Build Android APK + AAB
+      - name: Build Android APK + AAB (Unsigned)
         id: build-release
         env:
           APP_ENV: production
@@ -92,13 +92,37 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+        run: |
+          make eas-build-android-release-ci-unsigned \
+            OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.apk" \
+            OUTPUT_AAB="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.aab"
+
+      - name: Sign Android Artifacts
+        id: sign-release
+        env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          make eas-build-android-release-ci \
-            OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}.apk" \
-            OUTPUT_AAB="sonora-${{ steps.get-tag.outputs.tag }}.aab"
+          # Find apksigner in Android SDK build-tools
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+
+          # Sign APK
+          $APKSIGNER sign --ks apps/mobile/sonora-production-keystore.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass pass:"$KEYSTORE_PASSWORD" \
+            --key-pass pass:"$KEY_PASSWORD" \
+            --out apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk \
+            apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}-unsigned.apk
+            
+          # Sign AAB
+          jarsigner -keystore apps/mobile/sonora-production-keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -signedjar apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.aab \
+            apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}-unsigned.aab \
+            "$KEY_ALIAS"
+            
           echo "apk_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk" >> "$GITHUB_OUTPUT"
           echo "aab_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.aab" >> "$GITHUB_OUTPUT"
 
