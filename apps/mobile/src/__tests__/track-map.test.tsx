@@ -17,6 +17,7 @@ const DEFAULT_TRACKS: Experience[] = [
     longitude: -64.738,
     audioUrl: 'https://example.com/audio.mp3',
     imageKey: 'trips-deriva-centro-cover',
+    free: true,
   },
   {
     id: '5a9463ce-daba-4756-892e-4dd4cb862309',
@@ -30,6 +31,7 @@ const DEFAULT_TRACKS: Experience[] = [
     longitude: -65.456,
     audioUrl: 'https://example.com/audio2.mp3',
     imageKey: 'trips-deriva-centro-cover',
+    free: true,
   },
 ];
 

@@ -21,6 +21,15 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "aab": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "credentialsSource": "local",
+      "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "1"
+      }
     }
   }
 }

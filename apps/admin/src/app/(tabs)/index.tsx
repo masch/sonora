@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { ScreenWrapper } from '@/components/screen-wrapper';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import LoadingView from '@/components/loading-view';
-import { TwView, TwText, TwPressable, TwScrollView, TwTextInput } from '@/tw';
+import { TwView, TwText, TwPressable, TwTextInput } from '@/tw';
 import { AdminApiClient } from '@/services/admin-api-client';
 import { useTranslation } from 'react-i18next';
-import { en } from '../../../../mobile/src/i18n/locales/en';
-import { es } from '../../../../mobile/src/i18n/locales/es';
+import { en, es } from '@sonora/shared';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type LocaleData = Record<string, string>;
 
@@ -34,6 +34,7 @@ export default function TranslationEditorScreen() {
   const [activeLang, setActiveLang] = useState<'en' | 'es'>('en');
   const [searchQuery, setSearchQuery] = useState('');
   const { t } = useTranslation();
+  const colors = useThemeColors();
 
   // Remote overrides loaded from database
   const [overrides, setOverrides] = useState<Record<string, string>>({});
@@ -46,19 +47,22 @@ export default function TranslationEditorScreen() {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   // Load translations for the active language
-  const loadTranslations = useCallback(async (lang: 'en' | 'es') => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await AdminApiClient.getTranslations(lang);
-      setOverrides(data || {});
-      setEdits({});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load translations');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const loadTranslations = useCallback(
+    async (lang: 'en' | 'es') => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await AdminApiClient.getTranslations(lang);
+        setOverrides(data || {});
+        setEdits({});
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('dashboard.errorLoading'));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -124,20 +128,26 @@ export default function TranslationEditorScreen() {
     setSaveStatus(t('dashboard.savingStatus'));
 
     // Construct payload of all final overrides
-    // Both existing overrides and new edits, excluding any that were cleared
-    const payloadEntries = Object.keys(LOCAL_TRANSLATIONS[activeLang])
+    // Send updated values, and include cleared overrides (value: "") to instruct the API to delete them
+    const keysToSave = new Set([...Object.keys(overrides), ...Object.keys(edits)]);
+    const payload = Array.from(keysToSave)
       .map((key) => {
         const remoteOverride = overrides[key] || '';
         const currentVal = edits[key] !== undefined ? edits[key] : remoteOverride;
-        return { key, value: currentVal };
+        return {
+          lang: activeLang,
+          key,
+          value: currentVal.trim(),
+        };
       })
-      .filter((entry) => entry.value.trim() !== ''); // Save only non-empty overrides
+      .filter((entry) => entry.value !== '' || overrides[entry.key] !== undefined);
 
-    const payload = payloadEntries.map((entry) => ({
-      lang: activeLang,
-      key: entry.key,
-      value: entry.value,
-    }));
+    if (payload.length === 0) {
+      setEdits({});
+      setSaveStatus(t('dashboard.savedSuccess'));
+      setTimeout(() => setSaveStatus(null), 3000);
+      return;
+    }
 
     try {
       await AdminApiClient.setTranslations(payload);
@@ -161,7 +171,7 @@ export default function TranslationEditorScreen() {
   const unsavedCount = Object.keys(edits).length;
 
   return (
-    <ScreenWrapper>
+    <ScrollScreenWrapper>
       {/* Header bar */}
       <TwView className="w-full h-16 bg-backgroundElement border-b border-backgroundSelected flex-row items-center justify-between px-five">
         <TwView className="flex-row items-center">
@@ -219,7 +229,7 @@ export default function TranslationEditorScreen() {
           <TwTextInput
             className="w-full max-w-[300px] h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
             placeholder={t('dashboard.searchPlaceholder')}
-            placeholderTextColor="#76706b"
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             accessibilityLabel={t('dashboard.searchPlaceholder')}
@@ -251,7 +261,7 @@ export default function TranslationEditorScreen() {
               </TwText>
             </TwView>
           ) : (
-            <TwScrollView className="flex-1" contentContainerClassName="bg-background">
+            <TwView className="flex-1 bg-background">
               {filteredData.map((item) => (
                 <TwView
                   key={item.key}
@@ -291,16 +301,16 @@ export default function TranslationEditorScreen() {
                       value={item.value}
                       onChangeText={(val) => handleEdit(item.key, val)}
                       placeholder={item.original}
-                      placeholderTextColor="#a59e99"
+                      placeholderTextColor={colors.textSecondary}
                       accessibilityLabel={t('dashboard.translationFor', { key: item.key })}
-                      testID={`input-${item.key}`}
+                      testID={`input-${item.key.replace(/\./g, '-')}`}
                     />
                     {item.value !== '' && (
                       <TwPressable
                         className="h-10 w-10 items-center justify-center rounded-lg border border-[#dfd7c8] bg-background hover:bg-red-50"
                         onPress={() => handleEdit(item.key, '')}
                         accessibilityLabel={t('dashboard.clearOverrideAccess', { key: item.key })}
-                        testID={`clear-${item.key}`}
+                        testID={`clear-${item.key.replace(/\./g, '-')}`}
                       >
                         <TwText className="text-xs text-red-500 font-bold">
                           {t('dashboard.clearBtn')}
@@ -310,7 +320,7 @@ export default function TranslationEditorScreen() {
                   </TwView>
                 </TwView>
               ))}
-            </TwScrollView>
+            </TwView>
           )}
         </TwView>
 
@@ -334,6 +344,6 @@ export default function TranslationEditorScreen() {
           </TwView>
         )}
       </TwView>
-    </ScreenWrapper>
+    </ScrollScreenWrapper>
   );
 }

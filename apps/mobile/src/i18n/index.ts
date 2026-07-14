@@ -2,8 +2,7 @@ import { getLocales } from 'expo-localization';
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { en } from './locales/en';
-import { es } from './locales/es';
+import { en, es } from '@sonora/shared';
 
 const detectLanguage = (): string => {
   try {

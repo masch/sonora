@@ -6,10 +6,12 @@ import { Icon } from '@/components/icon';
 import { TwView, TwText, TwPressable, TwTextInput } from '@/tw';
 import { AdminApiClient } from '@/services/admin-api-client';
 import { useTranslation } from 'react-i18next';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export default function UploadAudiosScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const colors = useThemeColors();
   const [targetType, setTargetType] = useState<'trip' | 'track'>('trip');
   const [targetId, setTargetId] = useState('');
   const [audioTitle, setAudioTitle] = useState('');
@@ -118,8 +120,12 @@ export default function UploadAudiosScreen() {
               <TwTextInput
                 className="w-full h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
 
-                placeholder={targetType === 'trip' ? 'e.g., trip-123' : 'e.g., track-123'}
-                placeholderTextColor="#a59e99"
+                placeholder={
+                  targetType === 'trip'
+                    ? t('uploadAudios.placeholderTripId')
+                    : t('uploadAudios.placeholderTrackId')
+                }
+                placeholderTextColor={colors.textSecondary}
                 value={targetId}
                 onChangeText={setTargetId}
                 accessibilityLabel={t('uploadAudios.targetIdAccess')}
@@ -134,8 +140,8 @@ export default function UploadAudiosScreen() {
               <TwTextInput
                 className="w-full h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
 
-                placeholder="e.g., Intro Guide, Chapter 1..."
-                placeholderTextColor="#a59e99"
+                placeholder={t('uploadAudios.placeholderAudioTitle')}
+                placeholderTextColor={colors.textSecondary}
                 value={audioTitle}
                 onChangeText={setAudioTitle}
                 accessibilityLabel={t('uploadAudios.audioTitleAccess')}

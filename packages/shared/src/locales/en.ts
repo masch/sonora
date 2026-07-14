@@ -162,7 +162,7 @@ export const en = {
   },
   audio: {
     interruptModalTitle: 'Audio already playing',
-    interruptModalMessage: 'Cancel the current audio and play the new one?',
+    interruptModalMessage: 'Cancel the current audio and play the one?',
   },
   components: {
     downloadCard: {
@@ -304,6 +304,30 @@ export const en = {
     filterCercanos: 'Nearby',
     veryNear: 'Very close',
   },
-} as const;
-
-export type EnDict = typeof en;
+  payments: {
+    paid: {
+      label: 'This experience is a paid experience',
+    },
+    price: {
+      ars: 'ARS {{amount}}',
+    },
+    pay: 'Pay with MercadoPago',
+    restore: {
+      title: 'Restore Purchases',
+      description: 'Enter the email you used to purchase this experience',
+      emailPlaceholder: 'email@example.com',
+      button: 'Restore',
+      notFound: 'No purchases found for this email',
+      success: 'Purchases restored successfully',
+      link: 'Already purchased? Restore purchases',
+    },
+    pending: 'Payment pending',
+    checkStatus: 'Check payment status',
+    error: {
+      create: 'Could not start payment. Please try again.',
+      rejected: 'Payment was rejected. Please try again.',
+      noBrowser: 'Cannot open payment page. Please try again.',
+      restore: 'Could not restore purchases. Please try again.',
+    },
+  },
+};

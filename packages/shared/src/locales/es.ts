@@ -123,7 +123,7 @@ export const es = {
       freshStart: 'Empezar de cero',
       devtoolsWeb: 'usar las devtools del navegador',
       devtoolsDevice: 'sacudí el dispositivo o presioná <0>m</0> en la terminal',
-      devtoolsAndroid: 'presioná <0>cmd+m (o ctrl+m)</0>',
+      devtoolsAndroid: 'presioná <0>cmd+m (or ctrl+m)</0>',
       devtoolsIos: 'presioná <0>cmd+d</0>',
     },
     geofence: {
@@ -276,7 +276,7 @@ export const es = {
       label: 'Español',
     },
     about: {
-      version: 'Versión',
+      version: 'Version',
       versionValue: '1.0.0',
       terms: 'Términos del servicio',
       privacy: 'Política de privacidad',
@@ -307,4 +307,30 @@ export const es = {
     filterCercanos: 'Cercanos',
     veryNear: 'Muy cerca',
   },
-} as const;
+  payments: {
+    paid: {
+      label: 'Esta experiencia es una experiencia paga',
+    },
+    price: {
+      ars: 'ARS {{amount}}',
+    },
+    pay: 'Pagar con MercadoPago',
+    restore: {
+      title: 'Restaurar compras',
+      description: 'Ingresá el email que usaste para comprar esta experiencia',
+      emailPlaceholder: 'correo@ejemplo.com',
+      button: 'Restaurar',
+      notFound: 'No se encontraron compras para este email',
+      success: 'Compras restauradas correctamente',
+      link: '¿Ya la compraste? Restaurar compras',
+    },
+    pending: 'Pago pendiente',
+    checkStatus: 'Verificar estado del pago',
+    error: {
+      create: 'No se pudo iniciar el pago. Reintentá.',
+      rejected: 'El pago fue rechazado. Reintentá.',
+      noBrowser: 'No se pudo abrir la página de pago. Reintentá.',
+      restore: 'No se pudieron restaurar las compras. Reintentá.',
+    },
+  },
+};

@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import type { AudioMetadata } from 'expo-audio';
 
 import { useAudioPlayerStore } from '@/store/audio-player-store';
-import type { PlayerStatus } from '@/store/audio-player-store';
+import type { PlayerStatus, ExperienceAudioMetadata } from '@/store/audio-player-store';
 
 export type { PlayerStatus };
 
@@ -15,7 +14,7 @@ export interface ImmersionPlayerState {
   pause: () => void;
   stop: () => void;
   seekTo: (positionMs: number) => void;
-  setMediaMetadata: (metadata: AudioMetadata) => void;
+  setMediaMetadata: (metadata: ExperienceAudioMetadata) => void;
 }
 
 /**
@@ -34,7 +33,7 @@ export interface ImmersionPlayerState {
  */
 export function useImmersionPlayer(
   localAudioUri: string | null,
-  mediaMetadata: AudioMetadata,
+  mediaMetadata: ExperienceAudioMetadata,
 ): ImmersionPlayerState {
   const storeStatus = useAudioPlayerStore((s) => s.status);
   const positionMs = useAudioPlayerStore((s) => s.positionMs);

@@ -18,6 +18,7 @@ import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-
 import { UpdateRequiredModal } from '@/components/update-required-modal';
 import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
+import { GlobalAudioPlayer } from '@/components/global-audio-player';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
 import { TwView, TwText, TwPressable } from '@/tw';
@@ -108,6 +109,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
       </Stack>
+      <GlobalAudioPlayer />
       <InterruptConfirmationModal />
       {versionStatus === 'block' && <UpdateRequiredModal />}
     </ThemeProvider>

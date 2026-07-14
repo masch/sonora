@@ -5,7 +5,7 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { formatTime } from '@/utils/time';
 import { APP_CONFIG } from '@/config/app-config';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { TwPressable, TwView } from '@/tw';
 import { Icon, type GenericIconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
@@ -14,12 +14,13 @@ export function HomeAudioPlayer() {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const playOnDownloadCompleteRef = useRef(false);
+  const rewind = useAudioRewind();
 
   const instructionsUrl = APP_CONFIG.audio.instructionsUrl;
-  const rewindOffsetMs = useRemoteConfigStore((s) => s.config.audio.rewindOffsetMs);
   const download = useTrackDownload('instructions', instructionsUrl, t('home.instructionsName'));
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
+    id: 'instructions',
   });
 
   // Auto-play when download completes if requested by user
@@ -49,7 +50,7 @@ export function HomeAudioPlayer() {
 
   const handleRewind = () => {
     if (download.status === 'completed') {
-      player.seekTo(Math.max(0, player.positionMs - rewindOffsetMs));
+      rewind();
     }
   };
 

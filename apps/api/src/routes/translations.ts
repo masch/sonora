@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { translations } from '../db/schema';
-import { type Env, type Variables } from '../index';
-import { TranslationBulkPayloadSchema } from '@sonora/shared';
+import type { Env, Variables } from '../index';
+import { TranslationBulkPayloadSchema, logger } from '@sonora/shared';
+import type { SupportedLanguage } from '@sonora/shared';
 
 const translationsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -24,7 +25,7 @@ translationsRouter.get('/:lang', async (c) => {
     const rows = await db
       .select({ key: translations.key, value: translations.value })
       .from(translations)
-      .where(eq(translations.lang, lang));
+      .where(eq(translations.lang, lang as SupportedLanguage));
 
     const result: Record<string, string> = {};
     for (const row of rows) {
@@ -33,7 +34,7 @@ translationsRouter.get('/:lang', async (c) => {
 
     return c.json(result, 200);
   } catch (err) {
-    console.error('Failed to fetch translations:', err);
+    logger.error('Failed to fetch translations:', err);
     return c.json({ error: 'Failed to fetch translations' }, 500);
   }
 });
@@ -46,7 +47,7 @@ translationsRouter.post('/validate', async (c) => {
     (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
 
   if (!adminKey) {
-    console.error('ADMIN_API_KEY variable de entorno no configurada.');
+    logger.error('ADMIN_API_KEY variable de entorno no configurada.');
     return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
   }
 
@@ -66,7 +67,7 @@ translationsRouter.put('/', async (c) => {
     (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
 
   if (!adminKey) {
-    console.error('ADMIN_API_KEY variable de entorno no configurada.');
+    logger.error('ADMIN_API_KEY variable de entorno no configurada.');
     return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
   }
 
@@ -98,23 +99,36 @@ translationsRouter.put('/', async (c) => {
   try {
     let updated = 0;
     for (const entry of result.data) {
-      await db
-        .insert(translations)
-        .values({
-          lang: entry.lang,
-          key: entry.key,
-          value: entry.value,
-        })
-        .onConflictDoUpdate({
-          target: [translations.lang, translations.key],
-          set: { value: entry.value, updatedAt: new Date() },
-        });
+      if (entry.value === '') {
+        // Delete override to restore default code translation
+        await db
+          .delete(translations)
+          .where(
+            and(
+              eq(translations.lang, entry.lang as SupportedLanguage),
+              eq(translations.key, entry.key),
+            ),
+          );
+      } else {
+        // Upsert the override
+        await db
+          .insert(translations)
+          .values({
+            lang: entry.lang as SupportedLanguage,
+            key: entry.key,
+            value: entry.value,
+          })
+          .onConflictDoUpdate({
+            target: [translations.lang, translations.key],
+            set: { value: entry.value, updatedAt: new Date() },
+          });
+      }
       updated++;
     }
 
     return c.json({ updated }, 200);
   } catch (err) {
-    console.error('Failed to upsert translations:', err);
+    logger.error('Failed to upsert translations:', err);
     return c.json({ error: 'Failed to save translations' }, 500);
   }
 });

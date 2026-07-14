@@ -1,5 +1,5 @@
 import i18next, { addResources } from '@/i18n';
-import { en } from '@/i18n/locales/en';
+import { en } from '@sonora/shared';
 
 describe('en translations', () => {
   it('has all required top-level namespaces', () => {
