@@ -660,7 +660,7 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	cd apps/mobile && \
 	  npx expo prebuild --platform android --clean && \
 	  cd android && \
-	  ./gradlew :app:assembleRelease :app:bundleRelease && \
+	  ./gradlew -Dorg.gradle.jvmargs="-Xmx4608m -XX:MaxMetaspaceSize=512m" :app:assembleRelease :app:bundleRelease && \
 	  cd .. && \
 	  zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" || true && \
 	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release-unsigned.apk) && \
