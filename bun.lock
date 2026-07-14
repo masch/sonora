@@ -22,7 +22,7 @@
         "expo-linking": "56.0.14",
         "expo-router": "56.2.12",
         "expo-symbols": "56.0.6",
-        "i18next": "26.3.0",
+        "i18next": "26.3.6",
         "nativewind": "5.0.0-preview.4",
         "postcss": "8.5.15",
         "react": "19.2.3",
@@ -107,7 +107,7 @@
         "expo-task-manager": "56.0.20",
         "expo-web-browser": "56.0.5",
         "firebase": "11.3.1",
-        "i18next": "26.3.0",
+        "i18next": "26.3.6",
         "nativewind": "5.0.0-preview.4",
         "postcss": "8.5.15",
         "react": "19.2.3",
@@ -2118,7 +2118,7 @@
 
     "hyphenate-style-name": ["hyphenate-style-name@1.1.0", "", {}, "sha512-WDC/ui2VVRrz3jOVi+XtjqkDjiVjTtFaAGiW37k6b+ohyQ5wYDOGkvCZa8+H0nx3gyvv0+BST9xuOgIyGQ00gw=="],
 
-    "i18next": ["i18next@26.3.0", "", { "peerDependencies": { "typescript": "^5 || ^6" }, "optionalPeers": ["typescript"] }, "sha512-gHSgGpUXVmuqE2El1W61DmxeyeTlFfZgdJRWMo9jScAn5pu7TuTuiccb1zh3E2J9hEBVGJ23+96x0ieBhfuIHA=="],
+    "i18next": ["i18next@26.3.6", "", { "peerDependencies": { "typescript": "^5 || ^6 || ^7" }, "optionalPeers": ["typescript"] }, "sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA=="],
 
     "iconv-lite": ["iconv-lite@0.4.24", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3" } }, "sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA=="],
 
