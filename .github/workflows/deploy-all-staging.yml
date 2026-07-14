@@ -30,25 +30,25 @@ jobs:
         with:
           environment: staging
 
-  deploy-web:
-    name: Deploy Web Staging
+  deploy-admin:
+    name: Deploy Admin Staging
     needs: tag-release
-    uses: ./.github/workflows/deploy-mobile-web-staging.yml
+    uses: ./.github/workflows/deploy-admin-staging.yml
     with:
       skip_tagging: true
     secrets: inherit
 
-  deploy-admin:
-    name: Deploy Admin Staging
-    needs: [deploy-web, tag-release]
-    uses: ./.github/workflows/deploy-admin-staging.yml
+  deploy-web:
+    name: Deploy Web Staging
+    needs: [deploy-admin, tag-release]
+    uses: ./.github/workflows/deploy-mobile-web-staging.yml
     with:
       skip_tagging: true
     secrets: inherit
 
   deploy-api:
     name: Deploy API Staging
-    needs: [deploy-admin, tag-release]
+    needs: [deploy-web, tag-release]
     uses: ./.github/workflows/deploy-api-staging.yml
     with:
       skip_tagging: true
