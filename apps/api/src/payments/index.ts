@@ -1,6 +1,6 @@
-import type { CheckoutParams, CheckoutResult, WebhookResult, PaymentProvider } from './provider';
-import { MercadoPagoProvider } from './mercadopago';
 import type { Env } from '../index';
+import { MercadoPagoProvider } from './mercadopago';
+import type { PaymentProvider } from './provider';
 
 export function createPaymentProviders(env: Env): Record<string, PaymentProvider | null> {
   const providers: Record<string, PaymentProvider | null> = {
@@ -15,5 +15,4 @@ export function createPaymentProviders(env: Env): Record<string, PaymentProvider
   return providers;
 }
 
-export type { PaymentProvider } from './provider';
-export type { CheckoutParams, CheckoutResult, WebhookResult } from './provider';
+export type { CheckoutParams, CheckoutResult, PaymentProvider, WebhookResult } from './provider';

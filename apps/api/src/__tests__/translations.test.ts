@@ -1,50 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import app, { setDbClient } from '../index';
-import type { DbClient } from '../db';
-
-function createMockDb(): DbClient {
-  const store: { lang: string; key: string; value: string }[] = [];
-
-  return {
-    insert: (_table: any) => ({
-      values: (values: any) => ({
-        onConflictDoUpdate: async (_opts: any) => {
-          // Upsert: update existing or insert
-          const idx = store.findIndex((r) => r.lang === values.lang && r.key === values.key);
-          if (idx >= 0) {
-            store[idx] = { ...store[idx], ...values };
-          } else {
-            store.push(values);
-          }
-        },
-      }),
-    }),
-    select: (_fields?: any) => ({
-      from: (_table: any) => ({
-        where: (_condition: any) => {
-          // Simplified: return all store entries
-          // In real tests, filter would be applied by Drizzle
-          return Promise.resolve(
-            store
-              .filter((r) => {
-                // Basic lang filter matching — since Drizzle handles this via eq(),
-                // we just return what would match
-                return r.lang === 'en' || r.lang === 'es';
-              })
-              .map((r) => ({
-                key: r.key,
-                value: r.value,
-              })),
-          );
-        },
-      }),
-    }),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    delete: (_table: any) => ({
-      where: (_condition: any) => Promise.resolve(),
-    }),
-  } as unknown as DbClient;
-}
 
 describe('Translations API', () => {
   const BINDINGS = {

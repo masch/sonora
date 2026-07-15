@@ -1,6 +1,6 @@
-import { type MiddlewareHandler } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import { createDbClient, type DbClient } from '../db';
-import { type Env, type Variables } from '../index';
+import type { Env, Variables } from '../index';
 
 let _dbClient: DbClient | null = null;
 

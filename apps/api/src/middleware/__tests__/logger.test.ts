@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Hono } from 'hono';
-import { customLogger } from '../logger';
 import { logger } from '@sonora/shared';
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { customLogger } from '../logger';
 
 vi.mock('@sonora/shared', () => ({
   logger: {
@@ -151,7 +151,7 @@ describe('customLogger middleware', () => {
   });
 
   it('handles raw Response objects gracefully without crashing', async () => {
-    app.get('/raw-res', (c) => {
+    app.get('/raw-res', (_) => {
       return new Response('raw-content');
     });
 

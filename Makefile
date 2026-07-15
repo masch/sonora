@@ -590,6 +590,30 @@ test-admin: ## Run admin app tests (Jest, one-shot)
 .PHONY: test
 test: test-front test-back test-shared test-admin ## Run all tests (frontend + backend + shared + admin)
 
+.PHONY: test-ci
+test-ci: ## Run all tests silently (for pre-commit/CI)
+	cd apps/mobile && bun run jest --passWithNoTests --watchAll=false --silent
+	cd apps/api && bunx vitest run --reporter=dot --silent
+	cd packages/shared && bunx vitest run --reporter=dot --silent
+	cd apps/admin && bun run jest --passWithNoTests --watchAll=false --silent
+
+.PHONY: doctor-ci
+doctor-ci: ## Run React Doctor audit (terse, for pre-commit)
+	cd apps/mobile && bunx react-doctor --scope full -y
+
+.PHONY: precommit-logs
+precommit-logs: ## Show temp files from last pre-commit run
+	@LAST=$$(ls /tmp/sonora-precommit-*.log 2>/dev/null | sed 's/.*sonora-precommit-\([0-9]*\).*/\1/' | sort -u | tail -1); \
+	if [ -z "$$LAST" ]; then \
+	  echo "No pre-commit logs found"; \
+	else \
+	  for f in /tmp/sonora-precommit-$${LAST}-*.log; do \
+	    echo "=== $$(basename $$f) ==="; \
+	    cat "$$f"; \
+	    echo ""; \
+	  done; \
+	fi
+
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate

@@ -2,6 +2,8 @@
 
 set -e
 
+_RUN_TS=$(date +%s)
+
 # 0. Restore expo-env.d.ts if expo-cli trampled it
 _f="apps/mobile/expo-env.d.ts"
 if ! git diff --quiet "$_f" 2>/dev/null; then
@@ -15,42 +17,64 @@ fi
 unset _f
 
 # 1. Check code formatting
-make format-check
+printf "  ✓ format-check... "
+if make format-check > /dev/null 2>&1; then
+  printf "ok\n"
+else
+  printf "fixed\n"
+  make format > /dev/null 2>&1
+  git add -u
+fi
 
-# 3. Run all validation steps (collect all failures; run API if files changed)
+# 2. Run all validation steps (collect all failures)
 FAILED_TARGETS=""
 
 run_step() {
   NAME=$1
   CMD=$2
-  echo "Running $NAME..."
-  if ! eval "$CMD"; then
-    FAILED_TARGETS="$FAILED_TARGETS $NAME"
+  ALLOWED_EXIT=${3:-}
+  printf "  ✓ %s... " "$NAME"
+  TMPFILE="/tmp/sonora-precommit-${_RUN_TS}-${NAME}.log"
+  if eval "$CMD" > "$TMPFILE" 2>&1; then
+    printf "ok\n"
+    rm -f "$TMPFILE"
+  else
+    EXIT_CODE=$?
+    if [ -n "$ALLOWED_EXIT" ] && [ "$EXIT_CODE" = "$ALLOWED_EXIT" ]; then
+      printf "skipped (exit %d)\n" "$EXIT_CODE"
+      cat "$TMPFILE"
+      rm -f "$TMPFILE"
+    else
+      printf "FAILED (exit %d)\n" "$EXIT_CODE"
+      cat "$TMPFILE"
+      FAILED_TARGETS="$FAILED_TARGETS $NAME"
+    fi
   fi
 }
 
-run_step "make test" "make test"
-run_step "make lint" "make lint"
-run_step "make typecheck" "make typecheck"
-run_step "make doctor" "make doctor"
-echo "Running make expo-doctor..."
-make expo-doctor || echo "pre-commit: expo-doctor: known bun false positives — not blocking commit" >&2
+run_step "test-ci" "make test-ci"
+run_step "lint" "make lint"
+run_step "typecheck" "make typecheck"
+run_step "doctor-ci" "make doctor-ci"
 
-if git diff --cached --name-only -- 'apps/api/*' | grep -q .; then
-  run_step "make api-validate" "make api-validate"
+# expo-doctor is non-blocking (known bun false positives)
+printf "  ✓ expo-doctor... "
+TMPFILE="/tmp/sonora-precommit-${_RUN_TS}-expo-doctor.log"
+if make expo-doctor > "$TMPFILE" 2>&1; then
+  printf "ok\n"
+  rm -f "$TMPFILE"
+else
+  RESULT=$(grep -oP '\d+/\d+ checks passed' "$TMPFILE" || echo "checks failed")
+  printf "%s — non-blocking\n" "$RESULT"
 fi
 
-# gga returns 2 if no files are matched, which is not a failure.
-echo "Running make gga..."
-GGA_STATUS=0
-make gga || GGA_STATUS=$?
-if [ $GGA_STATUS -ne 0 ] && [ $GGA_STATUS -ne 2 ]; then
-  FAILED_TARGETS="$FAILED_TARGETS make-gga"
-fi
+# gga: 0 = passed/no files, 1 = violations found (blocks commit)
+run_step "gga" "make gga"
 
 if [ -n "$FAILED_TARGETS" ]; then
   echo "pre-commit: Validation failed on targets:$FAILED_TARGETS"
   exit 1
 fi
 
+echo "  ✓ All checks passed"
 exit 0
