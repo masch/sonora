@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import app, { setDbClient, isUniqueViolation } from '../index';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import app, { setDbClient } from '../index';
 
 interface MockDb {
   insert: () => {

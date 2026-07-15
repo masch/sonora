@@ -1,15 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
-import app from '../index';
 import { sign } from 'hono/jwt';
+import { describe, expect, it, vi } from 'vitest';
+import app from '../index';
 
 const mockR2Bucket = {
-  put: vi.fn(async (key: string, value: any, options?: any) => {
+  put: vi.fn(async (key: string, _: any, __?: any) => {
     return {
       key,
       size: 100,
     };
   }),
-  get: vi.fn(async (key: string, options?: any) => {
+  get: vi.fn(async (key: string, _?: any) => {
     if (key === 'non-existent.mp3') return null;
     return {
       body: new ReadableStream({
