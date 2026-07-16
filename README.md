@@ -48,161 +48,27 @@ make dev-android # Expo dev server for Android
 
 ## Makefile targets
 
-> The canonical target list is generated from `make help`. This table may drift as new targets are added.
+Run `make help` for the complete list of targets. The most common ones:
 
-| Target                                  | Description                                                                                       |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Dev server**                          |                                                                                                   |
-| `start`                                 | Launch Expo dev server                                                                            |
-| `start-wrangler`                        | Expo dev server pointing to local wrangler (port 8787) for iOS/Web                                |
-| `start-wrangler-android`                | Expo dev server pointing to local wrangler (port 8787) for Android emulator                       |
-| `start-staging`                         | Expo dev server pointing to remote staging API                                                    |
-| `start-headless`                        | Launch Expo dev server without interactive TTY                                                    |
-| `dev-web`                               | Launch Expo dev server for web                                                                    |
-| `dev-ios`                               | Launch Expo dev server for iOS                                                                    |
-| `dev-android`                           | Launch Expo dev server for Android (Expo Go)                                                      |
-| `kill-metro`                            | Kill any process running on Metro port 8081                                                       |
-| **Admin**                               |                                                                                                   |
-| `admin-dev`                             | Launch Expo dev server for Admin Web                                                              |
-| `admin-dev-staging`                     | Admin dev server pointing to staging API                                                          |
-| **Installation**                        |                                                                                                   |
-| `install`                               | Install workspace dependencies + configure git hooks                                              |
-| **Formatting**                          |                                                                                                   |
-| `format`                                | Format code with Prettier                                                                         |
-| `format-check`                          | Check code formatting using Prettier (no write)                                                   |
-| **Testing**                             |                                                                                                   |
-| `test-front`                            | Run frontend tests (Jest, one-shot)                                                               |
-| `test-back` / `api-test`                | Run backend API tests (Vitest)                                                                    |
-| `test-shared`                           | Run shared package tests (Bun)                                                                    |
-| `test-admin`                            | Run admin app tests (Jest, one-shot)                                                              |
-| `test`                                  | Run all tests (frontend + backend + shared + admin)                                               |
-| `test-ci`                               | Run all tests silently (for pre-commit/CI)                                                        |
-| `api-test-staging`                      | Test staging Worker health (GET /health)                                                          |
-| `api-test-staging-verbose`              | Test staging Worker with full response                                                            |
-| `api-test-production`                   | Test production Worker health (GET /health)                                                       |
-| `api-test-staging-db`                   | Test staging DB connection (GET /health/db)                                                       |
-| `api-test-production-db`                | Test production DB connection (GET /health/db)                                                    |
-| `api-test-mp`                           | Run MercadoPago payment status polling test (local)                                               |
-| `api-test-mp-staging`                   | Run MercadoPago payment status polling test against staging                                       |
-| **Linting**                             |                                                                                                   |
-| `lint`                                  | Run ESLint across all workspaces                                                                  |
-| **Type checking**                       |                                                                                                   |
-| `typecheck`                             | TypeScript type checks (mobile + api + admin)                                                     |
-| `api-typecheck`                         | TypeScript type check for the API                                                                 |
-| `scripts-typecheck`                     | Type-check scripts/ with tsc                                                                      |
-| **Diagnostics**                         |                                                                                                   |
-| `doctor`                                | Run React Doctor audit (full verbose scan)                                                        |
-| `doctor-ci`                             | Run React Doctor audit (terse, for pre-commit)                                                    |
-| `doctor-diff`                           | Run React Doctor audit on staged diff (regression check)                                          |
-| `expo-doctor`                           | Run Expo Doctor to verify dependency compatibility                                                |
-| **Validation**                          |                                                                                                   |
-| `validate`                              | Full development gate: format → test → lint → typecheck → api-typecheck → scripts-typecheck → gga |
-| `check`                                 | CI verification gate: format-check → test → lint → typecheck → expo-doctor                        |
-| `api-validate`                          | API tests + typecheck                                                                             |
-| **Review**                              |                                                                                                   |
-| `gga`                                   | Run GGA (Gentleman Guardian Angel) code review on staged files                                    |
-| `gga-full`                              | Run GGA on ALL matching source files (stages, reviews, unstages)                                  |
-| **Native builds**                       |                                                                                                   |
-| `rebuild-android`                       | Rebuild native Android project (after adding native modules)                                      |
-| `rebuild-ios`                           | Rebuild native iOS project                                                                        |
-| `prebuild`                              | Regenerate native project files without compiling                                                 |
-| **EAS builds**                          |                                                                                                   |
-| `eas-whoami`                            | Verify EAS authentication                                                                         |
-| `eas-list`                              | List recent EAS builds                                                                            |
-| `eas-init`                              | Initialize EAS for this project                                                                   |
-| `eas-build-android`                     | Build Play Store APK via EAS cloud                                                                |
-| `eas-build-android-preview`             | Build test APK for sideload via EAS cloud                                                         |
-| `eas-build-android-local`               | Build Play Store APK locally                                                                      |
-| `eas-build-android-preview-local`       | Build test APK locally (interactive)                                                              |
-| `eas-build-android-preview-ci`          | Build test APK for sideload in CI                                                                 |
-| `eas-build-android-aab-ci`              | Build signed AAB in CI                                                                            |
-| `eas-build-android-release-ci-unsigned` | Build unsigned APK + AAB from prebuild+Gradle                                                     |
-| `eas-upload-apk`                        | Upload a local APK to EAS Submit                                                                  |
-| `eas-build-web-production`              | Export web app and deploy to EAS Hosting production                                               |
-| `eas-build-web-staging`                 | Export web app and deploy to EAS Hosting staging                                                  |
-| `eas-build-admin-production`            | Export admin web app and deploy to EAS Hosting production                                         |
-| `eas-build-admin-staging`               | Export admin web app and deploy to EAS Hosting staging                                            |
-| **Supply chain security**               |                                                                                                   |
-| `socket-login`                          | Authenticate with Socket.dev CLI                                                                  |
-| `socket-scan`                           | Run Socket.dev security scan                                                                      |
-| `pin-deps`                              | Pin all workspace deps to exact versions from bun.lock                                            |
-| **Firebase App Distribution**           |                                                                                                   |
-| `firebase-login-ci`                     | Firebase CI login (generates FIREBASE_TOKEN)                                                      |
-| `firebase-distribute`                   | Upload APK to Firebase App Distribution                                                           |
-| `firebase-distribute-staging-dev`       | Upload to staging dev-team group                                                                  |
-| `firebase-distribute-staging-sonora`    | Upload to staging sonora-team group                                                               |
-| `firebase-distribute-staging-all`       | Upload to staging both groups                                                                     |
-| `firebase-distribute-prod-dev`          | Upload to production dev-team group                                                               |
-| `firebase-distribute-prod-sonora`       | Upload to production sonora-team group                                                            |
-| `firebase-distribute-prod-all`          | Upload to production both groups                                                                  |
-| **Backend API — Database**              |                                                                                                   |
-| `api-db-up`                             | Start Postgres (Podman)                                                                           |
-| `api-db-down`                           | Stop Postgres (Podman)                                                                            |
-| `api-db-generate`                       | Generate Drizzle migration from schema changes                                                    |
-| `api-db-migrate`                        | Apply pending Drizzle migrations (local)                                                          |
-| `api-db-migrate-ci`                     | Apply migrations using DATABASE_URL from env (for CI)                                             |
-| `api-db-migrate-staging`                | Apply migrations to staging Neon DB                                                               |
-| `api-db-migrate-production`             | Apply migrations to production Neon DB                                                            |
-| `api-db-seed`                           | Seed default trips data in local Postgres                                                         |
-| `api-db-seed-ci`                        | Seed DB using DATABASE_URL from env (for CI)                                                      |
-| `api-db-seed-staging`                   | Seed staging Neon DB                                                                              |
-| `api-db-seed-production`                | Seed production Neon DB                                                                           |
-| `api-db-studio`                         | Launch Drizzle Studio (GUI database browser)                                                      |
-| `api-db-shell`                          | Open psql shell to local Postgres                                                                 |
-| `api-db-shell-staging`                  | Open psql shell to Neon staging DB                                                                |
-| `api-db-shell-production`               | Open psql shell to Neon production DB                                                             |
-| `api-db-backup`                         | Dump, encrypt with GPG, upload to R2, prune old backups                                           |
-| `api-db-restore`                        | Download and restore database backup from R2                                                      |
-| **Backend API — Dev server**            |                                                                                                   |
-| `api-install`                           | Install API dependencies (--frozen-lockfile)                                                      |
-| `api-dev`                               | Run API locally with wrangler dev                                                                 |
-| `api-dev-local`                         | Run API locally with Docker Postgres                                                              |
-| `api-dev-full`                          | Start Postgres → migrate → seed → run API                                                         |
-| `api-dev-remote-staging`                | Run API locally connected to remote staging R2/resources                                          |
-| `api-dev-staging`                       | Run API locally with wrangler dev + staging Neon DB                                               |
-| `api-dev-local`                         | Run Hono API locally with Docker Postgres                                                         |
-| **Backend API — Deploy**                |                                                                                                   |
-| `api-deploy` / `api-deploy-production`  | Deploy production Worker to Cloudflare                                                            |
-| `api-deploy-production-secrets`         | Set secrets on production Worker                                                                  |
-| `api-deploy-production-full`            | All-in-one: migrate → seed → deploy → secrets (production)                                        |
-| `api-deploy-production-set-origin`      | Set ALLOWED_ORIGIN on production Worker                                                           |
-| `api-deploy-production-log-toggle`      | Toggle API logging on production                                                                  |
-| `api-deploy-staging`                    | Deploy staging Worker to Cloudflare                                                               |
-| `api-deploy-staging-secrets`            | Set secrets on staging Worker                                                                     |
-| `api-deploy-staging-full`               | All-in-one: migrate → seed → deploy → secrets (staging)                                           |
-| `api-deploy-staging-set-origin`         | Set ALLOWED_ORIGIN on staging Worker                                                              |
-| `api-deploy-staging-log-toggle`         | Toggle API logging on staging                                                                     |
-| `api-login`                             | Authenticate wrangler with Cloudflare                                                             |
-| `api-logs-staging`                      | Tail staging Worker logs                                                                          |
-| `api-logs-production`                   | Tail production Worker logs                                                                       |
-| `api-secrets-staging`                   | List staging Worker secrets                                                                       |
-| `api-secrets-production`                | List production Worker secrets                                                                    |
-| **R2 Audio Storage**                    |                                                                                                   |
-| `api-r2-buckets-staging`                | Create R2 audio buckets for staging                                                               |
-| `api-r2-buckets-production`             | Create R2 audio buckets for production                                                            |
-| `api-upload-audio-staging`              | Upload audio file to staging R2                                                                   |
-| `api-upload-audio-production`           | Upload audio file to production R2                                                                |
-| **Translations**                        |                                                                                                   |
-| `sync-translations-staging`             | Dry-run sync translations from staging DB                                                         |
-| `sync-translations-staging-apply`       | Write translations from staging DB to .ts files                                                   |
-| `sync-translations-production`          | Dry-run sync translations from production DB                                                      |
-| **Android emulator**                    |                                                                                                   |
-| `android-stop`                          | Stop the standalone app on emulator                                                               |
-| `android-stop-go`                       | Stop Expo Go on emulator                                                                          |
-| `android-trigger-bg`                    | Trigger background fetch for standalone app                                                       |
-| `android-trigger-bg-go`                 | Trigger background fetch in Expo Go                                                               |
-| `android-reset`                         | Reset emulator (wipe data)                                                                        |
-| `android-restart`                       | Restart emulator                                                                                  |
-| `android-kill`                          | Kill emulator (force)                                                                             |
-| **Expo upgrade**                        |                                                                                                   |
-| `expo-upgrade`                          | Check recommended versions and upgrade Expo SDK packages                                          |
-| **Maintenance**                         |                                                                                                   |
-| `clean`                                 | Remove build artifacts and node_modules                                                           |
-| `eas-clean`                             | Clean EAS cache + APKs + Podman EAS images + Expo caches                                          |
-| `eas-clean-full`                        | Clean everything (including Gradle cache + prebuild)                                              |
-| `reset`                                 | Full reset: clean + reinstall                                                                     |
-| `precommit-logs`                        | Show temp files from last pre-commit run                                                          |
-| `help`                                  | Print all targets                                                                                 |
+| Target           | Description                                                    |
+| ---------------- | -------------------------------------------------------------- |
+| **Setup**        |                                                                |
+| `install`        | Install workspace dependencies + configure git hooks           |
+| **Dev server**   |                                                                |
+| `start`          | Launch Expo dev server (default)                               |
+| `dev-web`        | Expo dev server for web                                        |
+| `dev-ios`        | Expo dev server for iOS                                        |
+| `dev-android`    | Expo dev server for Android (Expo Go)                          |
+| `start-wrangler` | Dev server pointing to local wrangler (port 8787)              |
+| `start-staging`  | Dev server pointing to remote staging API                      |
+| **Admin**        |                                                                |
+| `admin-dev`      | Launch Admin Web dev server                                    |
+| **Common tasks** |                                                                |
+| `test`           | Run all tests                                                  |
+| `lint`           | Run ESLint across all workspaces                               |
+| `typecheck`      | TypeScript type checks                                         |
+| `validate`       | Full development gate (format → test → lint → typecheck → gga) |
+| `help`           | Print all targets                                              |
 
 ### Validation pipeline
 
