@@ -89,7 +89,7 @@ async function run() {
     console.log('👉 INSTRUCTIONS:');
     console.log('1. Open the Sandbox URL in your browser.');
     console.log('2. Log in using your test buyer account:');
-    console.log('   Email: test_user_7898519409984382009@testuser.com | Password: IdoOp5QJJr');
+    console.log('   Email: test_user_XXXX@testuser.com | Password: XXXX');
     console.log('3. Complete the payment using "Dinero en Cuenta" (account money).');
     console.log(
       '4. Once you complete the payment, this script will detect it by polling the local API.',
