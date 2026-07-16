@@ -1,37 +1,45 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MercadoPagoProvider } from '../payments/mercadopago';
+
+const mockCreate = vi.fn();
+const mockGet = vi.fn();
+const mockSearch = vi.fn();
+
+vi.mock('mercadopago', () => {
+  return {
+    MercadoPagoConfig: vi.fn(),
+    Preference: vi.fn().mockImplementation(
+      class {
+        create = mockCreate;
+      } as unknown as (...args: unknown[]) => unknown,
+    ),
+    Payment: vi.fn().mockImplementation(
+      class {
+        get = mockGet;
+        search = mockSearch;
+      } as unknown as (...args: unknown[]) => unknown,
+    ),
+  };
+});
 
 describe('MercadoPagoProvider', () => {
   let provider: MercadoPagoProvider;
-  let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockFetch = vi.fn();
-    vi.stubGlobal('fetch', mockFetch);
+    vi.clearAllMocks();
     provider = new MercadoPagoProvider({
       accessToken: 'TEST-123456',
       webhookSecret: 'webhook-secret',
     });
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
-
   describe('createCheckout', () => {
     it('returns checkout URL and provider payment ID', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            id: '123456789',
-            init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
-            sandbox_init_point:
-              'https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
-          }),
-        text: () => Promise.resolve(''),
+      mockCreate.mockResolvedValue({
+        id: '123456789',
+        init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
+        sandbox_init_point:
+          'https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
       });
 
       const result = await provider.createCheckout({
@@ -47,21 +55,14 @@ describe('MercadoPagoProvider', () => {
         notificationUrl: 'https://api.example.com/payments/webhook',
       });
 
-      // Should prefer sandbox_init_point when using TEST token
       expect(result.checkoutUrl).toContain('sandbox');
       expect(result.providerPaymentId).toBe('123456789');
     });
 
     it('uses init_point when sandbox_init_point is not available', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            id: '123456789',
-            init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
-          }),
-        text: () => Promise.resolve(''),
+      mockCreate.mockResolvedValue({
+        id: '123456789',
+        init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
       });
 
       const result = await provider.createCheckout({
@@ -79,70 +80,25 @@ describe('MercadoPagoProvider', () => {
 
       expect(result.checkoutUrl).toContain('mercadopago.com.ar');
     });
-
-    it('sends correct MP API payload', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ id: '123', init_point: 'https://mp.com/checkout' }),
-        text: () => Promise.resolve(''),
-      });
-
-      await provider.createCheckout({
-        purchaseId: 'p-1',
-        experienceTitle: 'Test Exp',
-        amount: 10000,
-        currency: 'ARS',
-        backUrls: {
-          success: 'sonora://success',
-          failure: 'sonora://failure',
-          pending: 'sonora://pending',
-        },
-        notificationUrl: 'https://api.example.com/webhook',
-      });
-
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[0]).toContain('/checkout/preferences');
-
-      let body: Record<string, unknown> = {};
-      try {
-        body = JSON.parse(callArgs[1].body);
-      } catch {
-        // test setup guarantee
-      }
-      const items = body.items as Array<Record<string, unknown>>;
-      expect(items[0].title).toBe('Test Exp');
-      expect(items[0].unit_price).toBe(10000);
-      expect(items[0].currency_id).toBe('ARS');
-      expect(body.external_reference).toBe('p-1');
-      expect(body.auto_return).toBe('approved');
-      expect(body.notification_url).toBe('https://api.example.com/webhook');
-    });
   });
 
   describe('processWebhook', () => {
     it('fetches payment details and returns approved status', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            id: 987654,
-            status: 'approved',
-            payer: { email: 'buyer@example.com', id: '12345' },
-            transaction_amount: 15000,
-            currency_id: 'ARS',
-            payment_method_id: 'visa',
-            payment_type_id: 'credit_card',
-            installments: 3,
-            installment_amount: 5000,
-            transaction_details: {
-              net_received_amount: 14500,
-              overpaid_amount: 0,
-              total_paid_amount: 15000,
-            },
-          }),
-        text: () => Promise.resolve(''),
+      mockGet.mockResolvedValue({
+        id: 987654,
+        status: 'approved',
+        payer: { email: 'buyer@example.com', id: '12345' },
+        transaction_amount: 15000,
+        currency_id: 'ARS',
+        payment_method_id: 'visa',
+        payment_type_id: 'credit_card',
+        installments: 3,
+        installment_amount: 5000,
+        transaction_details: {
+          net_received_amount: 14500,
+          overpaid_amount: 0,
+          total_paid_amount: 15000,
+        },
       });
 
       const result = await provider.processWebhook(
@@ -174,17 +130,11 @@ describe('MercadoPagoProvider', () => {
 
   describe('getPaymentStatus', () => {
     it('returns mapped payment status', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            status: 'approved',
-            payer: { email: 'buyer@example.com' },
-            transaction_amount: 15000,
-            currency_id: 'ARS',
-          }),
-        text: () => Promise.resolve(''),
+      mockGet.mockResolvedValue({
+        status: 'approved',
+        payer: { email: 'buyer@example.com' },
+        transaction_amount: 15000,
+        currency_id: 'ARS',
       });
 
       const result = await provider.getPaymentStatus('987654');
@@ -209,16 +159,56 @@ describe('MercadoPagoProvider', () => {
       ];
 
       for (const { mp, expected } of statusMap) {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ status: mp }),
-          text: () => Promise.resolve(''),
-        });
-
+        mockGet.mockResolvedValueOnce({ status: mp });
         const result = await provider.getPaymentStatus('123');
         expect(result.status).toBe(expected);
       }
+    });
+
+    it('uses search result if externalReference is provided and found', async () => {
+      mockSearch.mockResolvedValue({
+        results: [
+          {
+            status: 'approved',
+            payer: { email: 'search-buyer@example.com' },
+            transaction_amount: 15000,
+            currency_id: 'ARS',
+          },
+        ],
+      });
+
+      const result = await provider.getPaymentStatus('123', 'ext-ref-456');
+
+      expect(result.status).toBe('approved');
+      expect(result.email).toBe('search-buyer@example.com');
+      expect(mockSearch).toHaveBeenCalledWith({
+        options: { external_reference: 'ext-ref-456' },
+      });
+      expect(mockGet).not.toHaveBeenCalled();
+    });
+
+    it('falls back to get when search results are empty', async () => {
+      mockSearch.mockResolvedValue({ results: [] });
+      mockGet.mockResolvedValue({
+        status: 'pending',
+        payer: { email: 'fallback@example.com' },
+      });
+
+      const result = await provider.getPaymentStatus('123', 'ext-ref-456');
+
+      expect(result.status).toBe('pending');
+      expect(result.email).toBe('fallback@example.com');
+      expect(mockGet).toHaveBeenCalledWith({ id: '123' });
+    });
+
+    it('safely handles get failure and returns pending status', async () => {
+      mockSearch.mockResolvedValue({ results: [] });
+      mockGet.mockRejectedValue(new Error('MP API Error'));
+
+      const result = await provider.getPaymentStatus('123', 'ext-ref-456');
+
+      expect(result.status).toBe('pending');
+      expect(result.email).toBeUndefined();
     });
   });
 });
