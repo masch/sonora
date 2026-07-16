@@ -11,24 +11,28 @@
     "db:seed": "bun src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "@sonora/shared": "workspace:*",
-    "hono": "4.12.28",
-    "drizzle-orm": "0.45.2",
-    "pg": "8.22.0",
+    "@hono/node-server": "2.0.8",
     "@neondatabase/serverless": "1.1.0",
-    "@hono/node-server": "2.0.8"
+    "@sonora/shared": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.12.28",
+    "mercadopago": "3.2.0",
+    "pg": "8.22.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260624.1",
-    "vitest": "4.1.10",
-    "wrangler": "4.106.0",
-    "drizzle-kit": "0.31.10",
-    "@types/pg": "8.20.0",
     "@types/node": "26.0.1",
+    "@types/pg": "8.20.0",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.5",
     "tsx": "4.22.4",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.63.0",
+    "vitest": "4.1.10",
+    "wrangler": "4.106.0"
   }
 }

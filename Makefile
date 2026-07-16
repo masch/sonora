@@ -159,6 +159,7 @@ install: ## Install all workspace dependencies and configure git hooks
 lint: ## Run linters across workspaces
 	bun --filter @sonora/mobile lint
 	bun --filter @sonora/admin lint
+	bun --filter @sonora/api lint
 
 .PHONY: format
 format: ## Run prettier to format code
@@ -238,6 +239,15 @@ api-dev-staging: ## Run Hono API locally with wrangler dev connected to staging 
 .PHONY: api-test
 api-test: ## Run backend API tests (Vitest)
 	cd $(API_DIR) && bun run test
+
+.PHONY: api-test-mp
+api-test-mp: ## Run the integrated Mercado Pago payment status polling test (local API and DB)
+	cd $(API_DIR) && DATABASE_URL="$(DATABASE_URL_LOCAL_CLEAN)" bun src/scripts/test-mp-polling.ts
+
+.PHONY: api-test-mp-staging
+api-test-mp-staging: ## Run the integrated Mercado Pago payment status polling test against staging Neon DB
+	@DATABASE_URL="$$(grep DATABASE_URL $(API_DIR)/.env.staging | cut -d'=' -f2- | tr -d '"' | tr -d "'")" \
+	cd $(API_DIR) && DATABASE_URL="$$DATABASE_URL" bun src/scripts/test-mp-polling.ts
 
 .PHONY: api-typecheck
 api-typecheck: ## Run TypeScript type check for the API
@@ -407,7 +417,7 @@ api-db-seed: ## Seed default trips data in local Postgres
 DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
 DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
 ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
-
+DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB

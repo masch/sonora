@@ -136,10 +136,11 @@ paymentsRouter.post('/webhook', async (c) => {
   return c.json({ status: 'ok' });
 });
 
-// GET /payments/status/:purchaseId — Check purchase status
+// GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
 paymentsRouter.get('/status/:purchaseId', async (c) => {
   const db = c.var.db;
   const { purchaseId } = c.req.param();
+  const shouldSync = c.req.query('sync') === 'true';
 
   if (!db) {
     return c.json({ error: 'Database client not available' }, 500);
@@ -149,6 +150,39 @@ paymentsRouter.get('/status/:purchaseId', async (c) => {
 
   if (!purchase) {
     return c.json({ error: 'Purchase not found' }, 404);
+  }
+
+  // Active status synchronization fallback (triggered optionally via ?sync=true)
+  if (
+    shouldSync &&
+    purchase.status === 'pending' &&
+    purchase.providerPaymentId &&
+    !purchase.providerPaymentId.startsWith('pending-')
+  ) {
+    try {
+      const providers = createPaymentProviders(c.env);
+      const provider = providers?.[purchase.provider as 'mercadopago' | 'stripe' | 'paypal'];
+      if (provider) {
+        const mpStatus = await provider.getPaymentStatus(purchase.providerPaymentId, purchase.id);
+        if (mpStatus.status !== 'pending') {
+          const [updated] = await db
+            .update(purchases)
+            .set({
+              status: mpStatus.status,
+              email: mpStatus.email || undefined,
+              updatedAt: new Date(),
+            })
+            .where(eq(purchases.id, purchase.id))
+            .returning();
+          if (updated) {
+            purchase.status = updated.status;
+            purchase.email = updated.email;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Active payment status fallback check failed:', error);
+    }
   }
 
   return c.json({

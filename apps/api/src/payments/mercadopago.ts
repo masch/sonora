@@ -1,9 +1,12 @@
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { logger } from '@sonora/shared';
 import type { PaymentProvider, CheckoutParams, CheckoutResult, WebhookResult } from './provider';
-import { HttpClient } from '../lib/http-client';
 
 export class MercadoPagoProvider implements PaymentProvider {
   readonly name = 'mercadopago';
-  private client: HttpClient;
+  private client: MercadoPagoConfig;
+  private preferenceClient: Preference;
+  private paymentClient: Payment;
 
   constructor(
     private config: {
@@ -11,40 +14,40 @@ export class MercadoPagoProvider implements PaymentProvider {
       webhookSecret: string;
     },
   ) {
-    this.client = new HttpClient({
-      baseUrl: 'https://api.mercadopago.com',
-      headers: { Authorization: `Bearer ${this.config.accessToken}` },
-      timeout: 10_000,
+    this.client = new MercadoPagoConfig({
+      accessToken: this.config.accessToken,
+      options: { timeout: 10000 },
     });
+    this.preferenceClient = new Preference(this.client);
+    this.paymentClient = new Payment(this.client);
   }
 
   async createCheckout(params: CheckoutParams): Promise<CheckoutResult> {
-    const data = await this.client.post<{
-      id: string;
-      init_point?: string;
-      sandbox_init_point?: string;
-    }>('/checkout/preferences', {
-      items: [
-        {
-          title: params.experienceTitle,
-          quantity: 1,
-          unit_price: params.amount,
-          currency_id: params.currency,
+    const result = await this.preferenceClient.create({
+      body: {
+        items: [
+          {
+            id: params.purchaseId,
+            title: params.experienceTitle,
+            quantity: 1,
+            unit_price: params.amount,
+            currency_id: params.currency,
+          },
+        ],
+        external_reference: params.purchaseId,
+        back_urls: {
+          success: params.backUrls.success,
+          failure: params.backUrls.failure,
+          pending: params.backUrls.pending,
         },
-      ],
-      external_reference: params.purchaseId,
-      back_urls: {
-        success: params.backUrls.success,
-        failure: params.backUrls.failure,
-        pending: params.backUrls.pending,
+        notification_url: params.notificationUrl,
+        auto_return: 'approved',
       },
-      notification_url: params.notificationUrl,
-      auto_return: 'approved',
     });
 
     return {
-      checkoutUrl: data.sandbox_init_point || data.init_point || '',
-      providerPaymentId: data.id,
+      checkoutUrl: result.sandbox_init_point || result.init_point || '',
+      providerPaymentId: result.id || '',
     };
   }
 
@@ -56,27 +59,11 @@ export class MercadoPagoProvider implements PaymentProvider {
       throw new Error('Ignored non-payment notification');
     }
 
-    // Fetch payment details from MP API
     const paymentId = body.data.id;
-    const payment = await this.client.get<{
-      id: number;
-      status: string;
-      payer?: { email?: string; id?: string };
-      transaction_amount?: number;
-      currency_id?: string;
-      payment_method_id?: string;
-      payment_type_id?: string;
-      installments?: number;
-      installment_amount?: number;
-      transaction_details?: {
-        net_received_amount?: number;
-        overpaid_amount?: number;
-        total_paid_amount?: number;
-      };
-    }>(`/v1/payments/${paymentId}`);
+    const payment = await this.paymentClient.get({ id: paymentId });
 
     return {
-      event: this.mapStatus(payment.status),
+      event: this.mapStatus(payment.status || ''),
       providerPaymentId: String(payment.id),
       email: payment.payer?.email || '',
       amount: payment.transaction_amount || 0,
@@ -85,28 +72,56 @@ export class MercadoPagoProvider implements PaymentProvider {
         payment_method_id: payment.payment_method_id,
         payment_type_id: payment.payment_type_id,
         installments: payment.installments,
-        installment_amount: payment.installment_amount,
+        installment_amount: (
+          payment as Awaited<ReturnType<Payment['get']>> & { installment_amount?: number }
+        ).installment_amount,
         payer_id: payment.payer?.id,
         transaction_details: payment.transaction_details,
       },
     };
   }
 
-  async getPaymentStatus(providerPaymentId: string): Promise<{
+  async getPaymentStatus(
+    providerPaymentId: string,
+    externalReference?: string,
+  ): Promise<{
     status: 'approved' | 'pending' | 'rejected' | 'refunded';
     email?: string;
     amount?: number;
     currency?: string;
   }> {
-    const payment = await this.client.get<{
-      status: string;
-      payer?: { email?: string };
-      transaction_amount?: number;
-      currency_id?: string;
-    }>(`/v1/payments/${providerPaymentId}`);
+    let payment: any = null;
+
+    if (externalReference) {
+      try {
+        const searchResult = await this.paymentClient.search({
+          options: {
+            external_reference: externalReference,
+          },
+        });
+        const paymentsList = searchResult.results || [];
+        if (paymentsList.length > 0) {
+          payment = paymentsList[0];
+        }
+      } catch (err) {
+        logger.warn('Failed to search payment by external_reference:', err);
+      }
+    }
+
+    if (!payment) {
+      try {
+        payment = await this.paymentClient.get({ id: providerPaymentId });
+      } catch (err) {
+        logger.warn('Fetch failed, treating as pending:', err);
+        // If the ID is a preference ID or payment doesn't exist yet, return pending status
+        return {
+          status: 'pending',
+        };
+      }
+    }
 
     return {
-      status: this.mapStatus(payment.status),
+      status: this.mapStatus(payment.status || ''),
       email: payment.payer?.email,
       amount: payment.transaction_amount,
       currency: payment.currency_id,
