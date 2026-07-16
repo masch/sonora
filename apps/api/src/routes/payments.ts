@@ -1,4 +1,4 @@
-import type { AccessSource } from '@sonora/shared';
+import { type AccessSource, DEEP_LINK_SCHEME } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
@@ -67,7 +67,7 @@ paymentsRouter.post('/create', async (c) => {
   } catch {
     baseUrl = '';
   }
-  let redirectScheme = 'sonora://';
+  let redirectScheme = DEEP_LINK_SCHEME;
   if (redirectUrl && (redirectUrl.startsWith('http:') || redirectUrl.startsWith('https:'))) {
     try {
       redirectScheme = new URL(redirectUrl).origin;
