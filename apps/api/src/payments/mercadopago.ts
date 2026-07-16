@@ -30,7 +30,7 @@ export class MercadoPagoProvider implements PaymentProvider {
             id: params.purchaseId,
             title: params.experienceTitle,
             quantity: 1,
-            unit_price: params.amount,
+            unit_price: Math.round(params.amount / 100),
             currency_id: params.currency,
           },
         ],

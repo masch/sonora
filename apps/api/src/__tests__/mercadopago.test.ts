@@ -34,6 +34,59 @@ describe('MercadoPagoProvider', () => {
   });
 
   describe('createCheckout', () => {
+    it('converts amount (cents) to unit_price (pesos) correctly', async () => {
+      mockCreate.mockResolvedValue({
+        id: '123456789',
+        init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
+        sandbox_init_point:
+          'https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
+      });
+
+      const amountCents = 15000; // 150.00 pesos
+      await provider.createCheckout({
+        purchaseId: 'purchase-2',
+        experienceTitle: 'Conversion Test',
+        amount: amountCents,
+        currency: 'ARS',
+        backUrls: {
+          success: 'sonora://payment/success/purchase-2',
+          failure: 'sonora://payment/failure/purchase-2',
+          pending: 'sonora://payment/pending/purchase-2',
+        },
+        notificationUrl: 'https://api.example.com/payments/webhook',
+      });
+
+      // Verify that the SDK received unit_price in major units (cents/100)
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            items: expect.arrayContaining([
+              expect.objectContaining({ unit_price: amountCents / 100 }),
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('propagates errors from MercadoPago SDK', async () => {
+      mockCreate.mockRejectedValue(new Error('MP SDK failure'));
+
+      await expect(
+        provider.createCheckout({
+          purchaseId: 'purchase-err',
+          experienceTitle: 'Error Test',
+          amount: 10000,
+          currency: 'ARS',
+          backUrls: {
+            success: 'sonora://payment/success/purchase-err',
+            failure: 'sonora://payment/failure/purchase-err',
+            pending: 'sonora://payment/pending/purchase-err',
+          },
+          notificationUrl: 'https://api.example.com/payments/webhook',
+        }),
+      ).rejects.toThrow('MP SDK failure');
+    });
+
     it('returns checkout URL and provider payment ID', async () => {
       mockCreate.mockResolvedValue({
         id: '123456789',
