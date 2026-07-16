@@ -50,14 +50,17 @@ export default function PaymentCallback({ status }: PaymentCallbackProps) {
             await setUserEmail(result.email);
           }
           PaymentClient.logAccess(result.experienceId, 'paid', result.email, Platform.OS);
+        }
 
-          // Redirect to the purchased experience screen
-          router.replace(`/tracks/${result.experienceId}`);
-        } else if (result.status === 'rejected') {
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.opener) {
+          window.close();
+          return;
+        }
+
+        if (result.status === 'rejected') {
           setError(t('payments.error.rejected'));
           setProcessing(false);
         } else {
-          // If pending, just go back to the experience page where polling will handle it
           router.replace(`/tracks/${result.experienceId}`);
         }
       } catch (err) {

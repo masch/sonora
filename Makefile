@@ -58,7 +58,6 @@ start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (po
 start-staging: ## Launch Expo dev server pointing to remote staging API
 	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
-
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
 	bun --filter @sonora/mobile start

@@ -51,7 +51,7 @@ describe('PaymentClient', () => {
 
       const result = await PaymentClient.getPaymentStatus('purchase-1');
 
-      expect(mockGet).toHaveBeenCalledWith('/payments/status/purchase-1');
+      expect(mockGet).toHaveBeenCalledWith('/payments/status/purchase-1?sync=true');
       expect(result.status).toBe('approved');
       expect(result.email).toBe('user@example.com');
     });
@@ -73,7 +73,9 @@ describe('PaymentClient', () => {
 
       const result = await PaymentClient.checkPurchased('exp-1', 'user@example.com');
 
-      expect(mockGet).toHaveBeenCalledWith('/experiences/exp-1/purchased?email=user%40example.com');
+      expect(mockGet).toHaveBeenCalledWith(
+        '/payments/experiences/exp-1/purchased?email=user%40example.com',
+      );
       expect(result.purchased).toBe(true);
     });
 
@@ -92,7 +94,7 @@ describe('PaymentClient', () => {
 
       const result = await PaymentClient.listPurchases('user@example.com');
 
-      expect(mockGet).toHaveBeenCalledWith('/purchases?email=user%40example.com');
+      expect(mockGet).toHaveBeenCalledWith('/payments/purchases?email=user%40example.com');
       expect(result.purchases).toEqual([]);
     });
   });

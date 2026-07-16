@@ -46,22 +46,26 @@ export interface PurchasesListResponse {
 }
 
 export const PaymentClient = {
-  async createPayment(experienceId: string): Promise<CreatePaymentResponse> {
-    return ApiClient.post<CreatePaymentResponse>('/payments/create', { experienceId });
+  async createPayment(experienceId: string, redirectUrl?: string): Promise<CreatePaymentResponse> {
+    return ApiClient.post<CreatePaymentResponse>('/payments/create', { experienceId, redirectUrl });
   },
 
-  async getPaymentStatus(purchaseId: string): Promise<PaymentStatusResponse> {
-    return ApiClient.get<PaymentStatusResponse>(`/payments/status/${purchaseId}`);
+  async getPaymentStatus(purchaseId: string, sync = true): Promise<PaymentStatusResponse> {
+    return ApiClient.get<PaymentStatusResponse>(
+      `/payments/status/${purchaseId}${sync ? '?sync=true' : ''}`,
+    );
   },
 
   async checkPurchased(experienceId: string, email: string): Promise<PurchasedResponse> {
     return ApiClient.get<PurchasedResponse>(
-      `/experiences/${experienceId}/purchased?email=${encodeURIComponent(email)}`,
+      `/payments/experiences/${experienceId}/purchased?email=${encodeURIComponent(email)}`,
     );
   },
 
   async listPurchases(email: string): Promise<PurchasesListResponse> {
-    return ApiClient.get<PurchasesListResponse>(`/purchases?email=${encodeURIComponent(email)}`);
+    return ApiClient.get<PurchasesListResponse>(
+      `/payments/purchases?email=${encodeURIComponent(email)}`,
+    );
   },
 
   async logAccess(

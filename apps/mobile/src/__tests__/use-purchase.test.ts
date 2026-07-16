@@ -126,7 +126,7 @@ describe('usePurchase', () => {
         await result.current[1].pay();
       });
 
-      expect(mockCreatePayment).toHaveBeenCalledWith('exp-1');
+      expect(mockCreatePayment).toHaveBeenCalledWith('exp-1', expect.any(String));
       expect(mockOpenAuthSessionAsync).toHaveBeenCalled();
     });
 

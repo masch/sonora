@@ -38,6 +38,7 @@ jest.mock('expo-router', () => ({
     Screen: () => null,
   },
   useLocalSearchParams: () => mockParams,
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock('@/data/experiences', () => ({

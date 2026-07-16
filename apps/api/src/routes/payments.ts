@@ -18,7 +18,10 @@ paymentsRouter.post('/create', async (c) => {
     return c.json({ error: 'Database client not available' }, 500);
   }
 
-  const { experienceId } = await c.req.json<{ experienceId: string }>();
+  const { experienceId, redirectUrl } = await c.req.json<{
+    experienceId: string;
+    redirectUrl?: string;
+  }>();
 
   // Fetch experience
   const [experience] = await db
@@ -64,16 +67,28 @@ paymentsRouter.post('/create', async (c) => {
   } catch {
     baseUrl = '';
   }
+  let redirectScheme = 'sonora://';
+  if (redirectUrl && (redirectUrl.startsWith('http:') || redirectUrl.startsWith('https:'))) {
+    try {
+      redirectScheme = new URL(redirectUrl).origin;
+    } catch {}
+  }
+
+  // Ensure trailing slash for safe URL concatenation
+  const baseRedirect = redirectScheme.endsWith('/') ? redirectScheme : `${redirectScheme}/`;
+
+  const finalBackUrls = {
+    success: `${baseRedirect}payment/success/${purchase.id}`,
+    failure: `${baseRedirect}payment/failure/${purchase.id}`,
+    pending: `${baseRedirect}payment/pending/${purchase.id}`,
+  };
+
   const result = await provider.createCheckout({
     purchaseId: purchase.id,
     experienceTitle: experience.title,
     amount: experience.price,
     currency: 'ARS',
-    backUrls: {
-      success: `sonora://payment/success/${purchase.id}`,
-      failure: `sonora://payment/failure/${purchase.id}`,
-      pending: `sonora://payment/pending/${purchase.id}`,
-    },
+    backUrls: finalBackUrls,
     notificationUrl: `${baseUrl}/payments/webhook`,
   });
 
