@@ -269,13 +269,17 @@ api-deploy-production: ## Deploy production Worker to Cloudflare (name: sonora-a
 	@echo ""
 
 .PHONY: api-deploy-production-secrets
-api-deploy-production-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY secrets on the production Worker
+api-deploy-production-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY + MercadoPago secrets on the production Worker
 	@echo "Setting DATABASE_URL secret on production Worker..."
 	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_PRODUCTION_CLEAN)' | bunx wrangler secret put DATABASE_URL
 	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
 	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN
 	@echo "Setting ADMIN_API_KEY secret on production Worker..."
 	@cd $(API_DIR) && printf '%s' '$(ADMIN_API_KEY_CLEAN)' | bunx wrangler secret put ADMIN_API_KEY
+	@echo "Setting MERCADO_PAGO_ACCESS_TOKEN secret on production Worker..."
+	@cd $(API_DIR) && printf '%s' '$(MERCADO_PAGO_ACCESS_TOKEN_CLEAN)' | bunx wrangler secret put MERCADO_PAGO_ACCESS_TOKEN
+	@echo "Setting MERCADO_PAGO_WEBHOOK_SECRET secret on production Worker..."
+	@cd $(API_DIR) && printf '%s' '$(MERCADO_PAGO_WEBHOOK_SECRET_CLEAN)' | bunx wrangler secret put MERCADO_PAGO_WEBHOOK_SECRET
 	@echo "Secrets set."
 
 .PHONY: api-deploy-staging
@@ -287,13 +291,17 @@ api-deploy-staging: ## Deploy staging Worker to Cloudflare (name: sonora-api-sta
 	@echo ""
 
 .PHONY: api-deploy-staging-secrets
-api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY secrets on the staging Worker
+api-deploy-staging-secrets: ## Set DATABASE_URL + ALLOWED_ORIGIN + ADMIN_API_KEY + MercadoPago secrets on the staging Worker
 	@echo "Setting DATABASE_URL secret on staging Worker..."
 	@cd $(API_DIR) && printf '%s' '$(DATABASE_URL_STAGING_CLEAN)' | bunx wrangler secret put DATABASE_URL --config wrangler.staging.toml
 	@echo "Setting ALLOWED_ORIGIN secret (empty = allow all origins)..."
 	@cd $(API_DIR) && printf '' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
 	@echo "Setting ADMIN_API_KEY secret on staging Worker..."
 	@cd $(API_DIR) && printf '%s' '$(ADMIN_API_KEY_CLEAN)' | bunx wrangler secret put ADMIN_API_KEY --config wrangler.staging.toml
+	@echo "Setting MERCADO_PAGO_ACCESS_TOKEN secret on staging Worker..."
+	@cd $(API_DIR) && printf '%s' '$(MERCADO_PAGO_ACCESS_TOKEN_CLEAN)' | bunx wrangler secret put MERCADO_PAGO_ACCESS_TOKEN --config wrangler.staging.toml
+	@echo "Setting MERCADO_PAGO_WEBHOOK_SECRET secret on staging Worker..."
+	@cd $(API_DIR) && printf '%s' '$(MERCADO_PAGO_WEBHOOK_SECRET_CLEAN)' | bunx wrangler secret put MERCADO_PAGO_WEBHOOK_SECRET --config wrangler.staging.toml
 	@echo "Secrets set."
 
 
@@ -418,6 +426,8 @@ DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
 DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
 ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
 DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
+MERCADO_PAGO_ACCESS_TOKEN_CLEAN := $(patsubst "%",%,$(MERCADO_PAGO_ACCESS_TOKEN))
+MERCADO_PAGO_WEBHOOK_SECRET_CLEAN := $(patsubst "%",%,$(MERCADO_PAGO_WEBHOOK_SECRET))
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
