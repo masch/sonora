@@ -1,4 +1,5 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { logger } from '@sonora/shared';
 import type { PaymentProvider, CheckoutParams, CheckoutResult, WebhookResult } from './provider';
 
 export class MercadoPagoProvider implements PaymentProvider {
@@ -93,41 +94,25 @@ export class MercadoPagoProvider implements PaymentProvider {
 
     if (externalReference) {
       try {
-        console.log(
-          '[DEBUG] getPaymentStatus: Searching payment by external_reference:',
-          externalReference,
-        );
         const searchResult = await this.paymentClient.search({
           options: {
             external_reference: externalReference,
           },
         });
-        console.log(
-          '[DEBUG] getPaymentStatus: Search completed, results count:',
-          searchResult.results?.length || 0,
-        );
         const paymentsList = searchResult.results || [];
         if (paymentsList.length > 0) {
           payment = paymentsList[0];
         }
       } catch (err) {
-        console.error(
-          '[DEBUG] getPaymentStatus: Failed to search payment by external_reference:',
-          err,
-        );
+        logger.warn('Failed to search payment by external_reference:', err);
       }
     }
 
     if (!payment) {
       try {
-        console.log(
-          '[DEBUG] getPaymentStatus: Fetching payment by providerPaymentId:',
-          providerPaymentId,
-        );
         payment = await this.paymentClient.get({ id: providerPaymentId });
-        console.log('[DEBUG] getPaymentStatus: Fetch completed successfully');
       } catch (err) {
-        console.error('[DEBUG] getPaymentStatus: Fetch failed, treating as pending. Error:', err);
+        logger.warn('Fetch failed, treating as pending:', err);
         // If the ID is a preference ID or payment doesn't exist yet, return pending status
         return {
           status: 'pending',

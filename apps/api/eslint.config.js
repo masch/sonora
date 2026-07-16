@@ -34,7 +34,7 @@ module.exports = tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      'no-console': 'off',
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
@@ -42,6 +42,12 @@ module.exports = tseslint.config(
         'error',
         { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
       ],
+    },
+  },
+  {
+    files: ['src/scripts/**', 'scripts/**', 'src/db/seed.ts', 'src/server.local.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
   {
