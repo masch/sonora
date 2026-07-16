@@ -1,6 +1,6 @@
-import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
 import { logger } from '@sonora/shared';
-import type { PaymentProvider, CheckoutParams, CheckoutResult, WebhookResult } from './provider';
+import type { CheckoutParams, CheckoutResult, PaymentProvider, WebhookResult } from './provider';
 
 export class MercadoPagoProvider implements PaymentProvider {
   readonly name = 'mercadopago';
