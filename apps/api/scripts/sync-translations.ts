@@ -23,13 +23,7 @@ import { execSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import {
-  flatten,
-  setNested,
-  serializeToTS,
-  renderTSFile,
-  diffFlat,
-} from '../src/scripts/sync-helpers';
+import { flatten, setNested, renderTSFile, diffFlat } from '../src/scripts/sync-helpers';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../../..');

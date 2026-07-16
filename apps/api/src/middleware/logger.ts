@@ -29,6 +29,7 @@ export const customLogger = (): MiddlewareHandler => {
       try {
         parsedRequestBody = JSON.parse(requestBody);
       } catch (e) {
+        logger.warn(`Failed to parse JSON request body for logging: ${method} ${url}`, e);
         parsedRequestBody = requestBody;
       }
     }
