@@ -37,6 +37,11 @@ ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
 .DEFAULT_GOAL := start
 
+.PHONY: kill-metro
+kill-metro: ## Kill any process running on Metro port 8081
+	@echo "Killing process on port 8081..."
+	@lsof -t -i:8081 | xargs kill -9 2>/dev/null || echo "Port 8081 is already free."
+
 .PHONY: start
 start: ## Launch Expo dev server
 	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
