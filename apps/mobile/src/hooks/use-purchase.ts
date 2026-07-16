@@ -285,7 +285,8 @@ export function usePurchase(
     const subscription = Linking.addEventListener('url', (event) => {
       const url = event.url;
       if (url && url.includes('/payment/')) {
-        const segments = url.split('/');
+        const urlWithoutQuery = url.split('?')[0];
+        const segments = urlWithoutQuery.split('/');
         const purchaseId = segments[segments.length - 1];
         if (purchaseId && pollingRef.current.purchaseId === purchaseId) {
           startPolling(purchaseId);

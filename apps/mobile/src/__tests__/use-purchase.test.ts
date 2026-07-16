@@ -342,4 +342,53 @@ describe('usePurchase', () => {
       });
     });
   });
+
+  describe('deep linking', () => {
+    it('starts polling when matching redirect URL with query params is received', async () => {
+      let listener: ((event: { url: string }) => void) | null = null;
+      mockAddEventListener.mockImplementation((event, cb) => {
+        if (event === 'url') {
+          listener = cb;
+        }
+        return { remove: jest.fn() };
+      });
+
+      mockCreatePayment.mockResolvedValue({
+        purchaseId: 'purchase-123',
+        checkoutUrl: 'https://checkout.url',
+      });
+      mockGetPaymentStatus.mockResolvedValue({
+        purchaseId: 'purchase-123',
+        status: 'pending',
+        experienceId: 'exp-1',
+      });
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      // Start the payment flow to set pollingRef.current.purchaseId
+      mockOpenAuthSessionAsync.mockResolvedValue({ type: 'success' });
+      await act(async () => {
+        await result.current[1].pay();
+      });
+
+      expect(listener).not.toBeNull();
+
+      // Trigger the deep link url event with query params
+      await act(async () => {
+        listener!({
+          url: 'sonora://payment/success/purchase-123?collection_id=123&status=approved',
+        });
+      });
+
+      // Advance timers to trigger the polling interval
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      // It should strip query parameters and extract 'purchase-123', matching the current purchaseId
+      // and call getPaymentStatus
+      expect(mockGetPaymentStatus).toHaveBeenCalledWith('purchase-123');
+    });
+  });
 });

@@ -1,8 +1,5 @@
 import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
-import analytics from '@react-native-firebase/analytics';
-import crashlytics from '@react-native-firebase/crashlytics';
-
 const isFirebaseAvailable = () => {
   // If RNFBAppModule is not present, native Firebase is not linked/configured in this binary
   return !!NativeModules.RNFBAppModule;
@@ -10,12 +7,20 @@ const isFirebaseAvailable = () => {
 
 const getFirebaseAnalytics = () => {
   if (!isFirebaseAvailable()) return null;
-  return analytics;
+  try {
+    return require('@react-native-firebase/analytics').default;
+  } catch {
+    return null;
+  }
 };
 
 const getFirebaseCrashlytics = () => {
   if (!isFirebaseAvailable()) return null;
-  return crashlytics;
+  try {
+    return require('@react-native-firebase/crashlytics').default;
+  } catch {
+    return null;
+  }
 };
 
 export interface AppLifecycleEvents {
