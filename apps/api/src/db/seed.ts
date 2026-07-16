@@ -45,7 +45,7 @@ const trips = [
     latitude: -32.211913,
     longitude: -64.73809012343702,
     free: false,
-    price: 15000,
+    price: 1500000,
     currency: 'ARS',
     imageKey: 'trips-deriva-centro-cover',
     geofenceBypassable: false,

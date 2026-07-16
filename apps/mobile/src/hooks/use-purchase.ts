@@ -8,6 +8,7 @@ import { PaymentClient } from '@/services/payment-client';
 import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { logger } from '@/utils/logger';
+import { AnalyticsService } from '@/services/analytics';
 
 export type PurchaseStatus = 'loading' | 'free' | 'paid' | 'purchased' | 'error';
 
@@ -183,6 +184,12 @@ export function usePurchase(
               await setUserEmail(result.email);
             }
             PaymentClient.logAccess(experienceId, 'paid', result.email, Platform.OS);
+            AnalyticsService.trackEvent('payment_completed', {
+              experience_id: experienceId,
+              purchase_id: result.purchaseId,
+              provider: result.provider,
+              amount: result.amount,
+            });
             setState((prev) => ({
               ...prev,
               status: 'purchased',
@@ -196,6 +203,11 @@ export function usePurchase(
               clearInterval(pollingRef.current.intervalId);
               pollingRef.current.intervalId = null;
             }
+            AnalyticsService.trackEvent('payment_failed', {
+              experience_id: experienceId,
+              purchase_id: result.purchaseId,
+              error_msg: 'rejected',
+            });
             setState((prev) => ({
               ...prev,
               polling: false,
@@ -221,6 +233,8 @@ export function usePurchase(
       pollingRef.current.purchaseId = result.purchaseId;
       setState((prev) => ({ ...prev, purchaseId: result.purchaseId }));
 
+      AnalyticsService.trackEvent('payment_checkout_started', { experience_id: experienceId });
+
       // Start polling immediately in the background
       startPolling(result.purchaseId);
 
@@ -244,8 +258,13 @@ export function usePurchase(
           }));
         }
       }
-    } catch {
+    } catch (err) {
       logger.error('[usePurchase] Failed to create payment');
+      AnalyticsService.trackEvent('payment_failed', {
+        experience_id: experienceId,
+        purchase_id: null,
+        error_msg: err instanceof Error ? err.message : 'create_payment_failed',
+      });
       setState((prev) => ({
         ...prev,
         paying: false,

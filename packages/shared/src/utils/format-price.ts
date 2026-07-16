@@ -12,7 +12,10 @@ export function formatPrice(
   currency = 'ARS',
   options?: { minimumFractionDigits?: number; maximumFractionDigits?: number },
 ): string {
-  const fractionDigits = options?.minimumFractionDigits ?? options?.maximumFractionDigits ?? 2;
+  const isWhole = cents % 100 === 0;
+  const defaultFractionDigits = isWhole ? 0 : 2;
+  const fractionDigits =
+    options?.minimumFractionDigits ?? options?.maximumFractionDigits ?? defaultFractionDigits;
 
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',

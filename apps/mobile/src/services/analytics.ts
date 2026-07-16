@@ -58,6 +58,17 @@ export interface TestEvents {
   test_web_event: { foo: string };
 }
 
+export interface PaymentEvents {
+  payment_checkout_started: { experience_id: string };
+  payment_completed: {
+    experience_id: string;
+    purchase_id: string;
+    provider: string;
+    amount: number;
+  };
+  payment_failed: { experience_id: string; purchase_id: string | null; error_msg?: string };
+}
+
 export interface AnalyticsEventMap
   extends
     AppLifecycleEvents,
@@ -65,7 +76,8 @@ export interface AnalyticsEventMap
     AudioPlaybackEvents,
     GpsLocationEvents,
     SystemEvents,
-    TestEvents {}
+    TestEvents,
+    PaymentEvents {}
 
 export const AnalyticsService = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
