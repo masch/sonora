@@ -2,7 +2,7 @@
 
 Universal Expo app targeting iOS, Android, and Web.
 
-**Stack:** Expo SDK 56 · React Native 0.85 · TypeScript 6.0 · expo-router · Tailwind CSS v4 · Jest
+**Stack:** Expo SDK 56 · React Native 0.85 · TypeScript 6.0 · expo-router · Tailwind CSS v4 · Jest · Bun · Hono · Drizzle ORM · PostgreSQL
 
 ## Environments (Web Access)
 
@@ -48,59 +48,113 @@ make dev-android # Expo dev server for Android
 
 ## Makefile targets
 
-| Target                                | Description                                                   |
-| ------------------------------------- | ------------------------------------------------------------- |
-| `start`                               | Launch Expo dev server (default)                              |
-| `dev-web` / `dev-ios` / `dev-android` | Launch Expo dev server for a specific platform                |
-| `install`                             | Install dependencies + configure git hook                     |
-| `format`                              | Format code with Prettier                                     |
-| `test-front`                          | Run frontend tests (Jest)                                     |
-| `api-test` / `test-back`              | Run backend API tests (Vitest)                                |
-| `test`                                | Run all tests (frontend + backend)                            |
-| `lint`                                | Run ESLint via `expo lint`                                    |
-| `typecheck`                           | TypeScript type checking (`tsc --noEmit`)                     |
-| `validate`                            | Full development gate: format → test → lint → typecheck → gga |
-| `check`                               | CI verification gate: format-check → test → lint → typecheck  |
-| `gga`                                 | Run GGA code review on staged files                           |
-| `gga-full`                            | Run GGA on all source files (stages, reviews, unstages)       |
-| `doctor`                              | Run `expo-doctor` diagnostics                                 |
-| `pin-deps`                            | Pin all workspace deps to exact versions from bun.lock        |
-| `scripts-typecheck`                   | Type-check scripts/ with tsc                                  |
-| `clean`                               | Remove build artifacts and `node_modules`                     |
-| `reset`                               | Full reset: `clean` + `install`                               |
-| `help`                                | Print all targets                                             |
+Run `make help` for the complete list of targets. The most common ones:
+
+| Target           | Description                                                    |
+| ---------------- | -------------------------------------------------------------- |
+| **Setup**        |                                                                |
+| `install`        | Install workspace dependencies + configure git hooks           |
+| **Dev server**   |                                                                |
+| `start`          | Launch Expo dev server (default)                               |
+| `dev-web`        | Expo dev server for web                                        |
+| `dev-ios`        | Expo dev server for iOS                                        |
+| `dev-android`    | Expo dev server for Android (Expo Go)                          |
+| `start-wrangler` | Dev server pointing to local wrangler (port 8787)              |
+| `start-staging`  | Dev server pointing to remote staging API                      |
+| **Admin**        |                                                                |
+| `admin-dev`      | Launch Admin Web dev server                                    |
+| **Common tasks** |                                                                |
+| `test`           | Run all tests                                                  |
+| `lint`           | Run ESLint across all workspaces                               |
+| `typecheck`      | TypeScript type checks                                         |
+| `validate`       | Full development gate (format → test → lint → typecheck → gga) |
+| `help`           | Print all targets                                              |
 
 ### Validation pipeline
 
-The `validate` target runs on every commit via a **git pre-commit hook** (`.githooks/pre-commit`). It runs:
+A **git pre-commit hook** (`.githooks/pre-commit`) runs on every commit and executes these steps in order:
 
-1. **format** — Prettier formats all files
-2. _Staged automatically_ — formatted files are added to the commit
-3. **test** — Jest suite
-4. **lint** — ESLint
-5. **typecheck** — TypeScript compiler check
-6. **gga** — AI code review on staged files
+1. **format-check** — Prettier checks formatting; auto-fixes and stages files if needed
+2. **test-ci** — All tests (Jest + Vitest) with silent output
+3. **lint** — ESLint across all workspaces
+4. **typecheck** — TypeScript compiler check (mobile + api + admin)
+5. **doctor-ci** — React Doctor audit
+6. **expo-doctor** — Expo dependency compatibility check (non-blocking — known false positives with Bun)
+7. **gga** — AI code review on staged files
 
-If any step fails, the commit is blocked.
+If any blocking step fails, the commit is rejected.
+
+The `validate` target (`make validate`: `format` → `test` → `lint` → `typecheck` → `api-typecheck` → `scripts-typecheck` → `gga`) can be run manually for the same development gate.
 
 ## Project structure
 
-```
-src/
-├── app/          # expo-router file-based routes
-├── components/   # Reusable UI components
-├── constants/    # App constants
-├── hooks/        # Custom React hooks
-├── i18n/         # Internationalization
-├── tw/           # Tailwind utilities
-├── __tests__/    # Test suites
-├── __mocks__/    # Test mocks
-└── global.css    # Global styles
+```text
+sonora/
+├── apps/
+│   ├── mobile/          # Expo mobile app (iOS, Android, Web)
+│   │   └── src/
+│   │       ├── app/           # expo-router file-based routes
+│   │       ├── components/    # Reusable UI components
+│   │       ├── config/        # App configuration
+│   │       ├── constants/     # App constants
+│   │       ├── data/          # Static data
+│   │       ├── hooks/         # Custom React hooks
+│   │       ├── i18n/          # Internationalization
+│   │       ├── services/      # API service layer
+│   │       ├── storage/       # Local storage
+│   │       ├── store/         # State management (Zustand)
+│   │       ├── tw/            # Tailwind utility components
+│   │       ├── types/         # TypeScript type definitions
+│   │       ├── utils/         # Utility functions
+│   │       ├── __tests__/     # Test suites
+│   │       └── global.css     # Global styles
+│   ├── __mocks__/             # Jest mocks (react-i18next, reanimated, etc.)
+│   ├── api/                   # Hono backend (Cloudflare Workers + Neon)
+│   │   └── src/
+│   │       ├── db/            # Drizzle ORM schema & migrations
+│   │       ├── lib/           # Library code (HttpClient, etc.)
+│   │       ├── middleware/    # Hono middleware
+│   │       ├── payments/      # MercadoPago integration
+│   │       ├── routes/        # API route handlers
+│   │       ├── scripts/       # Utility scripts
+│   │       ├── utils/         # Utility functions
+│   │       ├── index.ts       # Worker entry point
+│   │       ├── server.local.ts
+│   │       └── __tests__/     # Test suites
+│   └── admin/                 # Admin web portal (Expo)
+│       └── src/
+│           ├── app/           # expo-router routes
+│           ├── components/    # UI components
+│           ├── config/
+│           ├── constants/
+│           ├── hooks/
+│           ├── i18n/
+│           ├── services/
+│           └── tw/
+├── packages/
+│   └── shared/                # Shared types, utilities, constants
+├── openspec/                  # SDD/gentle-ai artifacts
+│   ├── changes/
+│   ├── config.yaml
+│   ├── designs/
+│   ├── specs/
+│   └── tasks/
+├── docs/                      # Documentation
+├── scripts/                   # Root-level utility scripts
+├── scratch/                   # Temporary/scratch files
+├── .githooks/
+│   └── pre-commit             # Git pre-commit hook
+├── .engram/
+│   └── config.json
+├── Makefile
+├── package.json               # Bun workspace root
+├── bunfig.toml
+└── renovate.json
 ```
 
 ## API — Feedback Database
 
-The backend API (`api/`) stores feedback in Postgres. Two runtimes are supported: local development with Podman, and production on Cloudflare Workers with Neon.
+The backend API (`apps/api/`) stores feedback in Postgres. Two runtimes are supported: local development with Podman, and production on Cloudflare Workers with Neon.
 
 ### Local setup
 
@@ -136,7 +190,7 @@ make api-db-down
 make api-db-migrate
 
 # 3. Set the Neon connection string as a Worker secret
-cd api && npx wrangler secret put NEON_DATABASE_URL
+cd apps/api && npx wrangler secret put NEON_DATABASE_URL
 # Paste the connection string when prompted
 
 # 4. Deploy the API to Cloudflare Workers
