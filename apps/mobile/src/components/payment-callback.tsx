@@ -44,23 +44,34 @@ export default function PaymentCallback({ status }: PaymentCallbackProps) {
 
         if (!active) return;
 
-        if (result.status === 'approved') {
-          await addPurchasedId(result.experienceId);
-          if (result.email) {
-            await setUserEmail(result.email);
-          }
-          PaymentClient.logAccess(result.experienceId, 'paid', result.email, Platform.OS);
+        // 1. Process status-specific side effects
+        switch (result.status) {
+          case 'approved':
+            await addPurchasedId(result.experienceId);
+            if (result.email) {
+              await setUserEmail(result.email);
+            }
+            PaymentClient.logAccess(result.experienceId, 'paid', result.email, Platform.OS);
+            break;
+          case 'rejected':
+            setError(t('payments.error.rejected'));
+            setProcessing(false);
+            break;
+          case 'pending':
+          default:
+            break;
         }
 
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.opener) {
+        // 2. Handle web popup window closure for non-rejected states
+        const isWebPopup =
+          Platform.OS === 'web' && typeof window !== 'undefined' && !!window.opener;
+        if (isWebPopup && result.status !== 'rejected') {
           window.close();
           return;
         }
 
-        if (result.status === 'rejected') {
-          setError(t('payments.error.rejected'));
-          setProcessing(false);
-        } else {
+        // 3. Routing navigation (if not in a popup and not rejected)
+        if (result.status !== 'rejected') {
           router.replace(`/tracks/${result.experienceId}`);
         }
       } catch (err) {
