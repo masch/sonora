@@ -142,4 +142,63 @@ describe('POST /payments/create', () => {
       }),
     );
   });
+
+  it('successfully creates checkout with a web redirect URL and adapts backUrls scheme', async () => {
+    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    mockDb.limit.mockResolvedValue([experienceMock]);
+    mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          experienceId: 'exp-1',
+          redirectUrl: 'http://localhost:8081/payment/callback',
+        }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockProvider.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backUrls: {
+          success: 'http://localhost:8081/payment/success/purchase-999',
+          failure: 'http://localhost:8081/payment/failure/purchase-999',
+          pending: 'http://localhost:8081/payment/pending/purchase-999',
+        },
+      }),
+    );
+  });
+
+  it('formats default redirect URLs correctly without triple slashes when no redirectUrl is provided', async () => {
+    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    mockDb.limit.mockResolvedValue([experienceMock]);
+    mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ experienceId: 'exp-1' }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockProvider.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backUrls: {
+          success: 'sonora://payment/success/purchase-999',
+          failure: 'sonora://payment/failure/purchase-999',
+          pending: 'sonora://payment/pending/purchase-999',
+        },
+      }),
+    );
+  });
 });

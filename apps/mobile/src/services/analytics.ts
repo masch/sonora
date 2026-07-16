@@ -1,8 +1,5 @@
 import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
-import analytics from '@react-native-firebase/analytics';
-import crashlytics from '@react-native-firebase/crashlytics';
-
 const isFirebaseAvailable = () => {
   // If RNFBAppModule is not present, native Firebase is not linked/configured in this binary
   return !!NativeModules.RNFBAppModule;
@@ -10,12 +7,20 @@ const isFirebaseAvailable = () => {
 
 const getFirebaseAnalytics = () => {
   if (!isFirebaseAvailable()) return null;
-  return analytics;
+  try {
+    return require('@react-native-firebase/analytics').default;
+  } catch {
+    return null;
+  }
 };
 
 const getFirebaseCrashlytics = () => {
   if (!isFirebaseAvailable()) return null;
-  return crashlytics;
+  try {
+    return require('@react-native-firebase/crashlytics').default;
+  } catch {
+    return null;
+  }
 };
 
 export interface AppLifecycleEvents {
@@ -53,6 +58,17 @@ export interface TestEvents {
   test_web_event: { foo: string };
 }
 
+export interface PaymentEvents {
+  payment_checkout_started: { experience_id: string };
+  payment_completed: {
+    experience_id: string;
+    purchase_id: string;
+    provider: string;
+    amount: number;
+  };
+  payment_failed: { experience_id: string; purchase_id: string | null; error_msg?: string };
+}
+
 export interface AnalyticsEventMap
   extends
     AppLifecycleEvents,
@@ -60,7 +76,8 @@ export interface AnalyticsEventMap
     AudioPlaybackEvents,
     GpsLocationEvents,
     SystemEvents,
-    TestEvents {}
+    TestEvents,
+    PaymentEvents {}
 
 export const AnalyticsService = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {

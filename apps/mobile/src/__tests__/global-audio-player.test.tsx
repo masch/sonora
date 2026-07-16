@@ -10,6 +10,7 @@ let mockPathname = '/(tabs)/index';
 jest.mock('expo-router', () => ({
   useSegments: () => mockSegments,
   usePathname: () => mockPathname,
+  useFocusEffect: jest.fn(),
 }));
 
 const mockPlay = jest.fn();

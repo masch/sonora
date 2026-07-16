@@ -326,6 +326,9 @@ export const es = {
     },
     pending: 'Pago pendiente',
     checkStatus: 'Verificar estado del pago',
+    success: '¡Pago completado con éxito!',
+    processing: 'Procesando pago...',
+    redirecting: 'Redireccionando...',
     error: {
       create: 'No se pudo iniciar el pago. Reintentá.',
       rejected: 'El pago fue rechazado. Reintentá.',

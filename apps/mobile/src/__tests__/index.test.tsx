@@ -58,6 +58,7 @@ const MockLink = ({ children, testID, ...props }: Record<string, unknown>) =>
 jest.mock('expo-router', () => ({
   Link: MockLink,
   useRouter: () => ({ push: mockPush }),
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock('@/hooks/use-translation', () => ({

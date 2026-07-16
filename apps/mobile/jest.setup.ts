@@ -68,6 +68,11 @@ jest.mock('expo-router', () => {
     useRouter: () => ({
       push: jest.fn(),
     }),
+    useNavigation: () => ({
+      addListener: jest.fn((event, cb) => {
+        return () => {};
+      }),
+    }),
     Stack: {
       Screen: () => null,
     },

@@ -3,10 +3,12 @@ import { Platform } from 'react-native';
 
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { useFocusEffect } from 'expo-router';
 import { PaymentClient } from '@/services/payment-client';
 import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { logger } from '@/utils/logger';
+import { AnalyticsService } from '@/services/analytics';
 
 export type PurchaseStatus = 'loading' | 'free' | 'paid' | 'purchased' | 'error';
 
@@ -131,6 +133,20 @@ export function usePurchase(
     init();
   }, [free, price, checkLocalCache, checkRemoteEmail]);
 
+  // Re-verify purchase status on focus to refresh state when returning from Mercado Pago callback
+  useFocusEffect(
+    useCallback(() => {
+      const recheck = async () => {
+        const isCached = await checkLocalCache();
+        if (isCached) return;
+
+        const isRemote = await checkRemoteEmail();
+        if (isRemote) return;
+      };
+      recheck();
+    }, [checkLocalCache, checkRemoteEmail]),
+  );
+
   const startPolling = useCallback(
     (purchaseId: string) => {
       pollingRef.current = { purchaseId, attempts: 0, intervalId: null };
@@ -168,6 +184,12 @@ export function usePurchase(
               await setUserEmail(result.email);
             }
             PaymentClient.logAccess(experienceId, 'paid', result.email, Platform.OS);
+            AnalyticsService.trackEvent('payment_completed', {
+              experience_id: experienceId,
+              purchase_id: result.purchaseId,
+              provider: result.provider,
+              amount: result.amount,
+            });
             setState((prev) => ({
               ...prev,
               status: 'purchased',
@@ -181,6 +203,11 @@ export function usePurchase(
               clearInterval(pollingRef.current.intervalId);
               pollingRef.current.intervalId = null;
             }
+            AnalyticsService.trackEvent('payment_failed', {
+              experience_id: experienceId,
+              purchase_id: result.purchaseId,
+              error_msg: 'rejected',
+            });
             setState((prev) => ({
               ...prev,
               polling: false,
@@ -202,28 +229,27 @@ export function usePurchase(
     setState((prev) => ({ ...prev, paying: true, error: null }));
 
     try {
-      const result = await PaymentClient.createPayment(experienceId);
+      const result = await PaymentClient.createPayment(experienceId, Linking.createURL(''));
       pollingRef.current.purchaseId = result.purchaseId;
       setState((prev) => ({ ...prev, purchaseId: result.purchaseId }));
 
+      AnalyticsService.trackEvent('payment_checkout_started', { experience_id: experienceId });
+
+      // Start polling immediately in the background
+      startPolling(result.purchaseId);
+
       // Open checkout URL in browser
       try {
-        const browserResult = await WebBrowser.openAuthSessionAsync(
+        await WebBrowser.openAuthSessionAsync(
           result.checkoutUrl,
           Linking.createURL('/payment/callback'),
         );
-
-        if (browserResult.type === 'success' || browserResult.type === 'dismiss') {
-          // Start polling — the webhook may have already completed or will soon
-          startPolling(result.purchaseId);
-        }
       } catch {
         // WebBrowser might not be supported on all platforms
         logger.warn('[usePurchase] openAuthSessionAsync failed, falling back to Linking');
         const canOpen = await Linking.canOpenURL(result.checkoutUrl);
         if (canOpen) {
           await Linking.openURL(result.checkoutUrl);
-          startPolling(result.purchaseId);
         } else {
           setState((prev) => ({
             ...prev,
@@ -232,8 +258,13 @@ export function usePurchase(
           }));
         }
       }
-    } catch {
+    } catch (err) {
       logger.error('[usePurchase] Failed to create payment');
+      AnalyticsService.trackEvent('payment_failed', {
+        experience_id: experienceId,
+        purchase_id: null,
+        error_msg: err instanceof Error ? err.message : 'create_payment_failed',
+      });
       setState((prev) => ({
         ...prev,
         paying: false,
@@ -285,7 +316,8 @@ export function usePurchase(
     const subscription = Linking.addEventListener('url', (event) => {
       const url = event.url;
       if (url && url.includes('/payment/')) {
-        const segments = url.split('/');
+        const urlWithoutQuery = url.split('?')[0];
+        const segments = urlWithoutQuery.split('/');
         const purchaseId = segments[segments.length - 1];
         if (purchaseId && pollingRef.current.purchaseId === purchaseId) {
           startPolling(purchaseId);

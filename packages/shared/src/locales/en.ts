@@ -323,6 +323,9 @@ export const en = {
     },
     pending: 'Payment pending',
     checkStatus: 'Check payment status',
+    success: 'Payment completed successfully!',
+    processing: 'Processing payment...',
+    redirecting: 'Redirecting...',
     error: {
       create: 'Could not start payment. Please try again.',
       rejected: 'Payment was rejected. Please try again.',

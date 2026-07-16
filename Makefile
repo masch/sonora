@@ -44,20 +44,19 @@ kill-metro: ## Kill any process running on Metro port 8081
 
 .PHONY: start
 start: ## Launch Expo dev server
-	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler
 start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+	cd apps/mobile && EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler-android
 start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
+	cd apps/mobile && EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-staging
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start
-
+	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY

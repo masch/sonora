@@ -65,7 +65,7 @@ jest.mock('expo-router', () => {
     );
   };
   MockLink.displayName = 'Link';
-  return { Link: MockLink, useRouter: () => ({ push: mockPush }) };
+  return { Link: MockLink, useRouter: () => ({ push: mockPush }), useFocusEffect: jest.fn() };
 });
 
 jest.mock('expo-location', () => ({

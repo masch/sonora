@@ -45,6 +45,7 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
   }),
   useLocalSearchParams: () => ({}),
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock('@/data/experiences', () => ({
