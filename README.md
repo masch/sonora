@@ -2,7 +2,7 @@
 
 Universal Expo app targeting iOS, Android, and Web.
 
-**Stack:** Expo SDK 56 · React Native 0.85 · TypeScript 6.0 · expo-router · Tailwind CSS v4 · Jest
+**Stack:** Expo SDK 56 · React Native 0.85 · TypeScript 6.0 · expo-router · Tailwind CSS v4 · Jest · Bun · Hono · Drizzle ORM · PostgreSQL
 
 ## Environments (Web Access)
 
@@ -48,59 +48,247 @@ make dev-android # Expo dev server for Android
 
 ## Makefile targets
 
-| Target                                | Description                                                   |
-| ------------------------------------- | ------------------------------------------------------------- |
-| `start`                               | Launch Expo dev server (default)                              |
-| `dev-web` / `dev-ios` / `dev-android` | Launch Expo dev server for a specific platform                |
-| `install`                             | Install dependencies + configure git hook                     |
-| `format`                              | Format code with Prettier                                     |
-| `test-front`                          | Run frontend tests (Jest)                                     |
-| `api-test` / `test-back`              | Run backend API tests (Vitest)                                |
-| `test`                                | Run all tests (frontend + backend)                            |
-| `lint`                                | Run ESLint via `expo lint`                                    |
-| `typecheck`                           | TypeScript type checking (`tsc --noEmit`)                     |
-| `validate`                            | Full development gate: format → test → lint → typecheck → gga |
-| `check`                               | CI verification gate: format-check → test → lint → typecheck  |
-| `gga`                                 | Run GGA code review on staged files                           |
-| `gga-full`                            | Run GGA on all source files (stages, reviews, unstages)       |
-| `doctor`                              | Run `expo-doctor` diagnostics                                 |
-| `pin-deps`                            | Pin all workspace deps to exact versions from bun.lock        |
-| `scripts-typecheck`                   | Type-check scripts/ with tsc                                  |
-| `clean`                               | Remove build artifacts and `node_modules`                     |
-| `reset`                               | Full reset: `clean` + `install`                               |
-| `help`                                | Print all targets                                             |
+> The canonical target list is generated from `make help`. This table may drift as new targets are added.
+
+| Target                                  | Description                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Dev server**                          |                                                                                                   |
+| `start`                                 | Launch Expo dev server                                                                            |
+| `start-wrangler`                        | Expo dev server pointing to local wrangler (port 8787) for iOS/Web                                |
+| `start-wrangler-android`                | Expo dev server pointing to local wrangler (port 8787) for Android emulator                       |
+| `start-staging`                         | Expo dev server pointing to remote staging API                                                    |
+| `start-headless`                        | Launch Expo dev server without interactive TTY                                                    |
+| `dev-web`                               | Launch Expo dev server for web                                                                    |
+| `dev-ios`                               | Launch Expo dev server for iOS                                                                    |
+| `dev-android`                           | Launch Expo dev server for Android (Expo Go)                                                      |
+| `kill-metro`                            | Kill any process running on Metro port 8081                                                       |
+| **Admin**                               |                                                                                                   |
+| `admin-dev`                             | Launch Expo dev server for Admin Web                                                              |
+| `admin-dev-staging`                     | Admin dev server pointing to staging API                                                          |
+| **Installation**                        |                                                                                                   |
+| `install`                               | Install workspace dependencies + configure git hooks                                              |
+| **Formatting**                          |                                                                                                   |
+| `format`                                | Format code with Prettier                                                                         |
+| `format-check`                          | Check code formatting using Prettier (no write)                                                   |
+| **Testing**                             |                                                                                                   |
+| `test-front`                            | Run frontend tests (Jest, one-shot)                                                               |
+| `test-back` / `api-test`                | Run backend API tests (Vitest)                                                                    |
+| `test-shared`                           | Run shared package tests (Bun)                                                                    |
+| `test-admin`                            | Run admin app tests (Jest, one-shot)                                                              |
+| `test`                                  | Run all tests (frontend + backend + shared + admin)                                               |
+| `test-ci`                               | Run all tests silently (for pre-commit/CI)                                                        |
+| `api-test-staging`                      | Test staging Worker health (GET /health)                                                          |
+| `api-test-staging-verbose`              | Test staging Worker with full response                                                            |
+| `api-test-production`                   | Test production Worker health (GET /health)                                                       |
+| `api-test-staging-db`                   | Test staging DB connection (GET /health/db)                                                       |
+| `api-test-production-db`                | Test production DB connection (GET /health/db)                                                    |
+| `api-test-mp`                           | Run MercadoPago payment status polling test (local)                                               |
+| `api-test-mp-staging`                   | Run MercadoPago payment status polling test against staging                                       |
+| **Linting**                             |                                                                                                   |
+| `lint`                                  | Run ESLint across all workspaces                                                                  |
+| **Type checking**                       |                                                                                                   |
+| `typecheck`                             | TypeScript type checks (mobile + api + admin)                                                     |
+| `api-typecheck`                         | TypeScript type check for the API                                                                 |
+| `scripts-typecheck`                     | Type-check scripts/ with tsc                                                                      |
+| **Diagnostics**                         |                                                                                                   |
+| `doctor`                                | Run React Doctor audit (full verbose scan)                                                        |
+| `doctor-ci`                             | Run React Doctor audit (terse, for pre-commit)                                                    |
+| `doctor-diff`                           | Run React Doctor audit on staged diff (regression check)                                          |
+| `expo-doctor`                           | Run Expo Doctor to verify dependency compatibility                                                |
+| **Validation**                          |                                                                                                   |
+| `validate`                              | Full development gate: format → test → lint → typecheck → api-typecheck → scripts-typecheck → gga |
+| `check`                                 | CI verification gate: format-check → test → lint → typecheck → expo-doctor                        |
+| `api-validate`                          | API tests + typecheck                                                                             |
+| **Review**                              |                                                                                                   |
+| `gga`                                   | Run GGA (Gentleman Guardian Angel) code review on staged files                                    |
+| `gga-full`                              | Run GGA on ALL matching source files (stages, reviews, unstages)                                  |
+| **Native builds**                       |                                                                                                   |
+| `rebuild-android`                       | Rebuild native Android project (after adding native modules)                                      |
+| `rebuild-ios`                           | Rebuild native iOS project                                                                        |
+| `prebuild`                              | Regenerate native project files without compiling                                                 |
+| **EAS builds**                          |                                                                                                   |
+| `eas-whoami`                            | Verify EAS authentication                                                                         |
+| `eas-list`                              | List recent EAS builds                                                                            |
+| `eas-init`                              | Initialize EAS for this project                                                                   |
+| `eas-build-android`                     | Build Play Store APK via EAS cloud                                                                |
+| `eas-build-android-preview`             | Build test APK for sideload via EAS cloud                                                         |
+| `eas-build-android-local`               | Build Play Store APK locally                                                                      |
+| `eas-build-android-preview-local`       | Build test APK locally (interactive)                                                              |
+| `eas-build-android-preview-ci`          | Build test APK for sideload in CI                                                                 |
+| `eas-build-android-aab-ci`              | Build signed AAB in CI                                                                            |
+| `eas-build-android-release-ci-unsigned` | Build unsigned APK + AAB from prebuild+Gradle                                                     |
+| `eas-upload-apk`                        | Upload a local APK to EAS Submit                                                                  |
+| `eas-build-web-production`              | Export web app and deploy to EAS Hosting production                                               |
+| `eas-build-web-staging`                 | Export web app and deploy to EAS Hosting staging                                                  |
+| `eas-build-admin-production`            | Export admin web app and deploy to EAS Hosting production                                         |
+| `eas-build-admin-staging`               | Export admin web app and deploy to EAS Hosting staging                                            |
+| **Supply chain security**               |                                                                                                   |
+| `socket-login`                          | Authenticate with Socket.dev CLI                                                                  |
+| `socket-scan`                           | Run Socket.dev security scan                                                                      |
+| `pin-deps`                              | Pin all workspace deps to exact versions from bun.lock                                            |
+| **Firebase App Distribution**           |                                                                                                   |
+| `firebase-login-ci`                     | Firebase CI login (generates FIREBASE_TOKEN)                                                      |
+| `firebase-distribute`                   | Upload APK to Firebase App Distribution                                                           |
+| `firebase-distribute-staging-dev`       | Upload to staging dev-team group                                                                  |
+| `firebase-distribute-staging-sonora`    | Upload to staging sonora-team group                                                               |
+| `firebase-distribute-staging-all`       | Upload to staging both groups                                                                     |
+| `firebase-distribute-prod-dev`          | Upload to production dev-team group                                                               |
+| `firebase-distribute-prod-sonora`       | Upload to production sonora-team group                                                            |
+| `firebase-distribute-prod-all`          | Upload to production both groups                                                                  |
+| **Backend API — Database**              |                                                                                                   |
+| `api-db-up`                             | Start Postgres (Podman)                                                                           |
+| `api-db-down`                           | Stop Postgres (Podman)                                                                            |
+| `api-db-generate`                       | Generate Drizzle migration from schema changes                                                    |
+| `api-db-migrate`                        | Apply pending Drizzle migrations (local)                                                          |
+| `api-db-migrate-ci`                     | Apply migrations using DATABASE_URL from env (for CI)                                             |
+| `api-db-migrate-staging`                | Apply migrations to staging Neon DB                                                               |
+| `api-db-migrate-production`             | Apply migrations to production Neon DB                                                            |
+| `api-db-seed`                           | Seed default trips data in local Postgres                                                         |
+| `api-db-seed-ci`                        | Seed DB using DATABASE_URL from env (for CI)                                                      |
+| `api-db-seed-staging`                   | Seed staging Neon DB                                                                              |
+| `api-db-seed-production`                | Seed production Neon DB                                                                           |
+| `api-db-studio`                         | Launch Drizzle Studio (GUI database browser)                                                      |
+| `api-db-shell`                          | Open psql shell to local Postgres                                                                 |
+| `api-db-shell-staging`                  | Open psql shell to Neon staging DB                                                                |
+| `api-db-shell-production`               | Open psql shell to Neon production DB                                                             |
+| `api-db-backup`                         | Dump, encrypt with GPG, upload to R2, prune old backups                                           |
+| `api-db-restore`                        | Download and restore database backup from R2                                                      |
+| **Backend API — Dev server**            |                                                                                                   |
+| `api-install`                           | Install API dependencies (--frozen-lockfile)                                                      |
+| `api-dev`                               | Run API locally with wrangler dev                                                                 |
+| `api-dev-local`                         | Run API locally with Docker Postgres                                                              |
+| `api-dev-full`                          | Start Postgres → migrate → seed → run API                                                         |
+| `api-dev-remote-staging`                | Run API locally connected to remote staging R2/resources                                          |
+| `api-dev-staging`                       | Run API locally with wrangler dev + staging Neon DB                                               |
+| `api-dev-local`                         | Run Hono API locally with Docker Postgres                                                         |
+| **Backend API — Deploy**                |                                                                                                   |
+| `api-deploy` / `api-deploy-production`  | Deploy production Worker to Cloudflare                                                            |
+| `api-deploy-production-secrets`         | Set secrets on production Worker                                                                  |
+| `api-deploy-production-full`            | All-in-one: migrate → seed → deploy → secrets (production)                                        |
+| `api-deploy-production-set-origin`      | Set ALLOWED_ORIGIN on production Worker                                                           |
+| `api-deploy-production-log-toggle`      | Toggle API logging on production                                                                  |
+| `api-deploy-staging`                    | Deploy staging Worker to Cloudflare                                                               |
+| `api-deploy-staging-secrets`            | Set secrets on staging Worker                                                                     |
+| `api-deploy-staging-full`               | All-in-one: migrate → seed → deploy → secrets (staging)                                           |
+| `api-deploy-staging-set-origin`         | Set ALLOWED_ORIGIN on staging Worker                                                              |
+| `api-deploy-staging-log-toggle`         | Toggle API logging on staging                                                                     |
+| `api-login`                             | Authenticate wrangler with Cloudflare                                                             |
+| `api-logs-staging`                      | Tail staging Worker logs                                                                          |
+| `api-logs-production`                   | Tail production Worker logs                                                                       |
+| `api-secrets-staging`                   | List staging Worker secrets                                                                       |
+| `api-secrets-production`                | List production Worker secrets                                                                    |
+| **R2 Audio Storage**                    |                                                                                                   |
+| `api-r2-buckets-staging`                | Create R2 audio buckets for staging                                                               |
+| `api-r2-buckets-production`             | Create R2 audio buckets for production                                                            |
+| `api-upload-audio-staging`              | Upload audio file to staging R2                                                                   |
+| `api-upload-audio-production`           | Upload audio file to production R2                                                                |
+| **Translations**                        |                                                                                                   |
+| `sync-translations-staging`             | Dry-run sync translations from staging DB                                                         |
+| `sync-translations-staging-apply`       | Write translations from staging DB to .ts files                                                   |
+| `sync-translations-production`          | Dry-run sync translations from production DB                                                      |
+| **Android emulator**                    |                                                                                                   |
+| `android-stop`                          | Stop the standalone app on emulator                                                               |
+| `android-stop-go`                       | Stop Expo Go on emulator                                                                          |
+| `android-trigger-bg`                    | Trigger background fetch for standalone app                                                       |
+| `android-trigger-bg-go`                 | Trigger background fetch in Expo Go                                                               |
+| `android-reset`                         | Reset emulator (wipe data)                                                                        |
+| `android-restart`                       | Restart emulator                                                                                  |
+| `android-kill`                          | Kill emulator (force)                                                                             |
+| **Expo upgrade**                        |                                                                                                   |
+| `expo-upgrade`                          | Check recommended versions and upgrade Expo SDK packages                                          |
+| **Maintenance**                         |                                                                                                   |
+| `clean`                                 | Remove build artifacts and node_modules                                                           |
+| `eas-clean`                             | Clean EAS cache + APKs + Podman EAS images + Expo caches                                          |
+| `eas-clean-full`                        | Clean everything (including Gradle cache + prebuild)                                              |
+| `reset`                                 | Full reset: clean + reinstall                                                                     |
+| `precommit-logs`                        | Show temp files from last pre-commit run                                                          |
+| `help`                                  | Print all targets                                                                                 |
 
 ### Validation pipeline
 
-The `validate` target runs on every commit via a **git pre-commit hook** (`.githooks/pre-commit`). It runs:
+A **git pre-commit hook** (`.githooks/pre-commit`) runs on every commit and executes these steps in order:
 
-1. **format** — Prettier formats all files
-2. _Staged automatically_ — formatted files are added to the commit
-3. **test** — Jest suite
-4. **lint** — ESLint
-5. **typecheck** — TypeScript compiler check
-6. **gga** — AI code review on staged files
+1. **format-check** — Prettier checks formatting; auto-fixes and stages files if needed
+2. **test-ci** — All tests (Jest + Vitest) with silent output
+3. **lint** — ESLint across all workspaces
+4. **typecheck** — TypeScript compiler check (mobile + api + admin)
+5. **doctor-ci** — React Doctor audit
+6. **expo-doctor** — Expo dependency compatibility check (non-blocking — known false positives with Bun)
+7. **gga** — AI code review on staged files
 
-If any step fails, the commit is blocked.
+If any blocking step fails, the commit is rejected.
+
+The `validate` target (`make validate`: `format` → `test` → `lint` → `typecheck` → `api-typecheck` → `scripts-typecheck` → `gga`) can be run manually for the same development gate.
 
 ## Project structure
 
-```
-src/
-├── app/          # expo-router file-based routes
-├── components/   # Reusable UI components
-├── constants/    # App constants
-├── hooks/        # Custom React hooks
-├── i18n/         # Internationalization
-├── tw/           # Tailwind utilities
-├── __tests__/    # Test suites
-├── __mocks__/    # Test mocks
-└── global.css    # Global styles
+```text
+sonora/
+├── apps/
+│   ├── mobile/          # Expo mobile app (iOS, Android, Web)
+│   │   └── src/
+│   │       ├── app/           # expo-router file-based routes
+│   │       ├── components/    # Reusable UI components
+│   │       ├── config/        # App configuration
+│   │       ├── constants/     # App constants
+│   │       ├── data/          # Static data
+│   │       ├── hooks/         # Custom React hooks
+│   │       ├── i18n/          # Internationalization
+│   │       ├── services/      # API service layer
+│   │       ├── storage/       # Local storage
+│   │       ├── store/         # State management (Zustand)
+│   │       ├── tw/            # Tailwind utility components
+│   │       ├── types/         # TypeScript type definitions
+│   │       ├── utils/         # Utility functions
+│   │       ├── __tests__/     # Test suites
+│   │       └── global.css     # Global styles
+│   ├── __mocks__/             # Jest mocks (react-i18next, reanimated, etc.)
+│   ├── api/                   # Hono backend (Cloudflare Workers + Neon)
+│   │   └── src/
+│   │       ├── db/            # Drizzle ORM schema & migrations
+│   │       ├── lib/           # Library code (HttpClient, etc.)
+│   │       ├── middleware/    # Hono middleware
+│   │       ├── payments/      # MercadoPago integration
+│   │       ├── routes/        # API route handlers
+│   │       ├── scripts/       # Utility scripts
+│   │       ├── utils/         # Utility functions
+│   │       ├── index.ts       # Worker entry point
+│   │       ├── server.local.ts
+│   │       └── __tests__/     # Test suites
+│   └── admin/                 # Admin web portal (Expo)
+│       └── src/
+│           ├── app/           # expo-router routes
+│           ├── components/    # UI components
+│           ├── config/
+│           ├── constants/
+│           ├── hooks/
+│           ├── i18n/
+│           ├── services/
+│           └── tw/
+├── packages/
+│   └── shared/                # Shared types, utilities, constants
+├── openspec/                  # SDD/gentle-ai artifacts
+│   ├── changes/
+│   ├── config.yaml
+│   ├── designs/
+│   ├── specs/
+│   └── tasks/
+├── docs/                      # Documentation
+├── scripts/                   # Root-level utility scripts
+├── scratch/                   # Temporary/scratch files
+├── .githooks/
+│   └── pre-commit             # Git pre-commit hook
+├── .engram/
+│   └── config.json
+├── Makefile
+├── package.json               # Bun workspace root
+├── bunfig.toml
+└── renovate.json
 ```
 
 ## API — Feedback Database
 
-The backend API (`api/`) stores feedback in Postgres. Two runtimes are supported: local development with Podman, and production on Cloudflare Workers with Neon.
+The backend API (`apps/api/`) stores feedback in Postgres. Two runtimes are supported: local development with Podman, and production on Cloudflare Workers with Neon.
 
 ### Local setup
 
@@ -136,7 +324,7 @@ make api-db-down
 make api-db-migrate
 
 # 3. Set the Neon connection string as a Worker secret
-cd api && npx wrangler secret put NEON_DATABASE_URL
+cd apps/api && npx wrangler secret put NEON_DATABASE_URL
 # Paste the connection string when prompted
 
 # 4. Deploy the API to Cloudflare Workers
