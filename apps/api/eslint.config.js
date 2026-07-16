@@ -23,7 +23,7 @@ module.exports = tseslint.config(
   },
   // Apply TS recommended rules only to JS/TS files
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{js,ts}'],
     extends: [...tseslint.configs.recommended],
     rules: {
       '@typescript-eslint/no-unused-vars': [
