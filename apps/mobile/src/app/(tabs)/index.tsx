@@ -9,9 +9,9 @@ import { TwImage } from '@/tw/image';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
 
-import { SONORA_LOGO, SONORA_HOME_BG } from '@/constants/images';
+import { SONORA_HOME_BG, SONORA_LOGO } from '@/constants/images';
 
-export const SHOW_LOCAL_MESSAGES = true;
+export const SHOW_LOCAL_MESSAGES = false;
 
 export default function HomeScreen() {
   const router = useRouter();

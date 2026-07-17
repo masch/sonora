@@ -7,12 +7,12 @@ import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailView from '@/components/track-detail-view';
 import TripDetailView from '@/components/trip-detail-view';
-import { fetchExperiences, type Experience, isPlayableExperience } from '@/data/experiences';
-import { useAppTranslation } from '@/hooks/use-translation';
+import { SONORA_TRACKS_BG, SONORA_TRIP_BG } from '@/constants/images';
+import { fetchExperiences, isPlayableExperience, type Experience } from '@/data/experiences';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 import { logger } from '@/utils/logger';
-import { SONORA_TRIP_BG, SONORA_TRACKS_BG } from '@/constants/images';
 
 const CONTENT_PADDING = 'pb-6';
 
@@ -161,7 +161,11 @@ export default function TrackDetailScreen() {
         backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
         contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
       >
-        {isTrip ? <TripDetailView track={track} /> : <TrackDetailView track={track} />}
+        {isTrip ? (
+          <TripDetailView track={track} showGPSDetails={false} />
+        ) : (
+          <TrackDetailView track={track} />
+        )}
       </ScrollScreenWrapper>
     </>
   );
