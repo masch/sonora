@@ -19,6 +19,10 @@ DB_ADAPTER = "neon"
 ENVIRONMENT = "staging"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
 
+[define]
+MP_BYPASS_SIGNATURE = "true"
+MP_SIGNATURE_MAX_AGE_MINUTES = "5"
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "sonora-audio-bucket-staging"
