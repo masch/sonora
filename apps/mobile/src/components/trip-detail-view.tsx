@@ -1,40 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { BottomModal } from '@/components/ui/bottom-modal';
 import FeedbackForm from '@/components/feedback-form';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import { ThemedText } from '@/components/themed-text';
-import TrackDetailMap from './track-detail-map';
-import UnifiedAudioController from '@/components/unified-audio-controller';
-import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
-import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
-import { type TripExperience } from '@/data/experiences';
-import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
-import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
-import { useImmersionPlayer } from '@/hooks/use-immersion-player';
-import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useConfirm } from '@/hooks/use-confirm';
-import { useTrackDownload } from '@/hooks/use-track-download';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { TwPressable, TwView } from '@/tw';
-import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import { PaymentPrompt } from '@/components/payment-prompt';
+import { ThemedText } from '@/components/themed-text';
+import { BottomModal } from '@/components/ui/bottom-modal';
+import UnifiedAudioController from '@/components/unified-audio-controller';
+import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
+import { type TripExperience } from '@/data/experiences';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
+import { useConfirm } from '@/hooks/use-confirm';
+import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
+import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
+import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { usePurchase } from '@/hooks/use-purchase';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useTrackDownload } from '@/hooks/use-track-download';
+import { useAppTranslation } from '@/hooks/use-translation';
+import type { TranslationKeys } from '@/i18n/types';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
-import type { TranslationKeys } from '@/i18n/types';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { TwPressable, TwView } from '@/tw';
+import { TwImage } from '@/tw/image';
 import { formatDistance } from '@/utils/format-distance';
+import TrackDetailMap from './track-detail-map';
 
 interface TripDetailViewProps {
   track: TripExperience;
+  showGPSDetails: boolean;
 }
 
-export default function TripDetailView({ track }: TripDetailViewProps) {
+export default function TripDetailView({ track, showGPSDetails }: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const feedback = useFeedbackSubmit();
@@ -226,13 +227,15 @@ export default function TripDetailView({ track }: TripDetailViewProps) {
           </TwView>
 
           {/* GPS precision */}
-          <GpsPrecisionBadge
-            gpsStatus={geofence.gpsStatus}
-            gpsAccuracy={geofence.gpsAccuracy}
-            distanceMeters={geofence.distanceMeters}
-            isNearStart={geofence.isNearStart}
-            requiredRadiusMeters={geofence.requiredRadiusMeters}
-          />
+          {showGPSDetails && (
+            <GpsPrecisionBadge
+              gpsStatus={geofence.gpsStatus}
+              gpsAccuracy={geofence.gpsAccuracy}
+              distanceMeters={geofence.distanceMeters}
+              isNearStart={geofence.isNearStart}
+              requiredRadiusMeters={geofence.requiredRadiusMeters}
+            />
+          )}
 
           {/* Block playback banner if blocked */}
           {isPlaybackBlocked && (

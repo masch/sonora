@@ -1,26 +1,11 @@
 import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
+import firebaseAnalytics from '@react-native-firebase/analytics';
+import firebaseCrashlytics from '@react-native-firebase/crashlytics';
+
 const isFirebaseAvailable = () => {
   // If RNFBAppModule is not present, native Firebase is not linked/configured in this binary
   return !!NativeModules.RNFBAppModule;
-};
-
-const getFirebaseAnalytics = () => {
-  if (!isFirebaseAvailable()) return null;
-  try {
-    return require('@react-native-firebase/analytics').default;
-  } catch {
-    return null;
-  }
-};
-
-const getFirebaseCrashlytics = () => {
-  if (!isFirebaseAvailable()) return null;
-  try {
-    return require('@react-native-firebase/crashlytics').default;
-  } catch {
-    return null;
-  }
 };
 
 export interface AppLifecycleEvents {
@@ -87,9 +72,8 @@ export const AnalyticsService = {
     };
 
     try {
-      const analytics = getFirebaseAnalytics();
-      if (analytics) {
-        analytics().logEvent(eventName, extendedParams);
+      if (isFirebaseAvailable() && firebaseAnalytics) {
+        firebaseAnalytics().logEvent(eventName, extendedParams);
       } else {
         logger.info(`[Analytics Native - Disabled] Event: ${eventName}`, extendedParams);
       }
@@ -100,12 +84,11 @@ export const AnalyticsService = {
 
   recordError: (error: Error, customDescription?: string) => {
     try {
-      const crashlytics = getFirebaseCrashlytics();
-      if (crashlytics) {
+      if (isFirebaseAvailable() && firebaseCrashlytics) {
         if (customDescription) {
-          crashlytics().setAttribute('custom_description', customDescription);
+          firebaseCrashlytics().setAttribute('custom_description', customDescription);
         }
-        crashlytics().recordError(error);
+        firebaseCrashlytics().recordError(error);
       } else {
         logger.error('[Native Error - Disabled]', error, customDescription);
       }

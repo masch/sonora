@@ -51,6 +51,6 @@ export const TABS = [
     name: 'messages',
     label: 'Messages',
     symbolViewName: getExperienceIcon('general-feedback'),
-    hidden: false,
+    hidden: true,
   },
 ] as const satisfies TabDefinition[];

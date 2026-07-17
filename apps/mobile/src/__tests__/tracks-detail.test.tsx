@@ -156,11 +156,11 @@ describe('TrackDetailScreen', () => {
     });
   });
 
-  it('renders GPS badge for trip format', async () => {
+  it('does not render GPS badge when showGPSDetails is false', async () => {
     mockExperiences[0].format = 'trip';
-    const { getByTestId } = await render(<TrackDetailScreen />);
+    const { queryByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
-      expect(getByTestId('gps-precision-badge')).toBeTruthy();
+      expect(queryByTestId('gps-precision-badge')).toBeNull();
     });
   });
 
