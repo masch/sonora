@@ -346,6 +346,11 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: make api-deploy-staging-set-origin ORIGIN="https://example.com"
 	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
 
+.PHONY: api-deploy-staging-set-webhook-secret
+api-deploy-staging-set-webhook-secret: ## Set MERCADO_PAGO_WEBHOOK_SECRET on staging Worker (interactive — paste the secret from MP dashboard)
+	@read -p "Paste the MERCADO_PAGO_WEBHOOK_SECRET from MP dashboard: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MERCADO_PAGO_WEBHOOK_SECRET --config wrangler.staging.toml
+
 .PHONY: api-deploy-production-set-origin
 api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker. Usage: make api-deploy-production-set-origin ORIGIN="https://example.com"
 	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN

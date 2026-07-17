@@ -1,10 +1,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import app, { setDbClient } from '../index';
 import { createPaymentProviders } from '../payments';
+import { logger, PURCHASE_STATUSES, type PurchaseStatus } from '@sonora/shared';
+import { mapWebhookEventToStatus } from '../routes/payments';
 
 vi.mock('../payments', () => ({
   createPaymentProviders: vi.fn(),
 }));
+
+describe('mapWebhookEventToStatus', () => {
+  it('maps approved to approved', () => {
+    expect(mapWebhookEventToStatus('approved')).toBe('approved');
+  });
+
+  it('maps refunded to refunded', () => {
+    expect(mapWebhookEventToStatus('refunded')).toBe('refunded');
+  });
+
+  it('maps rejected to rejected', () => {
+    expect(mapWebhookEventToStatus('rejected')).toBe('rejected');
+  });
+
+  it('maps pending to pending', () => {
+    expect(mapWebhookEventToStatus('pending')).toBe('pending');
+  });
+
+  it('is exhaustive over all PurchaseStatus values', () => {
+    for (const status of PURCHASE_STATUSES) {
+      const result = mapWebhookEventToStatus(status as PurchaseStatus);
+      expect(['approved', 'rejected', 'refunded', 'pending']).toContain(result);
+    }
+  });
+});
 
 describe('POST /payments/create', () => {
   let mockProvider: any;
@@ -200,5 +227,171 @@ describe('POST /payments/create', () => {
         },
       }),
     );
+  });
+});
+
+describe('POST /payments/webhook', () => {
+  let mockProvider: any;
+  let mockDb: any;
+  let infoSpy: any;
+  let warnSpy: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDbClient(null);
+
+    mockProvider = {
+      processWebhook: vi.fn(),
+    };
+
+    (createPaymentProviders as any).mockReturnValue({
+      mercadopago: mockProvider,
+    });
+
+    mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn(),
+      update: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      returning: vi.fn(),
+    };
+
+    infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {});
+    warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    setDbClient(null);
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('processes a valid payment webhook (pending → approved)', async () => {
+    mockProvider.processWebhook.mockResolvedValue({
+      event: 'approved',
+      providerPaymentId: 'mp-987654',
+      email: 'buyer@example.com',
+      amount: 15000,
+      currency: 'ARS',
+    });
+
+    // No existing purchase found — first webhook
+    setDbClient(mockDb);
+    mockDb.limit.mockResolvedValue([]);
+    mockDb.returning.mockResolvedValue([{ providerPaymentId: 'mp-987654', status: 'approved' }]);
+
+    const res = await app.request(
+      '/payments/webhook?data.id=987654&type=payment',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment', data: { id: '987654' } }),
+      },
+      {},
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+    expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'approved' }));
+  });
+
+  it('skips duplicate webhook with same status (MP retry)', async () => {
+    mockProvider.processWebhook.mockResolvedValue({
+      event: 'approved',
+      providerPaymentId: 'mp-987654',
+      email: 'buyer@example.com',
+      amount: 15000,
+      currency: 'ARS',
+    });
+
+    // Purchase already has approved status
+    setDbClient(mockDb);
+    mockDb.limit.mockResolvedValue([{ status: 'approved' }]);
+
+    const res = await app.request(
+      '/payments/webhook?data.id=987654&type=payment',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment', data: { id: '987654' } }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+    // Should NOT update DB
+    expect(mockDb.set).not.toHaveBeenCalled();
+    // Should log at info level — same status, no update needed
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[WEBHOOK] Duplicate notification'),
+      expect.any(Object),
+    );
+  });
+
+  it('blocks replay attack — refunded → approved is invalid', async () => {
+    mockProvider.processWebhook.mockResolvedValue({
+      event: 'approved',
+      providerPaymentId: 'mp-987654',
+      email: 'buyer@example.com',
+      amount: 15000,
+      currency: 'ARS',
+    });
+
+    // Purchase is already refunded
+    setDbClient(mockDb);
+    mockDb.limit.mockResolvedValue([{ status: 'refunded' }]);
+
+    const res = await app.request(
+      '/payments/webhook?data.id=987654&type=payment',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment', data: { id: '987654' } }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+    // Should NOT update DB
+    expect(mockDb.set).not.toHaveBeenCalled();
+    // Should log at warn level with metric
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[METRIC:invalid_webhook_transition_total]'),
+      expect.objectContaining({
+        from: 'refunded',
+        attempted: 'approved',
+      }),
+    );
+  });
+
+  it('processes legitimate refund (approved → refunded)', async () => {
+    mockProvider.processWebhook.mockResolvedValue({
+      event: 'refunded',
+      providerPaymentId: 'mp-987654',
+      email: 'buyer@example.com',
+      amount: 15000,
+      currency: 'ARS',
+    });
+
+    setDbClient(mockDb);
+    mockDb.limit.mockResolvedValue([{ status: 'approved' }]);
+    mockDb.returning.mockResolvedValue([{ providerPaymentId: 'mp-987654', status: 'refunded' }]);
+
+    const res = await app.request(
+      '/payments/webhook?data.id=987654&type=payment',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment', data: { id: '987654' } }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+    expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'refunded' }));
   });
 });

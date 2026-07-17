@@ -30,7 +30,11 @@ export interface WebhookResult {
 export interface PaymentProvider {
   readonly name: string;
   createCheckout(params: CheckoutParams): Promise<CheckoutResult>;
-  processWebhook(payload: unknown, headers: Record<string, string>): Promise<WebhookResult>;
+  processWebhook(
+    payload: unknown,
+    headers: Record<string, string>,
+    dataId: string,
+  ): Promise<WebhookResult>;
   getPaymentStatus(
     providerPaymentId: string,
     externalReference?: string,

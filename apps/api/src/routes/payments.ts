@@ -1,9 +1,32 @@
-import { type AccessSource, DEEP_LINK_SCHEME } from '@sonora/shared';
+import { type AccessSource, DEEP_LINK_SCHEME, logger, type PurchaseStatus } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { createPaymentProviders } from '../payments';
+
+// Valid status transitions from Mercado Pago webhooks.
+// MP never sends approved after refunded for the same payment.
+const VALID_WEBHOOK_TRANSITIONS: Record<string, string[]> = {
+  pending: ['approved', 'rejected'],
+  approved: ['refunded'],
+};
+
+type WebhookStatus = 'approved' | 'rejected' | 'refunded' | 'pending';
+
+/**
+ * Map a Mercado Pago webhook event to a final purchase status.
+ * `pending` events mean the payment didn't complete — normalized to `rejected`.
+ */
+export function mapWebhookEventToStatus(event: PurchaseStatus): WebhookStatus {
+  const EVENT_TO_STATUS: Record<PurchaseStatus, WebhookStatus> = {
+    approved: 'approved',
+    rejected: 'rejected',
+    refunded: 'refunded',
+    pending: 'pending',
+  };
+  return EVENT_TO_STATUS[event];
+}
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -113,8 +136,14 @@ paymentsRouter.post('/webhook', async (c) => {
     return c.json({ error: 'Database client not available' }, 500);
   }
 
-  const payload = await c.req.json();
+  const rawBody = await c.req.text();
+  const payload = JSON.parse(rawBody);
   const headers = Object.fromEntries(c.req.raw.headers.entries());
+  const dataId = c.req.query('data.id');
+
+  if (!dataId) {
+    return c.json({ error: 'Missing data.id' }, 400);
+  }
 
   // Determine provider from payload or headers
   const providerName = detectProviderFromPayload(payload, headers);
@@ -125,18 +154,48 @@ paymentsRouter.post('/webhook', async (c) => {
   }
 
   // Process webhook
-  const result = await provider.processWebhook(payload, headers);
+  const result = await provider.processWebhook(payload, headers, dataId);
+
+  // Map webhook event to purchase status
+  const newStatus = mapWebhookEventToStatus(result.event);
+
+  // Idempotency check — prevent replay attacks and duplicate processing
+  const [existing] = await db
+    .select({ status: purchases.status })
+    .from(purchases)
+    .where(eq(purchases.providerPaymentId, result.providerPaymentId))
+    .limit(1);
+
+  if (existing) {
+    if (existing.status === newStatus) {
+      // MP retry — same status, already processed
+      logger.info('[WEBHOOK] Duplicate notification — already processed', {
+        providerPaymentId: result.providerPaymentId,
+        event: result.event,
+        status: newStatus,
+        'x-request-id': headers['x-request-id'],
+      });
+      return c.json({ status: 'ok' });
+    }
+
+    if (!VALID_WEBHOOK_TRANSITIONS[existing.status]?.includes(newStatus)) {
+      // Invalid transition — possible replay attack
+      logger.warn('[METRIC:invalid_webhook_transition_total] Invalid webhook transition rejected', {
+        providerPaymentId: result.providerPaymentId,
+        from: existing.status,
+        attempted: newStatus,
+        'x-request-id': headers['x-request-id'] || 'unknown',
+        reason: `${existing.status} → ${newStatus} is not a valid MP transition`,
+      });
+      return c.json({ status: 'ok' });
+    }
+  }
 
   // Update purchase
   const [purchase] = await db
     .update(purchases)
     .set({
-      status:
-        result.event === 'approved'
-          ? 'approved'
-          : result.event === 'refunded'
-            ? 'refunded'
-            : 'rejected',
+      status: newStatus,
       email: result.email || undefined,
       metadata: result.metadata || undefined,
       updatedAt: new Date(),

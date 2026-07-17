@@ -5,7 +5,52 @@ const mockCreate = vi.fn();
 const mockGet = vi.fn();
 const mockSearch = vi.fn();
 
+async function computeSignature(
+  secret: string,
+  dataId: string,
+  requestId: string,
+  ts: number,
+): Promise<string> {
+  const message = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 vi.mock('mercadopago', () => {
+  class InvalidSignatureError extends Error {
+    reason: string;
+    constructor(reason: string, _requestId?: string, _timestamp?: string) {
+      super(`Invalid webhook signature: ${reason}`);
+      this.name = 'InvalidWebhookSignatureError';
+      this.reason = reason;
+    }
+  }
+
+  function parseSignatureHeader(header: string): { ts?: string; hashes: Record<string, string> } {
+    const hashes: Record<string, string> = {};
+    let ts: string | undefined;
+    for (const part of header.split(',')) {
+      const eq = part.indexOf('=');
+      if (eq === -1) continue;
+      const key = part.substring(0, eq).trim().toLowerCase();
+      const value = part.substring(eq + 1).trim();
+      if (!key || !value) continue;
+      if (key === 'ts') ts = value;
+      else if (/^v\d+$/.test(key)) hashes[key] = value;
+    }
+    return { ts, hashes };
+  }
+
   return {
     MercadoPagoConfig: vi.fn(),
     Preference: vi.fn().mockImplementation(
@@ -19,10 +64,96 @@ vi.mock('mercadopago', () => {
         search = mockSearch;
       } as unknown as (...args: unknown[]) => unknown,
     ),
+    WebhookSignatureValidator: {
+      validate(options: {
+        xSignature: string;
+        xRequestId: string;
+        dataId: string;
+        secret: string;
+      }): void {
+        const crypto = require('crypto');
+        const { ts, hashes } = parseSignatureHeader(options.xSignature);
+        if (!ts || !hashes.v1) {
+          throw new InvalidSignatureError('SignatureMismatch');
+        }
+        const manifest = `id:${options.dataId};request-id:${options.xRequestId};ts:${ts};`;
+        const computed = crypto.createHmac('sha256', options.secret).update(manifest).digest('hex');
+        if (computed !== hashes.v1) {
+          throw new InvalidSignatureError('SignatureMismatch');
+        }
+      },
+    },
+    InvalidWebhookSignatureError: InvalidSignatureError,
   };
 });
 
 describe('MercadoPagoProvider', () => {
+  describe('constructor', () => {
+    it('throws when accessToken is empty', () => {
+      expect(
+        () =>
+          new MercadoPagoProvider({
+            accessToken: '',
+            webhookSecret: 'valid-secret',
+            environment: 'test',
+            mpBypassSignature: false,
+            signatureMaxAgeMinutes: 5,
+          }),
+      ).toThrow(TypeError);
+    });
+
+    it('throws when accessToken is undefined', () => {
+      expect(
+        () =>
+          new MercadoPagoProvider({
+            accessToken: undefined as unknown as string,
+            webhookSecret: 'valid-secret',
+            environment: 'test',
+            mpBypassSignature: false,
+            signatureMaxAgeMinutes: 5,
+          }),
+      ).toThrow(TypeError);
+    });
+
+    it('throws when webhookSecret is empty', () => {
+      expect(
+        () =>
+          new MercadoPagoProvider({
+            accessToken: 'TEST-123456',
+            webhookSecret: '',
+            environment: 'test',
+            mpBypassSignature: false,
+            signatureMaxAgeMinutes: 5,
+          }),
+      ).toThrow(TypeError);
+    });
+
+    it('throws when webhookSecret is undefined', () => {
+      expect(
+        () =>
+          new MercadoPagoProvider({
+            accessToken: 'TEST-123456',
+            webhookSecret: undefined as unknown as string,
+            environment: 'test',
+            mpBypassSignature: false,
+            signatureMaxAgeMinutes: 5,
+          }),
+      ).toThrow(TypeError);
+    });
+
+    it('constructs successfully with valid credentials', () => {
+      const p = new MercadoPagoProvider({
+        accessToken: 'TEST-123456',
+        webhookSecret: 'valid-secret',
+        environment: 'test',
+        mpBypassSignature: false,
+        signatureMaxAgeMinutes: 5,
+      });
+      expect(p).toBeInstanceOf(MercadoPagoProvider);
+      expect(p.name).toBe('mercadopago');
+    });
+  });
+
   let provider: MercadoPagoProvider;
 
   beforeEach(() => {
@@ -30,6 +161,9 @@ describe('MercadoPagoProvider', () => {
     provider = new MercadoPagoProvider({
       accessToken: 'TEST-123456',
       webhookSecret: 'webhook-secret',
+      environment: 'test',
+      mpBypassSignature: false,
+      signatureMaxAgeMinutes: 5,
     });
   });
 
@@ -137,6 +271,10 @@ describe('MercadoPagoProvider', () => {
 
   describe('processWebhook', () => {
     it('fetches payment details and returns approved status', async () => {
+      const ts = Math.floor(Date.now() / 1000);
+      const requestId = 'req-test-123';
+      const hmac = await computeSignature('webhook-secret', '987654', requestId, ts);
+
       mockGet.mockResolvedValue({
         id: 987654,
         status: 'approved',
@@ -156,7 +294,11 @@ describe('MercadoPagoProvider', () => {
 
       const result = await provider.processWebhook(
         { type: 'payment', data: { id: '987654' } },
-        { 'x-signature': 'abc' },
+        {
+          'x-signature': `ts=${ts},v1=${hmac}`,
+          'x-request-id': requestId,
+        },
+        '987654',
       );
 
       expect(result.event).toBe('approved');
@@ -168,15 +310,59 @@ describe('MercadoPagoProvider', () => {
       expect(result.metadata?.payer_id).toBe('12345');
     });
 
+    it('throws InvalidSignature error for missing signature headers', async () => {
+      mockGet.mockResolvedValue({ id: 1, status: 'approved' });
+
+      await expect(
+        provider.processWebhook(
+          { type: 'payment', data: { id: '987654' } },
+          { 'x-signature': '' },
+          '987654',
+        ),
+      ).rejects.toThrow('Invalid signature');
+    });
+
+    it('throws InvalidSignature error for tampered HMAC and logs warning', async () => {
+      // Spy on logger.warn
+      const { logger } = await import('@sonora/shared');
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const ts = Math.floor(Date.now() / 1000);
+      const requestId = 'req-invalid-456';
+
+      await expect(
+        provider.processWebhook(
+          { type: 'payment', data: { id: '987654' } },
+          {
+            'x-signature': `ts=${ts},v1=0000111122223333444455556666777788889999aaaabbbbccccddddeeeeffff`,
+            'x-request-id': requestId,
+          },
+          '987654',
+        ),
+      ).rejects.toThrow('Invalid signature');
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[METRIC:invalid_signature_total] Invalid signature',
+        expect.objectContaining({
+          ts: String(ts),
+          'x-request-id': requestId,
+          'data.id': '987654',
+          reason: expect.any(String),
+        }),
+      );
+
+      warnSpy.mockRestore();
+    });
+
     it('throws on non-payment notification', async () => {
       await expect(
-        provider.processWebhook({ type: 'plan', data: { id: 'plan_123' } }, {}),
+        provider.processWebhook({ type: 'plan', data: { id: 'plan_123' } }, {}, 'plan_123'),
       ).rejects.toThrow('Ignored non-payment notification');
     });
 
     it('throws when data.id is missing', async () => {
-      await expect(provider.processWebhook({ type: 'payment' }, {})).rejects.toThrow(
-        'Ignored non-payment notification',
+      await expect(provider.processWebhook({ type: 'payment' }, {}, '')).rejects.toThrow(
+        'Missing data.id',
       );
     });
   });
