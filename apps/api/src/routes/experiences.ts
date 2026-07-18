@@ -15,7 +15,10 @@ experiencesRouter.get('/', async (c) => {
     const list = await db.select().from(experiences);
     const result = [];
     const baseUrl = new URL(c.req.url).origin;
-    const jwtSecret = c.env.JWT_SECRET || 'sonora-jwt-secret-key-1234';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ error: 'Server configuration error: JWT secret not configured' }, 500);
+    }
     const expirySeconds = parseInt(c.env.AUDIO_LINK_EXPIRY_SECONDS || '900', 10);
 
     for (const exp of list) {

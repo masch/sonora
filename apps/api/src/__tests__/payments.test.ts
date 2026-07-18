@@ -272,6 +272,7 @@ describe('POST /payments/webhook', () => {
     mockProvider.processWebhook.mockResolvedValue({
       event: 'approved',
       providerPaymentId: 'mp-987654',
+      externalReference: 'purchase-abc-123',
       email: 'buyer@example.com',
       amount: 15000,
       currency: 'ARS',
@@ -280,7 +281,9 @@ describe('POST /payments/webhook', () => {
     // No existing purchase found — first webhook
     setDbClient(mockDb);
     mockDb.limit.mockResolvedValue([]);
-    mockDb.returning.mockResolvedValue([{ providerPaymentId: 'mp-987654', status: 'approved' }]);
+    mockDb.returning.mockResolvedValue([
+      { id: 'purchase-abc-123', providerPaymentId: 'mp-987654', status: 'approved' },
+    ]);
 
     const res = await app.request(
       '/payments/webhook?data.id=987654&type=payment',
@@ -293,6 +296,8 @@ describe('POST /payments/webhook', () => {
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: 'ok' });
+    // Should query by externalReference (our purchase UUID)
+    expect(mockDb.where).toHaveBeenCalledWith(expect.any(Object));
     expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'approved' }));
   });
 
@@ -300,6 +305,7 @@ describe('POST /payments/webhook', () => {
     mockProvider.processWebhook.mockResolvedValue({
       event: 'approved',
       providerPaymentId: 'mp-987654',
+      externalReference: 'purchase-abc-123',
       email: 'buyer@example.com',
       amount: 15000,
       currency: 'ARS',
@@ -334,6 +340,7 @@ describe('POST /payments/webhook', () => {
     mockProvider.processWebhook.mockResolvedValue({
       event: 'approved',
       providerPaymentId: 'mp-987654',
+      externalReference: 'purchase-abc-123',
       email: 'buyer@example.com',
       amount: 15000,
       currency: 'ARS',
@@ -371,6 +378,7 @@ describe('POST /payments/webhook', () => {
     mockProvider.processWebhook.mockResolvedValue({
       event: 'refunded',
       providerPaymentId: 'mp-987654',
+      externalReference: 'purchase-abc-123',
       email: 'buyer@example.com',
       amount: 15000,
       currency: 'ARS',
@@ -378,7 +386,9 @@ describe('POST /payments/webhook', () => {
 
     setDbClient(mockDb);
     mockDb.limit.mockResolvedValue([{ status: 'approved' }]);
-    mockDb.returning.mockResolvedValue([{ providerPaymentId: 'mp-987654', status: 'refunded' }]);
+    mockDb.returning.mockResolvedValue([
+      { id: 'purchase-abc-123', providerPaymentId: 'mp-987654', status: 'refunded' },
+    ]);
 
     const res = await app.request(
       '/payments/webhook?data.id=987654&type=payment',

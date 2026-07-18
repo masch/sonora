@@ -1,17 +1,17 @@
-import { Hono } from 'hono';
-import { customLogger } from './middleware/logger';
 import { logger } from '@sonora/shared';
+import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
-import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
-import { healthRouter } from './routes/health';
-import { themesRouter } from './routes/themes';
-import { experiencesRouter } from './routes/experiences';
+import { customLogger } from './middleware/logger';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
-import { translationsRouter } from './routes/translations';
+import { experiencesRouter } from './routes/experiences';
+import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
+import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
+import { themesRouter } from './routes/themes';
+import { translationsRouter } from './routes/translations';
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -31,8 +31,8 @@ export interface Env {
   BLOCK_OLDER_VERSIONS: string;
   GRACE_PERIOD_START?: string;
   GRACE_PERIOD_END?: string;
-  MERCADO_PAGO_ACCESS_TOKEN?: string;
-  MERCADO_PAGO_WEBHOOK_SECRET?: string;
+  MP_ACCESS_TOKEN?: string;
+  MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
 }

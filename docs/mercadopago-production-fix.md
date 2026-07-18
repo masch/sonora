@@ -81,7 +81,7 @@ cd apps/api
 echo "APP_USR-xxxx" | wrangler secret put MERCADO_PAGO_ACCESS_TOKEN
 
 # Webhook secret (lo generás desde el panel de MP)
-echo "tu-webhook-secret" | wrangler secret put MERCADO_PAGO_WEBHOOK_SECRET
+echo "tu-webhook-secret" | wrangler secret put MP_WEBHOOK_SECRET
 ```
 
 O via Makefile:

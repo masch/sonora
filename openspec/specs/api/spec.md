@@ -72,13 +72,13 @@ The `MercadoPagoProvider` constructor MUST throw `TypeError` if `webhookSecret` 
 
 #### Scenario: Missing secret throws at construction
 
-- GIVEN no `MERCADO_PAGO_WEBHOOK_SECRET` env var is set
+- GIVEN no `MP_WEBHOOK_SECRET` env var is set
 - WHEN `MercadoPagoProvider` is constructed with `webhookSecret` as `undefined` or `""`
 - THEN the constructor throws `TypeError` with a message indicating the secret is required
 
 #### Scenario: Factory with missing env var fails fast
 
-- GIVEN `MERCADO_PAGO_WEBHOOK_SECRET` is unset in the environment
+- GIVEN `MP_WEBHOOK_SECRET` is unset in the environment
 - WHEN the factory function creates `MercadoPagoProvider`
 - THEN the factory does not construct the provider — it throws at initialization time
 

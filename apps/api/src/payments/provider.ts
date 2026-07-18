@@ -21,6 +21,7 @@ export interface CheckoutResult {
 export interface WebhookResult {
   event: PurchaseStatus;
   providerPaymentId: string;
+  externalReference: string;
   email: string;
   amount: number;
   currency: string;

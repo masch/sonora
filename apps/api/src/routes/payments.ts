@@ -156,20 +156,29 @@ paymentsRouter.post('/webhook', async (c) => {
   // Process webhook
   const result = await provider.processWebhook(payload, headers, dataId);
 
+  if (!result.externalReference) {
+    logger.error('[WEBHOOK] Missing external_reference in webhook result', {
+      providerPaymentId: result.providerPaymentId,
+      event: result.event,
+    });
+    return c.json({ error: 'Missing purchase reference' }, 400);
+  }
+
   // Map webhook event to purchase status
   const newStatus = mapWebhookEventToStatus(result.event);
 
-  // Idempotency check — prevent replay attacks and duplicate processing
+  // Look up our purchase by UUID (external_reference is our purchase ID set at checkout)
   const [existing] = await db
     .select({ status: purchases.status })
     .from(purchases)
-    .where(eq(purchases.providerPaymentId, result.providerPaymentId))
+    .where(eq(purchases.id, result.externalReference))
     .limit(1);
 
   if (existing) {
     if (existing.status === newStatus) {
       // MP retry — same status, already processed
       logger.info('[WEBHOOK] Duplicate notification — already processed', {
+        purchaseId: result.externalReference,
         providerPaymentId: result.providerPaymentId,
         event: result.event,
         status: newStatus,
@@ -181,6 +190,7 @@ paymentsRouter.post('/webhook', async (c) => {
     if (!VALID_WEBHOOK_TRANSITIONS[existing.status]?.includes(newStatus)) {
       // Invalid transition — possible replay attack
       logger.warn('[METRIC:invalid_webhook_transition_total] Invalid webhook transition rejected', {
+        purchaseId: result.externalReference,
         providerPaymentId: result.providerPaymentId,
         from: existing.status,
         attempted: newStatus,
@@ -191,16 +201,17 @@ paymentsRouter.post('/webhook', async (c) => {
     }
   }
 
-  // Update purchase
+  // Update purchase by our UUID, storing the real MP payment ID
   const [purchase] = await db
     .update(purchases)
     .set({
       status: newStatus,
+      providerPaymentId: result.providerPaymentId,
       email: result.email || undefined,
       metadata: result.metadata || undefined,
       updatedAt: new Date(),
     })
-    .where(eq(purchases.providerPaymentId, result.providerPaymentId))
+    .where(eq(purchases.id, result.externalReference))
     .returning();
 
   if (!purchase) {
