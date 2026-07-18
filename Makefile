@@ -478,7 +478,6 @@ DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
 DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
 ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
 DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
-# MERCADO_PAGO_* secrets: use make api-deploy-*-set-* interactive targets only
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
