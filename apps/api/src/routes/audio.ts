@@ -78,8 +78,13 @@ audioRouter.get('/stream', async (c) => {
   const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized. Access token is required.' }, 401);
 
-  const jwtSecret = c.env.JWT_SECRET || 'sonora-jwt-secret-key-1234';
-  const clientKey = c.env.CLIENT_API_KEY || 'sonora-client-secret-1234';
+  const jwtSecret = c.env.JWT_SECRET;
+  const clientKey = c.env.CLIENT_API_KEY;
+
+  if (!jwtSecret || !clientKey) {
+    return c.json({ error: 'Server configuration error: auth secrets not configured' }, 500);
+  }
+
   let isAuthorized = false;
 
   try {

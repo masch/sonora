@@ -10,11 +10,11 @@ declare const MP_SIGNATURE_MAX_AGE_MINUTES: number;
 export function createPaymentProviders(env: Env): Record<string, PaymentProvider | null> {
   const providers: Record<string, PaymentProvider | null> = {
     mercadopago: new MercadoPagoProvider({
-      accessToken: env.MERCADO_PAGO_ACCESS_TOKEN as string,
-      webhookSecret: env.MERCADO_PAGO_WEBHOOK_SECRET as string,
+      accessToken: env.MP_ACCESS_TOKEN as string,
+      webhookSecret: env.MP_WEBHOOK_SECRET as string,
       environment: env.ENVIRONMENT || 'production',
       signatureMaxAgeMinutes: MP_SIGNATURE_MAX_AGE_MINUTES,
-      mpBypassSignature: MP_BYPASS_SIGNATURE,
+      bypassSignature: MP_BYPASS_SIGNATURE,
     }),
     stripe: null,
     paypal: null,

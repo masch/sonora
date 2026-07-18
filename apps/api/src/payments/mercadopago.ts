@@ -15,7 +15,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       accessToken: string;
       webhookSecret: string;
       environment: string;
-      mpBypassSignature: boolean;
+      bypassSignature: boolean;
       signatureMaxAgeMinutes: number;
     },
   ) {
@@ -93,7 +93,7 @@ export class MercadoPagoProvider implements PaymentProvider {
         'data.id': dataId,
         reason: validation.reason,
       });
-      if (this.config.mpBypassSignature) {
+      if (this.config.bypassSignature) {
         // Safety net: never bypass in production, even if the flag is somehow set
         if (this.config.environment === 'production') {
           throw new Error('CRITICAL: mpSkipSignature is active in production');
@@ -107,13 +107,19 @@ export class MercadoPagoProvider implements PaymentProvider {
     const paymentId = dataId;
     const payment = await this.paymentClient.get({ id: paymentId });
 
+    if (!payment.external_reference) {
+      throw new Error('MP payment missing external_reference — was this purchase created by us?');
+    }
+
     return {
       event: this.mapStatus(payment.status || ''),
       providerPaymentId: String(payment.id),
+      externalReference: payment.external_reference,
       email: payment.payer?.email || '',
       amount: payment.transaction_amount || 0,
       currency: payment.currency_id || 'ARS',
       metadata: {
+        preference_id: payment.external_reference,
         payment_method_id: payment.payment_method_id,
         payment_type_id: payment.payment_type_id,
         installments: payment.installments,

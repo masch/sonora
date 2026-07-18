@@ -40,6 +40,7 @@ describe('Audio Router', () => {
   const env = {
     ADMIN_API_KEY: 'test-admin-key',
     JWT_SECRET: 'test-jwt-secret',
+    CLIENT_API_KEY: 'test-client-key',
     BUCKET: mockR2Bucket as unknown as R2Bucket,
   };
 

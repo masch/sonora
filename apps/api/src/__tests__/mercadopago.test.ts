@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MercadoPagoProvider } from '../payments/mercadopago';
 
 const mockCreate = vi.fn();
@@ -96,7 +96,7 @@ describe('MercadoPagoProvider', () => {
             accessToken: '',
             webhookSecret: 'valid-secret',
             environment: 'test',
-            mpBypassSignature: false,
+            bypassSignature: false,
             signatureMaxAgeMinutes: 5,
           }),
       ).toThrow(TypeError);
@@ -109,7 +109,7 @@ describe('MercadoPagoProvider', () => {
             accessToken: undefined as unknown as string,
             webhookSecret: 'valid-secret',
             environment: 'test',
-            mpBypassSignature: false,
+            bypassSignature: false,
             signatureMaxAgeMinutes: 5,
           }),
       ).toThrow(TypeError);
@@ -122,7 +122,7 @@ describe('MercadoPagoProvider', () => {
             accessToken: 'TEST-123456',
             webhookSecret: '',
             environment: 'test',
-            mpBypassSignature: false,
+            bypassSignature: false,
             signatureMaxAgeMinutes: 5,
           }),
       ).toThrow(TypeError);
@@ -135,7 +135,7 @@ describe('MercadoPagoProvider', () => {
             accessToken: 'TEST-123456',
             webhookSecret: undefined as unknown as string,
             environment: 'test',
-            mpBypassSignature: false,
+            bypassSignature: false,
             signatureMaxAgeMinutes: 5,
           }),
       ).toThrow(TypeError);
@@ -146,7 +146,7 @@ describe('MercadoPagoProvider', () => {
         accessToken: 'TEST-123456',
         webhookSecret: 'valid-secret',
         environment: 'test',
-        mpBypassSignature: false,
+        bypassSignature: false,
         signatureMaxAgeMinutes: 5,
       });
       expect(p).toBeInstanceOf(MercadoPagoProvider);
@@ -162,7 +162,7 @@ describe('MercadoPagoProvider', () => {
       accessToken: 'TEST-123456',
       webhookSecret: 'webhook-secret',
       environment: 'test',
-      mpBypassSignature: false,
+      bypassSignature: false,
       signatureMaxAgeMinutes: 5,
     });
   });
@@ -278,6 +278,7 @@ describe('MercadoPagoProvider', () => {
       mockGet.mockResolvedValue({
         id: 987654,
         status: 'approved',
+        external_reference: 'purchase-abc-123',
         payer: { email: 'buyer@example.com', id: '12345' },
         transaction_amount: 15000,
         currency_id: 'ARS',
@@ -302,6 +303,7 @@ describe('MercadoPagoProvider', () => {
       );
 
       expect(result.event).toBe('approved');
+      expect(result.externalReference).toBe('purchase-abc-123');
       expect(result.email).toBe('buyer@example.com');
       expect(result.amount).toBe(15000);
       expect(result.currency).toBe('ARS');

@@ -44,7 +44,7 @@ describe('validateMercadoPagoSignature', () => {
   it('returns invalid for a tampered HMAC', async () => {
     const ts = Math.floor(Date.now() / 1000);
     const hmac = await computeSignature(TEST_SECRET, TEST_DATA_ID, TEST_REQUEST_ID, ts);
-    const tampered = 'f' + hmac.slice(1);
+    const tampered = (hmac[0] === 'a' ? 'b' : 'a') + hmac.slice(1);
     const result = await validateMercadoPagoSignature(
       {
         'x-signature': `ts=${ts},v1=${tampered}`,

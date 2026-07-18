@@ -10,9 +10,6 @@ compatibility_flags = [ "nodejs_compat" ]
 #   { binding = "FEEDBACK_STORE", id = "<your-namespace-id>" }
 # ]
 
-# Neon Postgres
-# Set DATABASE_URL via: npx wrangler secret put DATABASE_URL
-
 [vars]
 FEEDBACK_MAX_LENGTH = "1000"
 DB_ADAPTER = "neon"

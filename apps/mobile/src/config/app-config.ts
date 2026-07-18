@@ -45,7 +45,7 @@ function getApiBaseUrl(): string {
   return 'http://localhost:3000'; // web, iOS simulator, etc.
 }
 
-const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY || 'sonora-client-secret-1234';
+const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY!;
 
 /**
  * Sonora Global App Configuration
