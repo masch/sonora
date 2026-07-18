@@ -1,6 +1,6 @@
+import type { R2Bucket } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
-import type { R2Bucket } from '@cloudflare/workers-types';
 import { type Env, type Variables } from '../index';
 
 const audioRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
