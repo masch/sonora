@@ -67,8 +67,81 @@ audioRouter.post('/upload', async (c) => {
 });
 
 /**
+ * GET /audio/public/:key
+ * Sin autenticación — sirve archivos desde el bucket público.
+ * Solo para contenido gratuito (ej: instrucciones).
+ */
+audioRouter.get('/public/:key', async (c) => {
+  const key = c.req.param('key');
+  if (!key) return c.json({ error: 'Missing key parameter' }, 400);
+
+  if (!c.env.PUBLIC_BUCKET) {
+    return c.json({ error: 'Public storage bucket binding not configured' }, 500);
+  }
+
+  try {
+    const headObject = await c.env.PUBLIC_BUCKET.head(key);
+    if (!headObject) return c.json({ error: 'Audio file not found' }, 404);
+
+    const objectSize = headObject.size;
+    let contentType = headObject.httpMetadata?.contentType || 'audio/mpeg';
+
+    if (contentType === 'application/octet-stream') {
+      if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
+      else if (key.endsWith('.wav')) contentType = 'audio/wav';
+      else if (key.endsWith('.ogg')) contentType = 'audio/ogg';
+    }
+
+    const rangeHeader = c.req.header('Range');
+    let start = 0;
+    let end = objectSize - 1;
+    let status = 200;
+
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      start = parseInt(parts[0], 10);
+      if (parts[1]) end = parseInt(parts[1], 10);
+
+      if (start >= objectSize || end >= objectSize) {
+        return c.json({ error: 'Requested range not satisfiable' }, 416);
+      }
+      status = 206;
+    }
+
+    const range = rangeHeader ? { offset: start, length: end - start + 1 } : undefined;
+    const audioObject = await c.env.PUBLIC_BUCKET.get(key, { range });
+    if (!audioObject || !audioObject.body) {
+      return c.json({ error: 'Failed to retrieve audio content' }, 500);
+    }
+
+    const headers = new Headers();
+    c.res.headers.forEach((value, k) => headers.set(k, value));
+    audioObject.writeHttpMetadata(headers);
+
+    const etag = audioObject.etag || headObject.etag;
+    if (etag) {
+      headers.set('x-audio-etag', etag);
+    }
+
+    headers.set('Accept-Ranges', 'bytes');
+    headers.set('Content-Length', (end - start + 1).toString());
+    headers.set('Content-Type', contentType);
+
+    if (rangeHeader) {
+      headers.set('Content-Range', `bytes ${start}-${end}/${objectSize}`);
+    }
+
+    return new Response(audioObject.body, { status, headers });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Failed to stream file from public R2:', msg);
+    return c.json({ error: `Streaming failed: ${msg}` }, 500);
+  }
+});
+
+/**
  * GET /audio/stream
- * Protegido por Token de Usuario.
+ * Protegido por JWT Token.
  * Transmite el audio desde R2 soportando Range Requests para reproductores móviles (iOS/Android).
  */
 audioRouter.get('/stream', async (c) => {
@@ -79,10 +152,9 @@ audioRouter.get('/stream', async (c) => {
   if (!token) return c.json({ error: 'Unauthorized. Access token is required.' }, 401);
 
   const jwtSecret = c.env.JWT_SECRET;
-  const clientKey = c.env.CLIENT_API_KEY;
 
-  if (!jwtSecret || !clientKey) {
-    return c.json({ error: 'Server configuration error: auth secrets not configured' }, 500);
+  if (!jwtSecret) {
+    return c.json({ error: 'Server configuration error: JWT secret not configured' }, 500);
   }
 
   let isAuthorized = false;
@@ -90,10 +162,8 @@ audioRouter.get('/stream', async (c) => {
   try {
     const payload = await verify(token, jwtSecret, 'HS256');
     if (payload.key === key) isAuthorized = true;
-  } catch {}
-
-  if (!isAuthorized && key === 'experiences/instrucciones.mp3' && token === clientKey) {
-    isAuthorized = true;
+  } catch (err) {
+    console.error('Failed to get stream:', err);
   }
 
   if (!isAuthorized) {

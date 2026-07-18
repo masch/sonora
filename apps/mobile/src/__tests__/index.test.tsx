@@ -2,7 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 // ---------------------------------------------------------------------------
-// Mock modules required by TrackMap (now rendered in index.tsx)
+// Mock modules required by HomeAudioPlayer (now rendered in index.tsx)
 // ---------------------------------------------------------------------------
 
 jest.mock('expo-audio', () => ({
@@ -46,6 +46,10 @@ jest.mock('@/data/experiences', () => ({
       audioRemoteUrl: 'https://example.com/audio.mp3',
     },
   ]),
+  fetchExperiences: jest.fn().mockResolvedValue([]),
+  isPlayableExperience: jest.fn(() => false),
+  INSTRUCTIONS_SLUG: 'instructions',
+  INSTRUCTIONS_FALLBACK_TRACK_ID: 'instructions',
 }));
 
 const mockPush = jest.fn();
@@ -63,6 +67,18 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/hooks/use-translation', () => ({
   useAppTranslation: () => ({ t: (k: string) => k }),
+}));
+
+jest.mock('@/store/remote-config-store', () => ({
+  useRemoteConfigStore: jest.fn((selector?: (s: unknown) => unknown) => {
+    const state = {
+      config: {
+        showHomeInstructions: true,
+        audio: { rewindOffsetMs: 10000 },
+      },
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 jest.mock('expo-symbols', () => ({

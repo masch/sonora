@@ -17,6 +17,7 @@ describe('RemoteConfigPayloadSchema', () => {
       gracePeriodStart: '2026-07-02T00:00:00Z',
       gracePeriodEnd: '2026-07-09T00:00:00Z',
     },
+    showHomeInstructions: false,
   };
 
   describe('valid inputs', () => {
@@ -91,6 +92,7 @@ describe('RemoteConfigPayloadSchema', () => {
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
         appVersion: { minimumVersion: '1.0.0', blockOlderVersions: true },
+        showHomeInstructions: false,
       };
       const result = RemoteConfigPayloadSchema.safeParse(payload);
       expect(result.success).toBe(true);

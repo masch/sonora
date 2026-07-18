@@ -15,6 +15,7 @@ const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
     ...DEFAULT_REMOTE_CONFIG.geofence,
     bypassGeofence: APP_CONFIG.geofence.bypassGeofence,
   },
+  showHomeInstructions: APP_CONFIG.features.showHomeInstructions,
 };
 
 export type VersionStatus = 'ok' | 'warn' | 'block';

@@ -40,7 +40,6 @@ describe('Audio Router', () => {
   const env = {
     ADMIN_API_KEY: 'test-admin-key',
     JWT_SECRET: 'test-jwt-secret',
-    CLIENT_API_KEY: 'test-client-key',
     BUCKET: mockR2Bucket as unknown as R2Bucket,
   };
 
@@ -292,35 +291,6 @@ describe('Audio Router', () => {
         { JWT_SECRET: 'test-jwt-secret' },
       );
       expect(res.status).toBe(500);
-    });
-
-    it('streams instrucciones.mp3 when token is clientKey', async () => {
-      const clientEnv = {
-        ...env,
-        CLIENT_API_KEY: 'test-client-key',
-      };
-      const res = await app.request(
-        '/audio/stream?key=experiences/instrucciones.mp3&token=test-client-key',
-        {},
-        clientEnv,
-      );
-
-      expect(res.status).toBe(200);
-      expect(await res.text()).toBe('mock audio content');
-    });
-
-    it('returns 401 when trying to access other files with clientKey', async () => {
-      const clientEnv = {
-        ...env,
-        CLIENT_API_KEY: 'test-client-key',
-      };
-      const res = await app.request(
-        '/audio/stream?key=experiences/other.mp3&token=test-client-key',
-        {},
-        clientEnv,
-      );
-
-      expect(res.status).toBe(401);
     });
   });
 });

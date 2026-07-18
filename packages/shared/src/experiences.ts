@@ -4,10 +4,16 @@ export type UserExperienceFormat = (typeof USER_EXPERIENCE_FORMATS)[number];
 export const EXPERIENCE_FORMATS = ['track', 'trip', 'general-feedback'] as const;
 export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 
+export const INSTRUCTIONS_SLUG = 'instructions' as const;
+export const INSTRUCTIONS_AUDIO_KEY = 'experiences/instrucciones.mp3' as const;
+export const INSTRUCTIONS_IMAGE_KEY = 'trip-instructions-cover' as const;
+export const INSTRUCTIONS_FALLBACK_TRACK_ID = 'instructions' as const;
+
 export const TRACK_IMAGE_KEYS = [
   'trips-deriva-centro-cover',
   'tracks-texto-maga-cover',
   'tracks-pajaros-chiricotes-cover',
+  INSTRUCTIONS_IMAGE_KEY,
 ] as const;
 export type TrackImageKey = (typeof TRACK_IMAGE_KEYS)[number];
 

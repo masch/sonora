@@ -92,9 +92,14 @@ prebuild: ## Regenerate native project files without compiling
 doctor: ## Run React Doctor audit (full verbose scan)
 	cd apps/mobile && bunx react-doctor --verbose --scope full -y
 
+# shellcheck disable=SC1073,SC1050,SC1072
+# If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
+# so only regressions introduced by the current changes are reported.
+DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
+
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bunx react-doctor --verbose --scope changed $(if $(BASE),--base $(BASE),) --blocking warning
+	cd apps/mobile && bunx react-doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -320,11 +325,15 @@ api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloud
 .PHONY: api-r2-buckets-staging
 api-r2-buckets-staging: ## Create R2 audio buckets for staging environment
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio-staging --config wrangler.staging.toml
 
 
 .PHONY: api-r2-buckets-production
 api-r2-buckets-production: ## Create R2 audio buckets for production environment
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -348,7 +357,15 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
+.PHONY: api-upload-public-audio-staging
+api-upload-public-audio-staging: ## Upload audio to staging public bucket. Usage: make api-upload-public-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio-staging/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
+	@echo "Uploaded to staging public bucket: sonora-public-audio-staging/$(KEY)"
 
+.PHONY: api-upload-public-audio-production
+api-upload-public-audio-production: ## Upload audio to production public bucket. Usage: make api-upload-public-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio/$(KEY) --file=$(FILE) --remote
+	@echo "Uploaded to production public bucket: sonora-public-audio/$(KEY)"
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: make api-deploy-staging-set-origin ORIGIN="https://example.com"
@@ -502,6 +519,14 @@ api-db-seed-staging: ## Seed staging Neon DB
 .PHONY: api-db-seed-production
 api-db-seed-production: ## Seed production Neon DB
 	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun src/db/seed.ts
+
+.PHONY: api-deploy-staging-full
+api-deploy-staging-full: api-deploy-staging api-db-seed-staging ## Deploy staging Worker + seed Neon DB
+	@echo "✓ Staging deploy + seed complete"
+
+.PHONY: api-deploy-production-full
+api-deploy-production-full: api-deploy-production api-db-seed-production ## Deploy production Worker + seed Neon DB
+	@echo "✓ Production deploy + seed complete"
 
 # ── Wrangler secrets — interactive (paste the value, never from .env) ──
 

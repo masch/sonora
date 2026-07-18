@@ -4,6 +4,7 @@ import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { getExperienceIcon } from '@/utils/icons';
@@ -20,6 +21,8 @@ export default function HomeScreen() {
   const tripIcon = getExperienceIcon('trip');
   const trackIcon = getExperienceIcon('track');
   const messageIcon = getExperienceIcon('general-feedback');
+
+  const showInstructions = useRemoteConfigStore((s) => s.config.showHomeInstructions);
 
   return (
     <ScrollScreenWrapper
@@ -45,7 +48,7 @@ export default function HomeScreen() {
       {/* Main Content Area */}
       <TwView className="px-8 pt-6">
         {/* Interactive Home Audio Player */}
-        <HomeAudioPlayer />
+        {showInstructions && <HomeAudioPlayer />}
 
         {/* Navigation List Menu */}
         <TwView className="gap-3">

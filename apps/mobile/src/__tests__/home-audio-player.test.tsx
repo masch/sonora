@@ -1,6 +1,5 @@
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
 import { HomeAudioPlayer } from '@/components/home-audio-player';
+import { fireEvent, render } from '@testing-library/react-native';
 
 const mockStartDownload = jest.fn();
 const mockDeleteTrackLocal = jest.fn();
@@ -58,6 +57,15 @@ jest.mock('expo-symbols', () => ({
 const mockRewind = jest.fn();
 jest.mock('@/hooks/use-audio-rewind', () => ({
   useAudioRewind: () => mockRewind,
+}));
+
+jest.mock('@/hooks/use-instructions-audio', () => ({
+  useInstructionsAudio: () => ({
+    audioUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
+    trackId: 'instructions',
+    loading: false,
+    error: null,
+  }),
 }));
 
 describe('HomeAudioPlayer', () => {

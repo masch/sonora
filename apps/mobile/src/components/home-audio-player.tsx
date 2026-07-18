@@ -4,8 +4,8 @@ import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { formatTime } from '@/utils/time';
-import { APP_CONFIG } from '@/config/app-config';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
+import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
 import { TwPressable, TwView } from '@/tw';
 import { Icon, type GenericIconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
@@ -16,11 +16,11 @@ export function HomeAudioPlayer() {
   const playOnDownloadCompleteRef = useRef(false);
   const rewind = useAudioRewind();
 
-  const instructionsUrl = APP_CONFIG.audio.instructionsUrl;
-  const download = useTrackDownload('instructions', instructionsUrl, t('home.instructionsName'));
+  const { audioUrl, trackId } = useInstructionsAudio();
+  const download = useTrackDownload(trackId, audioUrl, t('home.instructionsName'));
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
-    id: 'instructions',
+    id: trackId,
   });
 
   // Auto-play when download completes if requested by user
