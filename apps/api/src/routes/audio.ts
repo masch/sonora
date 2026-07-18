@@ -1,8 +1,101 @@
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
+import type { R2Bucket } from '@cloudflare/workers-types';
 import { type Env, type Variables } from '../index';
 
 const audioRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+// ── Helpers ──────────────────────────────────────────────
+
+function detectContentType(key: string, fallback: string | null): string {
+  if (fallback && fallback !== 'application/octet-stream') return fallback;
+  if (key.endsWith('.mp3')) return 'audio/mpeg';
+  if (key.endsWith('.wav')) return 'audio/wav';
+  if (key.endsWith('.ogg')) return 'audio/ogg';
+  return 'audio/mpeg';
+}
+
+interface RangeInfo {
+  start: number;
+  end: number;
+  status: number;
+  range?: { offset: number; length: number };
+}
+
+function parseRange(rangeHeader: string | null, objectSize: number): RangeInfo | Response {
+  if (!rangeHeader) {
+    return { start: 0, end: objectSize - 1, status: 200 };
+  }
+
+  const parts = rangeHeader.replace(/bytes=/, '').split('-');
+  const start = parseInt(parts[0], 10);
+  const end = parts[1] ? parseInt(parts[1], 10) : objectSize - 1;
+
+  if (start >= objectSize || end >= objectSize) {
+    return new Response(null, {
+      status: 416,
+      statusText: 'Range Not Satisfiable',
+      headers: { 'Content-Range': `bytes */${objectSize}` },
+    });
+  }
+
+  return {
+    start,
+    end,
+    status: 206,
+    range: { offset: start, length: end - start + 1 },
+  };
+}
+
+async function streamFromBucket(
+  bucket: R2Bucket,
+  key: string,
+  rangeHeader: string | null,
+): Promise<Response> {
+  const headObject = await bucket.head(key);
+  if (!headObject) {
+    return new Response(JSON.stringify({ error: 'Audio file not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const objectSize = headObject.size;
+  const rawContentType = headObject.httpMetadata?.contentType ?? null;
+  const contentType = detectContentType(key, rawContentType);
+
+  const rangeInfo = parseRange(rangeHeader, objectSize);
+  if (rangeInfo instanceof Response) return rangeInfo;
+
+  const audioObject = await bucket.get(
+    key,
+    rangeInfo.range ? { range: rangeInfo.range } : undefined,
+  );
+  if (!audioObject?.body) {
+    return new Response(JSON.stringify({ error: 'Failed to retrieve audio content' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const headers = new Headers();
+  audioObject.writeHttpMetadata(headers);
+
+  const etag = audioObject.etag ?? headObject.etag;
+  if (etag) headers.set('x-audio-etag', etag);
+
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Content-Length', String(rangeInfo.end - rangeInfo.start + 1));
+  headers.set('Content-Type', contentType);
+
+  if (rangeHeader) {
+    headers.set('Content-Range', `bytes ${rangeInfo.start}-${rangeInfo.end}/${objectSize}`);
+  }
+
+  return new Response(audioObject.body, { status: rangeInfo.status, headers });
+}
+
+// ── Upload ───────────────────────────────────────────────
 
 /**
  * POST /audio/upload
@@ -27,7 +120,7 @@ audioRouter.post('/upload', async (c) => {
   try {
     const body = await c.req.parseBody();
     const file = body['file'];
-    const key = body['key']; // e.g., "experiences/mi-audio-id.mp3"
+    const key = body['key'];
 
     if (!file || !(file instanceof File) || !key || typeof key !== 'string') {
       return c.json({ error: 'Missing file (form field: file) or key (form field: key)' }, 400);
@@ -51,20 +144,15 @@ audioRouter.post('/upload', async (c) => {
     const baseUrl = new URL(c.req.url).origin;
     const streamUrl = `${baseUrl}/audio/stream?key=${encodeURIComponent(key)}`;
 
-    return c.json(
-      {
-        success: true,
-        key,
-        streamUrl,
-      },
-      201,
-    );
+    return c.json({ success: true, key, streamUrl }, 201);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Failed to upload file to R2:', msg);
     return c.json({ error: `Upload failed: ${msg}` }, 500);
   }
 });
+
+// ── Public stream (no auth) ──────────────────────────────
 
 /**
  * GET /audio/public/:key
@@ -80,58 +168,7 @@ audioRouter.get('/public/:key', async (c) => {
   }
 
   try {
-    const headObject = await c.env.PUBLIC_BUCKET.head(key);
-    if (!headObject) return c.json({ error: 'Audio file not found' }, 404);
-
-    const objectSize = headObject.size;
-    let contentType = headObject.httpMetadata?.contentType || 'audio/mpeg';
-
-    if (contentType === 'application/octet-stream') {
-      if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
-      else if (key.endsWith('.wav')) contentType = 'audio/wav';
-      else if (key.endsWith('.ogg')) contentType = 'audio/ogg';
-    }
-
-    const rangeHeader = c.req.header('Range');
-    let start = 0;
-    let end = objectSize - 1;
-    let status = 200;
-
-    if (rangeHeader) {
-      const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      start = parseInt(parts[0], 10);
-      if (parts[1]) end = parseInt(parts[1], 10);
-
-      if (start >= objectSize || end >= objectSize) {
-        return c.json({ error: 'Requested range not satisfiable' }, 416);
-      }
-      status = 206;
-    }
-
-    const range = rangeHeader ? { offset: start, length: end - start + 1 } : undefined;
-    const audioObject = await c.env.PUBLIC_BUCKET.get(key, { range });
-    if (!audioObject || !audioObject.body) {
-      return c.json({ error: 'Failed to retrieve audio content' }, 500);
-    }
-
-    const headers = new Headers();
-    c.res.headers.forEach((value, k) => headers.set(k, value));
-    audioObject.writeHttpMetadata(headers);
-
-    const etag = audioObject.etag || headObject.etag;
-    if (etag) {
-      headers.set('x-audio-etag', etag);
-    }
-
-    headers.set('Accept-Ranges', 'bytes');
-    headers.set('Content-Length', (end - start + 1).toString());
-    headers.set('Content-Type', contentType);
-
-    if (rangeHeader) {
-      headers.set('Content-Range', `bytes ${start}-${end}/${objectSize}`);
-    }
-
-    return new Response(audioObject.body, { status, headers });
+    return await streamFromBucket(c.env.PUBLIC_BUCKET, key, c.req.header('Range') ?? null);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Failed to stream file from public R2:', msg);
@@ -139,10 +176,12 @@ audioRouter.get('/public/:key', async (c) => {
   }
 });
 
+// ── Authenticated stream ─────────────────────────────────
+
 /**
  * GET /audio/stream
  * Protegido por JWT Token.
- * Transmite el audio desde R2 soportando Range Requests para reproductores móviles (iOS/Android).
+ * Transmite el audio desde R2 soportando Range Requests.
  */
 audioRouter.get('/stream', async (c) => {
   const key = c.req.query('key');
@@ -152,13 +191,11 @@ audioRouter.get('/stream', async (c) => {
   if (!token) return c.json({ error: 'Unauthorized. Access token is required.' }, 401);
 
   const jwtSecret = c.env.JWT_SECRET;
-
   if (!jwtSecret) {
     return c.json({ error: 'Server configuration error: JWT secret not configured' }, 500);
   }
 
   let isAuthorized = false;
-
   try {
     const payload = await verify(token, jwtSecret, 'HS256');
     if (payload.key === key) isAuthorized = true;
@@ -175,58 +212,7 @@ audioRouter.get('/stream', async (c) => {
   }
 
   try {
-    const rangeHeader = c.req.header('Range');
-    const headObject = await c.env.BUCKET.head(key);
-    if (!headObject) return c.json({ error: 'Audio file not found' }, 404);
-
-    const objectSize = headObject.size;
-    let contentType = headObject.httpMetadata?.contentType || 'audio/mpeg';
-
-    if (contentType === 'application/octet-stream') {
-      if (key.endsWith('.mp3')) contentType = 'audio/mpeg';
-      else if (key.endsWith('.wav')) contentType = 'audio/wav';
-      else if (key.endsWith('.ogg')) contentType = 'audio/ogg';
-    }
-
-    let start = 0;
-    let end = objectSize - 1;
-    let status = 200;
-
-    if (rangeHeader) {
-      const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      start = parseInt(parts[0], 10);
-      if (parts[1]) end = parseInt(parts[1], 10);
-
-      if (start >= objectSize || end >= objectSize) {
-        return c.json({ error: 'Requested range not satisfiable' }, 416);
-      }
-      status = 206;
-    }
-
-    const range = rangeHeader ? { offset: start, length: end - start + 1 } : undefined;
-    const audioObject = await c.env.BUCKET.get(key, { range });
-    if (!audioObject || !audioObject.body) {
-      return c.json({ error: 'Failed to retrieve audio content' }, 500);
-    }
-
-    const headers = new Headers();
-    c.res.headers.forEach((value, k) => headers.set(k, value));
-    audioObject.writeHttpMetadata(headers);
-
-    const etag = audioObject.etag || headObject.etag;
-    if (etag) {
-      headers.set('x-audio-etag', etag);
-    }
-
-    headers.set('Accept-Ranges', 'bytes');
-    headers.set('Content-Length', (end - start + 1).toString());
-    headers.set('Content-Type', contentType);
-
-    if (rangeHeader) {
-      headers.set('Content-Range', `bytes ${start}-${end}/${objectSize}`);
-    }
-
-    return new Response(audioObject.body, { status, headers });
+    return await streamFromBucket(c.env.BUCKET, key, c.req.header('Range') ?? null);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Failed to stream file from R2:', msg);
