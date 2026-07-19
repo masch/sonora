@@ -170,9 +170,13 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
         set({ isLoading: false });
         return;
       }
-      if (!cached) {
-        set({ error: apiError instanceof Error ? apiError : new Error('Failed to load config') });
-      }
+      // API failed (network, CORS, etc.) — fall back to defaults.
+      // Never serve stale cached values when the server is unreachable;
+      // the cache was only for instant render before the API responded.
+      set({
+        config: INITIAL_REMOTE_CONFIG,
+        error: apiError instanceof Error ? apiError : new Error('Failed to load config'),
+      });
     }
 
     set({ isLoading: false });

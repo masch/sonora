@@ -161,13 +161,13 @@ describe('RemoteConfigStore', () => {
     expect(state.config).toMatchObject(DEFAULT_CONFIG);
   });
 
-  it('uses cached config when API fails and cache exists', async () => {
+  it('falls back to defaults when API fails, even if cache exists', async () => {
     const cachedConfig: RemoteConfigPayload = {
       geofence: { radiusMeters: 300, bypassGeofence: true },
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
-      showHomeInstructions: false,
+      showHomeInstructions: true,
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
     mockApiGet.mockRejectedValue(new Error('Offline'));
@@ -175,7 +175,9 @@ describe('RemoteConfigStore', () => {
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config).toEqual(cachedConfig);
+    // When API fails, defaults win over stale cache
+    expect(state.config.showHomeInstructions).toBe(false);
+    expect(state.config.geofence.radiusMeters).toBe(DEFAULT_REMOTE_CONFIG.geofence.radiusMeters);
   });
 
   it('sets error when API fails and no cache', async () => {
@@ -223,7 +225,7 @@ describe('RemoteConfigStore', () => {
     expect(state.error).toBeNull();
   });
 
-  it('fills missing cache fields with defaults', async () => {
+  it('falls back to defaults when API fails, even with partial cache', async () => {
     const partialCache = { geofence: { radiusMeters: 999 } } as RemoteConfigPayload;
     mockGetCachedConfig.mockResolvedValue(partialCache);
     mockApiGet.mockRejectedValue(new Error('Offline'));
@@ -231,10 +233,12 @@ describe('RemoteConfigStore', () => {
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config.geofence.radiusMeters).toBe(999);
-    expect(state.config.geofence.bypassGeofence).toBe(false);
-    expect(state.config.audio.rewindOffsetMs).toBe(10000);
-    expect(state.config.feedback.syncIntervalSec).toBe(30);
+    // When API fails, defaults win — not partial cache
+    expect(state.config.geofence.radiusMeters).toBe(DEFAULT_REMOTE_CONFIG.geofence.radiusMeters);
+    expect(state.config.geofence.bypassGeofence).toBe(
+      DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
+    );
+    expect(state.config.audio.rewindOffsetMs).toBe(DEFAULT_REMOTE_CONFIG.audio.rewindOffsetMs);
   });
 
   it('passes an AbortSignal to ApiClient.get for timeout control', async () => {
