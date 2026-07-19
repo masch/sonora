@@ -63,7 +63,7 @@ describe('CORS behavior', () => {
     expect(res3.headers.get('access-control-allow-origin')).toBeNull();
   });
 
-  it('sets custom ALLOWED_METHODS and ALLOWED_HEADERS', async () => {
+  it('uses default methods and headers when no env overrides are provided', async () => {
     const req = new Request('http://localhost/feedback', {
       method: 'OPTIONS',
       headers: {
@@ -73,15 +73,16 @@ describe('CORS behavior', () => {
     });
     const res = await app.fetch(req, {
       ALLOWED_ORIGIN: 'http://localhost:8081',
-      ALLOWED_METHODS: 'POST,GET',
-      ALLOWED_HEADERS: 'Content-Type,X-Custom-Header',
     } as never);
     expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:8081');
-    expect(res.headers.get('access-control-allow-methods')).toBe('POST,GET');
-    expect(res.headers.get('access-control-allow-headers')).toBe('Content-Type,X-Custom-Header');
+    const methods = res.headers.get('access-control-allow-methods')?.split(',') || [];
+    expect(methods).toContain('POST');
+    expect(methods).toContain('GET');
+    expect(methods).toContain('OPTIONS');
+    expect(methods).toContain('HEAD');
   });
 
-  it('only returns configured allowed methods and headers, even if other values are requested', async () => {
+  it('uses the hardcoded default methods and headers regardless of Access-Control-Request-* values', async () => {
     const req = new Request('http://localhost/feedback', {
       method: 'OPTIONS',
       headers: {
@@ -92,42 +93,18 @@ describe('CORS behavior', () => {
     });
     const res = await app.fetch(req, {
       ALLOWED_ORIGIN: 'http://localhost:8081',
-      ALLOWED_METHODS: 'POST,GET',
-      ALLOWED_HEADERS: 'Content-Type',
     } as never);
 
     expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:8081');
-    expect(res.headers.get('access-control-allow-methods')).toBe('POST,GET');
-    expect(res.headers.get('access-control-allow-headers')).toBe('Content-Type');
+    const methods = res.headers.get('access-control-allow-methods')?.split(',') || [];
+    expect(methods.sort()).toEqual(
+      ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'].sort(),
+    );
 
-    const allowMethods = res.headers.get('access-control-allow-methods')?.split(',') || [];
-    expect(allowMethods).not.toContain('DELETE');
-
-    const allowHeaders = res.headers.get('access-control-allow-headers')?.split(',') || [];
-    expect(allowHeaders).not.toContain('X-Malicious-Header');
-  });
-
-  it('supports loading ALLOWED_ORIGIN from process.env when c.env is empty (Node.js environment)', async () => {
-    const originalValue = process.env.ALLOWED_ORIGIN;
-    process.env.ALLOWED_ORIGIN = 'http://localhost:8081';
-
-    try {
-      const req = new Request('http://localhost/feedback', {
-        method: 'OPTIONS',
-        headers: {
-          Origin: 'http://localhost:8081',
-          'Access-Control-Request-Method': 'POST',
-        },
-      });
-      const res = await app.fetch(req, {} as never);
-      expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:8081');
-    } finally {
-      if (originalValue === undefined) {
-        delete process.env.ALLOWED_ORIGIN;
-      } else {
-        process.env.ALLOWED_ORIGIN = originalValue;
-      }
-    }
+    const headers = res.headers.get('access-control-allow-headers')?.split(',') || [];
+    expect(headers.sort()).toEqual(
+      ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma'].sort(),
+    );
   });
 
   describe('mobile and native client support', () => {

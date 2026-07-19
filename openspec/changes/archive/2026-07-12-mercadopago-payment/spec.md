@@ -195,7 +195,7 @@ MercadoPago access tokens MUST NOT be stored in the repository, workflow files, 
 #### Scenario: MP credentials are environment variables
 
 - GIVEN the API environment
-- THEN `MERCADO_PAGO_ACCESS_TOKEN` and `MERCADO_PAGO_WEBHOOK_SECRET` SHALL be configured as environment variables
+- THEN `MP_ACCESS_TOKEN` and `MERCADO_PAGO_WEBHOOK_SECRET` SHALL be configured as environment variables
 - AND they SHALL NOT appear in any source files
 
 ### Requirement: Error Handling — Payment Failure
@@ -296,9 +296,9 @@ export interface BaseExperience {
 
 #### apps/api/.env.example
 
-| Change             | Type     | Details                                                    |
-| ------------------ | -------- | ---------------------------------------------------------- |
-| Add MP credentials | MODIFIED | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` |
+| Change             | Type     | Details                                          |
+| ------------------ | -------- | ------------------------------------------------ |
+| Add MP credentials | MODIFIED | `MP_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` |
 
 #### apps/mobile/src/data/experiences.ts
 

@@ -170,7 +170,7 @@ describe('POST /payments/create', () => {
     );
   });
 
-  it('successfully creates checkout with a web redirect URL and adapts backUrls scheme', async () => {
+  it('creates checkout with API-based backUrls and stores redirectUrl in purchase metadata', async () => {
     const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
@@ -183,25 +183,32 @@ describe('POST /payments/create', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           experienceId: 'exp-1',
-          redirectUrl: 'http://localhost:8081/payment/callback',
+          redirectUrl: 'sonora://payment/callback',
         }),
       },
       {},
     );
 
     expect(res.status).toBe(200);
+    // backUrls always point to the API origin (HTTPS-safe for MP auto_return)
     expect(mockProvider.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         backUrls: {
-          success: 'http://localhost:8081/payment/success/purchase-999',
-          failure: 'http://localhost:8081/payment/failure/purchase-999',
-          pending: 'http://localhost:8081/payment/pending/purchase-999',
+          success: 'http://localhost/payments/return/success/purchase-999',
+          failure: 'http://localhost/payments/return/failure/purchase-999',
+          pending: 'http://localhost/payments/return/pending/purchase-999',
         },
+      }),
+    );
+    // redirectUrl stored in purchase metadata for the return redirect
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: { redirectUrl: 'sonora://payment/callback' },
       }),
     );
   });
 
-  it('formats default redirect URLs correctly without triple slashes when no redirectUrl is provided', async () => {
+  it('creates checkout with API-based backUrls when no redirectUrl is provided', async () => {
     const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
@@ -218,13 +225,20 @@ describe('POST /payments/create', () => {
     );
 
     expect(res.status).toBe(200);
+    // backUrls always use the API origin, even without redirectUrl
     expect(mockProvider.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         backUrls: {
-          success: 'sonora://payment/success/purchase-999',
-          failure: 'sonora://payment/failure/purchase-999',
-          pending: 'sonora://payment/pending/purchase-999',
+          success: 'http://localhost/payments/return/success/purchase-999',
+          failure: 'http://localhost/payments/return/failure/purchase-999',
+          pending: 'http://localhost/payments/return/pending/purchase-999',
         },
+      }),
+    );
+    // metadata is undefined when no redirectUrl is provided
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        metadata: expect.anything(),
       }),
     );
   });

@@ -1,4 +1,4 @@
-import { type AccessSource, DEEP_LINK_SCHEME, logger, type PurchaseStatus } from '@sonora/shared';
+import { type AccessSource, logger, type PurchaseStatus } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
@@ -70,7 +70,7 @@ paymentsRouter.post('/create', async (c) => {
     return c.json({ error: 'Payment provider not available' }, 500);
   }
 
-  // Create purchase record (pending)
+  // Create purchase record (pending) with redirectUrl in metadata
   const [purchase] = await db
     .insert(purchases)
     .values({
@@ -80,30 +80,24 @@ paymentsRouter.post('/create', async (c) => {
       amount: experience.price,
       currency: 'ARS',
       status: 'pending',
+      metadata: redirectUrl ? { redirectUrl } : undefined,
     })
     .returning();
 
-  // Create checkout with provider
+  // Determine base URL for MP back_urls (must be HTTPS for auto_return)
   let baseUrl: string;
   try {
     baseUrl = new URL(c.req.url).origin;
   } catch {
     baseUrl = '';
   }
-  let redirectScheme = DEEP_LINK_SCHEME;
-  if (redirectUrl && (redirectUrl.startsWith('http:') || redirectUrl.startsWith('https:'))) {
-    try {
-      redirectScheme = new URL(redirectUrl).origin;
-    } catch {}
-  }
 
-  // Ensure trailing slash for safe URL concatenation
-  const baseRedirect = redirectScheme.endsWith('/') ? redirectScheme : `${redirectScheme}/`;
-
+  // Store the original redirect URL in purchase metadata so the return
+  // endpoints can 302 the browser back to the app's deep link.
   const finalBackUrls = {
-    success: `${baseRedirect}payment/success/${purchase.id}`,
-    failure: `${baseRedirect}payment/failure/${purchase.id}`,
-    pending: `${baseRedirect}payment/pending/${purchase.id}`,
+    success: `${baseUrl}/payments/return/success/${purchase.id}`,
+    failure: `${baseUrl}/payments/return/failure/${purchase.id}`,
+    pending: `${baseUrl}/payments/return/pending/${purchase.id}`,
   };
 
   const result = await provider.createCheckout({
@@ -219,6 +213,46 @@ paymentsRouter.post('/webhook', async (c) => {
   }
 
   return c.json({ status: 'ok' });
+});
+
+// GET /payments/return/:status/:purchaseId — Redirect browser back to app after MP checkout
+// These endpoints receive the user after MP payment and send them back to the app's deep link.
+paymentsRouter.get('/return/:status/:purchaseId', async (c) => {
+  const { status: _status, purchaseId } = c.req.param();
+  const db = c.var.db;
+
+  // Look up redirectUrl stored in purchase metadata
+  if (db) {
+    try {
+      const [purchase] = await db
+        .select({ metadata: purchases.metadata })
+        .from(purchases)
+        .where(eq(purchases.id, purchaseId))
+        .limit(1);
+
+      if (purchase?.metadata) {
+        const meta = purchase.metadata as { redirectUrl?: string };
+        if (meta.redirectUrl) {
+          return c.redirect(meta.redirectUrl, 302);
+        }
+      }
+    } catch {
+      // DB error — proceed with default redirect
+    }
+  }
+
+  // Fallback: redirect to referer origin or root
+  const referer = c.req.header('Referer');
+  if (referer) {
+    try {
+      const origin = new URL(referer).origin;
+      return c.redirect(origin, 302);
+    } catch {
+      // Invalid referer — proceed with default
+    }
+  }
+
+  return c.redirect('/', 302);
 });
 
 // GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)

@@ -126,12 +126,12 @@ audioRouter.post('/upload', async (c) => {
       return c.json({ error: 'Missing file (form field: file) or key (form field: key)' }, 400);
     }
 
-    if (!c.env.BUCKET) {
+    if (!c.env.PRIVATE_BUCKET) {
       return c.json({ error: 'Storage bucket binding not configured' }, 500);
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    await c.env.BUCKET.put(key, arrayBuffer, {
+    await c.env.PRIVATE_BUCKET.put(key, arrayBuffer, {
       customMetadata: {
         originalName: file.name,
         uploadedAt: new Date().toISOString(),
@@ -207,12 +207,12 @@ audioRouter.get('/stream', async (c) => {
     return c.json({ error: 'Unauthorized. Invalid or expired token.' }, 401);
   }
 
-  if (!c.env.BUCKET) {
+  if (!c.env.PRIVATE_BUCKET) {
     return c.json({ error: 'Storage bucket binding not configured' }, 500);
   }
 
   try {
-    return await streamFromBucket(c.env.BUCKET, key, c.req.header('Range') ?? null);
+    return await streamFromBucket(c.env.PRIVATE_BUCKET, key, c.req.header('Range') ?? null);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Failed to stream file from R2:', msg);

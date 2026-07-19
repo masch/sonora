@@ -27,11 +27,9 @@ MP_BYPASS_SIGNATURE = "false"
 MP_SIGNATURE_MAX_AGE_MINUTES = "5"
 
 [[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "sonora-audio-bucket"
-preview_bucket_name = "sonora-audio-bucket"
+binding = "PRIVATE_BUCKET"
+bucket_name = "sonora-private-audio"
 
 [[r2_buckets]]
 binding = "PUBLIC_BUCKET"
 bucket_name = "sonora-public-audio"
-preview_bucket_name = "sonora-public-audio"

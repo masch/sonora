@@ -245,7 +245,7 @@ import { MercadoPagoProvider } from './mercadopago';
 export function createPaymentProviders(env: Env): Record<string, PaymentProvider | null> {
   const providers: Record<string, PaymentProvider | null> = {
     mercadopago: new MercadoPagoProvider({
-      accessToken: env.MERCADO_PAGO_ACCESS_TOKEN,
+      accessToken: env.MP_ACCESS_TOKEN,
       webhookSecret: env.MERCADO_PAGO_WEBHOOK_SECRET || '',
       sandbox: env.ENVIRONMENT !== 'production',
     }),
@@ -837,7 +837,7 @@ In development, use a tunnel (e.g., ngrok, Cloudflare Tunnel) pointing to the lo
 
 ```bash
 # MercadoPago
-MERCADO_PAGO_ACCESS_TOKEN=APP_USR-xxxxx
+MP_ACCESS_TOKEN=APP_USR-xxxxx
 MERCADO_PAGO_WEBHOOK_SECRET=your_webhook_secret
 
 # Optional
@@ -898,12 +898,12 @@ Following the same pattern as existing secrets (Firebase, keystore):
 
 **Staging environment:**
 
-- `MERCADO_PAGO_ACCESS_TOKEN` = `TEST-xxxx` (sandbox)
+- `MP_ACCESS_TOKEN` = `TEST-xxxx` (sandbox)
 - `MERCADO_PAGO_WEBHOOK_SECRET` = sandbox webhook secret
 
 **Production environment:**
 
-- `MERCADO_PAGO_ACCESS_TOKEN` = `APP_USR-xxxx` (real)
+- `MP_ACCESS_TOKEN` = `APP_USR-xxxx` (real)
 - `MERCADO_PAGO_WEBHOOK_SECRET` = production webhook secret
 
 ### 7.5 Testing with Sandbox
@@ -924,7 +924,7 @@ This allows full end-to-end testing in the staging environment without real mone
 export function createPaymentProviders(env: Env): Record<string, PaymentProvider | null> {
   const providers: Record<string, PaymentProvider | null> = {
     mercadopago: new MercadoPagoProvider({
-      accessToken: env.MERCADO_PAGO_ACCESS_TOKEN,
+      accessToken: env.MP_ACCESS_TOKEN,
       webhookSecret: env.MERCADO_PAGO_WEBHOOK_SECRET || '',
       // No sandbox flag — the access token (TEST vs APP_USR) determines it
     }),

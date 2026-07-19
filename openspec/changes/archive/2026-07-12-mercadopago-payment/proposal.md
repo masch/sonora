@@ -150,7 +150,7 @@ User taps paid experience (not yet purchased)
    - Use stored email for subsequent purchase checks
 
 8. **MercadoPago credentials configuration**
-   - Add `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` to API env
+   - Add `MP_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` to API env
    - Sandbox vs production mode
 
 ### What's Out (Non-Goals)
@@ -316,7 +316,7 @@ User taps paid experience
 ## 10. Dependencies
 
 - MercadoPago developer account (sandbox + production credentials)
-- `MERCADO_PAGO_ACCESS_TOKEN` and `MERCADO_PAGO_WEBHOOK_SECRET` configured in API env
+- `MP_ACCESS_TOKEN` and `MERCADO_PAGO_WEBHOOK_SECRET` configured in API env
 - Deep link scheme `sonora://` configured for the mobile app
 - `expo-web-browser` or `expo-linking` for Checkout Pro redirects
 - MP webhook URL needs to be publicly accessible (production URL)
