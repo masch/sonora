@@ -62,6 +62,7 @@ export const en = {
       poems: 'Poems',
       community: 'Community',
       children: 'Children',
+      onboarding: 'Onboarding',
     },
     types: {
       track: 'Tracks',

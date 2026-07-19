@@ -1,7 +1,14 @@
 import { type Theme, type Experience, USER_EXPERIENCE_FORMATS } from '@sonora/shared';
 import { ApiClient } from '@/services/api-client';
 
-export { EXPERIENCE_FORMATS, TRACK_IMAGE_KEYS } from '@sonora/shared';
+export {
+  EXPERIENCE_FORMATS,
+  TRACK_IMAGE_KEYS,
+  INSTRUCTIONS_SLUG,
+  INSTRUCTIONS_AUDIO_KEY,
+  INSTRUCTIONS_IMAGE_KEY,
+  INSTRUCTIONS_FALLBACK_TRACK_ID,
+} from '@sonora/shared';
 export { USER_EXPERIENCE_FORMATS, isPlayableExperience } from '@sonora/shared';
 export type {
   Theme,

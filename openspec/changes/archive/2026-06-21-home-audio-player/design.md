@@ -34,7 +34,7 @@ We will create a new component `HomeAudioPlayer` which integrates:
    - `download.status` = `'idle'`
    - Action icon = `'play.fill'`
    - Progress bar = `0%`
-   - Subtitle = `'Cargá las instrucciones para escuchar'` (or `'Load instructions to listen'`)
+   - Subtitle = `'Cargá las instructions para escuchar'` (or `'Load instructions to listen'`)
 
 2. **Downloading State**:
    - `download.status` = `'downloading'`

@@ -41,7 +41,7 @@ describe('Audio Router', () => {
     ADMIN_API_KEY: 'test-admin-key',
     JWT_SECRET: 'test-jwt-secret',
     CLIENT_API_KEY: 'test-client-key',
-    BUCKET: mockR2Bucket as unknown as R2Bucket,
+    PRIVATE_BUCKET: mockR2Bucket as unknown as R2Bucket,
   };
 
   const generateToken = async (key: string, secret = 'test-jwt-secret') => {
@@ -134,14 +134,14 @@ describe('Audio Router', () => {
             Authorization: 'Bearer test-admin-key',
           },
         },
-        { BUCKET: mockR2Bucket as unknown as R2Bucket },
+        { PRIVATE_BUCKET: mockR2Bucket as unknown as R2Bucket },
       );
       expect(res.status).toBe(500);
       const body = (await res.json()) as any;
       expect(body.error).toContain('ADMIN_API_KEY is missing');
     });
 
-    it('returns 500 when BUCKET binding is missing', async () => {
+    it('returns 500 when PRIVATE_BUCKET binding is missing', async () => {
       const formData = new FormData();
       formData.append('key', 'experiences/test.mp3');
       formData.append(
@@ -280,7 +280,7 @@ describe('Audio Router', () => {
       expect(res.status).toBe(416);
     });
 
-    it('returns 500 when BUCKET binding is missing', async () => {
+    it('returns 500 when PRIVATE_BUCKET binding is missing', async () => {
       const token = await generateToken('experiences/test.mp3');
       const res = await app.request(
         '/audio/stream?key=experiences/test.mp3',
@@ -292,35 +292,6 @@ describe('Audio Router', () => {
         { JWT_SECRET: 'test-jwt-secret' },
       );
       expect(res.status).toBe(500);
-    });
-
-    it('streams instrucciones.mp3 when token is clientKey', async () => {
-      const clientEnv = {
-        ...env,
-        CLIENT_API_KEY: 'test-client-key',
-      };
-      const res = await app.request(
-        '/audio/stream?key=experiences/instrucciones.mp3&token=test-client-key',
-        {},
-        clientEnv,
-      );
-
-      expect(res.status).toBe(200);
-      expect(await res.text()).toBe('mock audio content');
-    });
-
-    it('returns 401 when trying to access other files with clientKey', async () => {
-      const clientEnv = {
-        ...env,
-        CLIENT_API_KEY: 'test-client-key',
-      };
-      const res = await app.request(
-        '/audio/stream?key=experiences/other.mp3&token=test-client-key',
-        {},
-        clientEnv,
-      );
-
-      expect(res.status).toBe(401);
     });
   });
 });

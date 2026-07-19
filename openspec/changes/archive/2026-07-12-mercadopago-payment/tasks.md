@@ -100,7 +100,7 @@
 ### Task 3.3: Add MP environment variables to .env.example
 
 - **File**: `apps/api/.env.example`
-- **What**: Document `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `DEFAULT_PAYMENT_PROVIDER`
+- **What**: Document `MP_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `DEFAULT_PAYMENT_PROVIDER`
 - **Design ref**: Section 6.4, Section 7
 
 ---

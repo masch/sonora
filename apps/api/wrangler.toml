@@ -1,7 +1,7 @@
 name = "sonora-api"
 main = "src/index.ts"
 compatibility_date = "2026-06-03"
-compatibility_flags = [ "nodejs_compat" ]
+compatibility_flags = ["nodejs_compat"]
 
 # KV binding for feedback idempotency (fast-path only — Postgres is authoritative)
 # Create the namespace with: npx wrangler kv:namespace create "FEEDBACK_STORE"
@@ -27,8 +27,9 @@ MP_BYPASS_SIGNATURE = "false"
 MP_SIGNATURE_MAX_AGE_MINUTES = "5"
 
 [[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "sonora-audio-bucket"
-preview_bucket_name = "sonora-audio-bucket"
+binding = "PRIVATE_BUCKET"
+bucket_name = "sonora-private-audio"
 
-
+[[r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "sonora-public-audio"

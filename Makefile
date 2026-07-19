@@ -92,9 +92,14 @@ prebuild: ## Regenerate native project files without compiling
 doctor: ## Run React Doctor audit (full verbose scan)
 	cd apps/mobile && bunx react-doctor --verbose --scope full -y
 
+# shellcheck disable=SC1073,SC1050,SC1072
+# If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
+# so only regressions introduced by the current changes are reported.
+DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
+
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bunx react-doctor --verbose --scope changed $(if $(BASE),--base $(BASE),) --blocking warning
+	cd apps/mobile && bunx react-doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -263,7 +268,7 @@ api-deploy: api-deploy-production ## Deploy Hono API to Cloudflare Workers (defa
 .PHONY: api-validate-wrangler-vars
 api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml [vars]
 	@for file in $(API_DIR)/wrangler.toml $(API_DIR)/wrangler.staging.toml; do \
-		SECRETS="DATABASE_URL ADMIN_API_KEY MERCADO_PAGO_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN"; \
+		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN"; \
 		IN_VARS=0; \
 		while IFS= read -r line; do \
 			case "$$line" in \
@@ -319,12 +324,16 @@ api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloud
 
 .PHONY: api-r2-buckets-staging
 api-r2-buckets-staging: ## Create R2 audio buckets for staging environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio-staging --config wrangler.staging.toml
 
 
 .PHONY: api-r2-buckets-production
 api-r2-buckets-production: ## Create R2 audio buckets for production environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-audio-bucket
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -348,11 +357,38 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
+.PHONY: api-upload-public-audio-staging
+api-upload-public-audio-staging: ## Upload audio to staging public bucket. Usage: make api-upload-public-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio-staging/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
+	@echo "Uploaded to staging public bucket: sonora-public-audio-staging/$(KEY)"
 
+.PHONY: api-upload-public-audio-production
+api-upload-public-audio-production: ## Upload audio to production public bucket. Usage: make api-upload-public-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio/$(KEY) --file=$(FILE) --remote
+	@echo "Uploaded to production public bucket: sonora-public-audio/$(KEY)"
 
 .PHONY: api-deploy-staging-set-origin
-api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker. Usage: make api-deploy-staging-set-origin ORIGIN="https://example.com"
-	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
+api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
+	@read -p "Paste the ALLOWED_ORIGIN for staging (e.g. https://sonora-staging.eas.host): " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
+
+.PHONY: api-secret-list-staging
+api-secret-list-staging: ## List secrets on staging Worker
+	cd $(API_DIR) && bunx wrangler secret list --config wrangler.staging.toml
+
+.PHONY: api-secret-list-production
+api-secret-list-production: ## List secrets on production Worker
+	cd $(API_DIR) && bunx wrangler secret list
+
+.PHONY: api-secret-delete-staging
+api-secret-delete-staging: ## Delete a secret from staging Worker (interactive)
+	@read -p "Secret name to delete from staging: " NAME; \
+	cd $(API_DIR) && bunx wrangler secret delete "$$NAME" --config wrangler.staging.toml
+
+.PHONY: api-secret-delete-production
+api-secret-delete-production: ## Delete a secret from production Worker (interactive)
+	@read -p "Secret name to delete from production: " NAME; \
+	cd $(API_DIR) && bunx wrangler secret delete "$$NAME"
 
 .PHONY: api-deploy-staging-set-mp-webhook-secret
 api-deploy-staging-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on staging Worker (interactive — paste the secret from MP dashboard)
@@ -360,9 +396,9 @@ api-deploy-staging-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on staging Wo
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_WEBHOOK_SECRET --config wrangler.staging.toml
 
 .PHONY: api-deploy-staging-set-mp-access-token
-api-deploy-staging-set-mp-access-token: ## Set MERCADO_PAGO_ACCESS_TOKEN on staging Worker (interactive — paste the access token from MP dashboard)
-	@read -p "Paste the MERCADO_PAGO_ACCESS_TOKEN from MP dashboard: " SECRET; \
-	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MERCADO_PAGO_ACCESS_TOKEN --config wrangler.staging.toml
+api-deploy-staging-set-mp-access-token: ## Set MP_ACCESS_TOKEN on staging Worker (interactive — paste the access token from MP dashboard)
+	@read -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_ACCESS_TOKEN --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-mp-webhook-secret
 api-deploy-production-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on production Worker (interactive — paste the secret from MP dashboard)
@@ -370,9 +406,9 @@ api-deploy-production-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on product
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_WEBHOOK_SECRET
 
 .PHONY: api-deploy-production-set-mp-access-token
-api-deploy-production-set-mp-access-token: ## Set MERCADO_PAGO_ACCESS_TOKEN on production Worker (interactive — paste the access token from MP dashboard)
-	@read -p "Paste the MERCADO_PAGO_ACCESS_TOKEN from MP dashboard: " SECRET; \
-	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MERCADO_PAGO_ACCESS_TOKEN
+api-deploy-production-set-mp-access-token: ## Set MP_ACCESS_TOKEN on production Worker (interactive — paste the access token from MP dashboard)
+	@read -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_ACCESS_TOKEN
 
 .PHONY: api-deploy-staging-set-jwt-secret
 api-deploy-staging-set-jwt-secret: ## Set JWT_SECRET on staging Worker (interactive)
@@ -395,8 +431,9 @@ api-deploy-production-set-client-api-key: ## Set CLIENT_API_KEY on production Wo
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put CLIENT_API_KEY
 
 .PHONY: api-deploy-production-set-origin
-api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker. Usage: make api-deploy-production-set-origin ORIGIN="https://example.com"
-	@cd $(API_DIR) && printf '%s' '$(ORIGIN)' | bunx wrangler secret put ALLOWED_ORIGIN
+api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker (interactive)
+	@read -p "Paste the ALLOWED_ORIGIN for production (e.g. https://sonora.eas.host): " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ALLOWED_ORIGIN
 
 .PHONY: api-deploy-staging-log-toggle
 api-deploy-staging-log-toggle: ## Toggle API logging on staging interactively
@@ -478,7 +515,6 @@ DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
 DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
 ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
 DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
-# MERCADO_PAGO_* secrets: use make api-deploy-*-set-* interactive targets only
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
@@ -503,6 +539,14 @@ api-db-seed-staging: ## Seed staging Neon DB
 .PHONY: api-db-seed-production
 api-db-seed-production: ## Seed production Neon DB
 	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun src/db/seed.ts
+
+.PHONY: api-deploy-staging-full
+api-deploy-staging-full: api-deploy-staging api-db-seed-staging ## Deploy staging Worker + seed Neon DB
+	@echo "✓ Staging deploy + seed complete"
+
+.PHONY: api-deploy-production-full
+api-deploy-production-full: api-deploy-production api-db-seed-production ## Deploy production Worker + seed Neon DB
+	@echo "✓ Production deploy + seed complete"
 
 # ── Wrangler secrets — interactive (paste the value, never from .env) ──
 

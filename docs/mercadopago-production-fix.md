@@ -78,7 +78,7 @@ Antes de deployar:
 cd apps/api
 
 # Token de producción (empieza con APP_USR-)
-echo "APP_USR-xxxx" | wrangler secret put MERCADO_PAGO_ACCESS_TOKEN
+echo "APP_USR-xxxx" | wrangler secret put MP_ACCESS_TOKEN
 
 # Webhook secret (lo generás desde el panel de MP)
 echo "tu-webhook-secret" | wrangler secret put MP_WEBHOOK_SECRET

@@ -1,4 +1,4 @@
-import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
+import { DEFAULT_REMOTE_CONFIG, INSTRUCTIONS_AUDIO_KEY } from '@sonora/shared';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -62,9 +62,7 @@ export const APP_CONFIG = {
     /**
      * Default instructions audio URL.
      */
-    instructionsUrl:
-      process.env.EXPO_PUBLIC_INSTRUCTIONS_AUDIO_URL ||
-      `${getApiBaseUrl()}/audio/stream?key=experiences%2Finstrucciones.mp3&token=${apiClientKey}`,
+    instructionsUrl: `${getApiBaseUrl()}/audio/public/${encodeURIComponent(INSTRUCTIONS_AUDIO_KEY)}`,
   },
   geofence: {
     /**
@@ -85,5 +83,12 @@ export const APP_CONFIG = {
      * Note: iOS caps background execution to a minimum of 15 minutes (900 seconds).
      */
     syncIntervalSec: DEFAULT_REMOTE_CONFIG.feedback.syncIntervalSec,
+  },
+  features: {
+    /**
+     * Show the instructions section on the home screen.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
+     */
+    showHomeInstructions: DEFAULT_REMOTE_CONFIG.showHomeInstructions,
   },
 } as const;

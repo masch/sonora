@@ -22,7 +22,8 @@ export interface Env {
   ALLOWED_ORIGIN?: string;
   ALLOWED_METHODS?: string;
   ALLOWED_HEADERS?: string;
-  BUCKET?: R2Bucket;
+  PRIVATE_BUCKET?: R2Bucket;
+  PUBLIC_BUCKET?: R2Bucket;
   ADMIN_API_KEY?: string;
   CLIENT_API_KEY?: string;
   JWT_SECRET?: string;

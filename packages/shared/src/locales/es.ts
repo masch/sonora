@@ -62,6 +62,7 @@ export const es = {
       poems: 'Poemas',
       community: 'Comunidad',
       children: 'Infantil',
+      onboarding: 'Introducción',
     },
     types: {
       track: 'Audios',

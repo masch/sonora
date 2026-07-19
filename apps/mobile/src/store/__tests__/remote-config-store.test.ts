@@ -167,6 +167,7 @@ describe('RemoteConfigStore', () => {
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
+      showHomeInstructions: false,
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
     mockApiGet.mockRejectedValue(new Error('Offline'));
