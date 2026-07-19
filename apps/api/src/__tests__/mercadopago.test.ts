@@ -53,17 +53,13 @@ vi.mock('mercadopago', () => {
 
   return {
     MercadoPagoConfig: vi.fn(),
-    Preference: vi.fn().mockImplementation(
-      class {
-        create = mockCreate;
-      } as unknown as (...args: unknown[]) => unknown,
-    ),
-    Payment: vi.fn().mockImplementation(
-      class {
-        get = mockGet;
-        search = mockSearch;
-      } as unknown as (...args: unknown[]) => unknown,
-    ),
+    Preference: class {
+      create = mockCreate;
+    } as unknown as (...args: unknown[]) => unknown,
+    Payment: class {
+      get = mockGet;
+      search = mockSearch;
+    } as unknown as (...args: unknown[]) => unknown,
     WebhookSignatureValidator: {
       validate(options: {
         xSignature: string;
@@ -242,11 +238,11 @@ describe('MercadoPagoProvider', () => {
         notificationUrl: 'https://api.example.com/payments/webhook',
       });
 
-      expect(result.checkoutUrl).toContain('sandbox');
+      expect(result.checkoutUrl).toContain('mercadopago.com.ar');
       expect(result.providerPaymentId).toBe('123456789');
     });
 
-    it('uses init_point when sandbox_init_point is not available', async () => {
+    it('returns empty URL when sandbox_init_point is not available (no fallback in non-prod)', async () => {
       mockCreate.mockResolvedValue({
         id: '123456789',
         init_point: 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=123456789',
@@ -265,7 +261,7 @@ describe('MercadoPagoProvider', () => {
         notificationUrl: 'https://api.example.com/payments/webhook',
       });
 
-      expect(result.checkoutUrl).toContain('mercadopago.com.ar');
+      expect(result.checkoutUrl).toBe('');
     });
   });
 

@@ -58,7 +58,10 @@ export class MercadoPagoProvider implements PaymentProvider {
     });
 
     return {
-      checkoutUrl: result.sandbox_init_point || result.init_point || '',
+      checkoutUrl:
+        this.config.environment === 'production'
+          ? result.init_point || ''
+          : result.sandbox_init_point || '',
       providerPaymentId: result.id || '',
     };
   }

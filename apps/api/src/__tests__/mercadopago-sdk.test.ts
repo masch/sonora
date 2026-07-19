@@ -5,11 +5,9 @@ vi.mock('mercadopago', () => {
   const mockCreate = vi.fn();
   return {
     MercadoPagoConfig: vi.fn(),
-    Preference: vi.fn().mockImplementation(
-      class {
-        create = mockCreate;
-      } as unknown as (...args: unknown[]) => unknown,
-    ),
+    Preference: class {
+      create = mockCreate;
+    } as unknown as (...args: unknown[]) => unknown,
   };
 });
 
