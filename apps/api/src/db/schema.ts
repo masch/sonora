@@ -87,6 +87,7 @@ export const purchases = sonoraSchema.table('purchases', {
   amount: integer('amount').notNull(),
   currency: currencyEnum('currency').notNull().default('ARS'),
   metadata: jsonb('metadata'),
+  deviceId: text('device_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

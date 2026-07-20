@@ -81,6 +81,7 @@ paymentsRouter.post('/create', async (c) => {
       currency: 'ARS',
       status: 'pending',
       metadata: redirectUrl ? { redirectUrl } : undefined,
+      deviceId: c.var.deviceId,
     })
     .returning();
 

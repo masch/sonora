@@ -170,6 +170,33 @@ describe('POST /payments/create', () => {
     );
   });
 
+  it('includes hashed device ID in purchase values if X-Device-Id header is present', async () => {
+    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    mockDb.limit.mockResolvedValue([experienceMock]);
+    mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': 'device-12345',
+        },
+        body: JSON.stringify({ experienceId: 'exp-1' }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deviceId: '21e8b3e125c62cabbc21c923352284eb031e69d7e6c651ff9a48d6be8ada3ab9',
+      }),
+    );
+  });
+
   it('creates checkout with API-based backUrls and stores redirectUrl in purchase metadata', async () => {
     const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
