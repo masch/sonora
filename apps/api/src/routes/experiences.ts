@@ -33,11 +33,12 @@ experiencesRouter.get('/', async (c) => {
 
     const email = c.req.query('email');
     const purchaseConditions = [eq(purchases.status, 'approved')];
-    if (email) {
-      purchaseConditions.push(or(eq(purchases.deviceId, deviceId), eq(purchases.email, email))!);
-    } else {
-      purchaseConditions.push(eq(purchases.deviceId, deviceId));
-    }
+
+    const deviceOrEmailFilter = email
+      ? or(eq(purchases.deviceId, deviceId), eq(purchases.email, email))!
+      : eq(purchases.deviceId, deviceId);
+
+    purchaseConditions.push(deviceOrEmailFilter);
 
     const approvedPurchases = await db
       .select({ experienceId: purchases.experienceId })
