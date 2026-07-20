@@ -49,12 +49,7 @@ export function createStorageFunctions(
   };
 
   const getDeviceId = async (): Promise<string> => {
-    try {
-      return await getPlatformDeviceId();
-    } catch {
-      logger.warn('[AppStorage] Failed to read or generate device ID');
-      return 'fallback-device-id';
-    }
+    return getPlatformDeviceId();
   };
 
   return { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId };

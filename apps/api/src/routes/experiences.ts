@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { experiences, waypoints, experienceAccesses } from '../db/schema';
+import { experiences, waypoints, experienceAccesses, purchases } from '../db/schema';
 import { type Env, type Variables } from '../index';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { sign } from 'hono/jwt';
 
 const experiencesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -30,7 +30,24 @@ experiencesRouter.get('/', async (c) => {
       .select({ experienceId: experienceAccesses.experienceId })
       .from(experienceAccesses)
       .where(eq(experienceAccesses.deviceId, deviceId));
-    const allowedExperienceIds = new Set(accesses.map((a) => a.experienceId));
+
+    const email = c.req.query('email');
+    const purchaseConditions = [eq(purchases.status, 'approved')];
+    if (email) {
+      purchaseConditions.push(or(eq(purchases.deviceId, deviceId), eq(purchases.email, email))!);
+    } else {
+      purchaseConditions.push(eq(purchases.deviceId, deviceId));
+    }
+
+    const approvedPurchases = await db
+      .select({ experienceId: purchases.experienceId })
+      .from(purchases)
+      .where(and(...purchaseConditions)!);
+
+    const allowedExperienceIds = new Set([
+      ...accesses.map((a) => a.experienceId),
+      ...approvedPurchases.map((p) => p.experienceId),
+    ]);
 
     for (const exp of list) {
       const expWaypoints = await db
