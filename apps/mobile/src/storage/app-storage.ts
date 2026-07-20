@@ -1,5 +1,6 @@
 import SqliteStorage from 'expo-sqlite/kv-store';
 import { type KeyValueStorage } from '@sonora/shared';
+import { DeviceService } from '@/services/device-service';
 import { createStorageFunctions } from './app-storage-common';
 
 export const appStorage: KeyValueStorage & {
@@ -23,7 +24,7 @@ export const appStorage: KeyValueStorage & {
   },
 };
 
-const { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } =
-  createStorageFunctions(appStorage);
+const { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId } =
+  createStorageFunctions(appStorage, DeviceService.getPlatformDeviceId);
 
-export { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail };
+export { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId };

@@ -9,3 +9,4 @@ export * from './utils/logger';
 export * from './utils/format-price';
 export * from './locales/en';
 export * from './locales/es';
+export * from './utils/uuid';

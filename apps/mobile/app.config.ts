@@ -1,20 +1,26 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
 import { fontConfig } from './src/config/font.ts';
 
-const isStaging = process.env.APP_ENV === 'staging';
+const isProduction = process.env.APP_ENV === 'production';
 
 const ENV_CONFIG = {
   staging: {
     name: 'Sonora Staging',
     appId: 'com.masch.sonora.staging',
+    icon: './assets/images/sonora/logo_staging.png',
+    adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
+    splashColor: '#F59E0B',
   },
   production: {
     name: 'Sonora',
     appId: 'com.masch.sonora',
+    icon: './assets/images/icon.png',
+    adaptiveIconForeground: './assets/images/android-icon-foreground.png',
+    splashColor: '#208AEF',
   },
 };
 
-const activeEnv = isStaging ? ENV_CONFIG.staging : ENV_CONFIG.production;
+const activeEnv = isProduction ? ENV_CONFIG.production : ENV_CONFIG.staging;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   return {
@@ -23,11 +29,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: 'sonora',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: activeEnv.icon,
     scheme: 'sonora',
     userInterfaceStyle: 'automatic',
     ios: {
-      icon: './assets/expo.icon',
       bundleIdentifier: activeEnv.appId,
       googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
@@ -37,7 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
-        foregroundImage: './assets/images/android-icon-foreground.png',
+        foregroundImage: activeEnv.adaptiveIconForeground,
         backgroundImage: './assets/images/android-icon-background.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
@@ -63,7 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#208AEF',
+          backgroundColor: activeEnv.splashColor,
           android: {
             image: './assets/images/splash-icon.png',
             imageWidth: 76,
@@ -76,17 +81,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-font',
         {
           fonts: fontConfig.nativeFonts,
-          android: {
-            fonts: [
-              {
-                fontFamily: fontConfig.family,
-                fontDefinitions: fontConfig.androidFonts.map((f) => ({
-                  path: f.path,
-                  weight: f.weight,
-                })),
-              },
-            ],
-          },
         },
       ],
     ],
@@ -99,6 +93,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',
       },
+      isProduction: process.env.APP_ENV === 'production',
     },
     owner: 'sonoraderivapoeticas-team',
   };

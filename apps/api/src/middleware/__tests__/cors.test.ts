@@ -103,7 +103,7 @@ describe('CORS behavior', () => {
 
     const headers = res.headers.get('access-control-allow-headers')?.split(',') || [];
     expect(headers.sort()).toEqual(
-      ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma'].sort(),
+      ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma', 'X-Device-Id'].sort(),
     );
   });
 

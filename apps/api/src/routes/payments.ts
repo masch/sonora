@@ -81,6 +81,7 @@ paymentsRouter.post('/create', async (c) => {
       currency: 'ARS',
       status: 'pending',
       metadata: redirectUrl ? { redirectUrl } : undefined,
+      deviceId: c.var.deviceId,
     })
     .returning();
 
@@ -418,6 +419,11 @@ paymentsRouter.post('/experiences/:id/access', async (c) => {
     return c.json({ error: 'Database client not available' }, 500);
   }
 
+  const deviceId = c.var.deviceId;
+  if (!deviceId) {
+    return c.json({ error: 'Device ID is required' }, 400);
+  }
+
   // Get current price for snapshot
   const [experience] = await db
     .select({ price: experiences.price })
@@ -428,6 +434,7 @@ paymentsRouter.post('/experiences/:id/access', async (c) => {
   await db.insert(experienceAccesses).values({
     experienceId: id,
     email: email ?? null,
+    deviceId,
     source,
     priceAtAccess: experience?.price ?? null,
     platform: (platform ?? null) as 'ios' | 'android' | 'web' | null,

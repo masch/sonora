@@ -6,6 +6,7 @@ export const en = {
     no: 'No',
     somethingWentWrong: 'Oops! Something went wrong',
     retry: 'Retry',
+    staging: 'Staging',
   },
   map: {
     offlineTitle: 'Map unavailable',

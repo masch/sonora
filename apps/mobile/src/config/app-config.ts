@@ -51,6 +51,7 @@ const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY!;
  * Sonora Global App Configuration
  */
 export const APP_CONFIG = {
+  isProduction: Constants.expoConfig?.extra?.isProduction === true,
   apiBaseUrl: getApiBaseUrl(),
   apiClientKey,
   audio: {

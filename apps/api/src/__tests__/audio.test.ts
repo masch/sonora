@@ -1,6 +1,6 @@
 import { sign } from 'hono/jwt';
 import { describe, expect, it, vi } from 'vitest';
-import app from '../index';
+import app, { hashDeviceId } from '../index';
 
 const mockR2Bucket = {
   put: vi.fn(async (key: string, _: any, __?: any) => {
@@ -44,10 +44,16 @@ describe('Audio Router', () => {
     PRIVATE_BUCKET: mockR2Bucket as unknown as R2Bucket,
   };
 
-  const generateToken = async (key: string, secret = 'test-jwt-secret') => {
+  const generateToken = async (
+    key: string,
+    secret = 'test-jwt-secret',
+    deviceId = 'test-device-id',
+  ) => {
+    const hashedDeviceId = await hashDeviceId(deviceId);
     return await sign(
       {
         key,
+        deviceId: hashedDeviceId,
         exp: Math.floor(Date.now() / 1000) + 60,
       },
       secret,
@@ -180,6 +186,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
           },
         },
         env,
@@ -194,6 +201,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
           },
         },
         env,
@@ -210,7 +218,11 @@ describe('Audio Router', () => {
       const token = await generateToken('experiences/test.mp3');
       const res = await app.request(
         `/audio/stream?key=experiences/test.mp3&token=${token}`,
-        {},
+        {
+          headers: {
+            'X-Device-Id': 'test-device-id',
+          },
+        },
         env,
       );
 
@@ -228,6 +240,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
             Range: 'bytes=0-10',
           },
         },
@@ -245,7 +258,11 @@ describe('Audio Router', () => {
     it('returns 401 when query token is invalid', async () => {
       const res = await app.request(
         '/audio/stream?key=experiences/test.mp3&token=invalid-key',
-        {},
+        {
+          headers: {
+            'X-Device-Id': 'test-device-id',
+          },
+        },
         env,
       );
       expect(res.status).toBe(401);
@@ -258,6 +275,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
           },
         },
         env,
@@ -272,6 +290,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
             Range: 'bytes=100-200',
           },
         },
@@ -287,11 +306,66 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'test-device-id',
           },
         },
         { JWT_SECRET: 'test-jwt-secret' },
       );
       expect(res.status).toBe(500);
+    });
+
+    it('returns 401 when X-Device-Id header is missing', async () => {
+      const token = await generateToken('experiences/test.mp3');
+      const res = await app.request(
+        '/audio/stream?key=experiences/test.mp3',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        env,
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 when X-Device-Id header does not match JWT payload deviceId', async () => {
+      const token = await generateToken(
+        'experiences/test.mp3',
+        'test-jwt-secret',
+        'test-device-id',
+      );
+      const res = await app.request(
+        '/audio/stream?key=experiences/test.mp3',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Device-Id': 'different-device-id',
+          },
+        },
+        env,
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 when JWT payload does not contain a deviceId', async () => {
+      const tokenWithoutDevice = await sign(
+        {
+          key: 'experiences/test.mp3',
+          exp: Math.floor(Date.now() / 1000) + 60,
+        },
+        'test-jwt-secret',
+      );
+      const res = await app.request(
+        '/audio/stream?key=experiences/test.mp3',
+        {
+          headers: {
+            Authorization: `Bearer ${tokenWithoutDevice}`,
+            'X-Device-Id': 'test-device-id',
+          },
+        },
+        env,
+      );
+      expect(res.status).toBe(401);
     });
   });
 });

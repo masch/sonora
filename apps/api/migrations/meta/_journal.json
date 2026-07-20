@@ -64,6 +64,20 @@
       "when": 1782520119264,
       "tag": "0008_payment_infrastructure",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784482316307,
+      "tag": "0009_add_device_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784560227878,
+      "tag": "0010_loving_ozymandias",
+      "breakpoints": true
     }
   ]
 }
