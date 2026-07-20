@@ -3,7 +3,14 @@ import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../index';
 
 const DEFAULT_METHODS = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
-const DEFAULT_HEADERS = ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma'];
+const DEFAULT_HEADERS = [
+  'Content-Type',
+  'Authorization',
+  'Range',
+  'Cache-Control',
+  'Pragma',
+  'X-Device-Id',
+];
 const EXPOSED_HEADERS = ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag'];
 const MAX_AGE = 86400;
 

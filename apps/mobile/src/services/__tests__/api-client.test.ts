@@ -1,5 +1,5 @@
 import { ApiClient } from '../api-client';
-import { appStorage } from '@/storage/app-storage';
+import { appStorage, getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
 
 jest.mock('@/storage/app-storage', () => ({
@@ -9,6 +9,7 @@ jest.mock('@/storage/app-storage', () => ({
     removeItem: jest.fn().mockResolvedValue(undefined),
     clear: jest.fn().mockResolvedValue(undefined),
   },
+  getDeviceId: jest.fn(),
 }));
 
 jest.mock('@/utils/logger', () => ({
@@ -103,6 +104,22 @@ describe('ApiClient', () => {
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           Authorization: 'Bearer tok',
+        }),
+      }),
+    );
+  });
+
+  it('automatically injects X-Device-Id header', async () => {
+    mockFetchOk({});
+    (getDeviceId as jest.Mock).mockResolvedValue('test-uuid-value');
+
+    await ApiClient.get('/test', { skipCache: true });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Device-Id': 'test-uuid-value',
         }),
       }),
     );

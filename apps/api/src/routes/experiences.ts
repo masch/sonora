@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { experiences, waypoints } from '../db/schema';
+import { experiences, waypoints, experienceAccesses } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { eq } from 'drizzle-orm';
 import { sign } from 'hono/jwt';
@@ -21,6 +21,17 @@ experiencesRouter.get('/', async (c) => {
     }
     const expirySeconds = parseInt(c.env.AUDIO_LINK_EXPIRY_SECONDS || '900', 10);
 
+    const deviceId = c.var.deviceId;
+    if (!deviceId) {
+      return c.json({ error: 'Device ID is required' }, 400);
+    }
+
+    const accesses = await db
+      .select({ experienceId: experienceAccesses.experienceId })
+      .from(experienceAccesses)
+      .where(eq(experienceAccesses.deviceId, deviceId));
+    const allowedExperienceIds = new Set(accesses.map((a) => a.experienceId));
+
     for (const exp of list) {
       const expWaypoints = await db
         .select()
@@ -28,13 +39,16 @@ experiencesRouter.get('/', async (c) => {
         .where(eq(waypoints.experienceId, exp.id))
         .orderBy(waypoints.order);
 
+      const hasAccess = exp.free || allowedExperienceIds.has(exp.id);
+
       let mappedAudioUrl = null;
-      if (exp.audioUrl) {
+      if (exp.audioUrl && hasAccess) {
         if (exp.audioUrl.startsWith('http')) {
           mappedAudioUrl = exp.audioUrl;
         } else {
           const payload = {
             key: exp.audioUrl,
+            deviceId,
             exp: Math.floor(Date.now() / 1000) + expirySeconds,
           };
           const token = await sign(payload, jwtSecret);
@@ -45,12 +59,13 @@ experiencesRouter.get('/', async (c) => {
       const mappedWaypoints = await Promise.all(
         expWaypoints.map(async (wp) => {
           let mappedWpAudioUrl = null;
-          if (wp.audioUrl) {
+          if (wp.audioUrl && hasAccess) {
             if (wp.audioUrl.startsWith('http')) {
               mappedWpAudioUrl = wp.audioUrl;
             } else {
               const payload = {
                 key: wp.audioUrl,
+                deviceId,
                 exp: Math.floor(Date.now() / 1000) + expirySeconds,
               };
               const token = await sign(payload, jwtSecret);

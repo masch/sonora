@@ -3,6 +3,8 @@ import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-rou
 import LoadingView from '@/components/loading-view';
 import { AdminApiClient } from '@/services/admin-api-client';
 import { useTranslation } from 'react-i18next';
+import { APP_CONFIG } from '@/config/app-config';
+import { StagingBadge } from '@/components/staging-badge';
 import { TwPressable, TwText, TwView } from '@/tw';
 import '@/global.css';
 import '@/i18n';
@@ -35,20 +37,23 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#ebe4d8',
-        },
-        headerTintColor: '#2b2826',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ title: t('login.title'), headerShown: false }} />
-    </Stack>
+    <>
+      {!APP_CONFIG.isProduction && <StagingBadge />}
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#ebe4d8',
+          },
+          headerTintColor: '#2b2826',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ title: t('login.title'), headerShown: false }} />
+      </Stack>
+    </>
   );
 }
 

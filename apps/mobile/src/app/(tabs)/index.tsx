@@ -6,11 +6,11 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
-import { TwImage } from '@/tw/image';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
+import { AppLogo } from '@/components/app-logo';
 
-import { SONORA_HOME_BG, SONORA_LOGO } from '@/constants/images';
+import { SONORA_HOME_BG } from '@/constants/images';
 
 export const SHOW_LOCAL_MESSAGES = false;
 
@@ -32,12 +32,7 @@ export default function HomeScreen() {
     >
       {/* Top Header - Unified Mockup Header Image */}
       <TwView className="relative w-full h-[380px] border-b border-zinc-800/15">
-        <TwImage
-          source={SONORA_LOGO}
-          className="w-full h-full"
-          contentFit="contain"
-          alt={t('home.bannerAlt')}
-        />
+        <AppLogo className="w-full h-full" />
         {/* Hidden text layers for accessibility and test suites */}
         <TwView className="absolute -top-9999 left-0 opacity-0">
           <ThemedText>{t('home.title')}</ThemedText>

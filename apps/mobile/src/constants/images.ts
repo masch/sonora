@@ -15,6 +15,7 @@ export const DEFAULT_TRACK_IMAGE: ImageSourcePropType = TRACK_IMAGES['trips-deri
 // ── App UI images ───────────────────────────────────────
 
 export const SONORA_LOGO = require('@/assets/images/sonora/logo.png');
+export const SONORA_LOGO_STAGING = require('@/assets/images/sonora/logo_staging.png');
 export const SONORA_BANNER_BG = require('@/assets/images/sonora/banner-fondo-logo-1.png');
 export const SONORA_MAIN_BG = require('@/assets/images/sonora/fondo-recorridos-sec-1.png');
 export const SONORA_HOME_BG = require('@/assets/images/sonora/home-background.jpg');

@@ -198,13 +198,13 @@ audioRouter.get('/stream', async (c) => {
   let isAuthorized = false;
   try {
     const payload = await verify(token, jwtSecret, 'HS256');
-    if (payload.key === key) isAuthorized = true;
+    isAuthorized = payload.key === key && !!payload.deviceId && payload.deviceId === c.var.deviceId;
   } catch (err) {
     console.error('Failed to get stream:', err);
   }
 
   if (!isAuthorized) {
-    return c.json({ error: 'Unauthorized. Invalid or expired token.' }, 401);
+    return c.json({ error: 'Unauthorized. Invalid or expired token or device mismatch.' }, 401);
   }
 
   if (!c.env.PRIVATE_BUCKET) {

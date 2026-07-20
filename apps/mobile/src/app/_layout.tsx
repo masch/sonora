@@ -1,6 +1,8 @@
 import { fontConfig } from '@/config/font';
 import '@/global.css';
 import { addResources } from '@/i18n';
+import { APP_CONFIG } from '@/config/app-config';
+import { StagingBadge } from '@/components/staging-badge';
 
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, ErrorBoundaryProps } from 'expo-router';
@@ -103,6 +105,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={navTheme}>
+      {!APP_CONFIG.isProduction && <StagingBadge />}
       <AudioPlayerBridge />
       {versionStatus === 'warn' && <UpdateWarningBanner />}
       <Stack screenOptions={{ headerShown: false }}>

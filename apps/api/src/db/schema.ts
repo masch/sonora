@@ -97,6 +97,7 @@ export const experienceAccesses = sonoraSchema.table('experience_accesses', {
     .notNull()
     .references(() => experiences.id, { onDelete: 'cascade' }),
   email: text('email'),
+  deviceId: text('device_id'),
   source: accessSourceEnum('source').notNull(),
   priceAtAccess: integer('price_at_access'),
   platform: platformEnum('platform'),

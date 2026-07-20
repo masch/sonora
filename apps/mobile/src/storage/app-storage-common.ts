@@ -9,6 +9,7 @@ export function createStorageFunctions(
     removeItem(key: string): Promise<void>;
     clear(): Promise<void>;
   },
+  getPlatformDeviceId: () => Promise<string>,
 ) {
   const getPurchasedIds = async (): Promise<Set<string>> => {
     try {
@@ -47,7 +48,16 @@ export function createStorageFunctions(
     }
   };
 
-  return { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail };
+  const getDeviceId = async (): Promise<string> => {
+    try {
+      return await getPlatformDeviceId();
+    } catch {
+      logger.warn('[AppStorage] Failed to read or generate device ID');
+      return 'fallback-device-id';
+    }
+  };
+
+  return { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId };
 }
 
 export type AppStorageFunctions = ReturnType<typeof createStorageFunctions>;

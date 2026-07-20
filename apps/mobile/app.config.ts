@@ -1,7 +1,7 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
 import { fontConfig } from './src/config/font.ts';
 
-const isStaging = process.env.APP_ENV === 'staging';
+const isProduction = process.env.APP_ENV === 'production';
 
 const ENV_CONFIG = {
   staging: {
@@ -14,7 +14,7 @@ const ENV_CONFIG = {
   },
 };
 
-const activeEnv = isStaging ? ENV_CONFIG.staging : ENV_CONFIG.production;
+const activeEnv = isProduction ? ENV_CONFIG.production : ENV_CONFIG.staging;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   return {
@@ -23,7 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: 'sonora',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: isProduction ? './assets/images/icon.png' : './assets/images/sonora/logo_staging.png',
     scheme: 'sonora',
     userInterfaceStyle: 'automatic',
     ios: {
@@ -99,6 +99,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',
       },
+      isProduction: process.env.APP_ENV === 'production',
     },
     owner: 'sonoraderivapoeticas-team',
   };

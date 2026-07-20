@@ -1,9 +1,21 @@
 import { APP_CONFIG } from '@/config/app-config';
-import { appStorage } from '@/storage/app-storage';
+import { appStorage, getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
 import { BaseApiClient, type RequestOptions } from '@sonora/shared';
 
-const client = new BaseApiClient({
+class MobileApiClient extends BaseApiClient {
+  protected override async getAuthHeader(): Promise<Record<string, string>> {
+    try {
+      const deviceId = await getDeviceId();
+      return deviceId ? { 'X-Device-Id': deviceId } : {};
+    } catch (err) {
+      logger.error('Failed to retrieve device ID for API headers', err);
+      return {};
+    }
+  }
+}
+
+const client = new MobileApiClient({
   baseUrl: APP_CONFIG.apiBaseUrl,
   storage: appStorage,
   logInfo: (msg) => logger.info(msg),

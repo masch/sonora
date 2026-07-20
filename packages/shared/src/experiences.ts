@@ -4,6 +4,8 @@ export type UserExperienceFormat = (typeof USER_EXPERIENCE_FORMATS)[number];
 export const EXPERIENCE_FORMATS = ['track', 'trip', 'general-feedback'] as const;
 export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 
+export const DEVICE_ID_KEY = 'device_id';
+
 export const INSTRUCTIONS_SLUG = 'instructions' as const;
 export const INSTRUCTIONS_AUDIO_KEY = 'experiences/instrucciones.mp3' as const;
 export const INSTRUCTIONS_IMAGE_KEY = 'trip-instructions-cover' as const;
