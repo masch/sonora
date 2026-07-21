@@ -1,4 +1,5 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
+import { APP_IDENTIFIERS } from '@sonora/shared';
 import { fontConfig } from './src/config/font.ts';
 
 const isProduction = process.env.APP_ENV === 'production';
@@ -6,7 +7,7 @@ const isProduction = process.env.APP_ENV === 'production';
 const ENV_CONFIG = {
   staging: {
     name: 'Sonora Staging',
-    appId: 'com.masch.sonora.staging',
+    appId: APP_IDENTIFIERS.staging.appId,
     domain: 'sonora-api-staging.sonora-api.workers.dev',
     icon: './assets/images/sonora/logo_staging.png',
     adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
@@ -14,7 +15,7 @@ const ENV_CONFIG = {
   },
   production: {
     name: 'Sonora',
-    appId: 'com.masch.sonora',
+    appId: APP_IDENTIFIERS.production.appId,
     domain: 'sonora-api.sonora-api.workers.dev',
     icon: './assets/images/icon.png',
     adaptiveIconForeground: './assets/images/android-icon-foreground.png',

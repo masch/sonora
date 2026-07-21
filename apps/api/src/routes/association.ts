@@ -1,23 +1,22 @@
 import { Hono } from 'hono';
+import { APP_IDENTIFIERS } from '@sonora/shared';
 import type { Env, Variables } from '../index';
 
 export const associationRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // GET /.well-known/apple-app-site-association
 associationRouter.get('/apple-app-site-association', (c) => {
-  const teamId = c.env.ENVIRONMENT === 'production' ? '6C5EC74CE4' : '6C5EC74CE4'; // Replace with Apple Team ID if different
-
   return c.json(
     {
       applinks: {
         apps: [],
         details: [
           {
-            appID: `${teamId}.com.masch.sonora`,
+            appID: `${APP_IDENTIFIERS.production.teamId}.${APP_IDENTIFIERS.production.appId}`,
             paths: ['/payment/callback', '/payment/*'],
           },
           {
-            appID: `${teamId}.com.masch.sonora.staging`,
+            appID: `${APP_IDENTIFIERS.staging.teamId}.${APP_IDENTIFIERS.staging.appId}`,
             paths: ['/payment/callback', '/payment/*'],
           },
         ],
@@ -30,26 +29,22 @@ associationRouter.get('/apple-app-site-association', (c) => {
 
 // GET /.well-known/assetlinks.json
 associationRouter.get('/assetlinks.json', (c) => {
-  // Replace fingerprint with actual release/debug SHA-256 keys
-  const fingerprint =
-    '14:6D:E9:83:C5:EC:74:CE:4A:73:6B:6A:A2:DE:9D:74:25:A3:A1:79:F6:07:52:8A:3A:17:9F:60:75:28:B5:69';
-
   return c.json(
     [
       {
         relation: ['delegate_permission/common.handle_all_urls'],
         target: {
           namespace: 'android_app',
-          package_name: 'com.masch.sonora',
-          sha256_cert_fingerprints: [fingerprint],
+          package_name: APP_IDENTIFIERS.production.appId,
+          sha256_cert_fingerprints: APP_IDENTIFIERS.production.sha256CertFingerprints,
         },
       },
       {
         relation: ['delegate_permission/common.handle_all_urls'],
         target: {
           namespace: 'android_app',
-          package_name: 'com.masch.sonora.staging',
-          sha256_cert_fingerprints: [fingerprint],
+          package_name: APP_IDENTIFIERS.staging.appId,
+          sha256_cert_fingerprints: APP_IDENTIFIERS.staging.sha256CertFingerprints,
         },
       },
     ],
