@@ -1,3 +1,5 @@
+[![Gentle AI Review](https://img.shields.io/badge/Gentle_AI_Review-Reviewed-brightgreen)](https://github.com/features/actions)
+
 # Sonora
 
 Universal Expo app targeting iOS, Android, and Web.
