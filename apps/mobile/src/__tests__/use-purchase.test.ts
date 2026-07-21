@@ -46,6 +46,7 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 import { usePurchase } from '@/hooks/use-purchase';
+import { APP_CONFIG } from '@/config/app-config';
 
 describe('usePurchase', () => {
   beforeEach(() => {
@@ -128,6 +129,28 @@ describe('usePurchase', () => {
 
       expect(mockCreatePayment).toHaveBeenCalledWith('exp-1', expect.any(String));
       expect(mockOpenAuthSessionAsync).toHaveBeenCalled();
+    });
+
+    it('uses the HTTPS staging URL as redirectUrl on native platforms', async () => {
+      mockCreatePayment.mockResolvedValue({
+        purchaseId: 'p-1',
+        checkoutUrl: 'https://mp.com/checkout',
+      });
+      mockOpenAuthSessionAsync.mockResolvedValue({ type: 'success' });
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        await result.current[1].pay();
+      });
+
+      const expectedDomain = new URL(APP_CONFIG.apiBaseUrl).hostname;
+      expect(mockCreatePayment).toHaveBeenCalledWith('exp-1', `https://${expectedDomain}`);
+      expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
+        'https://mp.com/checkout',
+        `https://${expectedDomain}/payment/callback`,
+      );
     });
 
     it('falls back to Linking when WebBrowser fails', async () => {

@@ -13,6 +13,7 @@ import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
+import { associationRouter } from './routes/association';
 
 export { hashDeviceId };
 
@@ -67,6 +68,7 @@ app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/api/translations', translationsRouter);
 app.route('/payments', paymentsRouter);
+app.route('/.well-known', associationRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
