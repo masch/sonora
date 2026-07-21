@@ -1,19 +1,22 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
 import { fontConfig } from './src/config/font.ts';
+import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
 
 const isProduction = process.env.APP_ENV === 'production';
 
 const ENV_CONFIG = {
   staging: {
     name: 'Sonora Staging',
-    appId: 'com.masch.sonora.staging',
+    appId: APP_IDENTIFIERS.staging.appId,
+    domain: 'sonora-api-staging.sonora-api.workers.dev',
     icon: './assets/images/sonora/logo_staging.png',
     adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
     splashColor: '#F59E0B',
   },
   production: {
     name: 'Sonora',
-    appId: 'com.masch.sonora',
+    appId: APP_IDENTIFIERS.production.appId,
+    domain: 'sonora-api.sonora-api.workers.dev',
     icon: './assets/images/icon.png',
     adaptiveIconForeground: './assets/images/android-icon-foreground.png',
     splashColor: '#208AEF',
@@ -35,6 +38,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       bundleIdentifier: activeEnv.appId,
       googleServicesFile: './GoogleService-Info.plist',
+      associatedDomains: [`applinks:${activeEnv.domain}`],
       infoPlist: {
         UIBackgroundModes: ['fetch'],
       },
@@ -50,6 +54,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: activeEnv.appId,
       googleServicesFile: './google-services.json',
       versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: activeEnv.domain,
+              pathPrefix: '/payment',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       output: 'static',
@@ -94,6 +112,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',
       },
       isProduction: process.env.APP_ENV === 'production',
+      domain: activeEnv.domain,
     },
     owner: 'sonoraderivapoeticas-team',
   };

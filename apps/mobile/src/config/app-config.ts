@@ -38,7 +38,13 @@ function getApiBaseUrl(): string {
     return `http://${host}:3000`;
   }
 
-  // 3. Platform fallback
+  // 3. Dynamic build-time domain from app.config.ts extra
+  const extraDomain = Constants.expoConfig?.extra?.domain;
+  if (extraDomain) {
+    return `https://${extraDomain}`;
+  }
+
+  // 4. Platform fallback
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3000'; // emulator → host loopback
   }

@@ -9,6 +9,7 @@ import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/s
 import { useAppTranslation } from '@/hooks/use-translation';
 import { logger } from '@/utils/logger';
 import { AnalyticsService } from '@/services/analytics';
+import { APP_CONFIG } from '@/config/app-config';
 
 export type PurchaseStatus = 'loading' | 'free' | 'paid' | 'purchased' | 'error';
 
@@ -229,7 +230,15 @@ export function usePurchase(
     setState((prev) => ({ ...prev, paying: true, error: null }));
 
     try {
-      const result = await PaymentClient.createPayment(experienceId, Linking.createURL(''));
+      const isWeb = Platform.OS === 'web';
+
+      const domain = new URL(APP_CONFIG.apiBaseUrl).hostname;
+      const redirectUrl = isWeb ? Linking.createURL('') : `https://${domain}`;
+      const callbackUrl = isWeb
+        ? Linking.createURL('/payment/callback')
+        : `https://${domain}/payment/callback`;
+
+      const result = await PaymentClient.createPayment(experienceId, redirectUrl);
       pollingRef.current.purchaseId = result.purchaseId;
       setState((prev) => ({ ...prev, purchaseId: result.purchaseId }));
 
@@ -240,10 +249,7 @@ export function usePurchase(
 
       // Open checkout URL in browser
       try {
-        await WebBrowser.openAuthSessionAsync(
-          result.checkoutUrl,
-          Linking.createURL('/payment/callback'),
-        );
+        await WebBrowser.openAuthSessionAsync(result.checkoutUrl, callbackUrl);
       } catch {
         // WebBrowser might not be supported on all platforms
         logger.warn('[usePurchase] openAuthSessionAsync failed, falling back to Linking');
