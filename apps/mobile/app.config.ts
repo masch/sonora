@@ -1,6 +1,6 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
-import { APP_IDENTIFIERS } from '@sonora/shared';
 import { fontConfig } from './src/config/font.ts';
+import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
 
 const isProduction = process.env.APP_ENV === 'production';
 
