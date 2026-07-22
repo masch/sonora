@@ -29,7 +29,6 @@ import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-d
 import { validationHook } from '../middleware/validation-error';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
-import { createPaymentProviders } from '../payments';
 
 // Valid status transitions from Mercado Pago webhooks.
 // MP never sends approved after refunded for the same payment.
@@ -54,7 +53,11 @@ export function mapWebhookEventToStatus(event: PurchaseStatus): WebhookStatus {
   return EVENT_TO_STATUS[event];
 }
 
+import { paymentsGuard } from '../middleware/payments-guard';
+
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+paymentsRouter.use('*', paymentsGuard());
 
 // POST /payments/create — Create a checkout session
 paymentsRouter.post(
@@ -63,9 +66,8 @@ paymentsRouter.post(
   zValidator('json', CreatePaymentBodySchema, validationHook),
   async (c) => {
     const db = c.var.db;
-    const providers = createPaymentProviders(c.env);
-    const defaultProvider = (c.env.DEFAULT_PAYMENT_PROVIDER || 'mercadopago') as
-      'mercadopago' | 'stripe' | 'paypal';
+    const providers = c.var.paymentProviders;
+    const defaultProvider = c.var.defaultPaymentProvider;
 
     const { experienceId, redirectUrl } = c.req.valid('json') as {
       experienceId: string;
@@ -156,7 +158,7 @@ paymentsRouter.post(
   zValidator('json', WebhookBodySchema, validationHook),
   async (c) => {
     const db = c.var.db;
-    const providers = createPaymentProviders(c.env);
+    const providers = c.var.paymentProviders;
 
     const payload = c.req.valid('json');
     const headers = Object.fromEntries(c.req.raw.headers.entries());
@@ -321,7 +323,7 @@ paymentsRouter.get(
       !purchase.providerPaymentId.startsWith('pending-')
     ) {
       try {
-        const providers = createPaymentProviders(c.env);
+        const providers = c.var.paymentProviders;
         const provider = providers?.[purchase.provider as 'mercadopago' | 'stripe' | 'paypal'];
         if (provider) {
           const mpStatus = await provider.getPaymentStatus(purchase.providerPaymentId, purchase.id);

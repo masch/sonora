@@ -182,19 +182,19 @@ audioRouter.get(
  * Protegido por JWT Token.
  * Transmite el audio desde R2 soportando Range Requests.
  */
+import { jwtGuard } from '../middleware/jwt-guard';
+
 audioRouter.get(
   '/stream',
   privateBucketGuard(),
+  jwtGuard(),
   zValidator('query', StreamQuerySchema, validationHook),
   async (c) => {
     const { key, token: queryToken } = c.req.valid('query');
     const token = queryToken || c.req.header('Authorization')?.replace('Bearer ', '');
     if (!token) return problem(c, ERRORS.TOKEN_REQUIRED);
 
-    const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return problem(c, ERRORS.JWT_SECRET_MISSING);
-    }
+    const jwtSecret = c.var.jwtSecret;
 
     let isAuthorized = false;
     try {

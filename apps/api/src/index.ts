@@ -46,6 +46,18 @@ export interface Variables {
   deviceId: string;
   privateBucket: R2Bucket;
   publicBucket: R2Bucket;
+  jwtSecret: string;
+  audioLinkExpirySeconds: number;
+  configEnv: {
+    minimumVersion: string;
+    blockOlderVersions: boolean;
+    gracePeriodStart?: string;
+    gracePeriodEnd?: string;
+  };
+  environment: string;
+  feedbackStore?: KVNamespace;
+  paymentProviders: Record<string, import('./payments').PaymentProvider | null>;
+  defaultPaymentProvider: 'mercadopago' | 'stripe' | 'paypal';
 }
 
 // Re-export methods for test and server compatibility

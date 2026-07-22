@@ -13,8 +13,9 @@ export function createPaymentProviders(env: Env): Record<string, PaymentProvider
       accessToken: env.MP_ACCESS_TOKEN as string,
       webhookSecret: env.MP_WEBHOOK_SECRET as string,
       environment: env.ENVIRONMENT || 'production',
-      signatureMaxAgeMinutes: MP_SIGNATURE_MAX_AGE_MINUTES,
-      bypassSignature: MP_BYPASS_SIGNATURE,
+      signatureMaxAgeMinutes:
+        typeof MP_SIGNATURE_MAX_AGE_MINUTES !== 'undefined' ? MP_SIGNATURE_MAX_AGE_MINUTES : 5,
+      bypassSignature: typeof MP_BYPASS_SIGNATURE !== 'undefined' ? MP_BYPASS_SIGNATURE : false,
     }),
     stripe: null,
     paypal: null,

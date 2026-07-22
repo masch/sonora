@@ -13,21 +13,25 @@ import { validationHook } from '../middleware/validation-error';
 import { ERRORS, problem, created, success } from '../middleware/problem-details';
 import { dbGuard } from '../middleware/db-guard';
 
+import { envGuard } from '../middleware/env-guard';
+
 const feedbackRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+feedbackRouter.use('*', envGuard());
 
 feedbackRouter.post('/', zValidator('json', FeedbackPostBodySchema, validationHook), async (c) => {
   const { message, idempotencyKey, createdAt, latitude, longitude } = c.req.valid(
     'json',
   ) as FeedbackPostBody;
 
-  const env = c.env || {};
-  if (env.FEEDBACK_STORE) {
-    const existing = await env.FEEDBACK_STORE.get(idempotencyKey);
+  const feedbackStore = c.var.feedbackStore;
+  if (feedbackStore) {
+    const existing = await feedbackStore.get(idempotencyKey);
     if (existing) {
       return problem(c, ERRORS.DUPLICATE_REQUEST);
     }
 
-    await env.FEEDBACK_STORE.put(
+    await feedbackStore.put(
       idempotencyKey,
       JSON.stringify({ message, idempotencyKey, createdAt, latitude, longitude }),
       {

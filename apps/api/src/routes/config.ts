@@ -1,21 +1,24 @@
 import { Hono } from 'hono';
 import { DEFAULT_REMOTE_CONFIG, type RemoteConfigPayload } from '@sonora/shared';
-import type { Env } from '../index';
+import type { Env, Variables } from '../index';
 import { success } from '../middleware/problem-details';
+import { configGuard } from '../middleware/config-guard';
 
-const configRouter = new Hono<{ Bindings: Env }>();
+const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-configRouter.get('/', (c) => {
+configRouter.get('/', configGuard(), (c) => {
+  const { minimumVersion, blockOlderVersions, gracePeriodStart, gracePeriodEnd } = c.var.configEnv;
+
   const appVersion: RemoteConfigPayload['appVersion'] = {
-    minimumVersion: c.env.MINIMUM_APP_VERSION,
-    blockOlderVersions: c.env.BLOCK_OLDER_VERSIONS === 'true',
+    minimumVersion,
+    blockOlderVersions,
   };
 
-  if (c.env.GRACE_PERIOD_START) {
-    appVersion.gracePeriodStart = c.env.GRACE_PERIOD_START;
+  if (gracePeriodStart) {
+    appVersion.gracePeriodStart = gracePeriodStart;
   }
-  if (c.env.GRACE_PERIOD_END) {
-    appVersion.gracePeriodEnd = c.env.GRACE_PERIOD_END;
+  if (gracePeriodEnd) {
+    appVersion.gracePeriodEnd = gracePeriodEnd;
   }
 
   return success(c, {

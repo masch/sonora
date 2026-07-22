@@ -4,10 +4,14 @@ import { type DbClient } from '../db';
 import { type Env, type Variables } from '../index';
 import { ERRORS, problem, success } from '../middleware/problem-details';
 
+import { envGuard } from '../middleware/env-guard';
+
 const healthRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-function checkBasic(c: { env?: Env }) {
-  return { status: 'ok' as const, environment: c.env?.ENVIRONMENT || 'unknown' };
+healthRouter.use('*', envGuard());
+
+function checkBasic(c: { var: Variables }) {
+  return { status: 'ok' as const, environment: c.var.environment };
 }
 
 async function checkDb(db: DbClient | undefined) {

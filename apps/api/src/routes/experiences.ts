@@ -3,22 +3,21 @@ import { experiences, waypoints, experienceAccesses, purchases } from '../db/sch
 import { type Env, type Variables } from '../index';
 import { eq, and, or } from 'drizzle-orm';
 import { sign } from 'hono/jwt';
-import { ERRORS, problem, success } from '../middleware/problem-details';
+import { success } from '../middleware/problem-details';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
 
+import { jwtGuard } from '../middleware/jwt-guard';
+
 const experiencesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-experiencesRouter.get('/', dbGuard(), deviceIdGuard(), async (c) => {
+experiencesRouter.get('/', dbGuard(), deviceIdGuard(), jwtGuard(), async (c) => {
   const db = c.var.db;
   const list = await db.select().from(experiences);
   const result = [];
   const baseUrl = new URL(c.req.url).origin;
-  const jwtSecret = c.env.JWT_SECRET;
-  if (!jwtSecret) {
-    return problem(c, ERRORS.JWT_SECRET_MISSING);
-  }
-  const expirySeconds = parseInt(c.env.AUDIO_LINK_EXPIRY_SECONDS || '900', 10);
+  const jwtSecret = c.var.jwtSecret;
+  const expirySeconds = c.var.audioLinkExpirySeconds;
 
   const deviceId = c.var.deviceId;
 
