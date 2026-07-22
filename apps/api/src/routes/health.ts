@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { sql } from 'drizzle-orm';
 import { type DbClient } from '../db';
 import { type Env, type Variables } from '../index';
+import { ERRORS, problem, success } from '../middleware/problem-details';
 
 const healthRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -22,12 +23,15 @@ async function checkDb(db: DbClient | undefined) {
 }
 
 healthRouter.get('/', (c) => {
-  return c.json(checkBasic(c));
+  return success(c, checkBasic(c));
 });
 
 healthRouter.get('/db', async (c) => {
   const result = await checkDb(c.var.db);
-  return c.json(result, result.status === 'ok' ? 200 : 503);
+  if (result.status === 'error') {
+    return problem(c, ERRORS.DB_NOT_AVAILABLE, result.message);
+  }
+  return success(c, result);
 });
 
 healthRouter.get('/full', async (c) => {
@@ -37,7 +41,7 @@ healthRouter.get('/full', async (c) => {
   const checks = { basic, database: db };
   const overall = db.status === 'ok' ? 'ok' : 'degraded';
 
-  return c.json({ status: overall, environment: basic.environment, checks });
+  return success(c, { status: overall, environment: basic.environment, checks });
 });
 
 export { healthRouter };

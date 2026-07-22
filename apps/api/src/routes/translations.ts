@@ -1,9 +1,14 @@
+import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { translations } from '../db/schema';
 import type { Env, Variables } from '../index';
-import { TranslationBulkPayloadSchema, logger } from '@sonora/shared';
+import { TranslationBulkPayloadSchema } from '@sonora/shared';
 import type { SupportedLanguage } from '@sonora/shared';
+import { requireAdminKey } from '../middleware/require-admin-key';
+import { validationHook } from '../middleware/validation-error';
+import { ERRORS, problem, success } from '../middleware/problem-details';
+import { dbGuard } from '../middleware/db-guard';
 
 const translationsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -13,92 +18,44 @@ translationsRouter.get('/:lang', async (c) => {
 
   // Validate lang is 2-letter ISO 639-1
   if (!/^[a-z]{2}$/.test(lang)) {
-    return c.json({ error: 'Invalid language code. Must be a 2-letter ISO 639-1 code.' }, 400);
+    return problem(c, ERRORS.INVALID_LANG_CODE);
   }
 
   const db = c.var.db;
   if (!db) {
-    return c.json({ error: 'Database connection not available' }, 500);
+    return problem(c, ERRORS.DB_NOT_AVAILABLE);
   }
 
-  try {
-    const rows = await db
-      .select({ key: translations.key, value: translations.value })
-      .from(translations)
-      .where(eq(translations.lang, lang as SupportedLanguage));
+  const rows = await db
+    .select({ key: translations.key, value: translations.value })
+    .from(translations)
+    .where(eq(translations.lang, lang as SupportedLanguage));
 
-    const result: Record<string, string> = {};
-    for (const row of rows) {
-      result[row.key] = row.value;
-    }
-
-    return c.json(result, 200);
-  } catch (err) {
-    logger.error('Failed to fetch translations:', err);
-    return c.json({ error: 'Failed to fetch translations' }, 500);
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.key] = row.value;
   }
+
+  return success(c, result);
 });
 
 // POST /api/translations/validate — admin, Bearer auth, checks if the token is valid
-translationsRouter.post('/validate', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  const adminKey =
-    c.env?.ADMIN_API_KEY ||
-    (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
-
-  if (!adminKey) {
-    logger.error('ADMIN_API_KEY variable de entorno no configurada.');
-    return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
-  }
-
-  if (authHeader !== `Bearer ${adminKey}`) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-
-  return c.json({ valid: true }, 200);
+translationsRouter.post('/validate', requireAdminKey(), async (c) => {
+  return success(c, { valid: true });
 });
 
 // PUT /api/translations — admin, Bearer auth, bulk upsert
-translationsRouter.put('/', async (c) => {
-  // Admin auth check (same pattern as audio.ts)
-  const authHeader = c.req.header('Authorization');
-  const adminKey =
-    c.env?.ADMIN_API_KEY ||
-    (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
+translationsRouter.put(
+  '/',
+  requireAdminKey(),
+  zValidator('json', TranslationBulkPayloadSchema, validationHook),
+  dbGuard(),
+  async (c) => {
+    const entries = c.req.valid('json');
 
-  if (!adminKey) {
-    logger.error('ADMIN_API_KEY variable de entorno no configurada.');
-    return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
-  }
-
-  if (authHeader !== `Bearer ${adminKey}`) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-
-  // Parse and validate body
-  const body: unknown = await c.req.json().catch(() => null);
-
-  if (!body) {
-    return c.json({ error: 'Request body is required' }, 400);
-  }
-
-  const result = TranslationBulkPayloadSchema.safeParse(body);
-  if (!result.success) {
-    const details = result.error.errors.map((e) => ({
-      path: e.path.join('.'),
-      message: e.message,
-    }));
-    return c.json({ error: 'Validation failed', details }, 422);
-  }
-
-  const db = c.var.db;
-  if (!db) {
-    return c.json({ error: 'Database connection not available' }, 500);
-  }
-
-  try {
+    const db = c.var.db!;
     let updated = 0;
-    for (const entry of result.data) {
+    for (const entry of entries) {
       if (entry.value === '') {
         // Delete override to restore default code translation
         await db
@@ -126,11 +83,8 @@ translationsRouter.put('/', async (c) => {
       updated++;
     }
 
-    return c.json({ updated }, 200);
-  } catch (err) {
-    logger.error('Failed to upsert translations:', err);
-    return c.json({ error: 'Failed to save translations' }, 500);
-  }
-});
+    return success(c, { updated });
+  },
+);
 
 export { translationsRouter };

@@ -6,7 +6,8 @@ export const FeedbackPostBodySchema = z.object({
     .min(1, 'experienceId is required and must be a non-empty string'),
   message: z
     .string({ required_error: 'message is required and must be a non-empty string' })
-    .min(1, 'message is required and must be a non-empty string'),
+    .min(1, 'message is required and must be a non-empty string')
+    .max(1000, 'message must not exceed 1000 characters'),
   idempotencyKey: z
     .string({ required_error: 'idempotencyKey is required and must be a non-empty string' })
     .min(1, 'idempotencyKey is required and must be a non-empty string'),

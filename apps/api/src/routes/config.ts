@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { DEFAULT_REMOTE_CONFIG, type RemoteConfigPayload } from '@sonora/shared';
 import type { Env } from '../index';
+import { success } from '../middleware/problem-details';
 
 const configRouter = new Hono<{ Bindings: Env }>();
 
@@ -17,7 +18,7 @@ configRouter.get('/', (c) => {
     appVersion.gracePeriodEnd = c.env.GRACE_PERIOD_END;
   }
 
-  return c.json({
+  return success(c, {
     ...DEFAULT_REMOTE_CONFIG,
     appVersion,
   } satisfies RemoteConfigPayload);

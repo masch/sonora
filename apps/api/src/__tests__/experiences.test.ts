@@ -28,7 +28,7 @@ describe('GET /experiences', () => {
     setDbClient(mockDb);
     const res = await app.request('/experiences', {}, env);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'Device ID is required' });
+    expect(await res.json()).toMatchObject({ code: 'DEVICE_ID_REQUIRED', status: 400 });
   });
 
   it('lists experiences and maps waypoints and free audio urls', async () => {

@@ -748,7 +748,7 @@ precommit-logs: ## Show temp files from last pre-commit run
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format test lint typecheck api-typecheck scripts-typecheck gga ## Run full development gate (tests + lint + typecheck + gga)
+validate: format lint typecheck api-typecheck scripts-typecheck test gga ## Run full development gate (tests + lint + typecheck + gga)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck

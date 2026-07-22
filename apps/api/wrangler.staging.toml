@@ -11,7 +11,6 @@ compatibility_flags = ["nodejs_compat"]
 # ]
 
 [vars]
-FEEDBACK_MAX_LENGTH = "1000"
 DB_ADAPTER = "neon"
 ENVIRONMENT = "staging"
 AUDIO_LINK_EXPIRY_SECONDS = "900"

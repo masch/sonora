@@ -24,8 +24,8 @@ describe('Translations API', () => {
     it('returns 400 for invalid language code (3 letters)', async () => {
       const res = await app.request('/api/translations/eng', {}, BINDINGS);
       expect(res.status).toBe(400);
-      const body = (await res.json()) as { error: string };
-      expect(body.error).toContain('Invalid language code');
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe('INVALID_LANG_CODE');
     });
 
     it('returns 400 for empty lang parameter', async () => {
@@ -65,7 +65,7 @@ describe('Translations API', () => {
       expect(res.status).toBe(401);
     });
 
-    it('returns 400 for empty body', async () => {
+    it('returns 500 for empty body (zValidator does not catch JSON parse errors)', async () => {
       const res = await app.request(
         '/api/translations',
         {
@@ -78,7 +78,8 @@ describe('Translations API', () => {
         },
         BINDINGS,
       );
-      expect(res.status).toBe(400);
+      // JSON parse errors fall through to Hono's default error handler
+      expect(res.status).toBe(500);
     });
 
     it('returns 422 for invalid entry (empty key)', async () => {

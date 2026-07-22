@@ -80,17 +80,20 @@ describe('POST /payments/create', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId: 'non-existent' }),
+        body: JSON.stringify({ experienceId: '00000000-0000-0000-0000-000000000000' }),
       },
       {},
     );
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: 'Experience not found' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'EXPERIENCE_NOT_FOUND');
+    expect(body).toHaveProperty('detail', 'The experience was not found.');
+    expect(body).toHaveProperty('status', 404);
   });
 
   it('returns 400 when experience is free', async () => {
-    mockDb.limit.mockResolvedValue([{ id: 'exp-1', free: true }]);
+    mockDb.limit.mockResolvedValue([{ id: '550e8400-e29b-41d4-a716-446655440000', free: true }]);
     setDbClient(mockDb);
 
     const res = await app.request(
@@ -98,17 +101,22 @@ describe('POST /payments/create', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId: 'exp-1' }),
+        body: JSON.stringify({ experienceId: '550e8400-e29b-41d4-a716-446655440000' }),
       },
       {},
     );
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'Experience is free' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'EXPERIENCE_IS_FREE');
+    expect(body).toHaveProperty('detail', 'This experience is free.');
+    expect(body).toHaveProperty('status', 400);
   });
 
   it('returns 400 when experience has no price set', async () => {
-    mockDb.limit.mockResolvedValue([{ id: 'exp-1', free: false, price: null }]);
+    mockDb.limit.mockResolvedValue([
+      { id: '550e8400-e29b-41d4-a716-446655440000', free: false, price: null },
+    ]);
     setDbClient(mockDb);
 
     const res = await app.request(
@@ -116,17 +124,21 @@ describe('POST /payments/create', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId: 'exp-1' }),
+        body: JSON.stringify({ experienceId: '550e8400-e29b-41d4-a716-446655440000' }),
       },
       {},
     );
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'Experience has no price set' });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'NO_PRICE_SET');
+    expect(body).toHaveProperty('detail', 'This experience has no price set.');
+    expect(body).toHaveProperty('status', 400);
   });
 
   it('successfully creates checkout, generates unique placeholder ID, and updates DB', async () => {
-    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -136,7 +148,7 @@ describe('POST /payments/create', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId: 'exp-1' }),
+        body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},
     );
@@ -152,7 +164,7 @@ describe('POST /payments/create', () => {
     expect(mockDb.insert).toHaveBeenCalled();
     expect(mockDb.values).toHaveBeenCalledWith(
       expect.objectContaining({
-        experienceId: 'exp-1',
+        experienceId: VALID_UUID,
         provider: 'mercadopago',
         providerPaymentId: expect.stringMatching(/^pending-[a-f0-9-]+$/),
         amount: 15000,
@@ -171,7 +183,8 @@ describe('POST /payments/create', () => {
   });
 
   it('includes hashed device ID in purchase values if X-Device-Id header is present', async () => {
-    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -184,7 +197,7 @@ describe('POST /payments/create', () => {
           'Content-Type': 'application/json',
           'X-Device-Id': 'device-12345',
         },
-        body: JSON.stringify({ experienceId: 'exp-1' }),
+        body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},
     );
@@ -198,7 +211,8 @@ describe('POST /payments/create', () => {
   });
 
   it('creates checkout with API-based backUrls and stores redirectUrl in purchase metadata', async () => {
-    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -209,7 +223,7 @@ describe('POST /payments/create', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          experienceId: 'exp-1',
+          experienceId: VALID_UUID,
           redirectUrl: 'sonora://payment/callback',
         }),
       },
@@ -236,7 +250,8 @@ describe('POST /payments/create', () => {
   });
 
   it('creates checkout with API-based backUrls when no redirectUrl is provided', async () => {
-    const experienceMock = { id: 'exp-1', title: 'Amazing Trip', free: false, price: 15000 };
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -246,7 +261,7 @@ describe('POST /payments/create', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ experienceId: 'exp-1' }),
+        body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},
     );

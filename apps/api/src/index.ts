@@ -1,4 +1,3 @@
-import { logger } from '@sonora/shared';
 import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
@@ -8,7 +7,8 @@ import { injectDeviceId, hashDeviceId } from './middleware/device-id';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
-import { feedbackRouter, type FeedbackResponse } from './routes/feedback';
+import { feedbackRouter } from './routes/feedback';
+import { ERRORS, problem } from './middleware/problem-details';
 import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
@@ -19,7 +19,6 @@ export { hashDeviceId };
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
-  FEEDBACK_MAX_LENGTH?: string;
   DATABASE_URL?: string;
   DB_ADAPTER?: 'neon';
   ENVIRONMENT?: string;
@@ -72,8 +71,8 @@ app.route('/.well-known', associationRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  logger.error('Unhandled error:', err);
-  return c.json<FeedbackResponse>({ status: 'error', errors: ['Internal server error'] }, 500);
+  const msg = err instanceof Error ? err.message : String(err);
+  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${msg}`);
 });
 
 export default app;
