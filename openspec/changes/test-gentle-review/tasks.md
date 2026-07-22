@@ -50,24 +50,24 @@ git checkout -b test/gentle-review-pipeline
 - [x] Apply a single `edit` operation on `README.md`: find the exact text `# Sonora` and replace it with the badge line, a blank line, and `# Sonora`. The replacement text is:
 
       ```
-                                                                      [![Gentle AI Review](https://img.shields.io/badge/Gentle_AI_Review-Reviewed-brightgreen)](https://github.com/features/actions)
+                                                                          [![Gentle AI Review](https://img.shields.io/badge/Gentle_AI_Review-Reviewed-brightgreen)](https://github.com/features/actions)
 
-                                                                      # Sonora
-                                                                      ```
+                                                                          # Sonora
+                                                                          ```
 
-                                                                      Use exact-text replacement so all content below `# Sonora` remains byte-for-byte identical. <!-- sdd-owner: implementation -->
+                                                                          Use exact-text replacement so all content below `# Sonora` remains byte-for-byte identical. <!-- sdd-owner: implementation -->
 
 ### 4. Read-back verification
 
 - [x] Read `README.md` and confirm the first three lines match exactly:
 
       | Line | Expected content |
-                                                                      |------|------------------|
-                                                                      | 1 | `[![Gentle AI Review](https://img.shields.io/badge/Gentle_AI_Review-Reviewed-brightgreen)](https://github.com/features/actions)` |
-                                                                      | 2 | *(empty)* |
-                                                                      | 3 | `# Sonora` |
+                                                                          |------|------------------|
+                                                                          | 1 | `[![Gentle AI Review](https://img.shields.io/badge/Gentle_AI_Review-Reviewed-brightgreen)](https://github.com/features/actions)` |
+                                                                          | 2 | *(empty)* |
+                                                                          | 3 | `# Sonora` |
 
-                                                                      If lines 1–3 do not match, undo with `git checkout -- README.md` and redo step 3. <!-- sdd-owner: implementation -->
+                                                                          If lines 1–3 do not match, undo with `git checkout -- README.md` and redo step 3. <!-- sdd-owner: implementation -->
 
 ### 5. Stage
 
