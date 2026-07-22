@@ -1,7 +1,29 @@
-import type { R2Bucket } from '@cloudflare/workers-types';
+import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
+import { z, AudioUploadBodySchema, logger } from '@sonora/shared';
 import { type Env, type Variables } from '../index';
+import { requireAdminKey } from '../middleware/require-admin-key';
+import { privateBucketGuard } from '../middleware/private-bucket-guard';
+import { publicBucketGuard } from '../middleware/public-bucket-guard';
+import { validationHook } from '../middleware/validation-error';
+import {
+  ERRORS,
+  problem,
+  created,
+  HTTP,
+  streamResponse,
+  rangeNotSatisfiable,
+} from '../middleware/problem-details';
+
+const KeyParamSchema = z.object({
+  key: z.string().min(1),
+});
+
+const StreamQuerySchema = z.object({
+  key: z.string().min(1),
+  token: z.string().optional(),
+});
 
 const audioRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -24,7 +46,7 @@ interface RangeInfo {
 
 function parseRange(rangeHeader: string | null, objectSize: number): RangeInfo | Response {
   if (!rangeHeader) {
-    return { start: 0, end: objectSize - 1, status: 200 };
+    return { start: 0, end: objectSize - 1, status: HTTP.OK };
   }
 
   const parts = rangeHeader.replace(/bytes=/, '').split('-');
@@ -32,17 +54,13 @@ function parseRange(rangeHeader: string | null, objectSize: number): RangeInfo |
   const end = parts[1] ? parseInt(parts[1], 10) : objectSize - 1;
 
   if (start >= objectSize || end >= objectSize) {
-    return new Response(null, {
-      status: 416,
-      statusText: 'Range Not Satisfiable',
-      headers: { 'Content-Range': `bytes */${objectSize}` },
-    });
+    return rangeNotSatisfiable(objectSize);
   }
 
   return {
     start,
     end,
-    status: 206,
+    status: HTTP.PARTIAL_CONTENT,
     range: { offset: start, length: end - start + 1 },
   };
 }
@@ -51,13 +69,11 @@ async function streamFromBucket(
   bucket: R2Bucket,
   key: string,
   rangeHeader: string | null,
+  c: { json: <T>(body: T, status: number) => Response },
 ): Promise<Response> {
   const headObject = await bucket.head(key);
   if (!headObject) {
-    return new Response(JSON.stringify({ error: 'Audio file not found' }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return problem(c, ERRORS.NOT_FOUND);
   }
 
   const objectSize = headObject.size;
@@ -72,10 +88,7 @@ async function streamFromBucket(
     rangeInfo.range ? { range: rangeInfo.range } : undefined,
   );
   if (!audioObject?.body) {
-    return new Response(JSON.stringify({ error: 'Failed to retrieve audio content' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return problem(c, ERRORS.STREAMING_FAILED);
   }
 
   const headers = new Headers();
@@ -92,7 +105,7 @@ async function streamFromBucket(
     headers.set('Content-Range', `bytes ${rangeInfo.start}-${rangeInfo.end}/${objectSize}`);
   }
 
-  return new Response(audioObject.body, { status: rangeInfo.status, headers });
+  return streamResponse(audioObject.body, rangeInfo.status, headers);
 }
 
 // ── Upload ───────────────────────────────────────────────
@@ -102,55 +115,42 @@ async function streamFromBucket(
  * Protegido por ADMIN_API_KEY secreta.
  * Sube el archivo enviado en el cuerpo (multipart/form-data) a Cloudflare R2.
  */
-audioRouter.post('/upload', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  const adminKey =
-    c.env?.ADMIN_API_KEY ||
-    (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
+audioRouter.post(
+  '/upload',
+  requireAdminKey(),
+  privateBucketGuard(),
+  zValidator('form', AudioUploadBodySchema, validationHook),
+  async (c) => {
+    const form = c.req.valid('form') as { file: File; key: string };
+    const file = form.file;
+    const key = form.key;
 
-  if (!adminKey) {
-    console.error('ADMIN_API_KEY variable de entorno no configurada.');
-    return c.json({ error: 'Server misconfiguration: ADMIN_API_KEY is missing' }, 500);
-  }
-
-  if (authHeader !== `Bearer ${adminKey}`) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-
-  try {
-    const body = await c.req.parseBody();
-    const file = body['file'];
-    const key = body['key'];
-
-    if (!file || !(file instanceof File) || !key || typeof key !== 'string') {
-      return c.json({ error: 'Missing file (form field: file) or key (form field: key)' }, 400);
+    if (!(file instanceof File)) {
+      return problem(c, ERRORS.VALIDATION);
     }
 
-    if (!c.env.PRIVATE_BUCKET) {
-      return c.json({ error: 'Storage bucket binding not configured' }, 500);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      await c.var.privateBucket.put(key, arrayBuffer, {
+        customMetadata: {
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+        },
+        httpMetadata: {
+          contentType: file.type || 'audio/mpeg',
+        },
+      });
+
+      const baseUrl = new URL(c.req.url).origin;
+      const streamUrl = `${baseUrl}/audio/stream?key=${encodeURIComponent(key)}`;
+
+      return created(c, { success: true, key, streamUrl });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      return problem(c, ERRORS.UPLOAD_FAILED, `Failed to upload file to R2: ${msg}`);
     }
-
-    const arrayBuffer = await file.arrayBuffer();
-    await c.env.PRIVATE_BUCKET.put(key, arrayBuffer, {
-      customMetadata: {
-        originalName: file.name,
-        uploadedAt: new Date().toISOString(),
-      },
-      httpMetadata: {
-        contentType: file.type || 'audio/mpeg',
-      },
-    });
-
-    const baseUrl = new URL(c.req.url).origin;
-    const streamUrl = `${baseUrl}/audio/stream?key=${encodeURIComponent(key)}`;
-
-    return c.json({ success: true, key, streamUrl }, 201);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Failed to upload file to R2:', msg);
-    return c.json({ error: `Upload failed: ${msg}` }, 500);
-  }
-});
+  },
+);
 
 // ── Public stream (no auth) ──────────────────────────────
 
@@ -159,22 +159,21 @@ audioRouter.post('/upload', async (c) => {
  * Sin autenticación — sirve archivos desde el bucket público.
  * Solo para contenido gratuito (ej: instrucciones).
  */
-audioRouter.get('/public/:key', async (c) => {
-  const key = c.req.param('key');
-  if (!key) return c.json({ error: 'Missing key parameter' }, 400);
+audioRouter.get(
+  '/public/:key',
+  publicBucketGuard(),
+  zValidator('param', KeyParamSchema, validationHook),
+  async (c) => {
+    const { key } = c.req.valid('param');
 
-  if (!c.env.PUBLIC_BUCKET) {
-    return c.json({ error: 'Public storage bucket binding not configured' }, 500);
-  }
-
-  try {
-    return await streamFromBucket(c.env.PUBLIC_BUCKET, key, c.req.header('Range') ?? null);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Failed to stream file from public R2:', msg);
-    return c.json({ error: `Streaming failed: ${msg}` }, 500);
-  }
-});
+    try {
+      return await streamFromBucket(c.var.publicBucket, key, c.req.header('Range') ?? null, c);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      return problem(c, ERRORS.STREAMING_FAILED, `Failed to stream from public R2: ${msg}`);
+    }
+  },
+);
 
 // ── Authenticated stream ─────────────────────────────────
 
@@ -183,41 +182,40 @@ audioRouter.get('/public/:key', async (c) => {
  * Protegido por JWT Token.
  * Transmite el audio desde R2 soportando Range Requests.
  */
-audioRouter.get('/stream', async (c) => {
-  const key = c.req.query('key');
-  if (!key) return c.json({ error: 'Missing key parameter' }, 400);
+import { jwtGuard } from '../middleware/jwt-guard';
 
-  const token = c.req.query('token') || c.req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return c.json({ error: 'Unauthorized. Access token is required.' }, 401);
+audioRouter.get(
+  '/stream',
+  privateBucketGuard(),
+  jwtGuard(),
+  zValidator('query', StreamQuerySchema, validationHook),
+  async (c) => {
+    const { key, token: queryToken } = c.req.valid('query');
+    const token = queryToken || c.req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return problem(c, ERRORS.TOKEN_REQUIRED);
 
-  const jwtSecret = c.env.JWT_SECRET;
-  if (!jwtSecret) {
-    return c.json({ error: 'Server configuration error: JWT secret not configured' }, 500);
-  }
+    const jwtSecret = c.var.jwtSecret;
 
-  let isAuthorized = false;
-  try {
-    const payload = await verify(token, jwtSecret, 'HS256');
-    isAuthorized = payload.key === key && !!payload.deviceId && payload.deviceId === c.var.deviceId;
-  } catch (err) {
-    console.error('Failed to get stream:', err);
-  }
+    let isAuthorized = false;
+    try {
+      const payload = await verify(token, jwtSecret, 'HS256');
+      isAuthorized =
+        payload.key === key && !!payload.deviceId && payload.deviceId === c.var.deviceId;
+    } catch (err) {
+      logger.error('Failed to get stream:', err);
+    }
 
-  if (!isAuthorized) {
-    return c.json({ error: 'Unauthorized. Invalid or expired token or device mismatch.' }, 401);
-  }
+    if (!isAuthorized) {
+      return problem(c, ERRORS.INVALID_TOKEN);
+    }
 
-  if (!c.env.PRIVATE_BUCKET) {
-    return c.json({ error: 'Storage bucket binding not configured' }, 500);
-  }
-
-  try {
-    return await streamFromBucket(c.env.PRIVATE_BUCKET, key, c.req.header('Range') ?? null);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Failed to stream file from R2:', msg);
-    return c.json({ error: `Streaming failed: ${msg}` }, 500);
-  }
-});
+    try {
+      return await streamFromBucket(c.var.privateBucket, key, c.req.header('Range') ?? null, c);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      return problem(c, ERRORS.STREAMING_FAILED, `Failed to stream from private R2: ${msg}`);
+    }
+  },
+);
 
 export { audioRouter };

@@ -1,7 +1,10 @@
+export { z } from 'zod';
 export * from './feedback';
 export * from './experiences';
 export * from './schemas/config';
 export * from './schemas/translations';
+export * from './schemas/payments';
+export * from './schemas/audio';
 export * from './semver';
 export * from './api/base-client';
 export * from './enums';

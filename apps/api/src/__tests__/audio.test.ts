@@ -86,7 +86,7 @@ describe('Audio Router', () => {
       expect(res.status).toBe(401);
     });
 
-    it('returns 400 when file or key is missing', async () => {
+    it('returns 422 when file or key is missing (zValidator)', async () => {
       const formData = new FormData();
       const res = await app.request(
         '/audio/upload',
@@ -99,7 +99,11 @@ describe('Audio Router', () => {
         },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+      expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+      expect(body).toHaveProperty('status', 422);
     });
 
     it('successfully uploads audio and returns streamUrl', async () => {
@@ -136,15 +140,14 @@ describe('Audio Router', () => {
         '/audio/upload',
         {
           method: 'POST',
-          headers: {
-            Authorization: 'Bearer test-admin-key',
-          },
         },
         { PRIVATE_BUCKET: mockR2Bucket as unknown as R2Bucket },
       );
       expect(res.status).toBe(500);
-      const body = (await res.json()) as any;
-      expect(body.error).toContain('ADMIN_API_KEY is missing');
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'MISCONFIG');
+      expect(body).toHaveProperty('detail', 'An unexpected error occurred');
+      expect(body).toHaveProperty('status', 500);
     });
 
     it('returns 500 when PRIVATE_BUCKET binding is missing', async () => {
@@ -168,8 +171,9 @@ describe('Audio Router', () => {
         { ADMIN_API_KEY: 'test-admin-key' },
       );
       expect(res.status).toBe(500);
-      const body = (await res.json()) as any;
-      expect(body.error).toContain('Storage bucket binding not configured');
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'STORAGE_NOT_CONFIG');
+      expect(body).toHaveProperty('status', 500);
     });
   });
 
@@ -280,7 +284,7 @@ describe('Audio Router', () => {
         },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
     });
 
     it('returns 416 when requested range is out of bounds', async () => {

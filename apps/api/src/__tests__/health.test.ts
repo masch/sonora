@@ -26,12 +26,17 @@ describe('GET /health', () => {
 });
 
 describe('GET /health/db', () => {
-  it('returns 503 when no DB client is configured', async () => {
+  it('returns 500 with problem details when no DB client is configured', async () => {
     const res = await app.request('/health/db');
-    expect(res.status).toBe(503);
-    const body = (await res.json()) as { status: string; message: string };
-    expect(body.status).toBe('error');
-    expect(body.message).toBe('No database client configured');
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as {
+      code: string;
+      detail: string;
+      status: number;
+    };
+    expect(body.code).toBe('DB_NOT_AVAILABLE');
+    expect(body.detail).toBe('An unexpected error occurred');
+    expect(body.status).toBe(500);
   });
 });
 

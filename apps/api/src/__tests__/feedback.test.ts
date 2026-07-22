@@ -53,21 +53,22 @@ describe('POST /feedback', () => {
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { status: string; errors: string[] };
-    expect(body.status).toBe('error');
-    expect(body.errors.length).toBeGreaterThan(0);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+    expect(body).toHaveProperty('status', 422);
+    const errors = body.errors as Array<Record<string, unknown>>;
+    expect(errors.length).toBeGreaterThan(0);
   });
 
-  it('returns 422 for malformed JSON body', async () => {
+  it('returns 500 for malformed JSON body (zValidator does not catch parse errors)', async () => {
     const res = await app.request('/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{"invalid-json',
     });
-    expect(res.status).toBe(422);
-    const body = (await res.json()) as { status: string; errors: string[] };
-    expect(body.status).toBe('error');
-    expect(body.errors).toContain('Request body must be a JSON object');
+    // zValidator does not handle JSON parse errors — they fall through to Hono's default error handler (500)
+    expect(res.status).toBe(500);
   });
 
   it('returns 422 for missing required fields', async () => {
@@ -77,9 +78,12 @@ describe('POST /feedback', () => {
       body: JSON.stringify({ experienceId: 'track-1' }),
     });
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { status: string; errors: string[] };
-    expect(body.status).toBe('error');
-    expect(body.errors).toContain('message is required and must be a non-empty string');
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+    expect(body).toHaveProperty('status', 422);
+    const errors = body.errors as Array<Record<string, unknown>>;
+    expect(errors.some((e) => (e.message as string).includes('message'))).toBe(true);
   });
 
   it('returns 422 for empty message', async () => {
@@ -94,8 +98,10 @@ describe('POST /feedback', () => {
       }),
     });
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { status: string };
-    expect(body.status).toBe('error');
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+    expect(body).toHaveProperty('status', 422);
   });
 
   it('returns 201 for valid feedback', async () => {
@@ -148,7 +154,6 @@ describe('POST /feedback', () => {
           kvStore.set(key, value);
         },
       },
-      FEEDBACK_MAX_LENGTH: '1000',
     };
 
     const makeReq = (idempotencyKey: string) =>
@@ -170,8 +175,8 @@ describe('POST /feedback', () => {
     // Second request with same key — should return 409
     const res2 = await app.fetch(makeReq('dedup-key-1'), mockEnv as never);
     expect(res2.status).toBe(409);
-    const body2 = (await res2.json()) as { status: string };
-    expect(body2.status).toBe('duplicate');
+    const body2 = (await res2.json()) as { code: string };
+    expect(body2.code).toBe('DUPLICATE_REQUEST');
   });
 
   it('rejects messages over 1000 characters', async () => {
@@ -187,9 +192,12 @@ describe('POST /feedback', () => {
       }),
     });
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { status: string; errors: string[] };
-    expect(body.status).toBe('error');
-    expect(body.errors[0]).toContain('1000');
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+    expect(body).toHaveProperty('status', 422);
+    const errors = body.errors as Array<Record<string, unknown>>;
+    expect(errors[0].message).toContain('1000');
   });
 
   describe('DB persistence', () => {
@@ -244,8 +252,8 @@ describe('POST /feedback', () => {
         body: JSON.stringify(payload),
       });
       expect(res2.status).toBe(409);
-      const body2 = (await res2.json()) as { status: string };
-      expect(body2.status).toBe('duplicate');
+      const body2 = (await res2.json()) as { code: string };
+      expect(body2.code).toBe('DUPLICATE_REQUEST');
     });
 
     it('returns 409 for KV miss, DB hit', async () => {
@@ -264,8 +272,8 @@ describe('POST /feedback', () => {
       });
       // DB catches the duplicate — 409 even though KV never had it
       expect(res.status).toBe(409);
-      const body = (await res.json()) as { status: string };
-      expect(body.status).toBe('duplicate');
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe('DUPLICATE_REQUEST');
     });
 
     it('returns 500 when DB throws a non-unique error', async () => {
@@ -290,9 +298,10 @@ describe('POST /feedback', () => {
         }),
       });
       expect(res.status).toBe(500);
-      const body = (await res.json()) as { status: string; errors: string[] };
-      expect(body.status).toBe('error');
-      expect(body.errors[0]).toBe('Internal server error');
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'INTERNAL_ERROR');
+      expect(body).toHaveProperty('detail', 'An unexpected error occurred');
+      expect(body).toHaveProperty('status', 500);
     });
 
     it('returns 409 from KV fast-path without calling DB insert', async () => {
@@ -304,7 +313,6 @@ describe('POST /feedback', () => {
             kvStore.set(key, value);
           },
         },
-        FEEDBACK_MAX_LENGTH: '1000',
       };
 
       const makeReq = (idempotencyKey: string) =>

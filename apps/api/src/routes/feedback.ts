@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
 import { feedback } from '../db/schema';
 import { isUniqueViolation } from '../utils/db-errors';
 import { type Env, type Variables } from '../index';
@@ -8,103 +9,71 @@ import {
   type FeedbackPostBody,
   type FeedbackResponse,
 } from '@sonora/shared';
+import { validationHook } from '../middleware/validation-error';
+import { ERRORS, problem, created, success } from '../middleware/problem-details';
+import { dbGuard } from '../middleware/db-guard';
 
-function validateBody(
-  body: unknown,
-): { valid: false; errors: string[] } | { valid: true; data: FeedbackPostBody } {
-  if (!body || typeof body !== 'object') {
-    return { valid: false, errors: ['Request body must be a JSON object'] };
-  }
-
-  const result = FeedbackPostBodySchema.safeParse(body);
-  if (!result.success) {
-    const errors = result.error.errors.map((err) => err.message);
-    return { valid: false, errors };
-  }
-
-  return {
-    valid: true,
-    data: result.data,
-  };
-}
+import { envGuard } from '../middleware/env-guard';
 
 const feedbackRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-feedbackRouter.post('/', async (c) => {
-  const body: unknown = await c.req.json().catch(() => null);
-  const validation = validateBody(body);
+feedbackRouter.use('*', envGuard());
 
-  if (!validation.valid) {
-    return c.json<FeedbackResponse>({ status: 'error', errors: validation.errors }, 422);
-  }
+feedbackRouter.post('/', zValidator('json', FeedbackPostBodySchema, validationHook), async (c) => {
+  const { message, idempotencyKey, createdAt, latitude, longitude } = c.req.valid(
+    'json',
+  ) as FeedbackPostBody;
 
-  const { message, idempotencyKey, createdAt, latitude, longitude } = validation.data;
-
-  const env = c.env || {};
-  const maxLength = parseInt(env.FEEDBACK_MAX_LENGTH || '1000', 10);
-  if (message.length > maxLength) {
-    return c.json<FeedbackResponse>(
-      { status: 'error', errors: [`message must not exceed ${maxLength} characters`] },
-      422,
-    );
-  }
-
-  if (env.FEEDBACK_STORE) {
-    const existing = await env.FEEDBACK_STORE.get(idempotencyKey);
+  const feedbackStore = c.var.feedbackStore;
+  if (feedbackStore) {
+    const existing = await feedbackStore.get(idempotencyKey);
     if (existing) {
-      return c.json<FeedbackResponse>({ status: 'duplicate' }, 409);
+      return problem(c, ERRORS.DUPLICATE_REQUEST);
     }
 
-    await env.FEEDBACK_STORE.put(idempotencyKey, JSON.stringify(validation.data), {
-      expirationTtl: 30 * 24 * 60 * 60, // 30 days
-    });
+    await feedbackStore.put(
+      idempotencyKey,
+      JSON.stringify({ message, idempotencyKey, createdAt, latitude, longitude }),
+      {
+        expirationTtl: 30 * 24 * 60 * 60, // 30 days
+      },
+    );
   }
 
   const db = c.var.db;
   if (db) {
     try {
       await db.insert(feedback).values({
-        experienceId: validation.data.experienceId,
-        message: validation.data.message,
-        idempotencyKey: validation.data.idempotencyKey,
+        experienceId: (c.req.valid('json') as FeedbackPostBody).experienceId,
+        message,
+        idempotencyKey,
         createdAt: new Date(createdAt),
         latitude: latitude ?? null,
         longitude: longitude ?? null,
       });
     } catch (err) {
       if (isUniqueViolation(err)) {
-        return c.json<FeedbackResponse>({ status: 'duplicate' }, 409);
+        return problem(c, ERRORS.DUPLICATE_REQUEST);
       }
       throw err;
     }
   }
 
-  return c.json<FeedbackResponse>({ status: 'ok' }, 201);
+  return created(c, { status: 'ok' } as FeedbackResponse);
 });
 
-feedbackRouter.get('/', async (c) => {
+feedbackRouter.get('/', dbGuard(), async (c) => {
   const db = c.var.db;
-  if (!db) {
-    return c.json({ status: 'error', errors: ['Database connection not available'] }, 500);
-  }
-  try {
-    const results = await db.select().from(feedback);
-    // Format response items to match FeedbackEntry format expected by UI
-    const entries = results.map((row) => ({
-      id: row.idempotencyKey, // Use idempotencyKey as the client identifier
-      experienceId: row.experienceId,
-      message: row.message,
-      createdAt: row.createdAt.toISOString(),
-      latitude: row.latitude,
-      longitude: row.longitude,
-    }));
-    return c.json(entries, 200);
-  } catch (err) {
-    return c.json(
-      { status: 'error', errors: [err instanceof Error ? err.message : 'Database error'] },
-      500,
-    );
-  }
+  const results = await db.select().from(feedback);
+  const entries = results.map((row) => ({
+    id: row.idempotencyKey,
+    experienceId: row.experienceId,
+    message: row.message,
+    createdAt: row.createdAt.toISOString(),
+    latitude: row.latitude,
+    longitude: row.longitude,
+  }));
+  return success(c, entries);
 });
 
 export { feedbackRouter };
