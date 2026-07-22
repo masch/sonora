@@ -42,8 +42,10 @@ export interface Env {
 }
 
 export interface Variables {
-  db?: DbClient;
-  deviceId?: string;
+  db: DbClient;
+  deviceId: string;
+  privateBucket: R2Bucket;
+  publicBucket: R2Bucket;
 }
 
 // Re-export methods for test and server compatibility

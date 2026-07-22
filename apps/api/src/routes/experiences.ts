@@ -10,7 +10,7 @@ import { deviceIdGuard } from '../middleware/device-id-guard';
 const experiencesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 experiencesRouter.get('/', dbGuard(), deviceIdGuard(), async (c) => {
-  const db = c.var.db!;
+  const db = c.var.db;
   const list = await db.select().from(experiences);
   const result = [];
   const baseUrl = new URL(c.req.url).origin;
@@ -20,7 +20,7 @@ experiencesRouter.get('/', dbGuard(), deviceIdGuard(), async (c) => {
   }
   const expirySeconds = parseInt(c.env.AUDIO_LINK_EXPIRY_SECONDS || '900', 10);
 
-  const deviceId = c.var.deviceId!;
+  const deviceId = c.var.deviceId;
 
   const accesses = await db
     .select({ experienceId: experienceAccesses.experienceId })
@@ -31,15 +31,17 @@ experiencesRouter.get('/', dbGuard(), deviceIdGuard(), async (c) => {
   const purchaseConditions = [eq(purchases.status, 'approved')];
 
   const deviceOrEmailFilter = email
-    ? or(eq(purchases.deviceId, deviceId), eq(purchases.email, email))!
+    ? or(eq(purchases.deviceId, deviceId), eq(purchases.email, email))
     : eq(purchases.deviceId, deviceId);
 
-  purchaseConditions.push(deviceOrEmailFilter);
+  if (deviceOrEmailFilter) {
+    purchaseConditions.push(deviceOrEmailFilter);
+  }
 
   const approvedPurchases = await db
     .select({ experienceId: purchases.experienceId })
     .from(purchases)
-    .where(and(...purchaseConditions)!);
+    .where(and(...purchaseConditions));
 
   const allowedExperienceIds = new Set([
     ...accesses.map((a) => a.experienceId),

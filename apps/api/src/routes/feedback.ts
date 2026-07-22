@@ -59,7 +59,7 @@ feedbackRouter.post('/', zValidator('json', FeedbackPostBodySchema, validationHo
 });
 
 feedbackRouter.get('/', dbGuard(), async (c) => {
-  const db = c.var.db!;
+  const db = c.var.db;
   const results = await db.select().from(feedback);
   const entries = results.map((row) => ({
     id: row.idempotencyKey,

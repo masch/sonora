@@ -140,9 +140,6 @@ describe('Audio Router', () => {
         '/audio/upload',
         {
           method: 'POST',
-          headers: {
-            Authorization: 'Bearer test-admin-key',
-          },
         },
         { PRIVATE_BUCKET: mockR2Bucket as unknown as R2Bucket },
       );
@@ -287,7 +284,7 @@ describe('Audio Router', () => {
         },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
     });
 
     it('returns 416 when requested range is out of bounds', async () => {

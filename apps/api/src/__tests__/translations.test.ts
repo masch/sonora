@@ -21,11 +21,11 @@ describe('Translations API', () => {
       expect(res.status).toBe(500);
     });
 
-    it('returns 400 for invalid language code (3 letters)', async () => {
+    it('returns 422 for invalid language code (3 letters)', async () => {
       const res = await app.request('/api/translations/eng', {}, BINDINGS);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       const body = (await res.json()) as { code: string };
-      expect(body.code).toBe('INVALID_LANG_CODE');
+      expect(body.code).toBe('VALIDATION_ERROR');
     });
 
     it('returns 400 for empty lang parameter', async () => {

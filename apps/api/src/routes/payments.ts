@@ -1,5 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import {
+  z,
   CreatePaymentBodySchema,
   EmailQuerySchema,
   LogAccessBodySchema,
@@ -9,6 +10,19 @@ import {
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+
+const ReturnParamSchema = z.object({
+  status: z.string(),
+  purchaseId: z.string().min(1),
+});
+
+const PurchaseIdParamSchema = z.object({
+  purchaseId: z.string().min(1),
+});
+
+const IdParamSchema = z.object({
+  id: z.string().min(1),
+});
 import { experienceAccesses, experiences, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
@@ -48,7 +62,7 @@ paymentsRouter.post(
   dbGuard(),
   zValidator('json', CreatePaymentBodySchema, validationHook),
   async (c) => {
-    const db = c.var.db!;
+    const db = c.var.db;
     const providers = createPaymentProviders(c.env);
     const defaultProvider = (c.env.DEFAULT_PAYMENT_PROVIDER || 'mercadopago') as
       'mercadopago' | 'stripe' | 'paypal';
@@ -141,7 +155,7 @@ paymentsRouter.post(
   dbGuard(),
   zValidator('json', WebhookBodySchema, validationHook),
   async (c) => {
-    const db = c.var.db!;
+    const db = c.var.db;
     const providers = createPaymentProviders(c.env);
 
     const payload = c.req.valid('json');
@@ -237,108 +251,122 @@ paymentsRouter.post(
 
 // GET /payments/return/:status/:purchaseId — Redirect browser back to app after MP checkout
 // These endpoints receive the user after MP payment and send them back to the app's deep link.
-paymentsRouter.get('/return/:status/:purchaseId', async (c) => {
-  const { status: _status, purchaseId } = c.req.param();
-  const db = c.var.db!;
+paymentsRouter.get(
+  '/return/:status/:purchaseId',
+  zValidator('param', ReturnParamSchema, validationHook),
+  async (c) => {
+    const { status: _status, purchaseId } = c.req.valid('param');
+    const db = c.var.db;
 
-  // Look up redirectUrl stored in purchase metadata
-  if (db) {
-    try {
-      const [purchase] = await db
-        .select({ metadata: purchases.metadata })
-        .from(purchases)
-        .where(eq(purchases.id, purchaseId))
-        .limit(1);
+    // Look up redirectUrl stored in purchase metadata
+    if (db) {
+      try {
+        const [purchase] = await db
+          .select({ metadata: purchases.metadata })
+          .from(purchases)
+          .where(eq(purchases.id, purchaseId))
+          .limit(1);
 
-      if (purchase?.metadata) {
-        const meta = purchase.metadata as { redirectUrl?: string };
-        if (meta.redirectUrl) {
-          return c.redirect(meta.redirectUrl, HTTP.FOUND);
-        }
-      }
-    } catch {
-      // DB error — proceed with default redirect
-    }
-  }
-
-  // Fallback: redirect to referer origin or root
-  const referer = c.req.header('Referer');
-  if (referer) {
-    try {
-      const origin = new URL(referer).origin;
-      return c.redirect(origin, HTTP.FOUND);
-    } catch {
-      // Invalid referer — proceed with default
-    }
-  }
-
-  return c.redirect('/', HTTP.FOUND);
-});
-
-// GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
-paymentsRouter.get('/status/:purchaseId', dbGuard(), async (c) => {
-  const db = c.var.db!;
-  const { purchaseId } = c.req.param();
-  const shouldSync = c.req.query('sync') === 'true';
-
-  const [purchase] = await db.select().from(purchases).where(eq(purchases.id, purchaseId)).limit(1);
-
-  if (!purchase) {
-    return problem(c, ERRORS.PURCHASE_NOT_FOUND);
-  }
-
-  // Active status synchronization fallback (triggered optionally via ?sync=true)
-  if (
-    shouldSync &&
-    purchase.status === 'pending' &&
-    purchase.providerPaymentId &&
-    !purchase.providerPaymentId.startsWith('pending-')
-  ) {
-    try {
-      const providers = createPaymentProviders(c.env);
-      const provider = providers?.[purchase.provider as 'mercadopago' | 'stripe' | 'paypal'];
-      if (provider) {
-        const mpStatus = await provider.getPaymentStatus(purchase.providerPaymentId, purchase.id);
-        if (mpStatus.status !== 'pending') {
-          const [updated] = await db
-            .update(purchases)
-            .set({
-              status: mpStatus.status,
-              email: mpStatus.email || undefined,
-              updatedAt: new Date(),
-            })
-            .where(eq(purchases.id, purchase.id))
-            .returning();
-          if (updated) {
-            purchase.status = updated.status;
-            purchase.email = updated.email;
+        if (purchase?.metadata) {
+          const meta = purchase.metadata as { redirectUrl?: string };
+          if (meta.redirectUrl) {
+            return c.redirect(meta.redirectUrl, HTTP.FOUND);
           }
         }
+      } catch {
+        // DB error — proceed with default redirect
       }
-    } catch (error) {
-      logger.error('Active payment status fallback check failed:', error);
     }
-  }
 
-  return success(c, {
-    purchaseId: purchase.id,
-    status: purchase.status,
-    experienceId: purchase.experienceId,
-    provider: purchase.provider,
-    amount: purchase.amount,
-    currency: purchase.currency,
-    email: purchase.email,
-  });
-});
+    // Fallback: redirect to referer origin or root
+    const referer = c.req.header('Referer');
+    if (referer) {
+      try {
+        const origin = new URL(referer).origin;
+        return c.redirect(origin, HTTP.FOUND);
+      } catch {
+        // Invalid referer — proceed with default
+      }
+    }
+
+    return c.redirect('/', HTTP.FOUND);
+  },
+);
+
+// GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
+paymentsRouter.get(
+  '/status/:purchaseId',
+  dbGuard(),
+  zValidator('param', PurchaseIdParamSchema, validationHook),
+  async (c) => {
+    const db = c.var.db;
+    const { purchaseId } = c.req.valid('param');
+    const shouldSync = c.req.query('sync') === 'true';
+
+    const [purchase] = await db
+      .select()
+      .from(purchases)
+      .where(eq(purchases.id, purchaseId))
+      .limit(1);
+
+    if (!purchase) {
+      return problem(c, ERRORS.PURCHASE_NOT_FOUND);
+    }
+
+    // Active status synchronization fallback (triggered optionally via ?sync=true)
+    if (
+      shouldSync &&
+      purchase.status === 'pending' &&
+      purchase.providerPaymentId &&
+      !purchase.providerPaymentId.startsWith('pending-')
+    ) {
+      try {
+        const providers = createPaymentProviders(c.env);
+        const provider = providers?.[purchase.provider as 'mercadopago' | 'stripe' | 'paypal'];
+        if (provider) {
+          const mpStatus = await provider.getPaymentStatus(purchase.providerPaymentId, purchase.id);
+          if (mpStatus.status !== 'pending') {
+            const [updated] = await db
+              .update(purchases)
+              .set({
+                status: mpStatus.status,
+                email: mpStatus.email || undefined,
+                updatedAt: new Date(),
+              })
+              .where(eq(purchases.id, purchase.id))
+              .returning();
+            if (updated) {
+              purchase.status = updated.status;
+              purchase.email = updated.email;
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('Active payment status fallback check failed:', error);
+      }
+    }
+
+    return success(c, {
+      purchaseId: purchase.id,
+      status: purchase.status,
+      experienceId: purchase.experienceId,
+      provider: purchase.provider,
+      amount: purchase.amount,
+      currency: purchase.currency,
+      email: purchase.email,
+    });
+  },
+);
 
 // GET /experiences/:id/purchased?email= — Check if email purchased an experience
 paymentsRouter.get(
   '/experiences/:id/purchased',
   dbGuard(),
+  zValidator('param', IdParamSchema, validationHook),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {
-    const db = c.var.db!;
-    const { id } = c.req.param();
+    const db = c.var.db;
+    const { id } = c.req.valid('param');
     const { email } = c.req.valid('query') as { email: string };
 
     const [purchase] = await db
@@ -377,7 +405,7 @@ paymentsRouter.get(
   dbGuard(),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {
-    const db = c.var.db!;
+    const db = c.var.db;
     const { email } = c.req.valid('query') as { email: string };
 
     const list = await db
@@ -422,17 +450,18 @@ paymentsRouter.post(
   '/experiences/:id/access',
   dbGuard(),
   deviceIdGuard(),
+  zValidator('param', IdParamSchema, validationHook),
   zValidator('json', LogAccessBodySchema, validationHook),
   async (c) => {
-    const db = c.var.db!;
-    const { id } = c.req.param();
+    const db = c.var.db;
+    const { id } = c.req.valid('param');
     const body = c.req.valid('json') as {
       source: 'free' | 'paid' | 'restored';
       email?: string | null;
       platform?: 'ios' | 'android' | 'web' | null;
     };
 
-    const deviceId = c.var.deviceId!;
+    const deviceId = c.var.deviceId;
 
     // Get current price for snapshot
     const [experience] = await db

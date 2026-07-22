@@ -1,3 +1,4 @@
+export { z } from 'zod';
 export * from './feedback';
 export * from './experiences';
 export * from './schemas/config';

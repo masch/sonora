@@ -1,43 +1,46 @@
 import { zValidator } from '@hono/zod-validator';
+import type { SupportedLanguage } from '@sonora/shared';
+import { TranslationBulkPayloadSchema, z } from '@sonora/shared';
+import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
 import { translations } from '../db/schema';
 import type { Env, Variables } from '../index';
-import { TranslationBulkPayloadSchema } from '@sonora/shared';
-import type { SupportedLanguage } from '@sonora/shared';
+import { dbGuard } from '../middleware/db-guard';
+import { ERRORS, problem, success } from '../middleware/problem-details';
 import { requireAdminKey } from '../middleware/require-admin-key';
 import { validationHook } from '../middleware/validation-error';
-import { ERRORS, problem, success } from '../middleware/problem-details';
-import { dbGuard } from '../middleware/db-guard';
+
+const LangParamSchema = z.object({
+  lang: z.string().regex(/^[a-z]{2}$/),
+});
 
 const translationsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // GET /api/translations/:lang — public, returns { key: value } flat JSON
-translationsRouter.get('/:lang', async (c) => {
-  const lang = c.req.param('lang');
+translationsRouter.get(
+  '/:lang',
+  zValidator('param', LangParamSchema, validationHook),
+  async (c) => {
+    const lang = c.req.param('lang');
 
-  // Validate lang is 2-letter ISO 639-1
-  if (!/^[a-z]{2}$/.test(lang)) {
-    return problem(c, ERRORS.INVALID_LANG_CODE);
-  }
+    const db = c.var.db;
+    if (!db) {
+      return problem(c, ERRORS.DB_NOT_AVAILABLE);
+    }
 
-  const db = c.var.db;
-  if (!db) {
-    return problem(c, ERRORS.DB_NOT_AVAILABLE);
-  }
+    const rows = await db
+      .select({ key: translations.key, value: translations.value })
+      .from(translations)
+      .where(eq(translations.lang, lang as SupportedLanguage));
 
-  const rows = await db
-    .select({ key: translations.key, value: translations.value })
-    .from(translations)
-    .where(eq(translations.lang, lang as SupportedLanguage));
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.key] = row.value;
+    }
 
-  const result: Record<string, string> = {};
-  for (const row of rows) {
-    result[row.key] = row.value;
-  }
-
-  return success(c, result);
-});
+    return success(c, result);
+  },
+);
 
 // POST /api/translations/validate — admin, Bearer auth, checks if the token is valid
 translationsRouter.post('/validate', requireAdminKey(), async (c) => {
@@ -53,7 +56,7 @@ translationsRouter.put(
   async (c) => {
     const entries = c.req.valid('json');
 
-    const db = c.var.db!;
+    const db = c.var.db;
     let updated = 0;
     for (const entry of entries) {
       if (entry.value === '') {

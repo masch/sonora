@@ -7,9 +7,7 @@ export const requireAdminKey = (): MiddlewareHandler<{
   Variables: Variables;
 }> => {
   return async (c, next) => {
-    const adminKey =
-      c.env?.ADMIN_API_KEY ??
-      (typeof process !== 'undefined' ? process.env.ADMIN_API_KEY : undefined);
+    const adminKey = c.env?.ADMIN_API_KEY;
 
     if (!adminKey) {
       return problem(c, ERRORS.MISCONFIG);
