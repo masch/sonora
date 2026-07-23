@@ -122,8 +122,13 @@ paymentsRouter.post(
       baseUrl = '';
     }
 
-    // Store the original redirect URL in purchase metadata so the return
-    // endpoints can 302 the browser back to the app's deep link.
+    // Store original redirect URL in purchase metadata and log payment creation details
+    logger.info('[PAYMENTS] Creating payment checkout', {
+      purchaseId: purchase.id,
+      experienceId: experience.id,
+      receivedRedirectUrl: redirectUrl,
+    });
+
     const finalBackUrls = {
       success: `${baseUrl}${PAYMENT_ROUTES.returnStatus('success', purchase.id)}`,
       failure: `${baseUrl}${PAYMENT_ROUTES.returnStatus('failure', purchase.id)}`,
@@ -314,6 +319,11 @@ paymentsRouter.get(
         const isGatewayDomain = host.includes('mercadopago') || host.includes('mercadolibre');
 
         if (!isGatewayDomain) {
+          logger.info('[PAYMENTS] Return endpoint falling back to referer origin', {
+            purchaseId,
+            status,
+            refererOrigin: url.origin,
+          });
           return c.redirect(url.origin, HTTP.FOUND);
         }
       } catch (error) {
@@ -332,7 +342,15 @@ paymentsRouter.get(
       logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', { error });
       baseUrl = '';
     }
-    return c.redirect(`${baseUrl}${PAYMENT_ROUTES.CALLBACK}`, HTTP.FOUND);
+
+    const defaultFallbackUrl = `${baseUrl}${PAYMENT_ROUTES.CALLBACK}`;
+    logger.info('[PAYMENTS] Return endpoint falling back to default callback URL', {
+      purchaseId,
+      status,
+      defaultFallbackUrl,
+    });
+
+    return c.redirect(defaultFallbackUrl, HTTP.FOUND);
   },
 );
 
