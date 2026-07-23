@@ -26,7 +26,7 @@ export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 export EXPO_NO_DOCTOR = 1
 
 
-MOBILE_BUNDLE_ID = com.masch.sonora
+MOBILE_BUNDLE_ID = org.masch.sonora
 
 EAS_CLI_VERSION = 20.1.0
 
