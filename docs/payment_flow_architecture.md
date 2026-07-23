@@ -48,7 +48,7 @@ flowchart TD
     WebBrowser -->|7. Complete payment| CheckoutPro
 
     CheckoutPro -->|8. POST /payments/webhook| WebhookRoute
-    WebhookRoute -->|9. Validate signature & preserve metadata (merge)| DB
+    WebhookRoute -->|"9. Validate signature and preserve metadata"| DB
 
     CheckoutPro -->|10. GET /payments/return/success/:id| ReturnRoute
     ReturnRoute -->|11. Disambiguate Web vs Native| DB
@@ -169,7 +169,7 @@ sequenceDiagram
 
     par Async Webhook
         MP->>API: POST /payments/webhook?data.id=123&type=payment
-        API->>DB: Merge metadata & Update status 'approved'
+        API->>DB: Merge metadata and Update status 'approved'
         API-->>MP: 200 OK
     and Browser Return
         MP->>API: GET /payments/return/success/:purchaseId
