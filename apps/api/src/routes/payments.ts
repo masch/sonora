@@ -258,7 +258,7 @@ paymentsRouter.get(
   '/return/:status/:purchaseId',
   zValidator('param', ReturnParamSchema, validationHook),
   async (c) => {
-    const { status: _status, purchaseId } = c.req.valid('param');
+    const { status, purchaseId } = c.req.valid('param');
     const db = c.var.db;
 
     // Look up redirectUrl stored in purchase metadata
@@ -273,7 +273,20 @@ paymentsRouter.get(
         if (purchase?.metadata) {
           const meta = purchase.metadata as { redirectUrl?: string };
           if (meta.redirectUrl) {
-            return c.redirect(meta.redirectUrl, HTTP.FOUND);
+            let targetUrl = meta.redirectUrl;
+            // If redirectUrl is an HTTP/HTTPS web origin (e.g. web app), format the return URL with status & purchaseId
+            if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+              try {
+                const parsedUrl = new URL(targetUrl);
+                // If it's a web app origin, direct back to /payments/:status/:purchaseId on that origin
+                if (!parsedUrl.pathname.includes('/payments/')) {
+                  targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
+                }
+              } catch {
+                // Invalid URL string — use original
+              }
+            }
+            return c.redirect(targetUrl, HTTP.FOUND);
           }
         }
       } catch (error) {
