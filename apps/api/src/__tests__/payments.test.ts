@@ -471,6 +471,58 @@ describe('POST /payments/webhook', () => {
       expect(res.headers.get('Location')).toBe('sonora://payments/success/purchase-123');
     });
 
+    it('redirects to web app origin with status and purchaseId when redirectUrl is a web origin', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([
+        { metadata: { redirectUrl: 'https://sonoraderivapoeticas-team-sonora--staging.expo.app' } },
+      ]);
+
+      const res = await app.request('/payments/return/success/purchase-123');
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toBe(
+        'https://sonoraderivapoeticas-team-sonora--staging.expo.app/payments/success/purchase-123',
+      );
+    });
+
+    it('preserves existing redirectUrl metadata when webhook updates purchase status', async () => {
+      setDbClient(mockDb);
+      mockProvider.processWebhook.mockResolvedValue({
+        externalReference: 'purchase-123',
+        providerPaymentId: 'mp-123456',
+        event: 'approved',
+        metadata: {},
+      });
+      // Mock existing purchase with redirectUrl metadata
+      mockDb.limit.mockResolvedValue([
+        { status: 'pending', metadata: { redirectUrl: 'https://my-web-app.com' } },
+      ]);
+      mockDb.returning.mockResolvedValue([
+        {
+          id: 'purchase-123',
+          status: 'approved',
+          metadata: { redirectUrl: 'https://my-web-app.com' },
+        },
+      ]);
+
+      const res = await app.request(
+        '/payments/webhook?data.id=123456&type=payment',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'payment', data: { id: '123456' } }),
+        },
+        {},
+      );
+
+      expect(res.status).toBe(200);
+      // Ensure db.update set metadata preserving existing redirectUrl
+      expect(mockDb.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { redirectUrl: 'https://my-web-app.com' },
+        }),
+      );
+    });
+
     it('ignores Mercado Pago referer header and redirects to callback URL fallback', async () => {
       setDbClient(mockDb);
       mockDb.limit.mockResolvedValue([{}]); // No redirectUrl in metadata

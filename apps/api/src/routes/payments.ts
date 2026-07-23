@@ -201,7 +201,7 @@ paymentsRouter.post(
 
     // Look up our purchase by UUID (external_reference is our purchase ID set at checkout)
     const [existing] = await db
-      .select({ status: purchases.status })
+      .select({ status: purchases.status, metadata: purchases.metadata })
       .from(purchases)
       .where(eq(purchases.id, result.externalReference))
       .limit(1);
@@ -236,6 +236,19 @@ paymentsRouter.post(
       }
     }
 
+    // Preserve existing metadata (e.g. redirectUrl set during checkout creation)
+    const existingMeta = (existing?.metadata as Record<string, unknown>) || {};
+    const incomingMeta = (result.metadata as Record<string, unknown>) || {};
+    const mergedMetadata = { ...existingMeta, ...incomingMeta };
+
+    logger.info('[WEBHOOK] Updating purchase status & preserving metadata', {
+      purchaseId: result.externalReference,
+      newStatus,
+      existingMeta,
+      incomingMeta,
+      mergedMetadata,
+    });
+
     // Update purchase by our UUID, storing the real MP payment ID
     const [purchase] = await db
       .update(purchases)
@@ -243,7 +256,7 @@ paymentsRouter.post(
         status: newStatus,
         providerPaymentId: result.providerPaymentId,
         email: result.email || undefined,
-        metadata: result.metadata || undefined,
+        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
         updatedAt: new Date(),
       })
       .where(eq(purchases.id, result.externalReference))
@@ -275,25 +288,37 @@ paymentsRouter.get(
         .where(eq(purchases.id, purchaseId))
         .limit(1);
 
+      logger.info('[PAYMENTS] Return endpoint loaded purchase metadata', {
+        purchaseId,
+        status,
+        foundPurchase: !!purchase,
+        metadata: purchase?.metadata,
+      });
+
       if (purchase?.metadata) {
         const meta = purchase.metadata as { redirectUrl?: string };
         if (meta.redirectUrl) {
           let targetUrl = meta.redirectUrl;
           const appScheme = c.var.appScheme;
-          // If redirectUrl is native callback (API callback route or custom scheme), format native deep link
-          if (targetUrl.includes(PAYMENT_ROUTES.CALLBACK) || targetUrl.includes('://')) {
-            targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
-          } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-            // If redirectUrl is a web origin, format return URL with status & purchaseId on that origin
-            try {
-              const parsedUrl = new URL(targetUrl);
-              targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
-            } catch (error) {
-              logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
-                targetUrl,
-                error,
-              });
+
+          // If redirectUrl is HTTP/HTTPS, check if it's the native API callback or a web app origin
+          if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+            if (targetUrl.includes(PAYMENT_ROUTES.CALLBACK)) {
+              targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
+            } else {
+              try {
+                const parsedUrl = new URL(targetUrl);
+                targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
+              } catch (error) {
+                logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
+                  targetUrl,
+                  error,
+                });
+              }
             }
+          } else if (targetUrl.includes('://')) {
+            // Custom scheme native redirect
+            targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
           }
 
           logger.info('[PAYMENTS] Return endpoint redirecting', {
