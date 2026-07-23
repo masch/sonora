@@ -10,8 +10,10 @@ export const paymentsGuard = (): MiddlewareHandler<{
     const providers = createPaymentProviders(c.env || {});
     const defaultProvider = (c.env?.DEFAULT_PAYMENT_PROVIDER || 'mercadopago') as
       'mercadopago' | 'stripe' | 'paypal';
+    const appScheme = c.env?.APP_SCHEME || 'sonora';
     c.set('paymentProviders', providers);
     c.set('defaultPaymentProvider', defaultProvider);
+    c.set('appScheme', appScheme);
     await next();
   };
 };

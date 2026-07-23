@@ -29,6 +29,9 @@ export const PAYMENT_ROUTES = {
   status: (purchaseId: string) => `${PAYMENT_PREFIX}/status/${purchaseId}` as const,
   returnStatus: (status: string, purchaseId: string) =>
     `${PAYMENT_PREFIX}/return/${status}/${purchaseId}` as const,
+  nativeRedirect: (status: string, purchaseId: string, scheme: string) =>
+    `${scheme}://${PAYMENT_PREFIX.slice(1)}/${status}/${purchaseId}` as const,
+  nativeCallback: (scheme: string) => `${scheme}://${PAYMENT_PREFIX.slice(1)}/callback` as const,
   // Resource domain grouping (scalable for future resources like EVENTS, SUBSCRIPTIONS, etc.)
   EXPERIENCES: {
     PREFIX: `${PAYMENT_PREFIX}/experiences`,

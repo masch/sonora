@@ -40,6 +40,7 @@ export interface Env {
   MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
+  APP_SCHEME?: string;
 }
 
 export interface Variables {
@@ -59,6 +60,7 @@ export interface Variables {
   feedbackStore?: KVNamespace;
   paymentProviders: Record<string, import('./payments').PaymentProvider | null>;
   defaultPaymentProvider: 'mercadopago' | 'stripe' | 'paypal';
+  appScheme: string;
 }
 
 // Re-export methods for test and server compatibility
