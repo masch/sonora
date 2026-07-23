@@ -142,6 +142,7 @@ sonora/
 │   ├── specs/
 │   └── tasks/
 ├── docs/                      # Documentation
+│   └── payment_flow_architecture.md  # Complete Payment Flow Architecture (Web, iOS, Android)
 ├── scripts/                   # Root-level utility scripts
 ├── scratch/                   # Temporary/scratch files
 ├── .githooks/
@@ -153,6 +154,10 @@ sonora/
 ├── bunfig.toml
 └── renovate.json
 ```
+
+## Documentation
+
+- **[Payment Flow Architecture](docs/payment_flow_architecture.md)** — Detailed sequence flows, Web vs Native redirection logic, SSOT app scheme resolution (`app-identifiers.json`), and Mercado Pago webhook synchronization.
 
 ## API — Feedback Database
 
