@@ -233,10 +233,10 @@ export function usePurchase(
       const isWeb = Platform.OS === 'web';
 
       const domain = new URL(APP_CONFIG.apiBaseUrl).hostname;
-      const redirectUrl = isWeb ? Linking.createURL('') : `https://${domain}`;
       const callbackUrl = isWeb
-        ? Linking.createURL('/payment/callback')
-        : `https://${domain}/payment/callback`;
+        ? Linking.createURL('/payments/callback')
+        : `https://${domain}/payments/callback`;
+      const redirectUrl = isWeb ? Linking.createURL('') : callbackUrl;
 
       const result = await PaymentClient.createPayment(experienceId, redirectUrl);
       pollingRef.current.purchaseId = result.purchaseId;
@@ -321,7 +321,7 @@ export function usePurchase(
   useEffect(() => {
     const subscription = Linking.addEventListener('url', (event) => {
       const url = event.url;
-      if (url && url.includes('/payment/')) {
+      if (url && url.includes('/payments/')) {
         const urlWithoutQuery = url.split('?')[0];
         const segments = urlWithoutQuery.split('/');
         const purchaseId = segments[segments.length - 1];

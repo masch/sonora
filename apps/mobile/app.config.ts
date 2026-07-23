@@ -62,7 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             {
               scheme: 'https',
               host: activeEnv.domain,
-              pathPrefix: '/payment',
+              pathPrefix: '/payments',
             },
           ],
           category: ['BROWSABLE', 'DEFAULT'],

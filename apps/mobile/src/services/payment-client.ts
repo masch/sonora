@@ -75,7 +75,7 @@ export const PaymentClient = {
     platform?: string,
   ): Promise<void> {
     // Fire-and-forget — never block user interaction
-    ApiClient.post(`/experiences/${experienceId}/access`, {
+    ApiClient.post(`/payments/experiences/${experienceId}/access`, {
       source,
       email,
       platform,

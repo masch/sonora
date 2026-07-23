@@ -10,6 +10,13 @@ import {
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { experienceAccesses, experiences, purchases } from '../db/schema';
+import type { Env, Variables } from '../index';
+import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
+import { validationHook } from '../middleware/validation-error';
+import { dbGuard } from '../middleware/db-guard';
+import { deviceIdGuard } from '../middleware/device-id-guard';
+import { paymentsGuard } from '../middleware/payments-guard';
 
 const ReturnParamSchema = z.object({
   status: z.string(),
@@ -23,12 +30,6 @@ const PurchaseIdParamSchema = z.object({
 const IdParamSchema = z.object({
   id: z.string().min(1),
 });
-import { experienceAccesses, experiences, purchases } from '../db/schema';
-import type { Env, Variables } from '../index';
-import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
-import { validationHook } from '../middleware/validation-error';
-import { dbGuard } from '../middleware/db-guard';
-import { deviceIdGuard } from '../middleware/device-id-guard';
 
 // Valid status transitions from Mercado Pago webhooks.
 // MP never sends approved after refunded for the same payment.
@@ -52,8 +53,6 @@ export function mapWebhookEventToStatus(event: PurchaseStatus): WebhookStatus {
   };
   return EVENT_TO_STATUS[event];
 }
-
-import { paymentsGuard } from '../middleware/payments-guard';
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -280,18 +279,30 @@ paymentsRouter.get(
       }
     }
 
-    // Fallback: redirect to referer origin or root
+    // Fallback: redirect to referer origin or root (excluding payment gateway domains to prevent redirect loops)
     const referer = c.req.header('Referer');
     if (referer) {
       try {
-        const origin = new URL(referer).origin;
-        return c.redirect(origin, HTTP.FOUND);
+        const url = new URL(referer);
+        const host = url.hostname.toLowerCase();
+        const isGatewayDomain = host.includes('mercadopago') || host.includes('mercadolibre');
+
+        if (!isGatewayDomain) {
+          return c.redirect(url.origin, HTTP.FOUND);
+        }
       } catch {
         // Invalid referer — proceed with default
       }
     }
 
-    return c.redirect('/', HTTP.FOUND);
+    // Default fallback: redirect to mobile app callback URL
+    let baseUrl: string;
+    try {
+      baseUrl = new URL(c.req.url).origin;
+    } catch {
+      baseUrl = '';
+    }
+    return c.redirect(`${baseUrl}/payments/callback`, HTTP.FOUND);
   },
 );
 
@@ -401,9 +412,9 @@ paymentsRouter.get(
   },
 );
 
-// GET /purchases?email= — List all purchases for an email
+// GET /payments/purchases?email= — List all purchases for an email
 paymentsRouter.get(
-  '/',
+  '/purchases',
   dbGuard(),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {

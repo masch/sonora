@@ -2,18 +2,18 @@ import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
+import { hashDeviceId, injectDeviceId } from './middleware/device-id';
 import { customLogger } from './middleware/logger';
-import { injectDeviceId, hashDeviceId } from './middleware/device-id';
+import { ERRORS, problem } from './middleware/problem-details';
+import { associationRouter } from './routes/association';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
-import { ERRORS, problem } from './middleware/problem-details';
 import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
-import { associationRouter } from './routes/association';
 
 export { hashDeviceId };
 

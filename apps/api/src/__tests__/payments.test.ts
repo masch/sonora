@@ -460,4 +460,37 @@ describe('POST /payments/webhook', () => {
     expect(await res.json()).toEqual({ status: 'ok' });
     expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'refunded' }));
   });
+
+  describe('GET /payments/return/:status/:purchaseId', () => {
+    it('redirects to metadata.redirectUrl when present', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([{ metadata: { redirectUrl: 'sonora://payment/callback' } }]);
+
+      const res = await app.request('/payments/return/success/purchase-123');
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toBe('sonora://payment/callback');
+    });
+
+    it('ignores Mercado Pago referer header and redirects to callback URL fallback', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([{}]); // No redirectUrl in metadata
+
+      const res = await app.request('/payments/return/success/purchase-123', {
+        headers: { Referer: 'https://sandbox.mercadopago.com.ar/checkout/v1/redirect/123' },
+      });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('/payments/callback');
+    });
+
+    it('uses non-gateway referer origin when metadata.redirectUrl is missing', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([{}]);
+
+      const res = await app.request('/payments/return/success/purchase-123', {
+        headers: { Referer: 'https://my-app.example.com/checkout' },
+      });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toBe('https://my-app.example.com');
+    });
+  });
 });
