@@ -48,7 +48,7 @@ flowchart TD
     WebBrowser -->|7. Complete payment| CheckoutPro
 
     CheckoutPro -->|8. POST /payments/webhook| WebhookRoute
-    WebhookRoute -->|"9. Validate signature and preserve metadata"| DB
+    WebhookRoute -->|"9. Validate signature and preserve metadata (merge)"| DB
 
     CheckoutPro -->|10. GET /payments/return/success/:id| ReturnRoute
     ReturnRoute -->|11. Disambiguate Web vs Native| DB
