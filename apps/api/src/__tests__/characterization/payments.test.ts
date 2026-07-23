@@ -358,7 +358,7 @@ describe('GET /payments — characterization', () => {
 
   it('captures 400 when email query missing', async () => {
     setDbClient(mockDb);
-    const res = await app.request('/payments', {}, {});
+    const res = await app.request('/payments/purchases', {}, {});
     expect(res.status).toBe(422);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
@@ -371,7 +371,7 @@ describe('GET /payments — characterization', () => {
   it('captures 200 with email query', async () => {
     mockDb.where.mockResolvedValue([]);
     setDbClient(mockDb);
-    const res = await app.request('/payments?email=user@example.com', {}, {});
+    const res = await app.request('/payments/purchases?email=user@example.com', {}, {});
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ purchases: [] });
   });

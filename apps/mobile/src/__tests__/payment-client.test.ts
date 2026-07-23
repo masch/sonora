@@ -100,14 +100,14 @@ describe('PaymentClient', () => {
   });
 
   describe('logAccess', () => {
-    it('posts access event (fire-and-forget)', async () => {
-      mockPost.mockResolvedValue({});
+    it('posts to access log endpoint with correct payload', async () => {
+      mockPost.mockResolvedValueOnce({ status: 'ok' });
 
-      await PaymentClient.logAccess('exp-1', 'paid', 'user@example.com', 'ios');
+      await PaymentClient.logAccess('exp-1', 'paid', 'test@example.com', 'ios');
 
-      expect(mockPost).toHaveBeenCalledWith('/experiences/exp-1/access', {
+      expect(mockPost).toHaveBeenCalledWith('/payments/experiences/exp-1/access', {
         source: 'paid',
-        email: 'user@example.com',
+        email: 'test@example.com',
         platform: 'ios',
       });
     });

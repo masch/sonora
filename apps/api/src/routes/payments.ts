@@ -6,10 +6,18 @@ import {
   LogAccessBodySchema,
   logger,
   WebhookBodySchema,
+  PAYMENT_ROUTES,
   type PurchaseStatus,
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { experienceAccesses, experiences, purchases } from '../db/schema';
+import type { Env, Variables } from '../index';
+import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
+import { validationHook } from '../middleware/validation-error';
+import { dbGuard } from '../middleware/db-guard';
+import { deviceIdGuard } from '../middleware/device-id-guard';
+import { paymentsGuard } from '../middleware/payments-guard';
 
 const ReturnParamSchema = z.object({
   status: z.string(),
@@ -23,12 +31,6 @@ const PurchaseIdParamSchema = z.object({
 const IdParamSchema = z.object({
   id: z.string().min(1),
 });
-import { experienceAccesses, experiences, purchases } from '../db/schema';
-import type { Env, Variables } from '../index';
-import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
-import { validationHook } from '../middleware/validation-error';
-import { dbGuard } from '../middleware/db-guard';
-import { deviceIdGuard } from '../middleware/device-id-guard';
 
 // Valid status transitions from Mercado Pago webhooks.
 // MP never sends approved after refunded for the same payment.
@@ -52,8 +54,6 @@ export function mapWebhookEventToStatus(event: PurchaseStatus): WebhookStatus {
   };
   return EVENT_TO_STATUS[event];
 }
-
-import { paymentsGuard } from '../middleware/payments-guard';
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -117,16 +117,22 @@ paymentsRouter.post(
     let baseUrl: string;
     try {
       baseUrl = new URL(c.req.url).origin;
-    } catch {
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', { error });
       baseUrl = '';
     }
 
-    // Store the original redirect URL in purchase metadata so the return
-    // endpoints can 302 the browser back to the app's deep link.
+    // Store original redirect URL in purchase metadata and log payment creation details
+    logger.info('[PAYMENTS] Creating payment checkout', {
+      purchaseId: purchase.id,
+      experienceId: experience.id,
+      receivedRedirectUrl: redirectUrl,
+    });
+
     const finalBackUrls = {
-      success: `${baseUrl}/payments/return/success/${purchase.id}`,
-      failure: `${baseUrl}/payments/return/failure/${purchase.id}`,
-      pending: `${baseUrl}/payments/return/pending/${purchase.id}`,
+      success: `${baseUrl}${PAYMENT_ROUTES.returnStatus('success', purchase.id)}`,
+      failure: `${baseUrl}${PAYMENT_ROUTES.returnStatus('failure', purchase.id)}`,
+      pending: `${baseUrl}${PAYMENT_ROUTES.returnStatus('pending', purchase.id)}`,
     };
 
     const result = await provider.createCheckout({
@@ -135,7 +141,7 @@ paymentsRouter.post(
       amount: experience.price,
       currency: 'ARS',
       backUrls: finalBackUrls,
-      notificationUrl: `${baseUrl}/payments/webhook`,
+      notificationUrl: `${baseUrl}${PAYMENT_ROUTES.WEBHOOK}`,
     });
 
     // Update purchase with provider payment ID
@@ -195,7 +201,7 @@ paymentsRouter.post(
 
     // Look up our purchase by UUID (external_reference is our purchase ID set at checkout)
     const [existing] = await db
-      .select({ status: purchases.status })
+      .select({ status: purchases.status, metadata: purchases.metadata })
       .from(purchases)
       .where(eq(purchases.id, result.externalReference))
       .limit(1);
@@ -230,6 +236,19 @@ paymentsRouter.post(
       }
     }
 
+    // Preserve existing metadata (e.g. redirectUrl set during checkout creation)
+    const existingMeta = (existing?.metadata as Record<string, unknown>) || {};
+    const incomingMeta = (result.metadata as Record<string, unknown>) || {};
+    const mergedMetadata = { ...existingMeta, ...incomingMeta };
+
+    logger.info('[WEBHOOK] Updating purchase status & preserving metadata', {
+      purchaseId: result.externalReference,
+      newStatus,
+      existingMeta,
+      incomingMeta,
+      mergedMetadata,
+    });
+
     // Update purchase by our UUID, storing the real MP payment ID
     const [purchase] = await db
       .update(purchases)
@@ -237,7 +256,7 @@ paymentsRouter.post(
         status: newStatus,
         providerPaymentId: result.providerPaymentId,
         email: result.email || undefined,
-        metadata: result.metadata || undefined,
+        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
         updatedAt: new Date(),
       })
       .where(eq(purchases.id, result.externalReference))
@@ -255,45 +274,136 @@ paymentsRouter.post(
 // These endpoints receive the user after MP payment and send them back to the app's deep link.
 paymentsRouter.get(
   '/return/:status/:purchaseId',
+  dbGuard(),
   zValidator('param', ReturnParamSchema, validationHook),
   async (c) => {
-    const { status: _status, purchaseId } = c.req.valid('param');
+    const { status, purchaseId } = c.req.valid('param');
     const db = c.var.db;
 
     // Look up redirectUrl stored in purchase metadata
-    if (db) {
-      try {
-        const [purchase] = await db
-          .select({ metadata: purchases.metadata })
-          .from(purchases)
-          .where(eq(purchases.id, purchaseId))
-          .limit(1);
+    try {
+      const [purchase] = await db
+        .select({ metadata: purchases.metadata })
+        .from(purchases)
+        .where(eq(purchases.id, purchaseId))
+        .limit(1);
 
-        if (purchase?.metadata) {
-          const meta = purchase.metadata as { redirectUrl?: string };
-          if (meta.redirectUrl) {
-            return c.redirect(meta.redirectUrl, HTTP.FOUND);
+      logger.info('[PAYMENTS] Return endpoint loaded purchase metadata', {
+        purchaseId,
+        status,
+        foundPurchase: !!purchase,
+        metadata: purchase?.metadata,
+      });
+
+      if (purchase?.metadata) {
+        const meta = purchase.metadata as { redirectUrl?: string };
+        if (meta.redirectUrl) {
+          let targetUrl = meta.redirectUrl;
+          const appScheme = c.var.appScheme;
+
+          // If redirectUrl is HTTP/HTTPS, check if it's the native API callback or a web app origin
+          if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+            if (targetUrl.includes(PAYMENT_ROUTES.CALLBACK)) {
+              targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
+            } else {
+              try {
+                const parsedUrl = new URL(targetUrl);
+                targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
+              } catch (error) {
+                logger.error(
+                  '[PAYMENTS] Failed to parse targetUrl in return endpoint, falling back',
+                  {
+                    purchaseId,
+                    status,
+                    rawRedirectUrl: meta.redirectUrl,
+                    error,
+                  },
+                );
+                targetUrl = '';
+              }
+            }
+          } else if (targetUrl.includes('://')) {
+            // Custom scheme native redirect
+            targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
+          }
+
+          if (targetUrl) {
+            logger.info('[PAYMENTS] Return endpoint redirecting', {
+              purchaseId,
+              status,
+              rawRedirectUrl: meta.redirectUrl,
+              finalTargetUrl: targetUrl,
+            });
+
+            return c.redirect(targetUrl, HTTP.FOUND);
+          } else {
+            logger.warn(
+              '[PAYMENTS] Return endpoint targetUrl resolved to empty, falling back to referer/default',
+              {
+                purchaseId,
+                status,
+                rawRedirectUrl: meta.redirectUrl,
+              },
+            );
           }
         }
-      } catch {
-        // DB error — proceed with default redirect
       }
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to read purchase metadata for return redirect', {
+        purchaseId,
+        error,
+      });
     }
 
-    // Fallback: redirect to referer origin or root
+    // Fallback: redirect to referer origin or root (excluding payment gateway domains to prevent redirect loops)
     const referer = c.req.header('Referer');
     if (referer) {
       try {
-        const origin = new URL(referer).origin;
-        return c.redirect(origin, HTTP.FOUND);
-      } catch {
-        // Invalid referer — proceed with default
+        const url = new URL(referer);
+        const host = url.hostname.toLowerCase();
+        const isGatewayDomain = host.includes('mercadopago') || host.includes('mercadolibre');
+
+        if (!isGatewayDomain) {
+          logger.info('[PAYMENTS] Return endpoint falling back to referer origin', {
+            purchaseId,
+            status,
+            refererOrigin: url.origin,
+          });
+          return c.redirect(url.origin, HTTP.FOUND);
+        }
+      } catch (error) {
+        logger.warn('[PAYMENTS] Failed to parse Referer header in return endpoint', {
+          referer,
+          error,
+        });
       }
     }
 
-    return c.redirect('/', HTTP.FOUND);
+    // Default fallback: redirect to mobile app callback URL
+    let baseUrl: string;
+    try {
+      baseUrl = new URL(c.req.url).origin;
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', { error });
+      baseUrl = '';
+    }
+
+    const defaultFallbackUrl = `${baseUrl}${PAYMENT_ROUTES.CALLBACK}`;
+    logger.info('[PAYMENTS] Return endpoint falling back to default callback URL', {
+      purchaseId,
+      status,
+      defaultFallbackUrl,
+    });
+
+    return c.redirect(defaultFallbackUrl, HTTP.FOUND);
   },
 );
+
+// GET /payments/callback — Native deep link redirect fallback
+paymentsRouter.get('/callback', (c) => {
+  const appScheme = c.var.appScheme;
+  return c.redirect(PAYMENT_ROUTES.nativeCallback(appScheme), HTTP.FOUND);
+});
 
 // GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
 paymentsRouter.get(
@@ -401,9 +511,9 @@ paymentsRouter.get(
   },
 );
 
-// GET /purchases?email= — List all purchases for an email
+// GET /payments/purchases?email= — List all purchases for an email
 paymentsRouter.get(
-  '/',
+  '/purchases',
   dbGuard(),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {

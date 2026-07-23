@@ -64,12 +64,13 @@ describe('Middleware Guards (c.var injection)', () => {
   });
 
   describe('paymentsGuard', () => {
-    it('injects paymentProviders and defaultPaymentProvider into c.var', async () => {
+    it('injects paymentProviders, defaultPaymentProvider, and appScheme into c.var', async () => {
       const app = new Hono<{ Bindings: Env; Variables: Variables }>();
       app.get('/test', paymentsGuard(), (c) => {
         return c.json({
           defaultProvider: c.var.defaultPaymentProvider,
           hasProviders: !!c.var.paymentProviders,
+          appScheme: c.var.appScheme,
         });
       });
 
@@ -83,9 +84,42 @@ describe('Middleware Guards (c.var injection)', () => {
         },
       );
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { defaultProvider: string; hasProviders: boolean };
+      const body = (await res.json()) as {
+        defaultProvider: string;
+        hasProviders: boolean;
+        appScheme: string;
+      };
       expect(body.defaultProvider).toBe('stripe');
       expect(body.hasProviders).toBe(true);
+      expect(body.appScheme).toBe('sonora');
+    });
+
+    it('resolves appScheme to sonora-staging when ENVIRONMENT is staging', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', paymentsGuard(), (c) => c.json({ appScheme: c.var.appScheme }));
+
+      const res = await app.request(
+        '/test',
+        {},
+        { ENVIRONMENT: 'staging', MP_ACCESS_TOKEN: 'token', MP_WEBHOOK_SECRET: 'secret' },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { appScheme: string };
+      expect(body.appScheme).toBe('sonora-staging');
+    });
+
+    it('allows explicit APP_SCHEME environment variable override', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', paymentsGuard(), (c) => c.json({ appScheme: c.var.appScheme }));
+
+      const res = await app.request(
+        '/test',
+        {},
+        { APP_SCHEME: 'custom-scheme', MP_ACCESS_TOKEN: 'token', MP_WEBHOOK_SECRET: 'secret' },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { appScheme: string };
+      expect(body.appScheme).toBe('custom-scheme');
     });
   });
 

@@ -35,7 +35,7 @@ jest.mock('expo-web-browser', () => ({
 }));
 
 jest.mock('expo-linking', () => ({
-  createURL: jest.fn(() => 'sonora://payment/callback'),
+  createURL: jest.fn(() => 'sonora://payments/callback'),
   canOpenURL: (...args: unknown[]) => mockCanOpenURL(...args),
   openURL: (...args: unknown[]) => mockOpenURL(...args),
   addEventListener: (...args: unknown[]) => mockAddEventListener(...args),
@@ -146,10 +146,13 @@ describe('usePurchase', () => {
       });
 
       const expectedDomain = new URL(APP_CONFIG.apiBaseUrl).hostname;
-      expect(mockCreatePayment).toHaveBeenCalledWith('exp-1', `https://${expectedDomain}`);
+      expect(mockCreatePayment).toHaveBeenCalledWith(
+        'exp-1',
+        `https://${expectedDomain}/payments/callback`,
+      );
       expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
         'https://mp.com/checkout',
-        `https://${expectedDomain}/payment/callback`,
+        `https://${expectedDomain}/payments/callback`,
       );
     });
 
@@ -400,7 +403,7 @@ describe('usePurchase', () => {
       // Trigger the deep link url event with query params
       await act(async () => {
         listener!({
-          url: 'sonora://payment/success/purchase-123?collection_id=123&status=approved',
+          url: 'sonora://payments/success/purchase-123?collection_id=123&status=approved',
         });
       });
 

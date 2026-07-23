@@ -2,18 +2,19 @@ import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
+import { hashDeviceId, injectDeviceId } from './middleware/device-id';
 import { customLogger } from './middleware/logger';
-import { injectDeviceId, hashDeviceId } from './middleware/device-id';
+import { ERRORS, problem } from './middleware/problem-details';
+import { associationRouter } from './routes/association';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
-import { ERRORS, problem } from './middleware/problem-details';
 import { healthRouter } from './routes/health';
+import { PAYMENT_ROUTES } from '@sonora/shared';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
-import { associationRouter } from './routes/association';
 
 export { hashDeviceId };
 
@@ -39,6 +40,7 @@ export interface Env {
   MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
+  APP_SCHEME?: string;
 }
 
 export interface Variables {
@@ -58,6 +60,7 @@ export interface Variables {
   feedbackStore?: KVNamespace;
   paymentProviders: Record<string, import('./payments').PaymentProvider | null>;
   defaultPaymentProvider: 'mercadopago' | 'stripe' | 'paypal';
+  appScheme: string;
 }
 
 // Re-export methods for test and server compatibility
@@ -80,7 +83,7 @@ app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/api/translations', translationsRouter);
-app.route('/payments', paymentsRouter);
+app.route(PAYMENT_ROUTES.PREFIX, paymentsRouter);
 app.route('/.well-known', associationRouter);
 
 // Global Error Handler
