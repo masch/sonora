@@ -314,6 +314,7 @@ paymentsRouter.get(
                   targetUrl,
                   error,
                 });
+                targetUrl = '';
               }
             }
           } else if (targetUrl.includes('://')) {
@@ -321,14 +322,16 @@ paymentsRouter.get(
             targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
           }
 
-          logger.info('[PAYMENTS] Return endpoint redirecting', {
-            purchaseId,
-            status,
-            rawRedirectUrl: meta.redirectUrl,
-            finalTargetUrl: targetUrl,
-          });
+          if (targetUrl) {
+            logger.info('[PAYMENTS] Return endpoint redirecting', {
+              purchaseId,
+              status,
+              rawRedirectUrl: meta.redirectUrl,
+              finalTargetUrl: targetUrl,
+            });
 
-          return c.redirect(targetUrl, HTTP.FOUND);
+            return c.redirect(targetUrl, HTTP.FOUND);
+          }
         }
       }
     } catch (error) {

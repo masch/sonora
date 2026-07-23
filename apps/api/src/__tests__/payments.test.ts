@@ -47,6 +47,8 @@ describe('POST /payments/create', () => {
         checkoutUrl: 'https://sandbox.mercadopago.com/checkout/123',
         providerPaymentId: 'mp-pref-12345',
       }),
+      getPaymentStatus: vi.fn(),
+      processWebhook: vi.fn(),
     };
 
     (createPaymentProviders as any).mockReturnValue({
@@ -57,7 +59,9 @@ describe('POST /payments/create', () => {
     mockDb = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
       limit: vi.fn(),
       insert: vi.fn().mockReturnThis(),
       values: vi.fn().mockReturnThis(),
@@ -521,6 +525,26 @@ describe('POST /payments/webhook', () => {
           metadata: { redirectUrl: 'https://my-web-app.com' },
         }),
       );
+    });
+
+    it('redirects native API callback HTTP URL to native deep link', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([
+        { metadata: { redirectUrl: 'https://api.sonora.com/payments/callback' } },
+      ]);
+
+      const res = await app.request('/payments/return/success/purchase-123');
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('://payments/success/purchase-123');
+    });
+
+    it('handles malformed redirectUrl gracefully in return endpoint', async () => {
+      setDbClient(mockDb);
+      mockDb.limit.mockResolvedValue([{ metadata: { redirectUrl: 'http://:' } }]);
+
+      const res = await app.request('/payments/return/success/purchase-123');
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('/payments/callback');
     });
 
     it('ignores Mercado Pago referer header and redirects to callback URL fallback', async () => {
