@@ -274,14 +274,11 @@ paymentsRouter.get(
           const meta = purchase.metadata as { redirectUrl?: string };
           if (meta.redirectUrl) {
             let targetUrl = meta.redirectUrl;
-            // If redirectUrl is an HTTP/HTTPS web origin (e.g. web app), format the return URL with status & purchaseId
+            // If redirectUrl is an HTTP/HTTPS web origin (e.g. web app), format return URL with status & purchaseId
             if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
               try {
                 const parsedUrl = new URL(targetUrl);
-                // If it's a web app origin, direct back to /payments/:status/:purchaseId on that origin
-                if (!parsedUrl.pathname.includes('/payments/')) {
-                  targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
-                }
+                targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
               } catch (error) {
                 logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
                   targetUrl,
@@ -289,6 +286,14 @@ paymentsRouter.get(
                 });
               }
             }
+
+            logger.info('[PAYMENTS] Return endpoint redirecting', {
+              purchaseId,
+              status,
+              rawRedirectUrl: meta.redirectUrl,
+              finalTargetUrl: targetUrl,
+            });
+
             return c.redirect(targetUrl, HTTP.FOUND);
           }
         }
