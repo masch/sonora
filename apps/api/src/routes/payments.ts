@@ -6,6 +6,7 @@ import {
   LogAccessBodySchema,
   logger,
   WebhookBodySchema,
+  PAYMENT_ROUTES,
   type PurchaseStatus,
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
@@ -116,16 +117,17 @@ paymentsRouter.post(
     let baseUrl: string;
     try {
       baseUrl = new URL(c.req.url).origin;
-    } catch {
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', { error });
       baseUrl = '';
     }
 
     // Store the original redirect URL in purchase metadata so the return
     // endpoints can 302 the browser back to the app's deep link.
     const finalBackUrls = {
-      success: `${baseUrl}/payments/return/success/${purchase.id}`,
-      failure: `${baseUrl}/payments/return/failure/${purchase.id}`,
-      pending: `${baseUrl}/payments/return/pending/${purchase.id}`,
+      success: `${baseUrl}${PAYMENT_ROUTES.returnStatus('success', purchase.id)}`,
+      failure: `${baseUrl}${PAYMENT_ROUTES.returnStatus('failure', purchase.id)}`,
+      pending: `${baseUrl}${PAYMENT_ROUTES.returnStatus('pending', purchase.id)}`,
     };
 
     const result = await provider.createCheckout({
@@ -134,7 +136,7 @@ paymentsRouter.post(
       amount: experience.price,
       currency: 'ARS',
       backUrls: finalBackUrls,
-      notificationUrl: `${baseUrl}/payments/webhook`,
+      notificationUrl: `${baseUrl}${PAYMENT_ROUTES.WEBHOOK}`,
     });
 
     // Update purchase with provider payment ID
@@ -274,8 +276,11 @@ paymentsRouter.get(
             return c.redirect(meta.redirectUrl, HTTP.FOUND);
           }
         }
-      } catch {
-        // DB error — proceed with default redirect
+      } catch (error) {
+        logger.warn('[PAYMENTS] Failed to read purchase metadata for return redirect', {
+          purchaseId,
+          error,
+        });
       }
     }
 
@@ -290,8 +295,11 @@ paymentsRouter.get(
         if (!isGatewayDomain) {
           return c.redirect(url.origin, HTTP.FOUND);
         }
-      } catch {
-        // Invalid referer — proceed with default
+      } catch (error) {
+        logger.warn('[PAYMENTS] Failed to parse Referer header in return endpoint', {
+          referer,
+          error,
+        });
       }
     }
 
@@ -299,12 +307,18 @@ paymentsRouter.get(
     let baseUrl: string;
     try {
       baseUrl = new URL(c.req.url).origin;
-    } catch {
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', { error });
       baseUrl = '';
     }
-    return c.redirect(`${baseUrl}/payments/callback`, HTTP.FOUND);
+    return c.redirect(`${baseUrl}${PAYMENT_ROUTES.CALLBACK}`, HTTP.FOUND);
   },
 );
+
+// GET /payments/callback — Native deep link redirect fallback
+paymentsRouter.get('/callback', (c) => {
+  return c.redirect(`sonora:/${PAYMENT_ROUTES.CALLBACK}`, HTTP.FOUND);
+});
 
 // GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
 paymentsRouter.get(

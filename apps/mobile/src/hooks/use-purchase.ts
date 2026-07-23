@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
+import { PAYMENT_ROUTES } from '@sonora/shared';
 import { PaymentClient } from '@/services/payment-client';
 import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -234,8 +235,8 @@ export function usePurchase(
 
       const domain = new URL(APP_CONFIG.apiBaseUrl).hostname;
       const callbackUrl = isWeb
-        ? Linking.createURL('/payments/callback')
-        : `https://${domain}/payments/callback`;
+        ? Linking.createURL(PAYMENT_ROUTES.CALLBACK)
+        : `https://${domain}${PAYMENT_ROUTES.CALLBACK}`;
       const redirectUrl = isWeb ? Linking.createURL('') : callbackUrl;
 
       const result = await PaymentClient.createPayment(experienceId, redirectUrl);
@@ -321,7 +322,7 @@ export function usePurchase(
   useEffect(() => {
     const subscription = Linking.addEventListener('url', (event) => {
       const url = event.url;
-      if (url && url.includes('/payments/')) {
+      if (url && url.includes(`${PAYMENT_ROUTES.PREFIX}/`)) {
         const urlWithoutQuery = url.split('?')[0];
         const segments = urlWithoutQuery.split('/');
         const purchaseId = segments[segments.length - 1];

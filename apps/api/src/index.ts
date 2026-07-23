@@ -11,6 +11,7 @@ import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
 import { healthRouter } from './routes/health';
+import { PAYMENT_ROUTES } from '@sonora/shared';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
@@ -80,7 +81,7 @@ app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/api/translations', translationsRouter);
-app.route('/payments', paymentsRouter);
+app.route(PAYMENT_ROUTES.PREFIX, paymentsRouter);
 app.route('/.well-known', associationRouter);
 
 // Global Error Handler
