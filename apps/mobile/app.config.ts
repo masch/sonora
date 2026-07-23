@@ -9,6 +9,7 @@ const ENV_CONFIG = {
     name: 'Sonora Staging',
     appId: APP_IDENTIFIERS.staging.appId,
     domain: 'sonora-api-staging.sonora-api.workers.dev',
+    scheme: APP_IDENTIFIERS.staging.scheme,
     icon: './assets/images/sonora/logo_staging.png',
     adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
     splashColor: '#F59E0B',
@@ -17,6 +18,7 @@ const ENV_CONFIG = {
     name: 'Sonora',
     appId: APP_IDENTIFIERS.production.appId,
     domain: 'sonora-api.sonora-api.workers.dev',
+    scheme: APP_IDENTIFIERS.production.scheme,
     icon: './assets/images/icon.png',
     adaptiveIconForeground: './assets/images/android-icon-foreground.png',
     splashColor: '#208AEF',
@@ -33,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: '1.0.0',
     orientation: 'portrait',
     icon: activeEnv.icon,
-    scheme: 'sonora',
+    scheme: activeEnv.scheme,
     userInterfaceStyle: 'automatic',
     ios: {
       bundleIdentifier: activeEnv.appId,
@@ -62,7 +64,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             {
               scheme: 'https',
               host: activeEnv.domain,
-              pathPrefix: '/payment',
+              pathPrefix: '/payments',
             },
           ],
           category: ['BROWSABLE', 'DEFAULT'],
