@@ -468,7 +468,7 @@ describe('POST /payments/webhook', () => {
 
       const res = await app.request('/payments/return/success/purchase-123');
       expect(res.status).toBe(302);
-      expect(res.headers.get('Location')).toBe('sonora://payment/callback');
+      expect(res.headers.get('Location')).toBe('sonora://payments/success/purchase-123');
     });
 
     it('ignores Mercado Pago referer header and redirects to callback URL fallback', async () => {

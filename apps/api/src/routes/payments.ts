@@ -279,8 +279,11 @@ paymentsRouter.get(
           const meta = purchase.metadata as { redirectUrl?: string };
           if (meta.redirectUrl) {
             let targetUrl = meta.redirectUrl;
-            // If redirectUrl is an HTTP/HTTPS web origin (e.g. web app), format return URL with status & purchaseId
-            if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+            // If redirectUrl is native callback (API callback route or custom scheme), format native deep link
+            if (targetUrl.includes('/payments/callback') || targetUrl.startsWith('sonora://')) {
+              targetUrl = `sonora://payments/${status}/${purchaseId}`;
+            } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+              // If redirectUrl is a web origin, format return URL with status & purchaseId on that origin
               try {
                 const parsedUrl = new URL(targetUrl);
                 targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
