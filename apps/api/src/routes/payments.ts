@@ -261,56 +261,56 @@ paymentsRouter.post(
 // These endpoints receive the user after MP payment and send them back to the app's deep link.
 paymentsRouter.get(
   '/return/:status/:purchaseId',
+  dbGuard(),
   zValidator('param', ReturnParamSchema, validationHook),
   async (c) => {
     const { status, purchaseId } = c.req.valid('param');
     const db = c.var.db;
 
     // Look up redirectUrl stored in purchase metadata
-    if (db) {
-      try {
-        const [purchase] = await db
-          .select({ metadata: purchases.metadata })
-          .from(purchases)
-          .where(eq(purchases.id, purchaseId))
-          .limit(1);
+    try {
+      const [purchase] = await db
+        .select({ metadata: purchases.metadata })
+        .from(purchases)
+        .where(eq(purchases.id, purchaseId))
+        .limit(1);
 
-        if (purchase?.metadata) {
-          const meta = purchase.metadata as { redirectUrl?: string };
-          if (meta.redirectUrl) {
-            let targetUrl = meta.redirectUrl;
-            // If redirectUrl is native callback (API callback route or custom scheme), format native deep link
-            if (targetUrl.includes('/payments/callback') || targetUrl.startsWith('sonora://')) {
-              targetUrl = `sonora://payments/${status}/${purchaseId}`;
-            } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-              // If redirectUrl is a web origin, format return URL with status & purchaseId on that origin
-              try {
-                const parsedUrl = new URL(targetUrl);
-                targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
-              } catch (error) {
-                logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
-                  targetUrl,
-                  error,
-                });
-              }
+      if (purchase?.metadata) {
+        const meta = purchase.metadata as { redirectUrl?: string };
+        if (meta.redirectUrl) {
+          let targetUrl = meta.redirectUrl;
+          const appScheme = c.var.appScheme;
+          // If redirectUrl is native callback (API callback route or custom scheme), format native deep link
+          if (targetUrl.includes(PAYMENT_ROUTES.CALLBACK) || targetUrl.includes('://')) {
+            targetUrl = PAYMENT_ROUTES.nativeRedirect(status, purchaseId, appScheme);
+          } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+            // If redirectUrl is a web origin, format return URL with status & purchaseId on that origin
+            try {
+              const parsedUrl = new URL(targetUrl);
+              targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
+            } catch (error) {
+              logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
+                targetUrl,
+                error,
+              });
             }
-
-            logger.info('[PAYMENTS] Return endpoint redirecting', {
-              purchaseId,
-              status,
-              rawRedirectUrl: meta.redirectUrl,
-              finalTargetUrl: targetUrl,
-            });
-
-            return c.redirect(targetUrl, HTTP.FOUND);
           }
+
+          logger.info('[PAYMENTS] Return endpoint redirecting', {
+            purchaseId,
+            status,
+            rawRedirectUrl: meta.redirectUrl,
+            finalTargetUrl: targetUrl,
+          });
+
+          return c.redirect(targetUrl, HTTP.FOUND);
         }
-      } catch (error) {
-        logger.warn('[PAYMENTS] Failed to read purchase metadata for return redirect', {
-          purchaseId,
-          error,
-        });
       }
+    } catch (error) {
+      logger.warn('[PAYMENTS] Failed to read purchase metadata for return redirect', {
+        purchaseId,
+        error,
+      });
     }
 
     // Fallback: redirect to referer origin or root (excluding payment gateway domains to prevent redirect loops)
@@ -359,7 +359,8 @@ paymentsRouter.get(
 
 // GET /payments/callback — Native deep link redirect fallback
 paymentsRouter.get('/callback', (c) => {
-  return c.redirect(`sonora:/${PAYMENT_ROUTES.CALLBACK}`, HTTP.FOUND);
+  const appScheme = c.var.appScheme;
+  return c.redirect(PAYMENT_ROUTES.nativeCallback(appScheme), HTTP.FOUND);
 });
 
 // GET /payments/status/:purchaseId — Check purchase status (with optional active fallback polling)
