@@ -282,8 +282,11 @@ paymentsRouter.get(
                 if (!parsedUrl.pathname.includes('/payments/')) {
                   targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
                 }
-              } catch {
-                // Invalid URL string — use original
+              } catch (error) {
+                logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
+                  targetUrl,
+                  error,
+                });
               }
             }
             return c.redirect(targetUrl, HTTP.FOUND);
