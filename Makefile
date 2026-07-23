@@ -852,8 +852,8 @@ eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Ho
 # ── Firebase App Distribution ────────────
 
 # Firebase project App IDs
-FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:aad883fdf7059bec060479
-FIREBASE_APP_ID_STAGING    := 1:967212589494:android:602e693b852146f814e117
+FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:cfe1fdc7c6ed6f41060479
+FIREBASE_APP_ID_STAGING    := 1:967212589494:android:291659aa9bd3448814e117
 
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json
