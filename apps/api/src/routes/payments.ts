@@ -310,10 +310,15 @@ paymentsRouter.get(
                 const parsedUrl = new URL(targetUrl);
                 targetUrl = `${parsedUrl.origin}${PAYMENT_ROUTES.PREFIX}/${status}/${purchaseId}`;
               } catch (error) {
-                logger.warn('[PAYMENTS] Failed to parse targetUrl in return endpoint', {
-                  targetUrl,
-                  error,
-                });
+                logger.error(
+                  '[PAYMENTS] Failed to parse targetUrl in return endpoint, falling back',
+                  {
+                    purchaseId,
+                    status,
+                    rawRedirectUrl: meta.redirectUrl,
+                    error,
+                  },
+                );
                 targetUrl = '';
               }
             }
@@ -331,6 +336,15 @@ paymentsRouter.get(
             });
 
             return c.redirect(targetUrl, HTTP.FOUND);
+          } else {
+            logger.warn(
+              '[PAYMENTS] Return endpoint targetUrl resolved to empty, falling back to referer/default',
+              {
+                purchaseId,
+                status,
+                rawRedirectUrl: meta.redirectUrl,
+              },
+            );
           }
         }
       }
