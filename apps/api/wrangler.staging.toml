@@ -14,7 +14,6 @@ compatibility_flags = ["nodejs_compat"]
 DB_ADAPTER = "neon"
 ENVIRONMENT = "staging"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
-APP_SCHEME = "sonora-staging"
 
 [define]
 MP_BYPASS_SIGNATURE = "true"

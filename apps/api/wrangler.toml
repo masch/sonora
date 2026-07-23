@@ -14,7 +14,6 @@ compatibility_flags = ["nodejs_compat"]
 DB_ADAPTER = "neon"
 ENVIRONMENT = "production"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
-APP_SCHEME = "sonora"
 
 MINIMUM_APP_VERSION = "0.0.0"
 BLOCK_OLDER_VERSIONS = "false"
