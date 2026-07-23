@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { APP_IDENTIFIERS } from '@sonora/shared';
+import { APP_IDENTIFIERS, PAYMENT_ROUTES } from '@sonora/shared';
 import type { Env, Variables } from '../index';
 import { success } from '../middleware/problem-details';
 
@@ -13,11 +13,11 @@ associationRouter.get('/apple-app-site-association', (c) => {
       details: [
         {
           appID: `${APP_IDENTIFIERS.production.teamId}.${APP_IDENTIFIERS.production.appId}`,
-          paths: ['/payment/callback', '/payment/*'],
+          paths: [PAYMENT_ROUTES.CALLBACK, `${PAYMENT_ROUTES.PREFIX}/*`],
         },
         {
           appID: `${APP_IDENTIFIERS.staging.teamId}.${APP_IDENTIFIERS.staging.appId}`,
-          paths: ['/payment/callback', '/payment/*'],
+          paths: [PAYMENT_ROUTES.CALLBACK, `${PAYMENT_ROUTES.PREFIX}/*`],
         },
       ],
     },
