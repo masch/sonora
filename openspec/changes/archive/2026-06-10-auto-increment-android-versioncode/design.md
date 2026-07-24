@@ -52,10 +52,10 @@ make eas-build-android-preview-local
 
 ### `app.config.ts` — Add `android.versionCode`
 
-Insert after line 25 (`package: 'org.masch.sonora',`) inside the existing `android` block:
+Insert after line 25 (`package: 'org.masch.sonora.app',`) inside the existing `android` block:
 
 ```diff
-     package: 'org.masch.sonora',
+     package: 'org.masch.sonora.app',
 +    versionCode: 1,
 ```
 
