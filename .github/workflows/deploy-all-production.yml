@@ -115,7 +115,7 @@ jobs:
     uses: ./.github/workflows/deploy-mobile-android-production.yml
     with:
       play_track: ${{ inputs.play_track || github.event.inputs.play_track || 'internal' }}
-      enable_firebase: ${{ inputs.enable_firebase || github.event.inputs.enable_firebase || false }}
+      enable_firebase: ${{ inputs.enable_firebase == true || github.event.inputs.enable_firebase == true }}
       firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'sonora-team' }}
       skip_tagging: true
     secrets: inherit
