@@ -26,7 +26,7 @@ export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 export EXPO_NO_DOCTOR = 1
 
 
-MOBILE_BUNDLE_ID = org.masch.sonora
+MOBILE_BUNDLE_ID = org.masch.sonora.app
 
 EAS_CLI_VERSION = 20.1.0
 
@@ -852,8 +852,8 @@ eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Ho
 # ── Firebase App Distribution ────────────
 
 # Firebase project App IDs
-FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:cfe1fdc7c6ed6f41060479
-FIREBASE_APP_ID_STAGING    := 1:967212589494:android:291659aa9bd3448814e117
+FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:61a953910f951dee060479
+FIREBASE_APP_ID_STAGING    := 1:967212589494:android:d73fef12d655a13914e117
 
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json
