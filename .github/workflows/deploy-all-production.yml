@@ -4,13 +4,28 @@ on:
   workflow_dispatch:
     inputs:
       build_android:
-        description: 'Manual: Compile and deploy Android App (Firebase App Distribution)'
+        description: 'Manual: Compile and deploy Android App'
         required: true
         type: boolean
         default: true
+      play_track:
+        description: 'Google Play Track (internal, alpha, beta, production)'
+        required: true
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+        default: 'internal'
+      enable_firebase:
+        description: 'Enable distribution to Firebase App Distribution'
+        required: false
+        type: boolean
+        default: false
       firebase_groups:
         description: 'Firebase App Distribution Groups (comma-separated)'
-        required: true
+        required: false
         type: string
         default: 'sonora-team'
   schedule:
@@ -99,6 +114,8 @@ jobs:
       !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/deploy-mobile-android-production.yml
     with:
-      firebase_groups: ${{ github.event.inputs.firebase_groups || 'sonora-team' }}
+      play_track: ${{ inputs.play_track || github.event.inputs.play_track || 'internal' }}
+      enable_firebase: ${{ inputs.enable_firebase || github.event.inputs.enable_firebase || false }}
+      firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'sonora-team' }}
       skip_tagging: true
     secrets: inherit
