@@ -270,10 +270,9 @@ jobs:
           tag_pattern: 'prod-v*'
           title_prefix: 'Build'
       - name: Deploy AAB to Google Play Store
-        uses: rddaley/upload-google-play@v4
+        uses: rstudio/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: org.masch.sonora.app
           releaseFiles: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.aab
           track: ${{ inputs.play_track || 'internal' }}
-          whatsNewDirectory: ${{ steps.release-notes.outputs.commits }}
