@@ -9,6 +9,7 @@ import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
 import { AppLogo } from '@/components/app-logo';
+import { ROUTES } from '@/constants/routes';
 
 import { SONORA_HOME_BG } from '@/constants/images';
 
@@ -49,7 +50,7 @@ export default function HomeScreen() {
         <TwView className="gap-3">
           {/* Explorar Recorridos */}
           <TwPressable
-            onPress={() => router.push('/trips')}
+            onPress={() => router.push(ROUTES.PATH.DERIVAS)}
             accessibilityLabel={t('home.exploreRoutes')}
             testID="explore-routes-menu"
             className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
@@ -83,7 +84,7 @@ export default function HomeScreen() {
 
           {/* Explorar Tracks */}
           <TwPressable
-            onPress={() => router.push('/tracks')}
+            onPress={() => router.push(ROUTES.PATH.POETICS)}
             accessibilityLabel={t('home.exploreTracks')}
             testID="explore-tracks-menu"
             className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
@@ -118,7 +119,7 @@ export default function HomeScreen() {
           {/* Mensajes del Lugar */}
           {SHOW_LOCAL_MESSAGES && (
             <TwPressable
-              onPress={() => router.push('/messages')}
+              onPress={() => router.push(ROUTES.PATH.MESSAGES)}
               accessibilityLabel={t('home.localMessages')}
               testID="local-messages-menu"
               className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"

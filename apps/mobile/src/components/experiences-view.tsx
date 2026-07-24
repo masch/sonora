@@ -18,6 +18,7 @@ import {
   SONORA_TRACKS_BG,
   DEFAULT_TRACK_IMAGE,
 } from '@/constants/images';
+import { ROUTES } from '@/constants/routes';
 import { logger } from '@/utils/logger';
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -305,9 +306,7 @@ function ExperiencesContent({
           filteredExperiences.map((exp) => (
             <TwPressable
               key={exp.id}
-              onPress={() =>
-                router.push(`/tracks/${exp.id}?title=${encodeURIComponent(exp.title)}`)
-              }
+              onPress={() => router.push(ROUTES.PATH.POETICS_DETAIL(exp.id, exp.title))}
               className="flex-row items-center gap-4 px-5 py-4 rounded-[24px] active:opacity-75"
               style={{
                 backgroundColor: colors[CARD_BG_COLOR_KEYS[exp.format]] + 'CC',
