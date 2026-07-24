@@ -270,7 +270,7 @@ jobs:
           tag_pattern: 'prod-v*'
           title_prefix: 'Build'
       - name: Deploy AAB to Google Play Store
-        uses: rstudio/upload-google-play@v1
+        uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: org.masch.sonora.app
