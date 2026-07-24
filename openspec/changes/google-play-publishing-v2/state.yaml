@@ -1,4 +1,5 @@
 name: google-play-publishing-v2
-status: active
-phase: spec
+status: completed
+phase: verify
 created_at: 2026-07-24
+completed_at: 2026-07-24
