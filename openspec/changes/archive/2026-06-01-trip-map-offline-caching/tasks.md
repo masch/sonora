@@ -31,7 +31,7 @@
       offlineTitle: 'Map unavailable',
       offlineDescription: 'Connect to the internet to see the map',
       noTripsTitle: 'No trips available',
-      viewTrip: 'View trip',
+      viewTrip: 'View deriva',
     },
     ```
   - Add same keys to `es.ts` with Spanish translations:
@@ -44,7 +44,7 @@
       offlineTitle: 'Mapa no disponible',
       offlineDescription: 'Conectate a internet para ver el mapa',
       noTripsTitle: 'No hay viajes disponibles',
-      viewTrip: 'Ver viaje',
+      viewTrip: 'Ver deriva',
     },
     ```
   - Add `trips.coordinates: '{{lat}}, {{lng}}'` to both locales

@@ -12,6 +12,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { RuntimeColors } from '@/constants/theme';
 
+import { ROUTES } from '@/constants/routes';
+
 import { useLocationStore } from '@/store/location-store';
 import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useBackgroundSync } from '@/hooks/use-background-sync';
@@ -110,7 +112,7 @@ export default function RootLayout() {
       {versionStatus === 'warn' && <UpdateWarningBanner />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="tracks/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name={`${ROUTES.POETICS}/[id]`} options={{ headerShown: true }} />
       </Stack>
       <GlobalAudioPlayer />
       <InterruptConfirmationModal />

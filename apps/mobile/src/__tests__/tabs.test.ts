@@ -1,3 +1,4 @@
+import { ENTITY_NAMES } from '@/constants/entities';
 import { TABS } from '@/constants/tabs';
 
 describe('Tab definitions', () => {
@@ -13,17 +14,17 @@ describe('Tab definitions', () => {
     expect(tab.symbolViewName.web).toBe('home');
   });
 
-  it('has correct second entry (trips)', () => {
+  it('has correct second entry (derivas)', () => {
     const tab = TABS[1];
-    expect(tab.name).toBe('trips');
+    expect(tab.name).toBe(ENTITY_NAMES.DERIVAS);
     expect(tab.symbolViewName.ios).toBe('map');
     expect(tab.symbolViewName.android).toBe('map');
     expect(tab.symbolViewName.web).toBe('map');
   });
 
-  it('has correct third entry (tracks)', () => {
+  it('has correct third entry (poetics)', () => {
     const tab = TABS[2];
-    expect(tab.name).toBe('tracks');
+    expect(tab.name).toBe(ENTITY_NAMES.POETICS);
     expect(tab.symbolViewName.ios).toBe('music.note.list');
     expect(tab.symbolViewName.android).toBe('library_music');
     expect(tab.symbolViewName.web).toBe('library_music');

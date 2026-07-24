@@ -1,5 +1,6 @@
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { getExperienceIcon } from '../utils/icons';
+import { ROUTES } from './routes';
 
 export interface TabDefinition {
   /** Route name: "index", "explore", or "settings" */
@@ -18,37 +19,37 @@ export interface TabDefinition {
 
 export const TABS = [
   {
-    name: 'index',
+    name: ROUTES.HOME,
     label: 'Home',
     symbolViewName: { ios: 'house', android: 'home', web: 'home' },
     hidden: false,
   },
   {
-    name: 'trips',
-    label: 'Trips',
+    name: ROUTES.DERIVAS,
+    label: 'Derivas',
     symbolViewName: getExperienceIcon('trip'),
     hidden: false,
   },
   {
-    name: 'tracks',
-    label: 'Tracks',
+    name: ROUTES.POETICS,
+    label: 'Poetics',
     symbolViewName: getExperienceIcon('track'),
     hidden: false,
   },
   {
-    name: 'explore',
+    name: ROUTES.EXPLORE,
     label: 'Explore',
     symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
     hidden: true,
   },
   {
-    name: 'settings',
+    name: ROUTES.SETTINGS,
     label: 'Settings',
     symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
     hidden: true,
   },
   {
-    name: 'messages',
+    name: ROUTES.MESSAGES,
     label: 'Messages',
     symbolViewName: getExperienceIcon('general-feedback'),
     hidden: true,

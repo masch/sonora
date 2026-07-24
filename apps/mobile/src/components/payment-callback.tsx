@@ -11,6 +11,7 @@ import { addPurchasedId, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 import { logger } from '@/utils/logger';
+import { ROUTES } from '@/constants/routes';
 
 interface PaymentCallbackProps {
   status: 'success' | 'failure' | 'pending';
@@ -72,7 +73,7 @@ export default function PaymentCallback({ status }: PaymentCallbackProps) {
 
         // 3. Routing navigation (if not in a popup and not rejected)
         if (result.status !== 'rejected') {
-          router.replace(`/tracks/${result.experienceId}`);
+          router.replace(ROUTES.PATH.POETICS_DETAIL(result.experienceId));
         }
       } catch (err) {
         logger.error('[PaymentCallback] Failed to handle payment callback', err);

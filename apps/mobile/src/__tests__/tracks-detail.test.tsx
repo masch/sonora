@@ -1,7 +1,7 @@
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
-import TrackDetailScreen from '@/app/tracks/[id]';
+import TrackDetailScreen from '@/app/poetics/[id]';
 import { type Experience } from '@/data/experiences';
 
 const mockExperiences: Experience[] = [

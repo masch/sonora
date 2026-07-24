@@ -9,6 +9,7 @@ import { TwPressable, TwText, TwView } from '@/tw';
 import { usePathname, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ROUTES } from '@/constants/routes';
 
 export function GlobalAudioPlayer() {
   const { t } = useAppTranslation();
@@ -28,7 +29,7 @@ export function GlobalAudioPlayer() {
 
   // Extract route track/trip ID from pathname globally (useful since useLocalSearchParams is undefined in root _layout)
   const pathParts = pathname.split('/');
-  const routeIdParam = pathParts[1] === 'tracks' ? pathParts[2] : undefined;
+  const routeIdParam = pathParts[1] === ROUTES.POETICS ? pathParts[2] : undefined;
 
   // Normalize route param ID to match clean experience ID formats
   const cleanSegmentId = cleanExperienceId(routeIdParam) ?? undefined;
@@ -42,7 +43,7 @@ export function GlobalAudioPlayer() {
         pathname === '/index' || // Direct index route fallback
         pathname === '/(tabs)' || // Tab group root segment path
         pathname === '/(tabs)/index')) || // Explicit tab index path (e.g. deep-links / test environments)
-    (segments[0] === 'tracks' &&
+    (segments[0] === ROUTES.POETICS &&
       cleanSegmentId !== undefined &&
       (experienceId === cleanSegmentId ||
         currentMetadata?.id === cleanSegmentId ||

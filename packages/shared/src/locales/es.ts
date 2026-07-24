@@ -12,7 +12,7 @@ export const es = {
     offlineTitle: 'Mapa no disponible',
     offlineDescription: 'Conectate a internet para ver el mapa',
     noTracksTitle: 'No hay audios disponibles',
-    viewTrack: 'Ver recorrido',
+    viewTrack: 'Ver audio',
     loadingMap: 'Cargando mapa…',
     distanceFromYou: 'A {{distance}} de vos',
     distanceMeters: '{{value}} m',
@@ -22,7 +22,7 @@ export const es = {
     instructionDuration: '5 min',
     instructionsTitle: 'INSTRUCCIONES',
     instructionsSub: '(cómo usar la app de Sonora)',
-    tracksTitle: 'RECORRIDOS',
+    tracksTitle: 'DERIVAS',
     trackCardMeta: '{{duration}} min · {{sections}}{{type}}{{distance}}',
     zeroDistance: '0 mts',
     destination: 'Destino',
@@ -42,7 +42,7 @@ export const es = {
     title: 'Experiencias',
     searchPlaceholder: {
       track: 'Buscar audios...',
-      trip: 'Buscar recorridos...',
+      trip: 'Buscar derivas...',
     },
     notFound: 'No se encontraron experiencias',
     duration: '{{minutes}} min de caminata',
@@ -67,26 +67,26 @@ export const es = {
     },
     types: {
       track: 'Audios',
-      trip: 'Recorridos',
+      trip: 'Derivas',
     },
     errors: {
-      mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el recorrido.',
+      mustBeOnSite: 'Tenés que estar en el punto de inicio para empezar el deriva.',
     },
     geofenceBlocked: {
       bannerTitle: 'Estás lejos del punto de inicio',
       bannerDescription:
-        'Necesitás estar a menos de {{radius}} metros del punto de inicio para escuchar este recorrido.',
+        'Necesitás estar a menos de {{radius}} metros del punto de inicio para escuchar este deriva.',
       bannerDistance: 'Distancia actual: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: 'No podés reproducir',
       blockedAlertMessage:
-        'Para escuchar este recorrido tenés que estar a menos de {{radius}} metros del punto de inicio. Distancia actual: {{distance}}.',
+        'Para escuchar este deriva tenés que estar a menos de {{radius}} metros del punto de inicio. Distancia actual: {{distance}}.',
       blockedAlertOk: 'Entendido',
     },
     warnings: {
       locationAlertTitle: 'Alerta de Ubicación',
       locationAlertMessage:
-        'No estás cerca del punto de inicio del recorrido. Vas a saltear la validación de ubicación. ¿Querés continuar?',
+        'No estás cerca del punto de inicio del deriva. Vas a saltear la validación de ubicación. ¿Querés continuar?',
       cancel: 'Cancelar',
       continue: 'Continuar',
     },
