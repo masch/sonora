@@ -13,6 +13,7 @@ jest.mock('@/storage/app-storage', () => ({
       delete mockStore[key];
     }),
   },
+  getDeviceId: jest.fn().mockResolvedValue('test-device-id'),
 }));
 
 const mockFetch = jest.fn();

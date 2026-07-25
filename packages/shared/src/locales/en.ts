@@ -11,8 +11,8 @@ export const en = {
   map: {
     offlineTitle: 'Map unavailable',
     offlineDescription: 'Connect to the internet to see the map',
-    noTracksTitle: 'No tracks available',
-    viewTrack: 'View track',
+    noTracksTitle: 'No poetics available',
+    viewTrack: 'View poetic',
     loadingMap: 'Loading map…',
     distanceFromYou: '{{distance}} away',
     distanceMeters: '{{value}} m',
@@ -41,8 +41,8 @@ export const en = {
   experiences: {
     title: 'Experiences',
     searchPlaceholder: {
-      track: 'Search tracks...',
-      trip: 'Search trips...',
+      track: 'Search audios...',
+      trip: 'Search derivas...',
     },
     notFound: 'Experience not found',
     duration: '{{minutes}} min walk',
@@ -66,21 +66,21 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Tracks',
-      trip: 'Trips',
+      track: 'Poetics',
+      trip: 'Derivas',
     },
     errors: {
-      mustBeOnSite: 'You must be at the starting point to begin the trip.',
+      mustBeOnSite: 'You must be at the starting point to begin the deriva.',
     },
     geofenceBlocked: {
       bannerTitle: "You're too far from the starting point",
       bannerDescription:
-        'You need to be within {{radius}} meters of the starting point to listen to this trip.',
+        'You need to be within {{radius}} meters of the starting point to listen to this deriva.',
       bannerDistance: 'Current distance: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: "Can't play",
       blockedAlertMessage:
-        'You need to be within {{radius}} meters of the starting point to listen to this trip. Current distance: {{distance}}.',
+        'You need to be within {{radius}} meters of the starting point to listen to this deriva. Current distance: {{distance}}.',
       blockedAlertOk: 'Got it',
     },
     warnings: {
@@ -217,7 +217,7 @@ export const en = {
     },
   },
   errors: {
-    invalidDownloadConfig: 'Invalid track or download configuration',
+    invalidDownloadConfig: 'Invalid poetic or download configuration',
     insufficientSpace: 'Insufficient storage space. Free: {{free}}MB, Required: {{required}}MB',
     downloadWriteFailed: 'Download failed to write target path',
     downloadFailed: 'Audio download failed',

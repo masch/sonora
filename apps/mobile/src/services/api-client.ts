@@ -5,13 +5,13 @@ import { BaseApiClient, type RequestOptions } from '@sonora/shared';
 
 class MobileApiClient extends BaseApiClient {
   protected override async getAuthHeader(): Promise<Record<string, string>> {
-    try {
-      const deviceId = await getDeviceId();
-      return deviceId ? { 'X-Device-Id': deviceId } : {};
-    } catch (err) {
+    const deviceId = await getDeviceId();
+    if (!deviceId) {
+      const err = new Error('Mandatory X-Device-Id is missing in client storage');
       logger.error('Failed to retrieve device ID for API headers', err);
-      return {};
+      throw err;
     }
+    return { 'X-Device-Id': deviceId };
   }
 }
 
@@ -40,5 +40,42 @@ export const ApiClient = {
     options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
     return client.post<T>(path, body, options);
+  },
+
+  async put<T>(
+    path: string,
+    body: unknown,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ): Promise<T> {
+    return client.request<T>(path, { ...options, method: 'PUT', body });
+  },
+
+  async patch<T>(
+    path: string,
+    body: unknown,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ): Promise<T> {
+    return client.request<T>(path, { ...options, method: 'PATCH', body });
+  },
+
+  async delete<T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return client.request<T>(path, { ...options, method: 'DELETE' });
+  },
+
+  /**
+   * Performs a raw fetch request enforcing that the mandatory X-Device-Id header is attached.
+   */
+  async fetchWithDeviceId(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+    const deviceId = await getDeviceId();
+    if (!deviceId) {
+      throw new Error('Mandatory X-Device-Id is missing in client storage');
+    }
+    const headers = new Headers(init.headers || {});
+    headers.set('X-Device-Id', deviceId);
+
+    return fetch(input, {
+      ...init,
+      headers,
+    });
   },
 };

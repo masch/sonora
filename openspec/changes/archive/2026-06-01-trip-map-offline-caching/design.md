@@ -111,7 +111,7 @@ map: {
   offlineTitle: 'Map unavailable',
   offlineDescription: 'Connect to the internet to see the map',
   noTripsTitle: 'No trips available',
-  viewTrip: 'View trip',
+  viewTrip: 'View deriva',
 }
 ```
 
@@ -125,7 +125,7 @@ map: {
   offlineTitle: 'Mapa no disponible',
   offlineDescription: 'Conectate a internet para ver el mapa',
   noTripsTitle: 'No hay viajes disponibles',
-  viewTrip: 'Ver viaje',
+  viewTrip: 'Ver deriva',
 }
 ```
 

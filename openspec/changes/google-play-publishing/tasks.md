@@ -329,7 +329,7 @@ The setup guide must document:
 **Acceptance criteria**:
 
 - Google Play Developer account is active
-- App "Sonora" exists in Play Console with package name `com.masch.sonora`
+- App "Sonora" exists in Play Console with package name `org.masch.sonora.app`
 - `docs/play-store-setup.md` exists and covers all manual procedures
 - Document is committed to the repository
 

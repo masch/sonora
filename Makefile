@@ -26,7 +26,7 @@ export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 export EXPO_NO_DOCTOR = 1
 
 
-MOBILE_BUNDLE_ID = com.masch.sonora
+MOBILE_BUNDLE_ID = org.masch.sonora.app
 
 EAS_CLI_VERSION = 20.1.0
 
@@ -324,16 +324,16 @@ api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloud
 
 .PHONY: api-r2-buckets-staging
 api-r2-buckets-staging: ## Create R2 audio buckets for staging environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio-staging --config wrangler.staging.toml
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio-staging --config wrangler.staging.toml
-	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-staging-private-audio --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-staging-public-audio --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-staging-public-audio --config wrangler.staging.toml
 
 
 .PHONY: api-r2-buckets-production
 api-r2-buckets-production: ## Create R2 audio buckets for production environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio
-	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-private-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-production-public-audio
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -359,13 +359,13 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 
 .PHONY: api-upload-public-audio-staging
 api-upload-public-audio-staging: ## Upload audio to staging public bucket. Usage: make api-upload-public-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio-staging/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
-	@echo "Uploaded to staging public bucket: sonora-public-audio-staging/$(KEY)"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
+	@echo "Uploaded to staging public bucket: sonora-staging-public-audio/$(KEY)"
 
 .PHONY: api-upload-public-audio-production
 api-upload-public-audio-production: ## Upload audio to production public bucket. Usage: make api-upload-public-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio/$(KEY) --file=$(FILE) --remote
-	@echo "Uploaded to production public bucket: sonora-public-audio/$(KEY)"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
+	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
@@ -852,8 +852,8 @@ eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Ho
 # ── Firebase App Distribution ────────────
 
 # Firebase project App IDs
-FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:aad883fdf7059bec060479
-FIREBASE_APP_ID_STAGING    := 1:967212589494:android:602e693b852146f814e117
+FIREBASE_APP_ID_PRODUCTION := 1:967054219260:android:61a953910f951dee060479
+FIREBASE_APP_ID_STAGING    := 1:967212589494:android:d73fef12d655a13914e117
 
 # Service account key path — auto-sets GOOGLE_APPLICATION_CREDENTIALS if file exists
 FIREBASE_SA_KEY_PATH ?= apps/mobile/firebase-sa-key.json

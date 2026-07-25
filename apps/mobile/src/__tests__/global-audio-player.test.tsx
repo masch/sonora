@@ -172,8 +172,8 @@ describe('GlobalAudioPlayer', () => {
   });
 
   it('hides when on track detail screen and the playing track matches', async () => {
-    mockSegments = ['tracks', '[id]'];
-    mockPathname = '/tracks/5a9463ce-daba-4756-892e-4dd4cb862309';
+    mockSegments = ['poetics', '[id]'];
+    mockPathname = '/poetics/5a9463ce-daba-4756-892e-4dd4cb862309';
     mockState.status = 'playing';
     mockState.currentUri =
       'file:///var/mobile/tracks/5a9463ce-daba-4756-892e-4dd4cb862309/audio.mp3';
@@ -183,8 +183,8 @@ describe('GlobalAudioPlayer', () => {
   });
 
   it('remains visible on track detail screen if a different track is playing', async () => {
-    mockSegments = ['tracks', '[id]'];
-    mockPathname = '/tracks/5a9463ce-daba-4756-892e-4dd4cb862309';
+    mockSegments = ['poetics', '[id]'];
+    mockPathname = '/poetics/5a9463ce-daba-4756-892e-4dd4cb862309';
     mockState.status = 'playing';
     mockState.currentUri = 'file:///var/mobile/tracks/different-track/audio.mp3';
 

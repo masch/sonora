@@ -10,8 +10,8 @@ The project uses two separate Firebase Apps for Android distribution, matching S
 
 | Env            | Firebase App ID                                 | Service Account Secret     | Local SA Key File                  |
 | :------------- | :---------------------------------------------- | :------------------------- | :--------------------------------- |
-| **Staging**    | `1:967212589494:android:602e693b852146f814e117` | `FIREBASE_SERVICE_ACCOUNT` | `apps/mobile/firebase-sa-key.json` |
-| **Production** | `1:967054219260:android:aad883fdf7059bec060479` | `FIREBASE_SERVICE_ACCOUNT` | `apps/mobile/firebase-sa-key.json` |
+| **Staging**    | `1:967212589494:android:d73fef12d655a13914e117` | `FIREBASE_SERVICE_ACCOUNT` | `apps/mobile/firebase-sa-key.json` |
+| **Production** | `1:967054219260:android:61a953910f951dee060479` | `FIREBASE_SERVICE_ACCOUNT` | `apps/mobile/firebase-sa-key.json` |
 
 ---
 

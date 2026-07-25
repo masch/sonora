@@ -1,6 +1,6 @@
 {
   "production": {
-    "appId": "com.masch.sonora",
+    "appId": "org.masch.sonora.app",
     "teamId": "6C5EC74CE4",
     "scheme": "sonora",
     "sha256CertFingerprints": [
@@ -8,7 +8,7 @@
     ]
   },
   "staging": {
-    "appId": "com.masch.sonora.staging",
+    "appId": "org.masch.sonora.staging.app",
     "teamId": "6C5EC74CE4",
     "scheme": "sonora-staging",
     "sha256CertFingerprints": [

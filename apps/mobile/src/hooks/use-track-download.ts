@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { ApiClient } from '@/services/api-client';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
 import type { DownloadEntry as StoreDownloadEntry } from '@/store/download-manager-store';
 import { logger } from '@/utils/logger';
@@ -167,7 +168,7 @@ export function useTrackDownload(
             const cacheBustUrl = `${remoteAudioUrl}${separator}_cb=${Date.now()}`;
 
             // Fetch only the headers using GET with Range: bytes=0-0 to retrieve R2 ETag
-            const response = await fetch(cacheBustUrl, {
+            const response = await ApiClient.fetchWithDeviceId(cacheBustUrl, {
               method: 'GET',
               headers: {
                 Range: 'bytes=0-0',
