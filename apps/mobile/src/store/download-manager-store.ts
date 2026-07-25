@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { AnalyticsService } from '@/services/analytics';
+import { ApiClient } from '@/services/api-client';
+import { getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
 
 export type DownloadStatus = 'idle' | 'queued' | 'downloading' | 'completed' | 'error';
@@ -50,11 +52,15 @@ async function performFileDownload(
   // Ensure directory exists
   await FileSystem.makeDirectoryAsync(parentDir, { intermediates: true });
 
+  const deviceId = await getDeviceId();
+
   // Perform download
   const result = await FileSystem.createDownloadResumable(
     url,
     targetUri,
-    {},
+    {
+      headers: deviceId ? { 'X-Device-Id': deviceId } : {},
+    },
     (downloadProgress) => {
       const pct =
         (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100;
@@ -111,7 +117,7 @@ async function performWebDownload(
     }
   }
 
-  const response = await fetch(url);
+  const response = await ApiClient.fetchWithDeviceId(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch audio: ${response.statusText}`);
   }
