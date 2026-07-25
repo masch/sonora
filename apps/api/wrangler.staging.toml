@@ -21,8 +21,8 @@ MP_SIGNATURE_MAX_AGE_MINUTES = "5"
 
 [[r2_buckets]]
 binding = "PRIVATE_BUCKET"
-bucket_name = "sonora-private-audio-staging"
+bucket_name = "sonora-staging-private-audio"
 
 [[r2_buckets]]
 binding = "PUBLIC_BUCKET"
-bucket_name = "sonora-public-audio-staging"
+bucket_name = "sonora-staging-public-audio"

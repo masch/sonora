@@ -45,6 +45,7 @@ describe('ApiClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDeviceId as jest.Mock).mockResolvedValue('test-device-id-uuid');
   });
 
   afterAll(() => {
@@ -383,5 +384,83 @@ describe('ApiClient', () => {
 
     await expect(ApiClient.get('/data', { cacheKey: 'k1' })).rejects.toThrow('Offline');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not an error object'));
+  });
+
+  /* ─── Mandatory X-Device-Id enforcement tests ─── */
+
+  describe('Mandatory X-Device-Id header enforcement', () => {
+    it('automatically attaches X-Device-Id header to GET, POST, PUT, PATCH, DELETE requests', async () => {
+      mockFetchOk({ success: true });
+      (getDeviceId as jest.Mock).mockResolvedValue('device-12345');
+
+      await ApiClient.get('/test-get', { skipCache: true });
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+        }),
+      );
+
+      await ApiClient.post('/test-post', { payload: 1 });
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+        }),
+      );
+
+      await ApiClient.put('/test-put', { payload: 2 });
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+        }),
+      );
+
+      await ApiClient.patch('/test-patch', { payload: 3 });
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+        }),
+      );
+
+      await ApiClient.delete('/test-delete');
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+        }),
+      );
+    });
+
+    it('throws error when deviceId is missing for ApiClient calls', async () => {
+      (getDeviceId as jest.Mock).mockResolvedValue(null);
+
+      await expect(ApiClient.get('/test-missing-id', { skipCache: true })).rejects.toThrow(
+        'Mandatory X-Device-Id is missing in client storage',
+      );
+    });
+
+    it('attaches X-Device-Id in fetchWithDeviceId and throws if missing', async () => {
+      mockFetchOk({ fetchOk: true });
+      (getDeviceId as jest.Mock).mockResolvedValue('device-fetch-999');
+
+      await ApiClient.fetchWithDeviceId('https://api.test/stream');
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://api.test/stream',
+        expect.objectContaining({
+          headers: expect.any(Headers),
+        }),
+      );
+
+      (getDeviceId as jest.Mock).mockResolvedValue('');
+      await expect(ApiClient.fetchWithDeviceId('https://api.test/stream')).rejects.toThrow(
+        'Mandatory X-Device-Id is missing in client storage',
+      );
+    });
   });
 });

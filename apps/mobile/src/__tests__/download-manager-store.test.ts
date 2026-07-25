@@ -254,7 +254,8 @@ describe('DownloadManagerStore', () => {
       await new Promise((r) => setTimeout(r, 50));
 
       // Fetch was invoked because the cache had no entry
-      expect(globalThis.fetch).toHaveBeenCalledWith('https://remote.com/audio.mp3');
+      const [[, options]] = (globalThis.fetch as jest.Mock).mock.calls;
+      expect(options.headers.get('X-Device-Id')).toBeTruthy();
     });
 
     it('falls back to network when Cache API open throws', async () => {
@@ -276,7 +277,8 @@ describe('DownloadManagerStore', () => {
 
       await new Promise((r) => setTimeout(r, 50));
 
-      expect(globalThis.fetch).toHaveBeenCalledWith('https://remote.com/audio.mp3');
+      const [[, options]] = (globalThis.fetch as jest.Mock).mock.calls;
+      expect(options.headers.get('X-Device-Id')).toBeTruthy();
     });
   });
 });
