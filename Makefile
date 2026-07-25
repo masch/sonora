@@ -324,16 +324,16 @@ api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloud
 
 .PHONY: api-r2-buckets-staging
 api-r2-buckets-staging: ## Create R2 audio buckets for staging environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio-staging --config wrangler.staging.toml
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio-staging --config wrangler.staging.toml
-	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio-staging --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-staging-private-audio --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-staging-public-audio --config wrangler.staging.toml
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-staging-public-audio --config wrangler.staging.toml
 
 
 .PHONY: api-r2-buckets-production
 api-r2-buckets-production: ## Create R2 audio buckets for production environment
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-private-audio
-	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-public-audio
-	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-private-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-public-audio
+	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-production-public-audio
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -359,13 +359,13 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 
 .PHONY: api-upload-public-audio-staging
 api-upload-public-audio-staging: ## Upload audio to staging public bucket. Usage: make api-upload-public-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio-staging/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
-	@echo "Uploaded to staging public bucket: sonora-public-audio-staging/$(KEY)"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/$(KEY) --file=$(FILE) --config wrangler.staging.toml --remote
+	@echo "Uploaded to staging public bucket: sonora-staging-public-audio/$(KEY)"
 
 .PHONY: api-upload-public-audio-production
 api-upload-public-audio-production: ## Upload audio to production public bucket. Usage: make api-upload-public-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-public-audio/$(KEY) --file=$(FILE) --remote
-	@echo "Uploaded to production public bucket: sonora-public-audio/$(KEY)"
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
+	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
