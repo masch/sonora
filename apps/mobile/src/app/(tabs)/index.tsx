@@ -15,7 +15,6 @@ import { ROUTES } from '@/constants/routes';
 
 import { SONORA_HOME_BG } from '@/constants/images';
 
-
 export const SHOW_LOCAL_MESSAGES = false;
 
 export default function HomeScreen() {
@@ -160,11 +159,11 @@ export default function HomeScreen() {
         <TwView className="h-3" />
       </TwView>
 
-          {Platform.OS === 'web' && (
-            <ThemedText themeColor="textSecondary" className="text-xs text-center pb-8">
-              {Constants.expoConfig?.version}
-            </ThemedText>
-          )}
-        </ScrollScreenWrapper>
+      {Platform.OS === 'web' && (
+        <ThemedText themeColor="textSecondary" className="text-xs text-center pb-8 mt-auto">
+          {Constants.expoConfig?.version}
+        </ThemedText>
+      )}
+    </ScrollScreenWrapper>
   );
 }
