@@ -249,14 +249,10 @@ export default function ExploreScreen() {
                 hint={<ThemedText type="code">{RESET_PROJECT_COMMAND}</ThemedText>}
               />
             </TwView>
+
+            {Platform.OS === 'web' && <WebBadge />}
           </TwView>
         </TwView>
-
-        {Platform.OS === 'web' && (
-          <TwView className="pb-8">
-            <WebBadge />
-          </TwView>
-        )}
       </TwView>
     </ScrollScreenWrapper>
   );

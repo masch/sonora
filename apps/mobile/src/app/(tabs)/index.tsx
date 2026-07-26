@@ -7,11 +7,13 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
+import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppLogo } from '@/components/app-logo';
 import { ROUTES } from '@/constants/routes';
 
 import { SONORA_HOME_BG } from '@/constants/images';
+import { WebBadge } from '@/components/web-badge';
 
 export const SHOW_LOCAL_MESSAGES = false;
 
@@ -156,6 +158,8 @@ export default function HomeScreen() {
         {/* Spacer to match the padding between elements */}
         <TwView className="h-3" />
       </TwView>
+
+      {Platform.OS === 'web' && <WebBadge />}
     </ScrollScreenWrapper>
   );
 }
