@@ -1,9 +1,9 @@
 import { getAppVersion } from '@/utils/app-version';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import Animated, { Easing, Keyframe, useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 // react-doctor-disable-next-line react-doctor/rn-no-legacy-expo-packages — actively maintained in SDK 56, backgroundImage CSS is experimental
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,45 +18,54 @@ const DURATION = 2000;
 export function AnimatedSplashOverlay() {
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
+  const reducedMotion = useReducedMotion();
 
   const versionText = getAppVersion().formatted;
 
   const isProduction = Constants.expoConfig?.extra?.isProduction === true;
   const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
 
+  useEffect(() => {
+    if (reducedMotion) {
+      const timer = setTimeout(() => setVisible(false), DURATION);
+      return () => clearTimeout(timer);
+    }
+  }, [reducedMotion]);
+
   if (!visible) return null;
 
   const scaleFactor = height / 90;
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: scaleFactor }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
+  const entering = reducedMotion
+    ? undefined
+    : new Keyframe({
+        0: {
+          transform: [{ scale: scaleFactor }],
+          opacity: 1,
+        },
+        20: {
+          opacity: 1,
+        },
+        70: {
+          opacity: 0,
+          easing: Easing.elastic(0.7),
+        },
+        100: {
+          opacity: 0,
+          transform: [{ scale: 1 }],
+          easing: Easing.elastic(0.7),
+        },
+      })
+        .duration(DURATION)
+        .withCallback((finished: boolean) => {
+          'worklet';
+          if (finished) {
+            scheduleOnRN(setVisible, false);
+          }
+        });
 
   return (
-    <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={[styles.backgroundSolidColor, { backgroundColor }]}
-    >
+    <Animated.View entering={entering} style={[styles.backgroundSolidColor, { backgroundColor }]}>
       {versionText && (
         <TwText className="absolute self-center bottom-12 text-xs font-semibold text-white tracking-[0.5px]">
           {versionText}
@@ -116,7 +125,7 @@ export function AnimatedIcon() {
         <LinearGradient colors={['#3C9FFE', '#0274DF']} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={EXPO_LOGO} alt="Sonora logo" />
+        <Image style={styles.image} source={EXPO_LOGO} alt="" />
       </Animated.View>
     </TwView>
   );

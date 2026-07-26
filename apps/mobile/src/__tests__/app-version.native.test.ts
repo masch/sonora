@@ -33,4 +33,12 @@ describe('getAppVersion (native)', () => {
     expect(result.versionName).toBe('0.0.0');
     expect(result.formatted).toBe('0.0.0');
   });
+
+  it('defaults versionName to 0.0.0 when nativeApplicationVersion is empty string', () => {
+    mockApp.nativeApplicationVersion = '';
+
+    const result = getAppVersion();
+    expect(result.versionName).toBe('0.0.0');
+    expect(result.formatted).toBe('0.0.0');
+  });
 });

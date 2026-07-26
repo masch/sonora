@@ -6,7 +6,7 @@ export interface AppVersion {
 }
 
 export function getAppVersion(): AppVersion {
-  const versionName = Application.nativeApplicationVersion ?? '0.0.0';
+  const versionName = Application.nativeApplicationVersion || '0.0.0';
 
   return {
     versionName,
