@@ -1,59 +1,42 @@
 import { getAppVersion } from '@/utils/app-version.ts';
 
-let mockExtra: {
-  appVersionName: string | undefined;
-  appVersionCode: number | undefined;
-} = {
-  appVersionName: '1.0.3',
-  appVersionCode: 42,
+let mockConfig: {
+  extra?: { appVersionName: string };
+} | null = {
+  extra: { appVersionName: '1.0.3' },
 };
 
 jest.mock('expo-constants', () => ({
   get expoConfig() {
-    return { extra: mockExtra };
+    return mockConfig;
   },
 }));
 
-describe('getAppVersion', () => {
+describe('getAppVersion (web)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockExtra = {
-      appVersionName: '1.0.3',
-      appVersionCode: 42,
-    };
+    mockConfig = { extra: { appVersionName: '1.0.3' } };
   });
 
-  it('returns version name and code from extra', () => {
+  it('returns version name from extra', () => {
     const result = getAppVersion();
     expect(result.versionName).toBe('1.0.3');
-    expect(result.versionCode).toBe(42);
-    expect(result.formatted).toBe('1.0.3 (42)');
+    expect(result.formatted).toBe('1.0.3');
   });
 
   it('defaults versionName to 0.0.0 when undefined', () => {
-    mockExtra.appVersionName = undefined;
+    mockConfig = { extra: { appVersionName: undefined as unknown as string } };
 
     const result = getAppVersion();
     expect(result.versionName).toBe('0.0.0');
-    expect(result.versionCode).toBe(42);
-    expect(result.formatted).toBe('0.0.0 (42)');
+    expect(result.formatted).toBe('0.0.0');
   });
 
-  it('defaults versionCode to 0 when undefined', () => {
-    mockExtra.appVersionCode = undefined;
-
-    const result = getAppVersion();
-    expect(result.versionName).toBe('1.0.3');
-    expect(result.versionCode).toBe(0);
-    expect(result.formatted).toBe('1.0.3 (0)');
-  });
-
-  it('defaults both when extra is undefined', () => {
-    mockExtra = undefined as unknown as typeof mockExtra;
+  it('defaults versionName to 0.0.0 when extra is undefined', () => {
+    mockConfig = {};
 
     const result = getAppVersion();
     expect(result.versionName).toBe('0.0.0');
-    expect(result.versionCode).toBe(0);
-    expect(result.formatted).toBe('0.0.0 (0)');
+    expect(result.formatted).toBe('0.0.0');
   });
 });
