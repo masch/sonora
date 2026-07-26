@@ -1,7 +1,7 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -19,12 +19,9 @@ export function AnimatedSplashOverlay() {
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
 
-  const versionText = useMemo(() => {
-    const appVersion = Application.nativeApplicationVersion;
-    const buildNumber = Application.nativeBuildVersion;
-    if (!appVersion || !buildNumber) return null;
-    return `${appVersion} (${buildNumber})`;
-  }, []);
+  const appVersion = Application.nativeApplicationVersion;
+  const buildNumber = Application.nativeBuildVersion;
+  const versionText = appVersion && buildNumber ? `${appVersion} (${buildNumber})` : null;
 
   const isProduction = Constants.expoConfig?.extra?.isProduction === true;
   const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
