@@ -1,13 +1,21 @@
 name: 'Tag Release'
-description: 'Calculate and push dynamic SemVer tags with revision increments'
+description: 'Determine git tag, extract validated semver, and optionally create a new revision tag'
 inputs:
   environment:
     description: 'Target environment (staging or production)'
     required: true
   skip_tagging:
-    description: 'Skip tagging'
+    description: 'Skip creating a new tag'
     required: false
     default: 'false'
+
+outputs:
+  version-name:
+    description: 'Extracted and validated semver (e.g. 1.0.3)'
+    value: ${{ steps.extract.outputs.version-name }}
+  tag:
+    description: 'Full tag name (e.g. stg-v1.0.3)'
+    value: ${{ steps.get-tag.outputs.tag }}
 
 runs:
   using: 'composite'
@@ -72,3 +80,37 @@ runs:
         else
           gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$ANNOTATION_MSG" --prerelease
         fi
+
+    - name: Determine Tag Name
+      id: get-tag
+      shell: bash
+      run: |
+        git fetch --tags --force
+        TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 || echo "")
+        echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+    - name: Extract & Validate Version Name
+      id: extract
+      shell: bash
+      run: |
+        TAG="${{ steps.get-tag.outputs.tag }}"
+
+        if [ -z "$TAG" ]; then
+          echo "::error::No git tag found. Cannot extract version name."
+          exit 1
+        fi
+
+        VERSION_NAME="${TAG#prod-v}"
+        VERSION_NAME="${VERSION_NAME#stg-v}"
+
+        if [ -z "$VERSION_NAME" ]; then
+          echo "::error::Empty version extracted from tag '$TAG'"
+          exit 1
+        fi
+
+        if ! echo "$VERSION_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "::error::Invalid semver '$VERSION_NAME' extracted from tag '$TAG'. Expected format X.Y.Z"
+          exit 1
+        fi
+
+        echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
