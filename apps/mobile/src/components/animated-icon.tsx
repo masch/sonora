@@ -66,6 +66,7 @@ export function AnimatedSplashOverlay() {
 
   return (
     <Animated.View entering={entering} style={[styles.backgroundSolidColor, { backgroundColor }]}>
+      <AnimatedIcon />
       {versionText && (
         <TwText className="absolute self-center bottom-12 text-xs font-semibold text-white tracking-[0.5px]">
           {versionText}
