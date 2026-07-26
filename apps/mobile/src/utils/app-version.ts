@@ -6,11 +6,10 @@ export interface AppVersion {
   formatted: string;
 }
 
-export function getAppVersion(): AppVersion | null {
-  const versionName = Constants.expoConfig?.extra?.appVersionName as string | undefined;
-  const versionCode = Constants.expoConfig?.extra?.appVersionCode as number | undefined;
-
-  if (!versionName || versionCode === undefined) return null;
+export function getAppVersion(): AppVersion {
+  const versionName =
+    (Constants.expoConfig?.extra?.appVersionName as string | undefined) ?? '0.0.0';
+  const versionCode = (Constants.expoConfig?.extra?.appVersionCode as number | undefined) ?? 0;
 
   return {
     versionName,

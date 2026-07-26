@@ -19,8 +19,7 @@ export function AnimatedSplashOverlay() {
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
 
-  const version = getAppVersion();
-  const versionText = version?.formatted ?? null;
+  const versionText = getAppVersion().formatted;
 
   const isProduction = Constants.expoConfig?.extra?.isProduction === true;
   const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
