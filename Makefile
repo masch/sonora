@@ -729,8 +729,8 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 	cd apps/admin && bun run jest --passWithNoTests --watchAll=false --silent
 
 .PHONY: doctor-ci
-doctor-ci: ## Run React Doctor audit (terse, for pre-commit)
-	cd apps/mobile && bunx react-doctor --scope full -y
+doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
+	cd apps/mobile && bunx react-doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
@@ -748,7 +748,7 @@ precommit-logs: ## Show temp files from last pre-commit run
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format lint typecheck api-typecheck scripts-typecheck test gga ## Run full development gate (tests + lint + typecheck + gga)
+validate: format lint typecheck api-typecheck scripts-typecheck doctor-ci test gga ## Run full development gate (tests + lint + typecheck + gga + react-doctor diff scan)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck
