@@ -7,13 +7,14 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppLogo } from '@/components/app-logo';
 import { ROUTES } from '@/constants/routes';
 
 import { SONORA_HOME_BG } from '@/constants/images';
-import { WebBadge } from '@/components/web-badge';
+
 
 export const SHOW_LOCAL_MESSAGES = false;
 
@@ -159,7 +160,11 @@ export default function HomeScreen() {
         <TwView className="h-3" />
       </TwView>
 
-      {Platform.OS === 'web' && <WebBadge />}
-    </ScrollScreenWrapper>
+          {Platform.OS === 'web' && (
+            <ThemedText themeColor="textSecondary" className="text-xs text-center pb-8">
+              {Constants.expoConfig?.version}
+            </ThemedText>
+          )}
+        </ScrollScreenWrapper>
   );
 }
