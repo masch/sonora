@@ -276,3 +276,4 @@ jobs:
           packageName: org.masch.sonora.app
           releaseFiles: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.aab
           track: ${{ inputs.play_track || 'internal' }}
+          changesNotSentForReview: true
