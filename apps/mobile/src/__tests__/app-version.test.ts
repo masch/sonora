@@ -1,4 +1,4 @@
-import { getAppVersion } from '@/utils/app-version';
+import { getAppVersion } from '@/utils/app-version.ts';
 
 let mockExtra: {
   appVersionName: string | undefined;

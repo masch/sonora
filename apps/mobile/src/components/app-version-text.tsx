@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { getAppVersion } from '@/utils/app-version';
+import { getAppVersion } from '@/utils/app-version.ts';
 
 export function AppVersionText() {
   if (Platform.OS !== 'web') return null;
