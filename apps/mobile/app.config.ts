@@ -117,6 +117,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       reactCompiler: true,
     },
     extra: {
+      appVersionName: appVersionName,
+      appVersionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 0,
       router: {},
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',

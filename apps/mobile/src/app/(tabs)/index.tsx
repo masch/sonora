@@ -161,7 +161,8 @@ export default function HomeScreen() {
 
       {Platform.OS === 'web' && (
         <ThemedText themeColor="textSecondary" className="text-xs text-center pb-8 mt-auto">
-          {Constants.expoConfig?.version}
+          {Constants.expoConfig?.extra?.appVersionName}{" "}
+          ({Constants.expoConfig?.extra?.appVersionCode})
         </ThemedText>
       )}
     </ScrollScreenWrapper>

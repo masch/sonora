@@ -36,6 +36,7 @@ ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
 ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
 APP_VERSION_NAME ?= 99.99.99
+APP_VERSION_CODE ?= 0
 .DEFAULT_GOAL := start
 
 .PHONY: kill-metro
