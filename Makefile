@@ -43,28 +43,34 @@ kill-metro: ## Kill any process running on Metro port 8081
 	@lsof -t -i:8081 | xargs kill -9 2>/dev/null || echo "Port 8081 is already free."
 
 .PHONY: start
+start: APP_VERSION_NAME ?= 99.99.99
 start: ## Launch Expo dev server
-	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler
+start-wrangler: APP_VERSION_NAME ?= 99.99.99
 start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler-android
+start-wrangler-android: APP_VERSION_NAME ?= 99.99.99
 start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-staging
+start-staging: APP_VERSION_NAME ?= 99.99.99
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-headless
+start-headless: APP_VERSION_NAME ?= 99.99.99
 start-headless: ## Launch Expo dev server without interactive TTY
-	bun --filter @sonora/mobile start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start
 
 .PHONY: dev-web
+dev-web: APP_VERSION_NAME ?= 99.99.99
 dev-web: ## Launch Expo dev server for web
-	cd apps/mobile && bun run web
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
