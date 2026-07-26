@@ -1,4 +1,4 @@
-import * as Application from 'expo-application';
+import { getAppVersion } from '@/utils/app-version';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useState } from 'react';
@@ -19,9 +19,8 @@ export function AnimatedSplashOverlay() {
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
 
-  const appVersion = Application.nativeApplicationVersion;
-  const buildNumber = Application.nativeBuildVersion;
-  const versionText = appVersion && buildNumber ? `${appVersion} (${buildNumber})` : null;
+  const version = getAppVersion();
+  const versionText = version?.formatted ?? null;
 
   const isProduction = Constants.expoConfig?.extra?.isProduction === true;
   const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;

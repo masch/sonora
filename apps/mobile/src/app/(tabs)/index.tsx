@@ -7,8 +7,8 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { getAppVersion } from '@/utils/app-version';
 import { useRouter } from 'expo-router';
 import { AppLogo } from '@/components/app-logo';
 import { ROUTES } from '@/constants/routes';
@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const trackIcon = getExperienceIcon('track');
   const messageIcon = getExperienceIcon('general-feedback');
 
+  const version = Platform.OS === 'web' ? getAppVersion() : null;
   const showInstructions = useRemoteConfigStore((s) => s.config.showHomeInstructions);
 
   return (
@@ -159,10 +160,9 @@ export default function HomeScreen() {
         <TwView className="h-3" />
       </TwView>
 
-      {Platform.OS === 'web' && (
+      {version && (
         <ThemedText themeColor="textSecondary" className="text-xs text-center pb-8 mt-auto">
-          {Constants.expoConfig?.extra?.appVersionName}{" "}
-          ({Constants.expoConfig?.extra?.appVersionCode})
+          {version.formatted}
         </ThemedText>
       )}
     </ScrollScreenWrapper>
