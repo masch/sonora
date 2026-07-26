@@ -1,19 +1,33 @@
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 // react-doctor-disable-next-line react-doctor/rn-no-legacy-expo-packages — actively maintained in SDK 56, backgroundImage CSS is experimental
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { LOGO_GLOW, EXPO_LOGO } from '@/constants/images';
+import { SPLASH_COLORS } from '@/constants/theme';
+import { TwText, TwView } from '@/tw';
 
-const DURATION = 600;
+const DURATION = 2000;
 
 // react-doctor-disable-next-line deslop/unused-export — false positive: used in _layout.tsx via @/ alias
 export function AnimatedSplashOverlay() {
   const { height } = useWindowDimensions();
   const [visible, setVisible] = useState(true);
+
+  const versionText = useMemo(() => {
+    const appVersion = Application.nativeApplicationVersion;
+    const buildNumber = Application.nativeBuildVersion;
+    if (!appVersion || !buildNumber) return null;
+    return `${appVersion} (${buildNumber})`;
+  }, []);
+
+  const isProduction = Constants.expoConfig?.extra?.isProduction === true;
+  const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
 
   if (!visible) return null;
 
@@ -46,8 +60,14 @@ export function AnimatedSplashOverlay() {
           scheduleOnRN(setVisible, false);
         }
       })}
-      style={styles.backgroundSolidColor}
-    />
+      style={[styles.backgroundSolidColor, { backgroundColor }]}
+    >
+      {versionText && (
+        <TwText className="absolute self-center bottom-12 text-xs font-semibold text-white tracking-[0.5px]">
+          {versionText}
+        </TwText>
+      )}
+    </Animated.View>
   );
 }
 
@@ -92,18 +112,18 @@ export function AnimatedIcon() {
   });
 
   return (
-    <View style={styles.iconContainer}>
+    <TwView className="justify-center items-center w-32 h-32 z-[100]">
       <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={LOGO_GLOW} />
+        <Image style={styles.glow} source={LOGO_GLOW} alt="" />
       </Animated.View>
 
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.backgroundContainer}>
         <LinearGradient colors={['#3C9FFE', '#0274DF']} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={EXPO_LOGO} />
+        <Image style={styles.image} source={EXPO_LOGO} alt="Sonora logo" />
       </Animated.View>
-    </View>
+    </TwView>
   );
 }
 

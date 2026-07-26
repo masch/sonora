@@ -95,11 +95,31 @@ jobs:
           VERSION_CODE=$(git tag -l "prod-v*" | wc -l)
           echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Extract & Validate Version Name
+        id: version-name
+        run: |
+          TAG="${{ steps.get-tag.outputs.tag }}"
+          VERSION_NAME="${TAG#prod-v}"
+          VERSION_NAME="${VERSION_NAME#stg-v}"
+
+          if [ -z "$VERSION_NAME" ]; then
+            echo "::error::Empty version extracted from tag '$TAG'"
+            exit 1
+          fi
+
+          if ! echo "$VERSION_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid semver '$VERSION_NAME' extracted from tag '$TAG'. Expected format X.Y.Z"
+            exit 1
+          fi
+
+          echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Build Android APK + AAB (Unsigned)
         id: build-release
         env:
           APP_ENV: production
           APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
+          APP_VERSION_NAME: ${{ steps.version-name.outputs.version-name }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
