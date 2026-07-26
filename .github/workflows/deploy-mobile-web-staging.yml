@@ -40,6 +40,7 @@ jobs:
       - name: Deploy Staging to EAS Hosting
         env:
           APP_VERSION_NAME: ${{ steps.tag-release.outputs.version-name }}
+          APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}

@@ -13,6 +13,9 @@ outputs:
   version-name:
     description: 'Extracted and validated semver (e.g. 1.0.3)'
     value: ${{ steps.extract.outputs.version-name }}
+  version-code:
+    description: 'Extracted patch number as version code (e.g. 122)'
+    value: ${{ steps.version-code.outputs.version-code }}
   tag:
     description: 'Full tag name (e.g. stg-v1.0.3)'
     value: ${{ steps.get-tag.outputs.tag }}
@@ -114,3 +117,10 @@ runs:
         fi
 
         echo "version-name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
+    - name: Calculate Version Code
+      id: version-code
+      shell: bash
+      run: |
+        VERSION_CODE=$(echo "${{ steps.extract.outputs.version-name }}" | cut -d. -f3)
+        echo "version-code=$VERSION_CODE" >> "$GITHUB_OUTPUT"

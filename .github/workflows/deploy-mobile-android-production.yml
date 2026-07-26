@@ -83,18 +83,11 @@ jobs:
           echo "$ANDROID_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/google-services.json
           git add -f apps/mobile/google-services.json
 
-      - name: Calculate Version Code
-        id: version-code
-        run: |
-          git fetch --tags --force
-          VERSION_CODE=$(git tag -l "prod-v*" | wc -l)
-          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-
       - name: Build Android APK + AAB (Unsigned)
         id: build-release
         env:
           APP_ENV: production
-          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
+          APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
           APP_VERSION_NAME: ${{ steps.tag-release.outputs.version-name }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
