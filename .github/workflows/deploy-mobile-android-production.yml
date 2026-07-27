@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     outputs:
-      tag_name: ${{ steps.get-tag.outputs.tag }}
+      tag_name: ${{ steps.tag-release.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -66,16 +66,11 @@ jobs:
       - uses: ./.github/actions/setup
       - run: make check
       - name: Tag deployment
-        if: ${{ (inputs.skip_tagging || 'false') != 'true' }}
+        id: tag-release
         uses: ./.github/actions/tag-release
         with:
           environment: production
-      - name: Determine Tag Name
-        id: get-tag
-        run: |
-          git fetch --tags --force
-          TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 || echo "prod-v1.0.0-temp")
-          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}
       - name: Setup Java SDK
         uses: actions/setup-java@v4
         with:
@@ -88,18 +83,12 @@ jobs:
           echo "$ANDROID_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/google-services.json
           git add -f apps/mobile/google-services.json
 
-      - name: Calculate Version Code
-        id: version-code
-        run: |
-          git fetch --tags --force
-          VERSION_CODE=$(git tag -l "prod-v*" | wc -l)
-          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-
       - name: Build Android APK + AAB (Unsigned)
         id: build-release
         env:
           APP_ENV: production
-          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
+          APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
+          APP_VERSION_NAME: ${{ steps.tag-release.outputs.version-name }}
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
@@ -109,8 +98,8 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
         run: |
           make eas-build-android-release-ci-unsigned \
-            OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.apk" \
-            OUTPUT_AAB="sonora-${{ steps.get-tag.outputs.tag }}-unsigned.aab"
+            OUTPUT_APK="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.apk" \
+            OUTPUT_AAB="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.aab"
 
       - name: Upload Unsigned APK Artifact
         uses: actions/upload-artifact@v4
@@ -276,4 +265,3 @@ jobs:
           packageName: org.masch.sonora.app
           releaseFiles: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.aab
           track: ${{ inputs.play_track || 'internal' }}
-          changesNotSentForReview: true

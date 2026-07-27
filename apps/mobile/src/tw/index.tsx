@@ -51,3 +51,4 @@ export const TwTextInput = cssComponent<React.ComponentProps<typeof RNTextInput>
   { className: 'style' },
   'TwTextInput',
 );
+export { TwImage } from './image';

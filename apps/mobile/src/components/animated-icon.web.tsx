@@ -1,110 +1,61 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import { useEffect, useState } from 'react';
+import Constants from 'expo-constants';
 
-import classes from './animated-icon.module.css';
+import { EXPO_LOGO } from '@/constants/images';
+import { SPLASH_COLORS } from '@/constants/theme';
+import { TwImage, TwText, TwView } from '@/tw';
+import { getAppVersion } from '@/utils/app-version';
 
-import { LOGO_GLOW, EXPO_LOGO } from '@/constants/images';
-const DURATION = 300;
+export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean }) {
+  const [visible, setVisible] = useState(true);
+  const [fading, setFading] = useState(false);
 
-export function AnimatedSplashOverlay() {
-  return null;
-}
+  const versionText = getAppVersion().formatted;
+  const isProduction = Constants.expoConfig?.extra?.isProduction === true;
+  const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 0 }],
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(1.2),
-  },
-});
+  useEffect(() => {
+    if (!isReady) return;
 
-const logoKeyframe = new Keyframe({
-  0: {
-    opacity: 0,
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    opacity: 0,
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(1.2),
-  },
-});
+    const fadeTimer = setTimeout(() => {
+      setFading(true);
+    }, 1500);
 
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
-    opacity: 0,
-  },
-  [DURATION / 1000]: {
-    transform: [{ rotateZ: '0deg' }, { scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, 2000);
 
-export function AnimatedIcon() {
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(timer);
+    };
+  }, [isReady]);
+
+  if (!visible) return null;
+
   return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={LOGO_GLOW} />
-      </Animated.View>
-
-      <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
-        <div className={classes.expoLogoBackground} />
-      </Animated.View>
-
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={EXPO_LOGO} />
-      </Animated.View>
-    </View>
+    <TwView
+      className={`absolute inset-0 justify-center items-center z-[200] transition-opacity duration-500 ${
+        fading ? 'opacity-0' : 'opacity-100'
+      }`}
+      style={{ backgroundColor }}
+    >
+      <AnimatedIcon />
+      {versionText && (
+        <TwText className="absolute self-center bottom-12 text-xs font-semibold text-white tracking-[0.5px]">
+          {versionText}
+        </TwText>
+      )}
+    </TwView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: '100%',
-    zIndex: 10,
-    position: 'absolute',
-    top: 128 / 2 + 138,
-  },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
-  background: {
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-});
+export function AnimatedIcon() {
+  return (
+    <TwView className="justify-center items-center w-32 h-32">
+      <TwView className="justify-center items-center">
+        <TwImage className="absolute w-[76px] h-[71px]" source={EXPO_LOGO} alt="" />
+      </TwView>
+    </TwView>
+  );
+}
