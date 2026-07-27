@@ -105,7 +105,7 @@ doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
-	cd apps/mobile && bunx expo-doctor
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx expo-doctor
 
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
@@ -115,7 +115,7 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	SECONDS=$$(( DAYS * 86400 )); \
 	MOBILE="$$ROOT/apps/mobile"; \
 	echo "Checking recommended versions..."; \
-	OUTPUT=$$(cd "$$MOBILE" && npx expo install --check 2>&1); \
+	OUTPUT=$$(cd "$$MOBILE" && APP_VERSION_NAME="$(APP_VERSION_NAME)" npx expo install --check 2>&1); \
 	PACKAGES=$$(echo "$$OUTPUT" | sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
 	if [ -n "$$PACKAGES" ]; then \
 		echo "Upgrading: $$PACKAGES"; \
@@ -129,7 +129,7 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 		echo "Installing: $$PKGSPECS"; \
 		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PKGSPECS; \
 		echo "Re-checking recommended versions..."; \
-		cd "$$ROOT" && PACKAGES=$$(cd "$$MOBILE" && npx expo install --check 2>&1 | \
+		cd "$$ROOT" && PACKAGES=$$(cd "$$MOBILE" && APP_VERSION_NAME="$(APP_VERSION_NAME)" npx expo install --check 2>&1 | \
 			sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
 		if [ -n "$$PACKAGES" ]; then \
 			echo "Upgrading: $$PACKAGES"; \
