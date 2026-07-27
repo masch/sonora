@@ -27,12 +27,20 @@ const ENV_CONFIG = {
 
 const activeEnv = isProduction ? ENV_CONFIG.production : ENV_CONFIG.staging;
 
+const appVersionName = process.env.APP_VERSION_NAME;
+if (!appVersionName) {
+  throw new Error(
+    'APP_VERSION_NAME environment variable is required. ' +
+      'Set it via CI (extracted from git tag) or pass it manually for local builds.',
+  );
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: activeEnv.name,
     slug: 'sonora',
-    version: '1.0.0',
+    version: appVersionName,
     orientation: 'portrait',
     icon: activeEnv.icon,
     scheme: activeEnv.scheme,
@@ -109,6 +117,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       reactCompiler: true,
     },
     extra: {
+      appVersionName: appVersionName,
+      appVersionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 0,
       router: {},
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',

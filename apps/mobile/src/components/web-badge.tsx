@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { version } from 'expo/package.json';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -9,9 +10,15 @@ import { EXPO_BADGE, EXPO_BADGE_WHITE } from '@/constants/images';
 
 export function WebBadge() {
   const { isDark } = useColorScheme();
+  const appVersion = Constants.expoConfig?.version;
 
   return (
     <TwView className="items-center gap-2 p-8">
+      {appVersion ? (
+        <ThemedText themeColor="textSecondary" className="text-xs text-center">
+          {appVersion}
+        </ThemedText>
+      ) : null}
       <ThemedText type="code" themeColor="textSecondary" className="text-center">
         {'v'}
         {version}

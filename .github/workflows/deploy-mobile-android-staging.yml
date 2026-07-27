@@ -38,7 +38,7 @@ jobs:
     environment: staging
     outputs:
       apk_path: ${{ steps.build-apk.outputs.apk_path }}
-      tag_name: ${{ steps.get-tag.outputs.tag }}
+      tag_name: ${{ steps.tag-release.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -46,16 +46,11 @@ jobs:
       - uses: ./.github/actions/setup
       - run: make check
       - name: Tag deployment
-        if: ${{ (inputs.skip_tagging || 'false') != 'true' }}
+        id: tag-release
         uses: ./.github/actions/tag-release
         with:
           environment: staging
-      - name: Determine Tag Name
-        id: get-tag
-        run: |
-          git fetch --tags --force
-          TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 || echo "stg-v1.0.0-temp")
-          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}
       - name: Setup Java SDK
         uses: actions/setup-java@v4
         with:
@@ -68,19 +63,14 @@ jobs:
           echo "$ANDROID_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/google-services.json
           git add -f apps/mobile/google-services.json
 
-      - name: Calculate Version Code
-        id: version-code
-        run: |
-          git fetch --tags --force
-          VERSION_CODE=$(git tag -l "stg-v*" | wc -l)
-          echo "val=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: Build Android Preview APK
         id: build-apk
         env:
           APP_ENV: staging
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
-          APP_VERSION_CODE: ${{ steps.version-code.outputs.val }}
+          APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
+          APP_VERSION_NAME: ${{ steps.tag-release.outputs.version-name }}
           EXPO_NO_DOCTOR: '1'
           EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
           EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -90,8 +80,9 @@ jobs:
           EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
         run: |
-          make eas-build-android-preview-ci OUTPUT_APK="sonora-${{ steps.get-tag.outputs.tag }}.apk"
-          echo "apk_path=apps/mobile/sonora-${{ steps.get-tag.outputs.tag }}.apk" >> "$GITHUB_OUTPUT"
+          make eas-build-android-preview-ci OUTPUT_APK="sonora-${{ steps.tag-release.outputs.tag }}.apk"
+          echo "apk_path=apps/mobile/sonora-${{ steps.tag-release.outputs.tag }}.apk" >> "$GITHUB_OUTPUT"
+
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:

@@ -58,6 +58,7 @@ const Reanimated: Record<string, unknown> = {
     inOut: () => ({}),
     elastic: () => ({}),
   },
+  useReducedMotion: () => false,
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
   runOnUI: (fn: (...args: unknown[]) => unknown) => fn,
   interpolate: (value: number, inputRange: number[], outputRange: number[]) =>

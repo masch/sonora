@@ -22,6 +22,7 @@ import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-
 import { UpdateRequiredModal } from '@/components/update-required-modal';
 import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
+import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
@@ -87,10 +88,6 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
-
   const themeColors = isDark ? RuntimeColors.dark : RuntimeColors.light;
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
 
@@ -105,8 +102,17 @@ export default function RootLayout() {
     },
   };
 
+  if (!fontsLoaded && !fontError) {
+    return (
+      <ThemeProvider value={navTheme}>
+        <AnimatedSplashOverlay isReady={false} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider value={navTheme}>
+      <AnimatedSplashOverlay isReady={true} />
       {!APP_CONFIG.isProduction && <StagingBadge />}
       <AudioPlayerBridge />
       {versionStatus === 'warn' && <UpdateWarningBanner />}

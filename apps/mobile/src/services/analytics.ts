@@ -1,7 +1,23 @@
 import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
-import firebaseAnalytics from '@react-native-firebase/analytics';
-import firebaseCrashlytics from '@react-native-firebase/crashlytics';
+
+// Dynamic require: native Firebase modules only available in production/dev builds, not Expo Go
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let firebaseAnalytics: ((...args: any[]) => any) | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let firebaseCrashlytics: ((...args: any[]) => any) | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const analytics = require('@react-native-firebase/analytics');
+  firebaseAnalytics = analytics.default || analytics;
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const crashlytics = require('@react-native-firebase/crashlytics');
+  firebaseCrashlytics = crashlytics.default || crashlytics;
+} catch {
+  // Native Firebase not available (running in Expo Go or web)
+}
 
 const isFirebaseAvailable = () => {
   // If RNFBAppModule is not present, native Firebase is not linked/configured in this binary

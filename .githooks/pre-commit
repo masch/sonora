@@ -26,8 +26,7 @@ else
   git add -u
 fi
 
-# 2. Run all validation steps (collect all failures)
-FAILED_TARGETS=""
+# 2. Run all validation steps (fail-fast on first error)
 
 run_step() {
   NAME=$1
@@ -47,7 +46,7 @@ run_step() {
     else
       printf "FAILED (exit %d)\n" "$EXIT_CODE"
       cat "$TMPFILE"
-      FAILED_TARGETS="$FAILED_TARGETS $NAME"
+      exit 1
     fi
   fi
 }
@@ -70,11 +69,6 @@ fi
 
 # gga: 0 = passed/no files, 1 = violations found (blocks commit)
 run_step "gga" "make gga"
-
-if [ -n "$FAILED_TARGETS" ]; then
-  echo "pre-commit: Validation failed on targets:$FAILED_TARGETS"
-  exit 1
-fi
 
 echo "  ✓ All checks passed"
 exit 0

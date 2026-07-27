@@ -53,5 +53,10 @@ export const RuntimeColors = {
   },
 } as const;
 
+export const SPLASH_COLORS = {
+  production: '#208AEF',
+  staging: '#F59E0B',
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const TabBottomPadding = 16;
