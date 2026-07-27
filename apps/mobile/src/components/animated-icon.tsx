@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { EXPO_LOGO } from '@/constants/images';
+import { SPLASH_ICON } from '@/constants/images';
 import { SPLASH_COLORS } from '@/constants/theme';
 import { TwImage, TwText, TwView } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
@@ -57,8 +57,13 @@ export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean })
 // react-doctor-disable-next-line deslop/unused-export — false positive: used externally via @/ alias
 export function AnimatedIcon() {
   return (
-    <TwView className="justify-center items-center w-32 h-32 z-[100]">
-      <TwImage className="absolute w-[76px] h-[71px]" source={EXPO_LOGO} alt="" />
+    <TwView className="justify-center items-center w-[76px] h-[76px] z-[100]">
+      <TwImage
+        className="w-[76px] h-[76px] rounded-full overflow-hidden"
+        source={SPLASH_ICON}
+        alt=""
+        resizeMode="cover"
+      />
     </TwView>
   );
 }
