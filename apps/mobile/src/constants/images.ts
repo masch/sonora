@@ -22,8 +22,6 @@ export const SONORA_HOME_BG = require('@/assets/images/sonora/home-background.jp
 export const SONORA_TRIP_BG = require('@/assets/images/sonora/trips-background.jpg');
 export const SONORA_TRACKS_BG = require('@/assets/images/sonora/tracks-background.jpg');
 export const SONORA_MESSAGES_BG = require('@/assets/images/sonora/messages-background.jpg');
-
-export const LOGO_GLOW = require('@/assets/images/logo-glow.png');
 export const EXPO_LOGO = require('@/assets/images/expo-logo.png');
 export const EXPO_BADGE = require('@/assets/images/expo-badge.png');
 export const EXPO_BADGE_WHITE = require('@/assets/images/expo-badge-white.png');
