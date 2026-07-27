@@ -35,6 +35,8 @@ ANDROID_NDK_HOME ?= $(ANDROID_HOME)/ndk/27.1.12297006
 ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
 ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
 
+APP_VERSION_NAME ?= 99.99.99
+APP_VERSION_CODE ?= 0
 .DEFAULT_GOAL := start
 
 .PHONY: kill-metro
@@ -44,27 +46,27 @@ kill-metro: ## Kill any process running on Metro port 8081
 
 .PHONY: start
 start: ## Launch Expo dev server
-	cd apps/mobile && EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler
 start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-wrangler-android
 start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
-	cd apps/mobile && EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-staging
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
-	bun --filter @sonora/mobile start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
-	cd apps/mobile && bun run web
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run web
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
@@ -729,8 +731,8 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 	cd apps/admin && bun run jest --passWithNoTests --watchAll=false --silent
 
 .PHONY: doctor-ci
-doctor-ci: ## Run React Doctor audit (terse, for pre-commit)
-	cd apps/mobile && bunx react-doctor --scope full -y
+doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
+	cd apps/mobile && bunx react-doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
@@ -748,7 +750,7 @@ precommit-logs: ## Show temp files from last pre-commit run
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format lint typecheck api-typecheck scripts-typecheck test gga ## Run full development gate (tests + lint + typecheck + gga)
+validate: format lint typecheck api-typecheck scripts-typecheck doctor-ci test gga ## Run full development gate (tests + lint + typecheck + gga + react-doctor diff scan)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck

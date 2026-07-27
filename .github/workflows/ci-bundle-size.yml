@@ -27,6 +27,8 @@ jobs:
       #     { "path": "apps/mobile/dist/**/*.js", "limit": "300 KB" }
       #   ]
       - name: Build web export
+        env:
+          APP_VERSION_NAME: '0.0.0'
         run: |
           cd apps/mobile
           npx expo export --platform web --output-dir /tmp/expo-web-build
