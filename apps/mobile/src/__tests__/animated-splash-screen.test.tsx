@@ -37,13 +37,13 @@ describe('AnimatedSplashOverlay', () => {
   });
 
   it('renders version text when native version is set', async () => {
-    const { getByText } = await render(<AnimatedSplashOverlay />);
+    const { getByText } = await render(<AnimatedSplashOverlay isReady={true} />);
     expect(getByText('1.0.3')).toBeTruthy();
   });
 
   it('renders default version when nativeApplicationVersion is null', async () => {
     mockApp.nativeApplicationVersion = null;
-    const { getByText } = await render(<AnimatedSplashOverlay />);
+    const { getByText } = await render(<AnimatedSplashOverlay isReady={true} />);
     expect(getByText('0.0.0')).toBeTruthy();
   });
 });
