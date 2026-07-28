@@ -68,6 +68,11 @@ start-headless: ## Launch Expo dev server without interactive TTY
 dev-web: ## Launch Expo dev server for web
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run web
 
+.PHONY: verify-web
+verify-web: ## Build web bundle and execute it to verify CJS interop (catches circular dependencies)
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun expo export --platform web
+	node -e "require('fs').readdirSync('apps/mobile/dist/_expo/static/js/web').filter(f => f.endsWith('.js')).forEach(f => require('./apps/mobile/dist/_expo/static/js/web/' + f))"
+
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
 	cd apps/mobile && bun run android-dev
