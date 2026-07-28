@@ -12,7 +12,7 @@
     "@react-native-firebase/crashlytics": "21.14.0",
     "@sonora/shared": "workspace:*",
     "@tailwindcss/postcss": "4.3.0",
-    "expo": "56.0.16",
+    "expo": "56.0.17",
     "expo-application": "56.0.3",
     "expo-asset": "56.0.21",
     "expo-audio": "56.0.13",
