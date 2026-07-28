@@ -1,34 +1,24 @@
 import { APP_CONFIG } from '@/config/app-config';
 import { BaseApiClient, type TranslationBulkPayload } from '@sonora/shared';
 
+let inMemoryAuthKey: string | null = null;
+
 const client = new BaseApiClient({
   baseUrl: APP_CONFIG.apiBaseUrl,
-  getAuthToken: () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('admin_key');
-    }
-    return null;
-  },
+  getAuthToken: () => inMemoryAuthKey,
 });
 
 export const AdminApiClient = {
   getAuthKey(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('admin_key');
-    }
-    return null;
+    return inMemoryAuthKey;
   },
 
   setAuthKey(key: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin_key', key);
-    }
+    inMemoryAuthKey = key;
   },
 
   clearAuthKey(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('admin_key');
-    }
+    inMemoryAuthKey = null;
   },
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
