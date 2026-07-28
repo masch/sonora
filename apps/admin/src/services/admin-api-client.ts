@@ -1,27 +1,13 @@
 import { APP_CONFIG } from '@/config/app-config';
-import { BaseApiClient, type TranslationBulkPayload } from '@sonora/shared';
-
-let inMemoryAuthKey: string | null = null;
+import { BaseApiClient, type RequestOptions, type TranslationBulkPayload } from '@sonora/shared';
 
 const client = new BaseApiClient({
   baseUrl: APP_CONFIG.apiBaseUrl,
-  getAuthToken: () => inMemoryAuthKey,
+  credentials: 'include',
 });
 
 export const AdminApiClient = {
-  getAuthKey(): string | null {
-    return inMemoryAuthKey;
-  },
-
-  setAuthKey(key: string): void {
-    inMemoryAuthKey = key;
-  },
-
-  clearAuthKey(): void {
-    inMemoryAuthKey = null;
-  },
-
-  async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     return client.request<T>(path, options);
   },
 
@@ -33,18 +19,38 @@ export const AdminApiClient = {
     return client.put<{ updated: number }>('/api/translations', payload);
   },
 
-  async validateKey(key: string): Promise<boolean> {
+  async loginSession(key: string): Promise<boolean> {
     try {
-      const response = await fetch(`${APP_CONFIG.apiBaseUrl}/api/translations/validate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
-        },
-      });
-      return response.status === 200;
+      await client.post('/api/translations/session', { key });
+      return true;
     } catch {
       return false;
     }
+  },
+
+  async logoutSession(): Promise<boolean> {
+    try {
+      await client.delete('/api/translations/session');
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async checkSession(): Promise<boolean> {
+    try {
+      await client.post('/api/translations/validate', {});
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async validateKey(key: string): Promise<boolean> {
+    return this.loginSession(key);
+  },
+
+  async clearAuthKey(): Promise<boolean> {
+    return this.logoutSession();
   },
 };

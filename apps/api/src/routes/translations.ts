@@ -3,11 +3,12 @@ import type { SupportedLanguage } from '@sonora/shared';
 import { TranslationBulkPayloadSchema, z } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { deleteCookie, setCookie } from 'hono/cookie';
 import { translations } from '../db/schema';
 import type { Env, Variables } from '../index';
+import { adminAuthGuard, timingSafeCompare } from '../middleware/admin-auth-guard';
 import { dbGuard } from '../middleware/db-guard';
 import { ERRORS, problem, success } from '../middleware/problem-details';
-import { requireAdminKey } from '../middleware/require-admin-key';
 import { validationHook } from '../middleware/validation-error';
 
 const LangParamSchema = z.object({
@@ -42,15 +43,47 @@ translationsRouter.get(
   },
 );
 
-// POST /api/translations/validate — admin, Bearer auth, checks if the token is valid
-translationsRouter.post('/validate', requireAdminKey(), async (c) => {
+// POST /api/translations/session — validates key and sets HttpOnly admin_session cookie
+translationsRouter.post('/session', async (c) => {
+  const adminKey = c.env?.ADMIN_API_KEY;
+  if (!adminKey) {
+    return problem(c, ERRORS.MISCONFIG);
+  }
+
+  const body = await c.req.json<{ key?: string }>().catch(() => ({ key: undefined }));
+  if (!body.key || !(await timingSafeCompare(body.key, adminKey))) {
+    return problem(c, ERRORS.UNAUTHORIZED);
+  }
+
+  const sameSite = c.env?.ADMIN_SESSION_COOKIE_SAMESITE || 'Strict';
+  const secure = c.env?.ADMIN_SESSION_COOKIE_SECURE !== 'false';
+
+  setCookie(c, 'admin_session', adminKey, {
+    httpOnly: true,
+    secure,
+    sameSite,
+    path: '/api',
+    maxAge: 28800,
+  });
+
   return success(c, { valid: true });
 });
 
-// PUT /api/translations — admin, Bearer auth, bulk upsert
+// DELETE /api/translations/session — clears admin_session cookie
+translationsRouter.delete('/session', async (c) => {
+  deleteCookie(c, 'admin_session', { path: '/api' });
+  return success(c, { cleared: true });
+});
+
+// POST /api/translations/validate — admin auth, checks if the token/session is valid
+translationsRouter.post('/validate', adminAuthGuard(), async (c) => {
+  return success(c, { valid: true });
+});
+
+// PUT /api/translations — admin auth, bulk upsert
 translationsRouter.put(
   '/',
-  requireAdminKey(),
+  adminAuthGuard(),
   zValidator('json', TranslationBulkPayloadSchema, validationHook),
   dbGuard(),
   async (c) => {

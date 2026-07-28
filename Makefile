@@ -755,8 +755,11 @@ validate: format lint typecheck api-typecheck scripts-typecheck doctor-ci test g
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck
 
+.PHONY: check-static
+check-static: lint typecheck ## Run lint + typecheck
+
 .PHONY: check
-check: format-check test lint typecheck
+check: format-check lint typecheck test 
 	$(MAKE) expo-doctor || echo "[WARN] expo-doctor checks failed (may be false positives from bun cache layout)"
 
 # ── Review ─────────────────────────────────────

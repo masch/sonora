@@ -142,7 +142,8 @@ sonora/
 │   ├── specs/
 │   └── tasks/
 ├── docs/                      # Documentation
-│   └── payment_flow_architecture.md  # Complete Payment Flow Architecture (Web, iOS, Android)
+│   ├── admin_auth_architecture.md  # Admin Authentication & HttpOnly Cookie Architecture
+│   └── payment_flow_architecture.md # Complete Payment Flow Architecture (Web, iOS, Android)
 ├── scripts/                   # Root-level utility scripts
 ├── scratch/                   # Temporary/scratch files
 ├── .githooks/
