@@ -105,7 +105,7 @@ doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
-	cd apps/mobile && bunx expo-doctor
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx expo-doctor
 
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
@@ -115,7 +115,7 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	SECONDS=$$(( DAYS * 86400 )); \
 	MOBILE="$$ROOT/apps/mobile"; \
 	echo "Checking recommended versions..."; \
-	OUTPUT=$$(cd "$$MOBILE" && npx expo install --check 2>&1); \
+	OUTPUT=$$(cd "$$MOBILE" && APP_VERSION_NAME="$(APP_VERSION_NAME)" npx expo install --check 2>&1); \
 	PACKAGES=$$(echo "$$OUTPUT" | sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
 	if [ -n "$$PACKAGES" ]; then \
 		echo "Upgrading: $$PACKAGES"; \
@@ -837,11 +837,11 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 
 .PHONY: eas-build-web-production
 eas-build-web-production: eas-whoami ## Export web app and deploy to EAS Hosting production
-	cd apps/mobile && EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo export --clear --platform web && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-web-staging
 eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting staging (alias: staging)
-	cd apps/mobile && EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo export --clear --platform web && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 .PHONY: eas-build-admin-production
 eas-build-admin-production: eas-whoami ## Export admin web app and deploy to EAS Hosting production
