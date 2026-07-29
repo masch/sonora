@@ -19,6 +19,7 @@ export const HTTP = {
   CONFLICT: 409,
   UNPROCESSABLE_ENTITY: 422,
   INTERNAL_SERVER_ERROR: 500,
+  TOO_MANY_REQUESTS: 429,
 } as const;
 
 // ── Error constants ────────────────────────────────────────
@@ -158,6 +159,16 @@ export const ERRORS_4XX = {
     code: 'DUPLICATE_REQUEST',
     detail: 'This request has already been processed.',
     status: HTTP.CONFLICT,
+  } as const,
+  INVALID_DEVICE_ID: {
+    code: 'INVALID_DEVICE_ID',
+    detail: 'The X-Device-Id header must be a non-empty string of 256 characters or fewer.',
+    status: HTTP.BAD_REQUEST,
+  } as const,
+  RATE_LIMIT_EXCEEDED: {
+    code: 'RATE_LIMIT_EXCEEDED',
+    detail: 'Too many requests. Please try again later.',
+    status: HTTP.TOO_MANY_REQUESTS,
   } as const,
 } as const;
 

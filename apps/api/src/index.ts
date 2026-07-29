@@ -43,6 +43,8 @@ export interface Env {
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
   APP_SCHEME?: string;
+  RATE_LIMIT_STORE?: KVNamespace;
+  RATE_LIMITING_ENABLED?: string;
 }
 
 export interface Variables {
@@ -90,8 +92,7 @@ app.route('/.well-known', associationRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${msg}`);
+  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${err.message}`);
 });
 
 export default app;

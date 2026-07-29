@@ -11,7 +11,41 @@ export async function hashDeviceId(deviceId: string): Promise<string> {
 export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: Variables }> => {
   return async (c, next) => {
     const rawDeviceId = c.req.header('X-Device-Id');
-    if (rawDeviceId) {
+    if (rawDeviceId !== undefined) {
+      // Validate: reject empty, whitespace-only, or overly long values
+      // The SHA-256 hash neutralizes any malicious content, and Android uses
+      // a 64-bit hex ID (not UUID v4), so we accept any reasonable identifier.
+      if (rawDeviceId.length === 0) {
+        return c.json(
+          {
+            code: 'INVALID_DEVICE_ID',
+            detail: 'The X-Device-Id header must not be empty.',
+            status: 400,
+          },
+          400,
+        );
+      }
+      if (rawDeviceId.trim().length === 0) {
+        return c.json(
+          {
+            code: 'INVALID_DEVICE_ID',
+            detail: 'The X-Device-Id header must not be empty.',
+            status: 400,
+          },
+          400,
+        );
+      }
+      if (rawDeviceId.length > 256) {
+        return c.json(
+          {
+            code: 'INVALID_DEVICE_ID',
+            detail: 'The X-Device-Id header must be 256 characters or fewer.',
+            status: 400,
+          },
+          400,
+        );
+      }
+
       const hashed = await hashDeviceId(rawDeviceId);
       c.set('deviceId', hashed);
     }

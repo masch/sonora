@@ -10,8 +10,12 @@ const DEFAULT_HEADERS = [
   'Cache-Control',
   'Pragma',
   'X-Device-Id',
+  'X-Signature',
+  'X-Timestamp',
+  'X-Nonce',
+  'Retry-After',
 ];
-const EXPOSED_HEADERS = ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag'];
+const EXPOSED_HEADERS = ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag', 'Retry-After'];
 const MAX_AGE = 86400;
 
 /**
@@ -38,7 +42,7 @@ export const configureCors = (): MiddlewareHandler => {
 
     const corsMiddleware = cors({
       origin: (origin) => {
-        if (!origin || origin === 'null') return origin ?? null;
+        if (!origin || origin === 'null') return origin;
 
         const allowed = env?.ALLOWED_ORIGIN;
         if (!allowed) return origin;
