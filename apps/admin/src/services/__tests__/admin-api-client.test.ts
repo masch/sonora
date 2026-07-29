@@ -140,4 +140,29 @@ describe('AdminApiClient', () => {
     const result = await AdminApiClient.validateKey('valid-key');
     expect(result).toBe(true);
   });
+
+  it('checkSession returns true when GET /api/translations/session responds { valid: true }', async () => {
+    mockFetchOk({ valid: true });
+    const result = await AdminApiClient.checkSession();
+    expect(result).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/translations/session'),
+      expect.objectContaining({
+        method: 'GET',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('checkSession returns false when GET /api/translations/session responds { valid: false }', async () => {
+    mockFetchOk({ valid: false });
+    const result = await AdminApiClient.checkSession();
+    expect(result).toBe(false);
+  });
+
+  it('checkSession returns false when GET /api/translations/session fails with 401 or network error', async () => {
+    mockFetchFail(401);
+    const result = await AdminApiClient.checkSession();
+    expect(result).toBe(false);
+  });
 });

@@ -17,31 +17,10 @@ const LangParamSchema = z.object({
 
 const translationsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// GET /api/translations/:lang — public, returns { key: value } flat JSON
-translationsRouter.get(
-  '/:lang',
-  zValidator('param', LangParamSchema, validationHook),
-  async (c) => {
-    const lang = c.req.param('lang');
-
-    const db = c.var.db;
-    if (!db) {
-      return problem(c, ERRORS.DB_NOT_AVAILABLE);
-    }
-
-    const rows = await db
-      .select({ key: translations.key, value: translations.value })
-      .from(translations)
-      .where(eq(translations.lang, lang as SupportedLanguage));
-
-    const result: Record<string, string> = {};
-    for (const row of rows) {
-      result[row.key] = row.value;
-    }
-
-    return success(c, result);
-  },
-);
+// GET /api/translations/session — admin auth, checks if the session cookie is valid
+translationsRouter.get('/session', adminAuthGuard(), async (c) => {
+  return success(c, { valid: true });
+});
 
 // POST /api/translations/session — validates key and sets HttpOnly admin_session cookie
 translationsRouter.post('/session', async (c) => {
@@ -75,10 +54,31 @@ translationsRouter.delete('/session', async (c) => {
   return success(c, { cleared: true });
 });
 
-// POST /api/translations/validate — admin auth, checks if the token/session is valid
-translationsRouter.post('/validate', adminAuthGuard(), async (c) => {
-  return success(c, { valid: true });
-});
+// GET /api/translations/:lang — public, returns { key: value } flat JSON
+translationsRouter.get(
+  '/:lang',
+  zValidator('param', LangParamSchema, validationHook),
+  async (c) => {
+    const lang = c.req.param('lang');
+
+    const db = c.var.db;
+    if (!db) {
+      return problem(c, ERRORS.DB_NOT_AVAILABLE);
+    }
+
+    const rows = await db
+      .select({ key: translations.key, value: translations.value })
+      .from(translations)
+      .where(eq(translations.lang, lang as SupportedLanguage));
+
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.key] = row.value;
+    }
+
+    return success(c, result);
+  },
+);
 
 // PUT /api/translations — admin auth, bulk upsert
 translationsRouter.put(

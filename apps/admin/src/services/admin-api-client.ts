@@ -39,8 +39,8 @@ export const AdminApiClient = {
 
   async checkSession(): Promise<boolean> {
     try {
-      await client.post('/api/translations/validate', {});
-      return true;
+      const res = await client.get<{ valid: boolean }>('/api/translations/session');
+      return res?.valid === true;
     } catch {
       return false;
     }

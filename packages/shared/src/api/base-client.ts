@@ -193,7 +193,7 @@ export class BaseApiClient {
 
   async post<T>(
     path: string,
-    body?: unknown,
+    body: unknown = {},
     options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
     return this.request<T>(path, {
@@ -205,7 +205,7 @@ export class BaseApiClient {
 
   async put<T>(
     path: string,
-    body?: unknown,
+    body: unknown = {},
     options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
     return this.request<T>(path, {

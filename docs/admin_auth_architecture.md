@@ -33,7 +33,7 @@ sequenceDiagram
     API-->>App: 200 OK
 
     Note over App,API: Session Check on App Reload
-    App->>API: POST /api/translations/validate (credentials: include)
+    App->>API: GET /api/translations/session (credentials: include)
     API->>API: adminAuthGuard() verifies cookie
     API-->>App: 200 OK { valid: true }
 ```
@@ -46,7 +46,7 @@ Session cookies are configured via Wrangler environment bindings with secure def
 
 | Variable                        | Local Dev (`apps/api/.env`) | Staging (`wrangler.staging.toml`) | Production (`wrangler.toml`) |
 | ------------------------------- | --------------------------- | --------------------------------- | ---------------------------- |
-| `ADMIN_SESSION_COOKIE_SAMESITE` | `Lax` (Cross-port dev)      | `Strict`                          | `Strict`                     |
+| `ADMIN_SESSION_COOKIE_SAMESITE` | `Lax` (Cross-port dev)      | `None` (Cross-site HTTPS)         | `None` (Cross-site HTTPS)    |
 | `ADMIN_SESSION_COOKIE_SECURE`   | `false` (HTTP)              | `true` (HTTPS)                    | `true` (HTTPS)               |
 | Cookie Max-Age                  | 28,800s (8 hours)           | 28,800s (8 hours)                 | 28,800s (8 hours)            |
 

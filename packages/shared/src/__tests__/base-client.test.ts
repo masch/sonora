@@ -360,11 +360,25 @@ describe('BaseApiClient', () => {
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ val: 1 }) }),
     );
 
+    const postDefaultRes = await client.post<{ success: boolean }>('/data');
+    expect(postDefaultRes).toEqual({ success: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'https://api.test/data',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({}) }),
+    );
+
     const putRes = await client.put<{ success: boolean }>('/data', { val: 2 });
     expect(putRes).toEqual({ success: true });
     expect(fetchMock).toHaveBeenLastCalledWith(
       'https://api.test/data',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ val: 2 }) }),
+    );
+
+    const putDefaultRes = await client.put<{ success: boolean }>('/data');
+    expect(putDefaultRes).toEqual({ success: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'https://api.test/data',
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({}) }),
     );
 
     const deleteRes = await client.delete<{ success: boolean }>('/data');
