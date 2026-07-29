@@ -1,8 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Env, Variables } from '../index';
 
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export async function hashDeviceId(deviceId: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(deviceId);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -14,12 +12,14 @@ export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: 
   return async (c, next) => {
     const rawDeviceId = c.req.header('X-Device-Id');
     if (rawDeviceId !== undefined) {
-      // Validate format before hashing
+      // Validate: reject empty, whitespace-only, or overly long values
+      // The SHA-256 hash neutralizes any malicious content, and Android uses
+      // a 64-bit hex ID (not UUID v4), so we accept any reasonable identifier.
       if (rawDeviceId.length === 0) {
         return c.json(
           {
             code: 'INVALID_DEVICE_ID',
-            detail: 'The X-Device-Id header must be a valid UUID v4.',
+            detail: 'The X-Device-Id header must not be empty.',
             status: 400,
           },
           400,
@@ -29,7 +29,7 @@ export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: 
         return c.json(
           {
             code: 'INVALID_DEVICE_ID',
-            detail: 'The X-Device-Id header must be a valid UUID v4.',
+            detail: 'The X-Device-Id header must not be empty.',
             status: 400,
           },
           400,
@@ -39,17 +39,7 @@ export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: 
         return c.json(
           {
             code: 'INVALID_DEVICE_ID',
-            detail: 'The X-Device-Id header must be a valid UUID v4.',
-            status: 400,
-          },
-          400,
-        );
-      }
-      if (!UUID_V4_REGEX.test(rawDeviceId)) {
-        return c.json(
-          {
-            code: 'INVALID_DEVICE_ID',
-            detail: 'The X-Device-Id header must be a valid UUID v4.',
+            detail: 'The X-Device-Id header must be 256 characters or fewer.',
             status: 400,
           },
           400,

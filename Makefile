@@ -337,6 +337,38 @@ api-r2-buckets-production: ## Create R2 audio buckets for production environment
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-public-audio
 	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-production-public-audio
 
+
+# ── KV Namespaces ────────────────────────────────
+
+KV_CONFIG_STAGING = wrangler.staging.toml
+KV_CONFIG_PRODUCTION = wrangler.toml
+
+.PHONY: api-kv-staging
+api-kv-staging: ## Create RATE_LIMIT_STORE KV namespace for staging
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" --config wrangler.staging.toml 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list --config wrangler.staging.toml 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.staging.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-production
+api-kv-production: ## Create RATE_LIMIT_STORE KV namespace for production
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-list-staging
+api-kv-list-staging: ## List staging KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list --config wrangler.staging.toml
+
+.PHONY: api-kv-list-production
+api-kv-list-production: ## List production KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list
+
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
