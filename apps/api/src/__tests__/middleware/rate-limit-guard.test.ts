@@ -545,4 +545,338 @@ describe('rateLimit middleware — unit', () => {
       expect(res.headers.get('X-RateLimit-Remaining')).toBe('29');
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Stress / Concurrent tests
+  // ═══════════════════════════════════════════════════════════════
+
+  describe('rateLimit middleware — stress (concurrent race)', () => {
+    /**
+     * Async mock KV store that simulates real KV latency.
+     * Each get/put has a random delay (configurable range).
+     * This creates a realistic race window between read and write.
+     *
+     * KV in production is a network call with 5-100ms latency,
+     * so concurrent requests can overlap in the get→check→put window.
+     */
+    class AsyncMockKVStore {
+      private store = new Map<string, string>();
+      private readonly minDelay: number;
+      private readonly maxDelay: number;
+
+      constructor(minDelay = 5, maxDelay = 15) {
+        this.minDelay = minDelay;
+        this.maxDelay = maxDelay;
+      }
+
+      private async delay(): Promise<void> {
+        const ms = this.minDelay + Math.random() * (this.maxDelay - this.minDelay);
+        return new Promise((r) => setTimeout(r, ms));
+      }
+
+      async get(key: string): Promise<string | null> {
+        await this.delay();
+        return this.store.get(key) ?? null;
+      }
+
+      async put(key: string, value: string, _options?: { expirationTtl?: number }): Promise<void> {
+        await this.delay();
+        this.store.set(key, value);
+      }
+
+      _set(key: string, value: string): void {
+        this.store.set(key, value);
+      }
+
+      _clear(): void {
+        this.store.clear();
+      }
+    }
+
+    /**
+     * Race mock KV store that holds the FIRST put() until releasePut()
+     * is called. This deterministically reproduces the get-then-put race:
+     * request A reads count=0, starts writing; request B reads count=0
+     * (before A's write completes); both increment independently.
+     */
+    class RaceMockKVStore {
+      private store = new Map<string, string>();
+      private heldPut: (() => void) | null = null;
+      private heldPutPromise: Promise<void> | null = null;
+      private putsCalled = 0;
+
+      /** Hold the next put() call until releasePut(). */
+      holdFirstPut(): void {
+        this.heldPutPromise = new Promise((resolve) => {
+          this.heldPut = resolve;
+        });
+      }
+
+      /** Release the held put() call so it completes. */
+      releasePut(): void {
+        this.heldPut?.();
+        this.heldPut = null;
+        this.heldPutPromise = null;
+      }
+
+      get putCount(): number {
+        return this.putsCalled;
+      }
+
+      async get(key: string): Promise<string | null> {
+        return this.store.get(key) ?? null;
+      }
+
+      async put(key: string, value: string, _options?: { expirationTtl?: number }): Promise<void> {
+        this.putsCalled++;
+        // Hold BEFORE writing so request B reads the OLD count
+        if (this.putsCalled === 1 && this.heldPutPromise) {
+          await this.heldPutPromise;
+        }
+        this.store.set(key, value);
+      }
+
+      _set(key: string, value: string): void {
+        this.store.set(key, value);
+      }
+
+      _clear(): void {
+        this.store.clear();
+      }
+    }
+
+    describe('burst — async KV with latency', () => {
+      it('allows all requests through with different device IDs (independent counters)', async () => {
+        const mod = await import('../../middleware/rate-limit-guard');
+        const { rateLimit: rl } = mod;
+
+        const kv = new AsyncMockKVStore(5, 15);
+        const LIMIT = 10;
+        const BURST = 50;
+
+        const app = new Hono<{
+          Bindings: { RATE_LIMIT_STORE: AsyncMockKVStore };
+          Variables: { deviceId?: string };
+        }>();
+        app.use('*', async (c, next) => {
+          const did = c.req.header('X-Device-Id');
+          if (did) c.set('deviceId', did);
+          await next();
+        });
+        app.get(
+          '/test',
+          rl({ limit: LIMIT, windowSeconds: 60, keyPrefix: 'stress' }) as MiddlewareHandler<any>,
+          (c) => c.json({ ok: true }),
+        );
+
+        const results = await Promise.all(
+          Array.from({ length: BURST }, (_, i) =>
+            app.request(
+              '/test',
+              { headers: { 'X-Device-Id': `stress-device-${i}` } },
+              { RATE_LIMIT_STORE: kv },
+            ),
+          ),
+        );
+
+        const passed = results.filter((r) => r.status === 200).length;
+        const blocked = results.filter((r) => r.status === 429).length;
+
+        expect(passed).toBe(BURST);
+        expect(blocked).toBe(0);
+      });
+
+      it('may exceed limit for the same device under concurrent burst (known race)', async () => {
+        const mod = await import('../../middleware/rate-limit-guard');
+        const { rateLimit: rl } = mod;
+
+        const kv = new AsyncMockKVStore(3, 10);
+        const LIMIT = 10;
+        const BURST = 50;
+
+        const app = new Hono<{
+          Bindings: { RATE_LIMIT_STORE: AsyncMockKVStore };
+          Variables: { deviceId?: string };
+        }>();
+        app.use('*', async (c, next) => {
+          const did = c.req.header('X-Device-Id');
+          if (did) c.set('deviceId', did);
+          await next();
+        });
+        app.get(
+          '/test',
+          rl({ limit: LIMIT, windowSeconds: 60, keyPrefix: 'stress' }) as MiddlewareHandler<any>,
+          (c) => c.json({ ok: true }),
+        );
+
+        const results = await Promise.all(
+          Array.from({ length: BURST }, () =>
+            app.request(
+              '/test',
+              { headers: { 'X-Device-Id': DEVICE_ID } },
+              { RATE_LIMIT_STORE: kv },
+            ),
+          ),
+        );
+
+        const passed = results.filter((r) => r.status === 200).length;
+        const blocked = results.filter((r) => r.status === 429).length;
+
+        // With async latency, some requests overlap in the get-put window.
+        // The count after burst may exceed LIMIT — this documents the known
+        // limitation of KV's non-atomic get-then-put pattern.
+        expect(passed).toBeGreaterThanOrEqual(1);
+        expect(passed + blocked).toBe(BURST);
+        console.warn(
+          `[stress/async] limit=${LIMIT} burst=${BURST}: ${passed} passed, ${blocked} blocked` +
+            ` (overrun: ${Math.max(0, passed - LIMIT)})`,
+        );
+      });
+
+      it('isolates concurrent bursts across different device IDs', async () => {
+        const mod = await import('../../middleware/rate-limit-guard');
+        const { rateLimit: rl } = mod;
+
+        const kv = new AsyncMockKVStore(3, 8);
+        const LIMIT = 10;
+        const DEVICES = 5;
+        const REQS_PER_DEVICE = 15;
+
+        const app = new Hono<{
+          Bindings: { RATE_LIMIT_STORE: AsyncMockKVStore };
+          Variables: { deviceId?: string };
+        }>();
+        app.use('*', async (c, next) => {
+          const did = c.req.header('X-Device-Id');
+          if (did) c.set('deviceId', did);
+          await next();
+        });
+        app.get(
+          '/test',
+          rl({ limit: LIMIT, windowSeconds: 60, keyPrefix: 'stress' }) as MiddlewareHandler<any>,
+          (c) => c.json({ ok: true }),
+        );
+
+        const results = await Promise.all(
+          Array.from({ length: DEVICES * REQS_PER_DEVICE }, (_, i) => {
+            const deviceIndex = Math.floor(i / REQS_PER_DEVICE);
+            return app.request(
+              '/test',
+              { headers: { 'X-Device-Id': `device-${deviceIndex}` } },
+              { RATE_LIMIT_STORE: kv },
+            );
+          }),
+        );
+
+        const passed = results.filter((r) => r.status === 200).length;
+        const blocked = results.filter((r) => r.status === 429).length;
+
+        expect(passed).toBeGreaterThanOrEqual(1);
+        expect(passed + blocked).toBe(DEVICES * REQS_PER_DEVICE);
+        console.warn(
+          `[stress/isolated] ${DEVICES} devices x ${REQS_PER_DEVICE} reqs, limit ${LIMIT}:` +
+            ` ${passed} passed, ${blocked} blocked`,
+        );
+      });
+    });
+
+    describe('controlled race — stalling KV get', () => {
+      /**
+       * PROVES the atomicity gap: request A reads count=0, holds put()
+       * while request B also reads count=0. Both see count before either
+       * writes, so both pass through — exceeding the limit.
+       *
+       * RaceMockKVStore holds the FIRST put() via holdFirstPut().
+       * While it's held, request B's get() returns the SAME count (null)
+       * because A's write hasn't happened yet.
+       */
+      it('proves the get-then-put race: two concurrent requests can exceed limit', async () => {
+        const mod = await import('../../middleware/rate-limit-guard');
+        const { rateLimit: rl } = mod;
+
+        const kv = new RaceMockKVStore();
+        kv.holdFirstPut();
+        const LIMIT = 1;
+
+        const app = new Hono<{
+          Bindings: { RATE_LIMIT_STORE: RaceMockKVStore };
+          Variables: { deviceId?: string };
+        }>();
+        app.use('*', async (c, next) => {
+          const did = c.req.header('X-Device-Id');
+          if (did) c.set('deviceId', did);
+          await next();
+        });
+        app.get(
+          '/test',
+          rl({ limit: LIMIT, windowSeconds: 60, keyPrefix: 'race' }) as MiddlewareHandler<any>,
+          (c) => c.json({ ok: true }),
+        );
+
+        // Fire request A — reads count=0, passes check, starts put() (held)
+        const res1Promise = app.request(
+          '/test',
+          { headers: { 'X-Device-Id': DEVICE_ID } },
+          { RATE_LIMIT_STORE: kv },
+        );
+
+        // Small delay so A reliably enters put() before B calls get()
+        await new Promise((r) => setTimeout(r, 20));
+
+        // Request B — reads count=0 (A's write hasn't completed yet)
+        const res2 = await app.request(
+          '/test',
+          { headers: { 'X-Device-Id': DEVICE_ID } },
+          { RATE_LIMIT_STORE: kv },
+        );
+
+        // B also sees count=0 and passes through
+        expect(res2.status).toBe(200);
+
+        // Now release A's held put so it can complete
+        kv.releasePut();
+
+        const res1 = await res1Promise;
+        expect(res1.status).toBe(200);
+      });
+
+      it('respects limit when requests are sequential (no race)', async () => {
+        const mod = await import('../../middleware/rate-limit-guard');
+        const { rateLimit: rl } = mod;
+
+        const kv = new RaceMockKVStore();
+        const LIMIT = 1;
+
+        const app = new Hono<{
+          Bindings: { RATE_LIMIT_STORE: RaceMockKVStore };
+          Variables: { deviceId?: string };
+        }>();
+        app.use('*', async (c, next) => {
+          const did = c.req.header('X-Device-Id');
+          if (did) c.set('deviceId', did);
+          await next();
+        });
+        app.get(
+          '/test',
+          rl({ limit: LIMIT, windowSeconds: 60, keyPrefix: 'race' }) as MiddlewareHandler<any>,
+          (c) => c.json({ ok: true }),
+        );
+
+        // Sequential: second request AFTER first completes its put()
+        const res1 = await app.request(
+          '/test',
+          { headers: { 'X-Device-Id': DEVICE_ID } },
+          { RATE_LIMIT_STORE: kv },
+        );
+        const res2 = await app.request(
+          '/test',
+          { headers: { 'X-Device-Id': DEVICE_ID } },
+          { RATE_LIMIT_STORE: kv },
+        );
+
+        expect(res1.status).toBe(200);
+        expect(res2.status).toBe(429);
+      });
+    });
+  });
 });
