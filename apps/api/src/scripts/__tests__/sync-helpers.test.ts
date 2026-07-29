@@ -84,6 +84,23 @@ describe('setNested', () => {
     setNested(obj, '', 'Value');
     expect(obj).toEqual({});
   });
+
+  it('creates null-prototype intermediate objects', () => {
+    const obj: Record<string, unknown> = {};
+    setNested(obj, 'a.b.c', 'deep');
+    expect(obj.a).toBeDefined();
+    expect((obj.a as Record<string, unknown>).b).toBeDefined();
+    expect(Object.getPrototypeOf(obj.a)).toBeNull();
+    expect(Object.getPrototypeOf((obj.a as Record<string, unknown>).b)).toBeNull();
+  });
+
+  it('preserves prototype of pre-existing intermediate objects', () => {
+    const existing: Record<string, unknown> = {};
+    const obj = { existing };
+    setNested(obj, 'existing.child', 'value');
+    expect(obj.existing.child).toBe('value');
+    expect(Object.getPrototypeOf(obj.existing)).toBe(Object.prototype);
+  });
 });
 
 describe('serializeToTS', () => {
