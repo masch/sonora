@@ -115,12 +115,12 @@ describe('Translations API', () => {
     });
   });
 
-  describe('POST /api/translations/validate', () => {
+  describe('GET /api/translations/session', () => {
     it('returns 200 with valid auth header', async () => {
       const res = await app.request(
-        '/api/translations/validate',
+        '/api/translations/session',
         {
-          method: 'POST',
+          method: 'GET',
           headers: {
             Authorization: 'Bearer test-admin-key-123',
           },
@@ -134,9 +134,9 @@ describe('Translations API', () => {
 
     it('returns 401 with invalid auth header', async () => {
       const res = await app.request(
-        '/api/translations/validate',
+        '/api/translations/session',
         {
-          method: 'POST',
+          method: 'GET',
           headers: {
             Authorization: 'Bearer wrong-key',
           },
@@ -148,13 +148,101 @@ describe('Translations API', () => {
 
     it('returns 401 without auth header', async () => {
       const res = await app.request(
-        '/api/translations/validate',
+        '/api/translations/session',
         {
-          method: 'POST',
+          method: 'GET',
         },
         BINDINGS,
       );
       expect(res.status).toBe(401);
+    });
+
+    it('returns 500 MISCONFIG when ADMIN_API_KEY is missing in env', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer test-admin-key-123',
+          },
+        },
+        {},
+      );
+      expect(res.status).toBe(500);
+    });
+  });
+
+  describe('POST /api/translations/session', () => {
+    it('sets admin_session cookie and returns 200 on valid key', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'test-admin-key-123' }),
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(200);
+      const setCookieHeader = res.headers.get('set-cookie');
+      expect(setCookieHeader).toBeDefined();
+      expect(setCookieHeader).toContain('admin_session=test-admin-key-123');
+      expect(setCookieHeader).toContain('HttpOnly');
+    });
+
+    it('returns 401 on invalid key', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'wrong-key' }),
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 500 MISCONFIG when ADMIN_API_KEY is not defined in env', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'some-key' }),
+        },
+        {},
+      );
+      expect(res.status).toBe(500);
+    });
+
+    it('allows access to protected route using admin_session cookie', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'GET',
+          headers: {
+            Cookie: 'admin_session=test-admin-key-123',
+          },
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe('DELETE /api/translations/session', () => {
+    it('clears admin_session cookie', async () => {
+      const res = await app.request(
+        '/api/translations/session',
+        {
+          method: 'DELETE',
+        },
+        BINDINGS,
+      );
+      expect(res.status).toBe(200);
+      const setCookieHeader = res.headers.get('set-cookie');
+      expect(setCookieHeader).toBeDefined();
     });
   });
 });

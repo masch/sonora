@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { requireAdminKey } from '../../middleware/require-admin-key';
+import { adminAuthGuard } from '../../middleware/admin-auth-guard';
 
 function createTestApp(env: Record<string, unknown> = {}) {
   const app = new Hono<{
@@ -8,13 +8,13 @@ function createTestApp(env: Record<string, unknown> = {}) {
     Variables: Record<string, unknown>;
   }>();
 
-  app.get('/protected', requireAdminKey(), (c) => c.json({ ok: true }));
+  app.get('/protected', adminAuthGuard(), (c) => c.json({ ok: true }));
 
   // Return a fetch wrapper that injects env
   return (req: Request) => app.fetch(req, env);
 }
 
-describe('requireAdminKey middleware', () => {
+describe('adminAuthGuard middleware', () => {
   it('returns 500 when ADMIN_API_KEY is not set in env', async () => {
     const fetch = createTestApp({});
     const res = await fetch(

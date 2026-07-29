@@ -136,10 +136,10 @@ describe('RFC 7807 error responses', () => {
       expectedType: 'VALIDATION_ERROR',
     },
 
-    // POST /api/translations/validate
+    // GET /api/translations/session
     {
-      name: 'POST /api/translations/validate — no auth (401)',
-      request: async () => await app.request('/api/translations/validate', { method: 'POST' }),
+      name: 'GET /api/translations/session — no auth (401)',
+      request: async () => await app.request('/api/translations/session', { method: 'GET' }),
       expectedStatus: 401,
       expectedType: 'UNAUTHORIZED',
     },
