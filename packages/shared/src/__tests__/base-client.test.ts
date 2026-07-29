@@ -14,7 +14,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({ success: true }),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
     const response = await client.request<{ success: boolean }>('/data', {
@@ -40,7 +40,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({}),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
     await client.request('/data', {
@@ -63,7 +63,7 @@ describe('BaseApiClient', () => {
       statusText: 'Bad Request',
       json: () => Promise.resolve({ error: 'invalid_payload' }),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
 
@@ -87,7 +87,7 @@ describe('BaseApiClient', () => {
       json: () => Promise.reject(new Error('no json')),
       text: () => Promise.resolve('Raw text error'),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
 
@@ -108,7 +108,7 @@ describe('BaseApiClient', () => {
       json: () => Promise.reject(new Error('no json')),
       text: () => Promise.reject(new Error('no text')),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
 
@@ -126,7 +126,7 @@ describe('BaseApiClient', () => {
       status: 500,
       statusText: 'Server Error',
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
 
@@ -143,7 +143,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({}),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const clientAsync = new BaseApiClient({
       baseUrl: 'https://api.test',
@@ -180,7 +180,7 @@ describe('BaseApiClient', () => {
 
   it('uses offline caching fallback on fetch failure and logs to configured logs', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('Network offline'));
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const storageMock = {
       getItem: vi.fn().mockResolvedValue(JSON.stringify({ cached: 'data' })),
@@ -210,7 +210,7 @@ describe('BaseApiClient', () => {
       statusText: 'Internal Server Error',
       json: () => Promise.resolve({ error: 'db_down' }),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const storageMockEmpty = {
       getItem: vi.fn().mockResolvedValue(null),
@@ -249,7 +249,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({ data: 'fresh' }),
     });
-    vi.stubGlobal('fetch', fetchMockOk);
+    globalThis.fetch = fetchMockOk;
 
     const storageMockFailSet = {
       getItem: vi.fn().mockResolvedValue(null),
@@ -271,7 +271,7 @@ describe('BaseApiClient', () => {
 
     // getItem failure
     const fetchMockFail = vi.fn().mockRejectedValue(new Error('Network fail'));
-    vi.stubGlobal('fetch', fetchMockFail);
+    globalThis.fetch = fetchMockFail;
 
     const storageMockFailGet = {
       getItem: vi.fn().mockRejectedValue(new Error('Disk corrupted')),
@@ -296,7 +296,7 @@ describe('BaseApiClient', () => {
 
   it('supports custom loggers for warn and error on cache errors', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('Network fail'));
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const logErrorMock = vi.fn();
     const storageMock = {
@@ -318,7 +318,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({}),
     });
-    vi.stubGlobal('fetch', fetchMockOk);
+    globalThis.fetch = fetchMockOk;
 
     const logWarningMock = vi.fn();
     const storageMockWarn = {
@@ -342,7 +342,7 @@ describe('BaseApiClient', () => {
       ok: true,
       json: () => Promise.resolve({ success: true }),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock;
 
     const client = new BaseApiClient({ baseUrl: 'https://api.test' });
 
@@ -360,11 +360,25 @@ describe('BaseApiClient', () => {
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ val: 1 }) }),
     );
 
+    const postDefaultRes = await client.post<{ success: boolean }>('/data');
+    expect(postDefaultRes).toEqual({ success: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'https://api.test/data',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({}) }),
+    );
+
     const putRes = await client.put<{ success: boolean }>('/data', { val: 2 });
     expect(putRes).toEqual({ success: true });
     expect(fetchMock).toHaveBeenLastCalledWith(
       'https://api.test/data',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ val: 2 }) }),
+    );
+
+    const putDefaultRes = await client.put<{ success: boolean }>('/data');
+    expect(putDefaultRes).toEqual({ success: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'https://api.test/data',
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({}) }),
     );
 
     const deleteRes = await client.delete<{ success: boolean }>('/data');

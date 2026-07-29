@@ -13,6 +13,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 DB_ADAPTER = "neon"
 ENVIRONMENT = "production"
+ADMIN_SESSION_COOKIE_SAMESITE = "None"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
 
 MINIMUM_APP_VERSION = "0.0.0"

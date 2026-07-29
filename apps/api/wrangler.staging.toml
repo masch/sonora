@@ -13,6 +13,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 DB_ADAPTER = "neon"
 ENVIRONMENT = "staging"
+ADMIN_SESSION_COOKIE_SAMESITE = "None"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
 
 [define]

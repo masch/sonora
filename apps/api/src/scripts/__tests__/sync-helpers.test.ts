@@ -58,7 +58,31 @@ describe('setNested', () => {
   it('preserves existing siblings', () => {
     const obj = { common: { learnMore: 'Learn' } };
     setNested(obj, 'common.dismiss', 'Dismiss');
-    expect(obj).toEqual({ common: { learnMore: 'Learn', dismiss: 'Dismiss' } });
+    expect(obj).toEqual({
+      common: { learnMore: 'Learn', dismiss: 'Dismiss' },
+    });
+  });
+
+  it('prevents prototype pollution via __proto__', () => {
+    const obj: Record<string, unknown> = {};
+    setNested(obj, '__proto__.polluted', 'yes');
+    expect(obj).toEqual({});
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('prevents prototype pollution via constructor and prototype', () => {
+    const obj: Record<string, unknown> = {};
+    setNested(obj, 'constructor.prototype.polluted', 'yes');
+    setNested(obj, 'prototype.polluted', 'yes');
+    expect(obj).toEqual({});
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('ignores empty key segments', () => {
+    const obj: Record<string, unknown> = {};
+    setNested(obj, 'common..dismiss', 'Dismiss');
+    setNested(obj, '', 'Value');
+    expect(obj).toEqual({});
   });
 });
 

@@ -25,12 +25,22 @@ export function flatten(obj: Record<string, unknown>, prefix = ''): Record<strin
  */
 export function setNested(obj: Record<string, unknown>, key: string, value: string): void {
   const parts = key.split('.');
+  if (parts.length === 0 || parts.some((part) => part.length === 0)) {
+    return;
+  }
+
+  const blockedKeys = new Set(['__proto__', 'constructor', 'prototype']);
+  if (parts.some((part) => blockedKeys.has(part))) {
+    return;
+  }
+
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
-    if (!(parts[i] in current)) {
-      current[parts[i]] = {};
+    const part = parts[i];
+    if (!(part in current)) {
+      current[part] = {};
     }
-    current = current[parts[i]] as Record<string, unknown>;
+    current = current[part] as Record<string, unknown>;
   }
   current[parts[parts.length - 1]] = value;
 }
