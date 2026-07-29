@@ -78,7 +78,7 @@ No circular dependencies. `device-id.ts` imports from `problem-details.ts` now (
 2. Empty string ""                    → return 400 INVALID_DEVICE_ID
 3. Whitespace-only /^\s+$/           → return 400 INVALID_DEVICE_ID
 4. Length > 256 characters            → return 400 INVALID_DEVICE_ID
-5. Not a valid UUID v4 format         → return 400 INVALID_DEVICE_ID
+5. Empty or exceeds 256 chars   → return 400 INVALID_DEVICE_ID
 6. Valid UUID v4                      → SHA-256 hash, set c.set('deviceId', hashed), await next()
 ```
 
@@ -384,7 +384,7 @@ Both marked optional so local dev without bindings doesn't crash. The middleware
 - Empty string (`""`)
 - Whitespace-only (`/^\s+$/`)
 - Length > 256 characters
-- Not a valid UUID v4 format
+- Empty or exceeds 256 characters
 
 **Response body:**
 

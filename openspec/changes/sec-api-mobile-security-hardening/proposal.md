@@ -86,13 +86,13 @@ CORS currently allows `Content-Type, Authorization, Range, Cache-Control, Pragma
 
 Add validation before hashing:
 
-| Check                      | Rejection                                                            |
-| -------------------------- | -------------------------------------------------------------------- |
-| Header missing             | passes through (no change — `deviceIdGuard` handles this downstream) |
-| Empty string `""`          | `INVALID_DEVICE_ID` — 400                                            |
-| Whitespace-only            | `INVALID_DEVICE_ID` — 400                                            |
-| Length > 256 chars         | `INVALID_DEVICE_ID` — 400                                            |
-| Not a valid UUID v4 format | `INVALID_DEVICE_ID` — 400                                            |
+| Check                           | Rejection                                                            |
+| ------------------------------- | -------------------------------------------------------------------- |
+| Header missing                  | passes through (no change — `deviceIdGuard` handles this downstream) |
+| Empty string `""`               | `INVALID_DEVICE_ID` — 400                                            |
+| Whitespace-only                 | `INVALID_DEVICE_ID` — 400                                            |
+| Length > 256 chars              | `INVALID_DEVICE_ID` — 400                                            |
+| Empty or exceeds 256 characters | `INVALID_DEVICE_ID` — 400                                            |
 
 **Rationale for UUID validation:** The mobile client always generates UUIDs (via `generateUuid()` or native platform IDs). Any non-UUID value is either a bug, a misconfigured client, or an attacker sending arbitrary data. Rejecting at the middleware level catches all three early, before the value enters business logic or the database.
 

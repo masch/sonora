@@ -162,7 +162,7 @@ export const ERRORS_4XX = {
   } as const,
   INVALID_DEVICE_ID: {
     code: 'INVALID_DEVICE_ID',
-    detail: 'The X-Device-Id header must be a valid UUID v4.',
+    detail: 'The X-Device-Id header must be a non-empty string of 256 characters or fewer.',
     status: HTTP.BAD_REQUEST,
   } as const,
   RATE_LIMIT_EXCEEDED: {

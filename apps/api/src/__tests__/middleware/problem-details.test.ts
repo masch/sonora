@@ -106,7 +106,9 @@ describe('ERRORS constants', () => {
   it('INVALID_DEVICE_ID is a 4xx error with correct structure', () => {
     const err = ERRORS.INVALID_DEVICE_ID;
     expect(err.code).toBe('INVALID_DEVICE_ID');
-    expect(err.detail).toBe('The X-Device-Id header must be a valid UUID v4.');
+    expect(err.detail).toBe(
+      'The X-Device-Id header must be a non-empty string of 256 characters or fewer.',
+    );
     expect(err.status).toBe(HTTP.BAD_REQUEST);
     expect(err.status).toBe(400);
   });

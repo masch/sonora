@@ -22,7 +22,7 @@ The system MUST validate `X-Device-Id` header values BEFORE SHA-256 hashing in `
 | 3        | Value is whitespace-only (matches `/^\s+$/`) | Reject with `INVALID_DEVICE_ID`                  | `INVALID_DEVICE_ID` |
 | 4        | Value length > 256 characters                | Reject with `INVALID_DEVICE_ID`                  | `INVALID_DEVICE_ID` |
 | 5        | Value does not match UUID v4 format          | Reject with `INVALID_DEVICE_ID`                  | `INVALID_DEVICE_ID` |
-| 6        | Value is a valid UUID v4                     | Hash via SHA-256, set `c.var.deviceId`           | —                   |
+| 6        | Non-empty, ≤256 chars, not whitespace-only   | Hash via SHA-256, set `c.var.deviceId`           | —                   |
 
 #### UUID v4 regex
 
@@ -236,7 +236,7 @@ New error constants obey existing conventions:
 
 ### 2.3 Backward Compatibility
 
-- Well-behaved clients sending valid UUID v4 `X-Device-Id` headers observe NO behavioral change
+- Well-behaved clients sending valid `X-Device-Id` headers observe NO behavioral change
 - Clients sending `X-Device-Id` with missing, empty, or invalid values that previously succeeded will now get `400 INVALID_DEVICE_ID` — this is INTENTIONAL fail-closed behavior
 - Existing passing test suite MUST continue to pass (no regressions)
 - All changes are additive; no existing middleware or route handler contracts are modified except `injectDeviceId()`
@@ -376,7 +376,7 @@ TTL is set via `expirationTtl` on KV `put`. Cloudflare Workers KV automatically 
 ```typescript
 INVALID_DEVICE_ID: {
   code: 'INVALID_DEVICE_ID',
-  detail: 'The X-Device-Id header must be a valid UUID v4.',
+  detail: 'The X-Device-Id header must be a non-empty string of 256 characters or fewer.',
   status: HTTP.BAD_REQUEST,       // 400
 } as const,
 
