@@ -1,3 +1,9 @@
+```yaml
+schema: gentle-ai.verify-result/v1
+verdict: passed
+summary: All unit tests passed for setNested prototype pollution hardening
+```
+
 # Verification Report: Hardening `setNested` against Prototype Pollution
 
 ## Execution Summary
