@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { ScreenWrapper } from '@/components/screen-wrapper';
 import LoadingView from '@/components/loading-view';
-import { TwView, TwText, TwPressable, TwTextInput } from '@/tw';
+import { TwView, TwText, TwPressable, TwTextInput, TwScrollView } from '@/tw';
 import { AdminApiClient } from '@/services/admin-api-client';
 import { useTranslation } from 'react-i18next';
 import { en, es } from '@sonora/shared';
@@ -171,7 +171,7 @@ export default function TranslationEditorScreen() {
   const unsavedCount = Object.keys(edits).length;
 
   return (
-    <ScrollScreenWrapper>
+    <ScreenWrapper>
       {/* Header bar */}
       <TwView className="w-full h-16 bg-backgroundElement border-b border-backgroundSelected flex-row items-center justify-between px-five">
         <TwView className="flex-row items-center">
@@ -194,139 +194,143 @@ export default function TranslationEditorScreen() {
         </TwPressable>
       </TwView>
 
-      {/* Main workspace */}
-      <TwView className="flex-1 p-five max-w-[1200px] w-full mx-auto">
-        <TwView className="flex-row items-center justify-between mb-four flex-wrap gap-three">
-          {/* Language Selector Tabs */}
-          <TwView className="flex-row bg-backgroundElement p-[3px] rounded-lg border border-backgroundSelected">
-            <TwPressable
-              className={`px-four py-two rounded-md ${activeLang === 'en' ? 'bg-background shadow-sm' : ''}`}
-              onPress={() => setActiveLang('en')}
-              accessibilityLabel={t('dashboard.tabEn')}
-              testID="lang-en-tab"
-            >
-              <TwText
-                className={`text-sm font-bold ${activeLang === 'en' ? 'text-text' : 'text-textSecondary'}`}
+      {/* Scrollable workspace content */}
+      <TwScrollView className="flex-1" contentContainerClassName="pb-24">
+        <TwView className="p-five max-w-[1200px] w-full mx-auto pb-six">
+          <TwView className="flex-row items-center justify-between mb-four flex-wrap gap-three">
+            {/* Language Selector Tabs */}
+            <TwView className="flex-row bg-backgroundElement p-[3px] rounded-lg border border-backgroundSelected">
+              <TwPressable
+                className={`px-four py-two rounded-md ${activeLang === 'en' ? 'bg-background shadow-sm' : ''}`}
+                onPress={() => setActiveLang('en')}
+                accessibilityLabel={t('dashboard.tabEn')}
+                testID="lang-en-tab"
               >
-                {t('dashboard.tabEn')}
-              </TwText>
-            </TwPressable>
-            <TwPressable
-              className={`px-four py-two rounded-md ${activeLang === 'es' ? 'bg-background shadow-sm' : ''}`}
-              onPress={() => setActiveLang('es')}
-              accessibilityLabel={t('dashboard.tabEs')}
-              testID="lang-es-tab"
-            >
-              <TwText
-                className={`text-sm font-bold ${activeLang === 'es' ? 'text-text' : 'text-textSecondary'}`}
-              >
-                {t('dashboard.tabEs')}
-              </TwText>
-            </TwPressable>
-          </TwView>
-
-          {/* Search Input */}
-          <TwTextInput
-            className="w-full max-w-[300px] h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
-            placeholder={t('dashboard.searchPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            accessibilityLabel={t('dashboard.searchPlaceholder')}
-            testID="search-input"
-          />
-        </TwView>
-
-        {/* Feedback Messages */}
-        {error && (
-          <TwView className="bg-red-100 border border-red-200 rounded-lg p-three mb-four">
-            <TwText className="text-sm text-red-700 font-medium">{error}</TwText>
-          </TwView>
-        )}
-
-        {saveStatus && (
-          <TwView className="bg-blue-100 border border-blue-200 rounded-lg p-three mb-four flex-row items-center justify-between">
-            <TwText className="text-sm text-blue-700 font-medium">{saveStatus}</TwText>
-          </TwView>
-        )}
-
-        {/* Translations Table Area */}
-        <TwView className="flex-1 card-container rounded-xl overflow-hidden shadow-sm">
-          {isLoading ? (
-            <LoadingView message={t('dashboard.loading')} />
-          ) : filteredData.length === 0 ? (
-            <TwView className="flex-1 items-center justify-center py-six bg-background">
-              <TwText className="text-base text-textSecondary font-medium">
-                {t('dashboard.noResults')}
-              </TwText>
-            </TwView>
-          ) : (
-            <TwView className="flex-1 bg-background">
-              {filteredData.map((item) => (
-                <TwView
-                  key={item.key}
-                  className="p-four border-b border-[#dfd7c8] flex-col md:flex-row md:items-center justify-between gap-three hover:bg-backgroundElement/30"
+                <TwText
+                  className={`text-sm font-bold ${activeLang === 'en' ? 'text-text' : 'text-textSecondary'}`}
                 >
-                  {/* Left Column: Key info */}
-                  <TwView className="flex-1 max-w-[400px]">
-                    <TwView className="flex-row items-center flex-wrap gap-two mb-one">
-                      <TwText className="font-mono text-xs text-link font-semibold bg-backgroundElement px-[6px] py-[2px] rounded border border-[#dfd7c8]">
-                        {item.key}
-                      </TwText>
-                      {item.isModified && (
-                        <TwView className="bg-amber-100 border border-amber-200 px-[6px] py-[2px] rounded">
-                          <TwText className="text-[10px] text-amber-700 font-bold">
-                            {t('dashboard.unsavedEdits')}
-                          </TwText>
-                        </TwView>
-                      )}
-                      {item.isOverrideActive && !item.isModified && (
-                        <TwView className="bg-green-100 border border-green-200 px-[6px] py-[2px] rounded">
-                          <TwText className="text-[10px] text-green-700 font-bold">
-                            {t('dashboard.overrideActive')}
-                          </TwText>
-                        </TwView>
-                      )}
-                    </TwView>
-                    <TwText className="text-xs text-textSecondary mt-[2px]">
-                      {t('dashboard.originalLabel')}
-                      <TwText className="italic">{item.original}</TwText>
-                    </TwText>
-                  </TwView>
+                  {t('dashboard.tabEn')}
+                </TwText>
+              </TwPressable>
+              <TwPressable
+                className={`px-four py-two rounded-md ${activeLang === 'es' ? 'bg-background shadow-sm' : ''}`}
+                onPress={() => setActiveLang('es')}
+                accessibilityLabel={t('dashboard.tabEs')}
+                testID="lang-es-tab"
+              >
+                <TwText
+                  className={`text-sm font-bold ${activeLang === 'es' ? 'text-text' : 'text-textSecondary'}`}
+                >
+                  {t('dashboard.tabEs')}
+                </TwText>
+              </TwPressable>
+            </TwView>
 
-                  {/* Right Column: Editable field */}
-                  <TwView className="flex-1 flex-row items-center gap-two min-w-[300px]">
-                    <TwTextInput
-                      className={`flex-1 h-10 border rounded-lg px-three text-text bg-background ${item.isModified ? 'border-amber-400 focus:border-amber-500' : 'border-[#dfd7c8] focus:border-link'}`}
-                      value={item.value}
-                      onChangeText={(val) => handleEdit(item.key, val)}
-                      placeholder={item.original}
-                      placeholderTextColor={colors.textSecondary}
-                      accessibilityLabel={t('dashboard.translationFor', { key: item.key })}
-                      testID={`input-${item.key.replace(/\./g, '-')}`}
-                    />
-                    {item.value !== '' && (
-                      <TwPressable
-                        className="h-10 w-10 items-center justify-center rounded-lg border border-[#dfd7c8] bg-background hover:bg-red-50"
-                        onPress={() => handleEdit(item.key, '')}
-                        accessibilityLabel={t('dashboard.clearOverrideAccess', { key: item.key })}
-                        testID={`clear-${item.key.replace(/\./g, '-')}`}
-                      >
-                        <TwText className="text-xs text-red-500 font-bold">
-                          {t('dashboard.clearBtn')}
-                        </TwText>
-                      </TwPressable>
-                    )}
-                  </TwView>
-                </TwView>
-              ))}
+            {/* Search Input */}
+            <TwTextInput
+              className="w-full max-w-[300px] h-10 border border-backgroundSelected rounded-lg px-three text-text bg-background focus:border-link"
+              placeholder={t('dashboard.searchPlaceholder')}
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              accessibilityLabel={t('dashboard.searchPlaceholder')}
+              testID="search-input"
+            />
+          </TwView>
+
+          {/* Feedback Messages */}
+          {error && (
+            <TwView className="bg-red-100 border border-red-200 rounded-lg p-three mb-four">
+              <TwText className="text-sm text-red-700 font-medium">{error}</TwText>
             </TwView>
           )}
-        </TwView>
 
-        {/* Sticky footer action bar */}
-        {unsavedCount > 0 && (
-          <TwView className="w-full mt-four bg-backgroundElement border border-backgroundSelected rounded-xl p-four flex-row items-center justify-between shadow-sm">
+          {saveStatus && (
+            <TwView className="bg-blue-100 border border-blue-200 rounded-lg p-three mb-four flex-row items-center justify-between">
+              <TwText className="text-sm text-blue-700 font-medium">{saveStatus}</TwText>
+            </TwView>
+          )}
+
+          {/* Translations Table Area */}
+          <TwView className="flex-1 card-container rounded-xl overflow-hidden shadow-sm">
+            {isLoading ? (
+              <LoadingView message={t('dashboard.loading')} />
+            ) : filteredData.length === 0 ? (
+              <TwView className="flex-1 items-center justify-center py-six bg-background">
+                <TwText className="text-base text-textSecondary font-medium">
+                  {t('dashboard.noResults')}
+                </TwText>
+              </TwView>
+            ) : (
+              <TwView className="flex-1 bg-background">
+                {filteredData.map((item) => (
+                  <TwView
+                    key={item.key}
+                    className="p-four border-b border-[#dfd7c8] flex-col md:flex-row md:items-center justify-between gap-three hover:bg-backgroundElement/30"
+                  >
+                    {/* Left Column: Key info */}
+                    <TwView className="flex-1 max-w-[400px]">
+                      <TwView className="flex-row items-center flex-wrap gap-two mb-one">
+                        <TwText className="font-mono text-xs text-link font-semibold bg-backgroundElement px-[6px] py-[2px] rounded border border-[#dfd7c8]">
+                          {item.key}
+                        </TwText>
+                        {item.isModified && (
+                          <TwView className="bg-amber-100 border border-amber-200 px-[6px] py-[2px] rounded">
+                            <TwText className="text-[10px] text-amber-700 font-bold">
+                              {t('dashboard.unsavedEdits')}
+                            </TwText>
+                          </TwView>
+                        )}
+                        {item.isOverrideActive && !item.isModified && (
+                          <TwView className="bg-green-100 border border-green-200 px-[6px] py-[2px] rounded">
+                            <TwText className="text-[10px] text-green-700 font-bold">
+                              {t('dashboard.overrideActive')}
+                            </TwText>
+                          </TwView>
+                        )}
+                      </TwView>
+                      <TwText className="text-xs text-textSecondary mt-[2px]">
+                        {t('dashboard.originalLabel')}
+                        <TwText className="italic">{item.original}</TwText>
+                      </TwText>
+                    </TwView>
+
+                    {/* Right Column: Editable field */}
+                    <TwView className="flex-1 flex-row items-center gap-two min-w-[300px]">
+                      <TwTextInput
+                        className={`flex-1 h-10 border rounded-lg px-three text-text bg-background ${item.isModified ? 'border-amber-400 focus:border-amber-500' : 'border-[#dfd7c8] focus:border-link'}`}
+                        value={item.value}
+                        onChangeText={(val) => handleEdit(item.key, val)}
+                        placeholder={item.original}
+                        placeholderTextColor={colors.textSecondary}
+                        accessibilityLabel={t('dashboard.translationFor', { key: item.key })}
+                        testID={`input-${item.key.replace(/\./g, '-')}`}
+                      />
+                      {item.value !== '' && (
+                        <TwPressable
+                          className="h-10 w-10 items-center justify-center rounded-lg border border-[#dfd7c8] bg-background hover:bg-red-50"
+                          onPress={() => handleEdit(item.key, '')}
+                          accessibilityLabel={t('dashboard.clearOverrideAccess', { key: item.key })}
+                          testID={`clear-${item.key.replace(/\./g, '-')}`}
+                        >
+                          <TwText className="text-xs text-red-500 font-bold">
+                            {t('dashboard.clearBtn')}
+                          </TwText>
+                        </TwPressable>
+                      )}
+                    </TwView>
+                  </TwView>
+                ))}
+              </TwView>
+            )}
+          </TwView>
+        </TwView>
+      </TwScrollView>
+
+      {/* Sticky footer action bar pinned to the bottom of the visible screen */}
+      {unsavedCount > 0 && (
+        <TwView className="w-full bg-backgroundElement border-t border-backgroundSelected px-five py-three shadow-lg z-40">
+          <TwView className="max-w-[1200px] w-full mx-auto flex-row items-center justify-between">
             <TwText className="text-sm font-bold text-text">
               {unsavedCount} {t('dashboard.modifiedStatus')}
             </TwText>
@@ -342,8 +346,8 @@ export default function TranslationEditorScreen() {
               </TwText>
             </TwPressable>
           </TwView>
-        )}
-      </TwView>
-    </ScrollScreenWrapper>
+        </TwView>
+      )}
+    </ScreenWrapper>
   );
 }

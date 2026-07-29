@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import LoadingView from '@/components/loading-view';
-import { AdminApiClient } from '@/services/admin-api-client';
+import { AuthProvider, useAuth } from '@/context/auth-context';
 import { useTranslation } from 'react-i18next';
 import { APP_CONFIG } from '@/config/app-config';
 import { StagingBadge } from '@/components/staging-badge';
@@ -9,30 +9,25 @@ import { TwPressable, TwText, TwView } from '@/tw';
 import '@/global.css';
 import '@/i18n';
 
-export default function RootLayout() {
+function ProtectedLayoutNav() {
+  const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
-    const key = AdminApiClient.getAuthKey();
+    if (isLoading) return;
+
     const inLoginGroup = segments[0] === 'login';
 
-    if (!key && !inLoginGroup) {
-      // Redirect to login page
+    if (!isAuthenticated && !inLoginGroup) {
       router.replace('/login');
-    } else if (key && inLoginGroup) {
-      // Redirect to main page if already logged in
+    } else if (isAuthenticated && inLoginGroup) {
       router.replace('/');
     }
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [segments, router]);
+  }, [isAuthenticated, isLoading, segments, router]);
 
-  if (!isReady) {
+  if (isLoading) {
     return <LoadingView message={t('dashboard.loadingConfig')} />;
   }
 
@@ -54,6 +49,14 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ title: t('login.title'), headerShown: false }} />
       </Stack>
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <ProtectedLayoutNav />
+    </AuthProvider>
   );
 }
 

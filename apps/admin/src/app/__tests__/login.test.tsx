@@ -1,4 +1,4 @@
-import { render, act } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 
 const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({
@@ -40,15 +40,18 @@ jest.mock('@/tw', () => {
   };
 });
 
-jest.mock('@/services/admin-api-client', () => ({
-  AdminApiClient: {
-    setAuthKey: jest.fn(),
-    validateKey: jest.fn().mockResolvedValue(true),
-  },
+const mockLogin = jest.fn().mockResolvedValue(true);
+
+jest.mock('@/context/auth-context', () => ({
+  useAuth: () => ({
+    login: mockLogin,
+    logout: jest.fn(),
+    isAuthenticated: false,
+    isLoading: false,
+  }),
 }));
 
 import LoginScreen from '../login';
-import { AdminApiClient } from '@/services/admin-api-client';
 
 describe('LoginScreen', () => {
   beforeEach(() => {
@@ -56,7 +59,7 @@ describe('LoginScreen', () => {
   });
 
   it('renders correctly', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = await render(<LoginScreen />);
+    const { getByPlaceholderText, getByTestId, getByText } = await render(<LoginScreen />);
 
     expect(getByText('SONORA ADMIN')).toBeTruthy();
     expect(getByText('API Admin Key')).toBeTruthy();
@@ -74,11 +77,11 @@ describe('LoginScreen', () => {
     });
 
     expect(getByText('Please enter your API Key')).toBeTruthy();
-    expect(AdminApiClient.setAuthKey).not.toHaveBeenCalled();
+    expect(mockLogin).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('saves token and redirects on valid input submit', async () => {
+  it('authenticates session and redirects on valid input submit', async () => {
     const { getByPlaceholderText, getByTestId } = await render(<LoginScreen />);
 
     const input = getByPlaceholderText('bearer_token_key...');
@@ -92,12 +95,12 @@ describe('LoginScreen', () => {
       button.props.onClick();
     });
 
-    expect(AdminApiClient.setAuthKey).toHaveBeenCalledWith('test-secret-api-key');
+    expect(mockLogin).toHaveBeenCalledWith('test-secret-api-key');
     expect(mockReplace).toHaveBeenCalledWith('/');
   });
 
   it('shows error if API key is invalid', async () => {
-    (AdminApiClient.validateKey as jest.Mock).mockResolvedValueOnce(false);
+    mockLogin.mockResolvedValueOnce(false);
     const { getByPlaceholderText, getByTestId, getByText } = await render(<LoginScreen />);
 
     const input = getByPlaceholderText('bearer_token_key...');
@@ -112,7 +115,6 @@ describe('LoginScreen', () => {
     });
 
     expect(getByText('Invalid API key. Please check it and try again.')).toBeTruthy();
-    expect(AdminApiClient.setAuthKey).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 });

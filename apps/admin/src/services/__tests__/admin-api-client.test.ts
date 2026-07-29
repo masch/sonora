@@ -18,80 +18,32 @@ function mockFetchFail(status: number) {
 
 describe('AdminApiClient', () => {
   const originalFetch = globalThis.fetch;
-  const originalLocalStorage = globalThis.localStorage;
-
-  // Mock localStorage
-  const localStorageMock = (() => {
-    let store: Record<string, string> = {};
-    return {
-      getItem: jest.fn((key: string) => store[key] || null),
-      setItem: jest.fn((key: string, value: string) => {
-        store[key] = value.toString();
-      }),
-      removeItem: jest.fn((key: string) => {
-        delete store[key];
-      }),
-      clear: jest.fn(() => {
-        store = {};
-      }),
-    };
-  })();
-
-  beforeAll(() => {
-    Object.defineProperty(globalThis, 'localStorage', {
-      value: localStorageMock,
-      writable: true,
-    });
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorageMock.clear();
   });
 
   afterAll(() => {
     globalThis.fetch = originalFetch;
-    Object.defineProperty(globalThis, 'localStorage', {
-      value: originalLocalStorage,
-      writable: true,
-    });
-  });
-
-  /* ─── Authentication Keys Management ─── */
-
-  it('manages auth key correctly in localStorage', () => {
-    expect(AdminApiClient.getAuthKey()).toBeNull();
-
-    AdminApiClient.setAuthKey('test-key-123');
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('admin_key', 'test-key-123');
-    expect(AdminApiClient.getAuthKey()).toBe('test-key-123');
-
-    AdminApiClient.clearAuthKey();
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('admin_key');
-    expect(AdminApiClient.getAuthKey()).toBeNull();
   });
 
   /* ─── API Requests ─── */
 
-  it('sends Authorization header when key is present', async () => {
+  it('sends credentials: include on requests', async () => {
     mockFetchOk({ success: true });
-    AdminApiClient.setAuthKey('secret-key');
 
     await AdminApiClient.request('/endpoint');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/endpoint'),
       expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer secret-key',
-        }),
+        credentials: 'include',
       }),
     );
   });
 
   it('throws error when response is not ok', async () => {
     mockFetchFail(401);
-    AdminApiClient.setAuthKey('wrong-key');
 
     await expect(AdminApiClient.request('/endpoint')).rejects.toThrow('Request failed');
   });
@@ -106,7 +58,9 @@ describe('AdminApiClient', () => {
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/translations/en'),
-      expect.any(Object),
+      expect.objectContaining({
+        credentials: 'include',
+      }),
     );
     expect(result).toEqual(mockData);
   });
@@ -121,38 +75,94 @@ describe('AdminApiClient', () => {
       expect.stringContaining('/api/translations'),
       expect.objectContaining({
         method: 'PUT',
+        credentials: 'include',
         body: JSON.stringify(payload),
       }),
     );
     expect(result).toEqual({ updated: 3 });
   });
 
-  /* ─── Validate Key Method ─── */
+  /* ─── Session Management ─── */
 
-  it('returns true when validation returns 200', async () => {
+  it('creates session when loginSession returns 200', async () => {
     mockFetchOk({ valid: true });
-    const result = await AdminApiClient.validateKey('valid-key');
+    const result = await AdminApiClient.loginSession('valid-key');
     expect(result).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations/validate'),
+      expect.stringContaining('/api/translations/session'),
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer valid-key',
-        }),
+        credentials: 'include',
+        body: JSON.stringify({ key: 'valid-key' }),
       }),
     );
   });
 
-  it('returns false when validation returns non-200 status', async () => {
+  it('clears session when logoutSession returns 200', async () => {
+    mockFetchOk({ cleared: true });
+    const result = await AdminApiClient.logoutSession();
+    expect(result).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/translations/session'),
+      expect.objectContaining({
+        method: 'DELETE',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('returns false when loginSession returns non-200 status', async () => {
     mockFetchFail(401);
-    const result = await AdminApiClient.validateKey('invalid-key');
+    const result = await AdminApiClient.loginSession('invalid-key');
     expect(result).toBe(false);
   });
 
-  it('returns false when fetch fails entirely', async () => {
+  it('returns false when loginSession fetch fails entirely', async () => {
     globalThis.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
-    const result = await AdminApiClient.validateKey('key');
+    const result = await AdminApiClient.loginSession('key');
+    expect(result).toBe(false);
+  });
+
+  it('returns false when logoutSession returns non-200 status', async () => {
+    mockFetchFail(500);
+    const result = await AdminApiClient.logoutSession();
+    expect(result).toBe(false);
+  });
+
+  it('returns false when logoutSession fetch fails entirely', async () => {
+    globalThis.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+    const result = await AdminApiClient.logoutSession();
+    expect(result).toBe(false);
+  });
+
+  it('delegates validateKey to loginSession', async () => {
+    mockFetchOk({ valid: true });
+    const result = await AdminApiClient.validateKey('valid-key');
+    expect(result).toBe(true);
+  });
+
+  it('checkSession returns true when GET /api/translations/session responds { valid: true }', async () => {
+    mockFetchOk({ valid: true });
+    const result = await AdminApiClient.checkSession();
+    expect(result).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/translations/session'),
+      expect.objectContaining({
+        method: 'GET',
+        credentials: 'include',
+      }),
+    );
+  });
+
+  it('checkSession returns false when GET /api/translations/session responds { valid: false }', async () => {
+    mockFetchOk({ valid: false });
+    const result = await AdminApiClient.checkSession();
+    expect(result).toBe(false);
+  });
+
+  it('checkSession returns false when GET /api/translations/session fails with 401 or network error', async () => {
+    mockFetchFail(401);
+    const result = await AdminApiClient.checkSession();
     expect(result).toBe(false);
   });
 });

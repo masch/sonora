@@ -29,6 +29,8 @@ export interface Env {
   PRIVATE_BUCKET?: R2Bucket;
   PUBLIC_BUCKET?: R2Bucket;
   ADMIN_API_KEY?: string;
+  ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
+  ADMIN_SESSION_COOKIE_SECURE?: string;
   CLIENT_API_KEY?: string;
   JWT_SECRET?: string;
   AUDIO_LINK_EXPIRY_SECONDS?: string;
