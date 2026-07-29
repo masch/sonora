@@ -42,7 +42,7 @@ export const configureCors = (): MiddlewareHandler => {
 
     const corsMiddleware = cors({
       origin: (origin) => {
-        if (!origin || origin === 'null') return origin ?? null;
+        if (!origin || origin === 'null') return origin;
 
         const allowed = env?.ALLOWED_ORIGIN;
         if (!allowed) return origin;

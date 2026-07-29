@@ -43,7 +43,10 @@ describe('POST /payments/create — characterization', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},
@@ -62,7 +65,10 @@ describe('POST /payments/create — characterization', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: JSON.stringify({}),
       },
       {},
@@ -82,7 +88,10 @@ describe('POST /payments/create — characterization', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: '{not-json',
       },
       {},
@@ -98,7 +107,10 @@ describe('POST /payments/create — characterization', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: JSON.stringify({
           experienceId: VALID_UUID,
           redirectUrl: 'https://example.com/cb',
@@ -124,7 +136,7 @@ describe('POST /payments/create — characterization', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Device-Id': 'device-1',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
         },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
@@ -257,7 +269,10 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
       `/payments/experiences/${VALID_UUID}/access`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Device-Id': 'd1' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: JSON.stringify({ source: 'free', email: 'u@e.com', platform: 'ios' }),
       },
       {},
@@ -290,7 +305,10 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
       `/payments/experiences/${VALID_UUID}/access`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Device-Id': 'd1' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+        },
         body: JSON.stringify({ source: 'free', email: null }),
       },
       {},

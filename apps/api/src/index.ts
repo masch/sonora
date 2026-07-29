@@ -92,8 +92,7 @@ app.route('/.well-known', associationRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${msg}`);
+  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${err.message}`);
 });
 
 export default app;

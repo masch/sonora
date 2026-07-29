@@ -54,7 +54,7 @@ describe('GET /experiences', () => {
     const res = await app.request(
       '/experiences',
       {
-        headers: { 'X-Device-Id': 'device-123' },
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
       },
       env,
     );
@@ -89,7 +89,7 @@ describe('GET /experiences', () => {
     const res = await app.request(
       '/experiences',
       {
-        headers: { 'X-Device-Id': 'device-123' },
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
       },
       env,
     );
@@ -120,7 +120,7 @@ describe('GET /experiences', () => {
     const res = await app.request(
       '/experiences',
       {
-        headers: { 'X-Device-Id': 'device-123' },
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
       },
       env,
     );
@@ -151,7 +151,7 @@ describe('GET /experiences', () => {
     const res = await app.request(
       '/experiences?email=user@example.com',
       {
-        headers: { 'X-Device-Id': 'device-new-phone' },
+        headers: { 'X-Device-Id': '660e8400-e29b-4a4a-a716-446655440001' },
       },
       env,
     );
@@ -182,7 +182,7 @@ describe('GET /experiences', () => {
     const res = await app.request(
       '/experiences?email=user@example.com',
       {
-        headers: { 'X-Device-Id': 'device-123' },
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
       },
       env,
     );

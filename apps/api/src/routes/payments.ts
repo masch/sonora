@@ -63,6 +63,7 @@ paymentsRouter.use('*', paymentsGuard());
 paymentsRouter.post(
   '/create',
   dbGuard(),
+  deviceIdGuard(),
   zValidator('json', CreatePaymentBodySchema, validationHook),
   async (c) => {
     const db = c.var.db;

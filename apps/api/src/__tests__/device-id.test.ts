@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
 import { hashDeviceId, injectDeviceId } from '../middleware/device-id';
 
@@ -24,22 +24,23 @@ describe('device-id middleware', () => {
   });
 
   describe('injectDeviceId middleware', () => {
-    it('sets the deviceId variable if X-Device-Id header is present', async () => {
+    it('sets the deviceId variable if X-Device-Id header is a valid UUID v4', async () => {
       const app = new Hono<{ Variables: { deviceId?: string } }>();
       app.use('*', injectDeviceId());
       app.get('/test', (c) => {
         return c.json({ deviceId: c.get('deviceId') });
       });
 
+      const validUuid = '550e8400-e29b-4a4a-a716-446655440000';
       const res = await app.request('/test', {
         headers: {
-          'X-Device-Id': 'my-secret-device',
+          'X-Device-Id': validUuid,
         },
       });
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { deviceId: string | null };
-      const expectedHash = await hashDeviceId('my-secret-device');
+      const expectedHash = await hashDeviceId(validUuid);
       expect(body.deviceId).toBe(expectedHash);
     });
 
@@ -54,6 +55,87 @@ describe('device-id middleware', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { deviceId: string | null };
       expect(body.deviceId).toBeNull();
+    });
+
+    it('returns 400 INVALID_DEVICE_ID for empty string X-Device-Id header', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ deviceId: c.get('deviceId') || null });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Id': '' },
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code: string; detail: string; status: number };
+      expect(body.code).toBe('INVALID_DEVICE_ID');
+      expect(body.detail).toBe('The X-Device-Id header must be a valid UUID v4.');
+      expect(body.status).toBe(400);
+    });
+
+    it('returns 400 INVALID_DEVICE_ID for whitespace-only value (direct middleware call)', async () => {
+      // HTTP headers are trimmed per RFC 7230, so Hono never delivers
+      // whitespace-only values. This test calls the middleware directly
+      // to cover the internal whitespace check.
+      const middleware = injectDeviceId();
+      const json = vi.fn(
+        (body: unknown, s: number) => ({ body, status: s }) as unknown as Response,
+      );
+      const c = {
+        req: { header: () => '   ' },
+        var: {},
+        set: vi.fn(),
+        get: vi.fn(),
+        json,
+      } as any;
+      const next = vi.fn();
+
+      await middleware(c, next);
+
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 'INVALID_DEVICE_ID' }),
+        400,
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 INVALID_DEVICE_ID for X-Device-Id longer than 256 characters', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ deviceId: c.get('deviceId') || null });
+      });
+
+      const longStr = 'a'.repeat(257);
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Id': longStr },
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code: string; detail: string; status: number };
+      expect(body.code).toBe('INVALID_DEVICE_ID');
+      expect(body.detail).toBe('The X-Device-Id header must be a valid UUID v4.');
+      expect(body.status).toBe(400);
+    });
+
+    it('returns 400 INVALID_DEVICE_ID for non-UUID X-Device-Id header', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ deviceId: c.get('deviceId') || null });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Id': 'not-a-uuid' },
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code: string; detail: string; status: number };
+      expect(body.code).toBe('INVALID_DEVICE_ID');
+      expect(body.detail).toBe('The X-Device-Id header must be a valid UUID v4.');
+      expect(body.status).toBe(400);
     });
   });
 });
