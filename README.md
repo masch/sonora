@@ -142,7 +142,8 @@ sonora/
 │   ├── specs/
 │   └── tasks/
 ├── docs/                      # Documentation
-│   └── payment_flow_architecture.md  # Complete Payment Flow Architecture (Web, iOS, Android)
+│   ├── admin_auth_architecture.md  # Admin Authentication & HttpOnly Cookie Architecture
+│   └── payment_flow_architecture.md # Complete Payment Flow Architecture (Web, iOS, Android)
 ├── scripts/                   # Root-level utility scripts
 ├── scratch/                   # Temporary/scratch files
 ├── .githooks/
@@ -157,6 +158,7 @@ sonora/
 
 ## Documentation
 
+- **[Admin Auth Architecture](docs/admin_auth_architecture.md)** — Admin portal HttpOnly cookie session management, environment-driven security (`SameSite`/`Secure`), and XSS immunity.
 - **[Payment Flow Architecture](docs/payment_flow_architecture.md)** — Detailed sequence flows, Web vs Native redirection logic, SSOT app scheme resolution (`app-identifiers.json`), and Mercado Pago webhook synchronization.
 
 ## API — Feedback Database

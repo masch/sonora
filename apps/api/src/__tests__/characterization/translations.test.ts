@@ -76,11 +76,11 @@ describe('PUT /api/translations — characterization', () => {
   });
 });
 
-describe('POST /api/translations/validate — characterization', () => {
+describe('GET /api/translations/session — characterization', () => {
   it('captures 200 with valid auth', async () => {
     const res = await app.fetch(
-      new Request(`${BASE}/api/translations/validate`, {
-        method: 'POST',
+      new Request(`${BASE}/api/translations/session`, {
+        method: 'GET',
         headers: { Authorization: 'Bearer test-admin-key' },
       }),
       ENV_AUTH,
@@ -90,15 +90,15 @@ describe('POST /api/translations/validate — characterization', () => {
   });
 
   it('captures current behavior when auth missing (no env)', async () => {
-    const res = await app.request('/api/translations/validate', { method: 'POST' }, {});
+    const res = await app.request('/api/translations/session', { method: 'GET' }, {});
     // No ADMIN_API_KEY in env → 500
     expect(res.status).toBe(500);
   });
 
   it('captures 401 when auth wrong with valid env', async () => {
     const res = await app.fetch(
-      new Request(`${BASE}/api/translations/validate`, {
-        method: 'POST',
+      new Request(`${BASE}/api/translations/session`, {
+        method: 'GET',
         headers: { Authorization: 'Bearer wrong-key' },
       }),
       ENV_AUTH,

@@ -110,7 +110,7 @@ expo-doctor: ## Run Expo Doctor to verify dependency compatibility
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	@ROOT=$$(pwd); \
-	read -p "Minimum release age in days (0 = immediate, default 4): " DAYS; \
+	read -r -p "Minimum release age in days (0 = immediate, default 4): " DAYS; \
 	DAYS=$${DAYS:-4}; \
 	SECONDS=$$(( DAYS * 86400 )); \
 	MOBILE="$$ROOT/apps/mobile"; \
@@ -371,7 +371,7 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
-	@read -p "Paste the ALLOWED_ORIGIN for staging (e.g. https://sonora-staging.eas.host): " SECRET; \
+	@read -r -p "Paste the ALLOWED_ORIGIN for staging (e.g. https://sonora-staging.eas.host): " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ALLOWED_ORIGIN --config wrangler.staging.toml
 
 .PHONY: api-secret-list-staging
@@ -384,67 +384,67 @@ api-secret-list-production: ## List secrets on production Worker
 
 .PHONY: api-secret-delete-staging
 api-secret-delete-staging: ## Delete a secret from staging Worker (interactive)
-	@read -p "Secret name to delete from staging: " NAME; \
+	@read -r -p "Secret name to delete from staging: " NAME; \
 	cd $(API_DIR) && bunx wrangler secret delete "$$NAME" --config wrangler.staging.toml
 
 .PHONY: api-secret-delete-production
 api-secret-delete-production: ## Delete a secret from production Worker (interactive)
-	@read -p "Secret name to delete from production: " NAME; \
+	@read -r -p "Secret name to delete from production: " NAME; \
 	cd $(API_DIR) && bunx wrangler secret delete "$$NAME"
 
 .PHONY: api-deploy-staging-set-mp-webhook-secret
 api-deploy-staging-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on staging Worker (interactive — paste the secret from MP dashboard)
-	@read -p "Paste the MP_WEBHOOK_SECRET from MP dashboard: " SECRET; \
+	@read -r -p "Paste the MP_WEBHOOK_SECRET from MP dashboard: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_WEBHOOK_SECRET --config wrangler.staging.toml
 
 .PHONY: api-deploy-staging-set-mp-access-token
 api-deploy-staging-set-mp-access-token: ## Set MP_ACCESS_TOKEN on staging Worker (interactive — paste the access token from MP dashboard)
-	@read -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
+	@read -r -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_ACCESS_TOKEN --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-mp-webhook-secret
 api-deploy-production-set-mp-webhook-secret: ## Set MP_WEBHOOK_SECRET on production Worker (interactive — paste the secret from MP dashboard)
-	@read -p "Paste the MP_WEBHOOK_SECRET from MP dashboard: " SECRET; \
+	@read -r -p "Paste the MP_WEBHOOK_SECRET from MP dashboard: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_WEBHOOK_SECRET
 
 .PHONY: api-deploy-production-set-mp-access-token
 api-deploy-production-set-mp-access-token: ## Set MP_ACCESS_TOKEN on production Worker (interactive — paste the access token from MP dashboard)
-	@read -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
+	@read -r -p "Paste the MP_ACCESS_TOKEN from MP dashboard: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put MP_ACCESS_TOKEN
 
 .PHONY: api-deploy-staging-set-jwt-secret
 api-deploy-staging-set-jwt-secret: ## Set JWT_SECRET on staging Worker (interactive)
-	@read -p "Enter the JWT_SECRET: " SECRET; \
+	@read -r -p "Enter the JWT_SECRET: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put JWT_SECRET --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-jwt-secret
 api-deploy-production-set-jwt-secret: ## Set JWT_SECRET on production Worker (interactive)
-	@read -p "Enter the JWT_SECRET: " SECRET; \
+	@read -r -p "Enter the JWT_SECRET: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put JWT_SECRET
 
 .PHONY: api-deploy-staging-set-client-api-key
 api-deploy-staging-set-client-api-key: ## Set CLIENT_API_KEY on staging Worker (interactive)
-	@read -p "Enter the CLIENT_API_KEY: " SECRET; \
+	@read -r -p "Enter the CLIENT_API_KEY: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put CLIENT_API_KEY --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-client-api-key
 api-deploy-production-set-client-api-key: ## Set CLIENT_API_KEY on production Worker (interactive)
-	@read -p "Enter the CLIENT_API_KEY: " SECRET; \
+	@read -r -p "Enter the CLIENT_API_KEY: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put CLIENT_API_KEY
 
 .PHONY: api-deploy-production-set-origin
 api-deploy-production-set-origin: ## Set ALLOWED_ORIGIN on production Worker (interactive)
-	@read -p "Paste the ALLOWED_ORIGIN for production (e.g. https://sonora.eas.host): " SECRET; \
+	@read -r -p "Paste the ALLOWED_ORIGIN for production (e.g. https://sonora.eas.host): " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ALLOWED_ORIGIN
 
 .PHONY: api-deploy-staging-log-toggle
 api-deploy-staging-log-toggle: ## Toggle API logging on staging interactively
-	@read -p "Enable API logging on staging? (true/false): " ENABLED; \
+	@read -r -p "Enable API logging on staging? (true/false): " ENABLED; \
 	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-log-toggle
 api-deploy-production-log-toggle: ## Toggle API logging on production interactively
-	@read -p "Enable API logging on production? (true/false): " ENABLED; \
+	@read -r -p "Enable API logging on production? (true/false): " ENABLED; \
 	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING
 
 # ── Backend API — Test deployed Workers ─────────────
@@ -554,22 +554,22 @@ api-deploy-production-full: api-deploy-production api-db-seed-production ## Depl
 
 .PHONY: api-deploy-staging-set-db-url
 api-deploy-staging-set-db-url: ## Set DATABASE_URL on staging Worker (interactive)
-	@read -p "Paste the DATABASE_URL for staging: " SECRET; \
+	@read -r -p "Paste the DATABASE_URL for staging: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put DATABASE_URL --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-db-url
 api-deploy-production-set-db-url: ## Set DATABASE_URL on production Worker (interactive)
-	@read -p "Paste the DATABASE_URL for production: " SECRET; \
+	@read -r -p "Paste the DATABASE_URL for production: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put DATABASE_URL
 
 .PHONY: api-deploy-staging-set-admin-api-key
 api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (interactive)
-	@read -p "Paste the ADMIN_API_KEY for staging: " SECRET; \
+	@read -r -p "Paste the ADMIN_API_KEY for staging: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-admin-api-key
 api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive)
-	@read -p "Paste the ADMIN_API_KEY for production: " SECRET; \
+	@read -r -p "Paste the ADMIN_API_KEY for production: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY
 
 .PHONY: api-db-backup
@@ -579,12 +579,12 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	  DB_URL="$(DATABASE_URL)"; \
 	fi; \
 	if [ -z "$$DB_URL" ]; then \
-	  read -p "Enter DATABASE_URL: " DB_URL; \
+	  read -r -p "Enter DATABASE_URL: " DB_URL; \
 	fi; \
 	if [ -z "$$DB_URL" ]; then echo "Error: DATABASE_URL is required"; exit 1; fi; \
 	KEY="$(BACKUP_ENCRYPTION_KEY)"; \
 	if [ -z "$$KEY" ]; then \
-	  read -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
+	  read -r -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
 	fi; \
 	if [ -z "$$KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY is required"; exit 1; fi; \
 	DATE_TAG=$$(date +%Y-%m-%d); \
@@ -624,7 +624,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 api-db-restore: ## Download and restore database backup from R2. Usage: make api-db-restore DATE="2026-07-13" [DB_URL="postgresql://..."]
 	@KEY="$(BACKUP_ENCRYPTION_KEY)"; \
 	if [ -z "$$KEY" ]; then \
-	  read -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
+	  read -r -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
 	fi; \
 	if [ -z "$$KEY" ]; then echo "Error: BACKUP_ENCRYPTION_KEY is required"; exit 1; fi; \
 	TARGET_DATE="$(DATE)"; \
@@ -637,7 +637,7 @@ api-db-restore: ## Download and restore database backup from R2. Usage: make api
 	  TARGET_DB_URL="$(DATABASE_URL)"; \
 	fi; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
-	  read -p "Enter DATABASE_URL to restore into: " TARGET_DB_URL; \
+	  read -r -p "Enter DATABASE_URL to restore into: " TARGET_DB_URL; \
 	fi; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
 	  echo "Error: DATABASE_URL is required"; exit 1; \
@@ -755,8 +755,11 @@ validate: format lint typecheck api-typecheck scripts-typecheck doctor-ci test g
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck
 
+.PHONY: check-static
+check-static: lint typecheck ## Run lint + typecheck
+
 .PHONY: check
-check: format-check test lint typecheck
+check: format-check lint typecheck test 
 	$(MAKE) expo-doctor || echo "[WARN] expo-doctor checks failed (may be false positives from bun cache layout)"
 
 # ── Review ─────────────────────────────────────
@@ -809,7 +812,7 @@ eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Andro
 
 .PHONY: eas-build-android-preview-local
 eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (interactive, prompts for APP_VERSION_CODE)
-	@read -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
+	@read -r -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
 	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-build-android-release-ci-unsigned

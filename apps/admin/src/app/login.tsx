@@ -1,17 +1,17 @@
 import { ScreenWrapper } from '@/components/screen-wrapper';
-import { AdminApiClient } from '@/services/admin-api-client';
+import { useAuth } from '@/context/auth-context';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useThemeColors } from '@/hooks/use-theme-colors';
-
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useTranslation();
   const colors = useThemeColors();
 
@@ -22,20 +22,19 @@ export default function LoginScreen() {
       return;
     }
     const sanitized = trimmed.replace(/[^\x20-\x7E]/g, '');
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
     try {
-      const isValid = await AdminApiClient.validateKey(sanitized);
+      const isValid = await login(sanitized);
       if (!isValid) {
         setError(t('login.errorInvalid'));
         return;
       }
-      AdminApiClient.setAuthKey(sanitized);
       router.replace('/');
     } catch {
       setError(t('common.somethingWentWrong'));
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -63,7 +62,7 @@ export default function LoginScreen() {
               setError(null);
             }}
             secureTextEntry
-            editable={!isLoading}
+            editable={!isSubmitting}
             accessibilityLabel={t('login.keyInputLabel')}
             testID="api-key-input"
           />
@@ -71,14 +70,14 @@ export default function LoginScreen() {
         </TwView>
 
         <TwPressable
-          className={`w-full h-11 bg-link items-center justify-center rounded-lg active:opacity-90 ${isLoading ? 'opacity-50' : ''}`}
+          className={`w-full h-11 bg-link items-center justify-center rounded-lg active:opacity-90 ${isSubmitting ? 'opacity-50' : ''}`}
           onPress={handleLogin}
-          disabled={isLoading}
+          disabled={isSubmitting}
           accessibilityLabel={t('login.loginBtnLabel')}
           testID="login-button"
         >
           <TwText className="text-base font-bold text-white">
-            {isLoading ? t('dashboard.savingBtn') : t('login.loginBtn')}
+            {isSubmitting ? t('dashboard.savingBtn') : t('login.loginBtn')}
           </TwText>
         </TwPressable>
       </TwView>

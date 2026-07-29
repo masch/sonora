@@ -53,6 +53,7 @@ export const configureCors = (): MiddlewareHandler => {
       allowMethods: methods,
       allowHeaders: headers,
       exposeHeaders: EXPOSED_HEADERS,
+      credentials: true,
       maxAge: MAX_AGE,
     });
 

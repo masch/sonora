@@ -17,7 +17,7 @@ jobs:
       - name: Validate PR title
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          if ! echo "$TITLE" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._-]+\))?!?: .+'; then
+          if ! echo "$TITLE" | grep -qE '^(alert|build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._-]+\))?!?: .+'; then
             echo "ERROR: PR title must follow conventional commits format"
             echo "Expected: type(scope): description"
             echo "Got: $TITLE"
