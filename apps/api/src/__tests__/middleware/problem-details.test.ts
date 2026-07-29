@@ -28,6 +28,7 @@ describe('HTTP constants', () => {
     ['CONFLICT', 409],
     ['UNPROCESSABLE_ENTITY', 422],
     ['INTERNAL_SERVER_ERROR', 500],
+    ['TOO_MANY_REQUESTS', 429],
   ];
 
   for (const [name, expected] of cases) {
@@ -100,6 +101,22 @@ describe('ERRORS constants', () => {
   it('ERRORS is the union of ERRORS_5XX and ERRORS_4XX', () => {
     const unionCount = Object.keys(ERRORS_5XX).length + Object.keys(ERRORS_4XX).length;
     expect(Object.keys(ERRORS).length).toBe(unionCount);
+  });
+
+  it('INVALID_DEVICE_ID is a 4xx error with correct structure', () => {
+    const err = ERRORS.INVALID_DEVICE_ID;
+    expect(err.code).toBe('INVALID_DEVICE_ID');
+    expect(err.detail).toBe('The X-Device-Id header must be a valid UUID v4.');
+    expect(err.status).toBe(HTTP.BAD_REQUEST);
+    expect(err.status).toBe(400);
+  });
+
+  it('RATE_LIMIT_EXCEEDED is a 4xx error with correct structure', () => {
+    const err = ERRORS.RATE_LIMIT_EXCEEDED;
+    expect(err.code).toBe('RATE_LIMIT_EXCEEDED');
+    expect(err.detail).toBe('Too many requests. Please try again later.');
+    expect(err.status).toBe(HTTP.TOO_MANY_REQUESTS);
+    expect(err.status).toBe(429);
   });
 });
 

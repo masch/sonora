@@ -43,6 +43,8 @@ export interface Env {
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
   APP_SCHEME?: string;
+  RATE_LIMIT_STORE?: KVNamespace;
+  RATE_LIMITING_ENABLED?: string;
 }
 
 export interface Variables {

@@ -10,8 +10,12 @@ const DEFAULT_HEADERS = [
   'Cache-Control',
   'Pragma',
   'X-Device-Id',
+  'X-Signature',
+  'X-Timestamp',
+  'X-Nonce',
+  'Retry-After',
 ];
-const EXPOSED_HEADERS = ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag'];
+const EXPOSED_HEADERS = ['Content-Length', 'Content-Range', 'ETag', 'x-audio-etag', 'Retry-After'];
 const MAX_AGE = 86400;
 
 /**
