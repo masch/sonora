@@ -21,46 +21,56 @@ describe('checkUnarchivedChanges', () => {
     expect(result.unarchived).toHaveLength(0);
   });
 
-  it('should return ok: true when changes have unchecked tasks', () => {
-    const changeDir = path.join(tempDir, 'openspec', 'changes', 'feature-a');
+  it("should return ok: false when changes have pending tasks", () => {
+    const changeDir = path.join(tempDir, "openspec", "changes", "feature-a");
     fs.mkdirSync(changeDir, { recursive: true });
-    fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] Done\n- [ ] Pending');
-
-    const result = checkUnarchivedChanges(tempDir);
-    expect(result.ok).toBe(true);
-    expect(result.unarchived).toHaveLength(0);
-  });
-
-  it('should return ok: false and list change when all tasks are checked', () => {
-    const changeDir = path.join(tempDir, 'openspec', 'changes', 'completed-feature');
-    fs.mkdirSync(changeDir, { recursive: true });
-    fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] Done task 1\n- [x] Done task 2');
+    fs.writeFileSync(path.join(changeDir, "tasks.md"), "- [x] Done\n- [ ] Pending");
 
     const result = checkUnarchivedChanges(tempDir);
     expect(result.ok).toBe(false);
-    expect(result.unarchived).toEqual(['completed-feature']);
+    expect(result.unarchived).toEqual(["feature-a"]);
   });
 
-  it('should ignore hidden entries and archive directory inside changes/', () => {
-    const hiddenDir = path.join(tempDir, 'openspec', 'changes', '.gitkeep');
-    const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
-    fs.mkdirSync(archiveDir, { recursive: true });
-    fs.writeFileSync(hiddenDir, '');
-    fs.writeFileSync(path.join(archiveDir, 'tasks.md'), '- [x] Done in archive');
-
-    const result = checkUnarchivedChanges(tempDir);
-    expect(result.ok).toBe(true);
-    expect(result.unarchived).toHaveLength(0);
-  });
-
-  it('should ignore directory without tasks.md file', () => {
-    const changeDir = path.join(tempDir, 'openspec', 'changes', 'no-tasks');
+  it("should return ok: false and list change when all tasks are checked", () => {
+    const changeDir = path.join(tempDir, "openspec", "changes", "completed-feature");
     fs.mkdirSync(changeDir, { recursive: true });
-    fs.writeFileSync(path.join(changeDir, 'proposal.md'), '# Proposal');
+    fs.writeFileSync(path.join(changeDir, "tasks.md"), "- [x] Done task 1\n- [x] Done task 2");
+
+    const result = checkUnarchivedChanges(tempDir);
+    expect(result.ok).toBe(false);
+    expect(result.unarchived).toEqual(["completed-feature"]);
+  });
+
+  it("should ignore hidden entries and archive directory inside changes/", () => {
+    const hiddenDir = path.join(tempDir, "openspec", "changes", ".gitkeep");
+    const archiveDir = path.join(tempDir, "openspec", "changes", "archive");
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(hiddenDir, "");
+    fs.writeFileSync(path.join(archiveDir, "tasks.md"), "- [x] Done in archive");
 
     const result = checkUnarchivedChanges(tempDir);
     expect(result.ok).toBe(true);
     expect(result.unarchived).toHaveLength(0);
+  });
+
+  it("should return ok: false if standalone file exists in openspec/changes", () => {
+    const changeFile = path.join(tempDir, "openspec", "changes", "proposal.md");
+    fs.mkdirSync(path.join(tempDir, "openspec", "changes"), { recursive: true });
+    fs.writeFileSync(changeFile, "# Proposal");
+
+    const result = checkUnarchivedChanges(tempDir);
+    expect(result.ok).toBe(false);
+    expect(result.unarchived).toEqual(["proposal.md"]);
+  });
+
+  it("should return ok: false if an archived change has incomplete tasks", () => {
+    const archiveDir = path.join(tempDir, "openspec", "archived", "incomplete-archived-change");
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(archiveDir, "tasks.md"), "- [x] Done\n- [ ] Pending task");
+
+    const result = checkUnarchivedChanges(tempDir);
+    expect(result.ok).toBe(false);
+    expect(result.incompleteArchived).toEqual(["incomplete-archived-change"]);
   });
 
   describe('runCLI', () => {
