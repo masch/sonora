@@ -94,7 +94,7 @@
         "expo-audio": "56.0.12",
         "expo-background-fetch": "56.0.22",
         "expo-constants": "56.0.21",
-        "expo-crypto": "~14.1.0",
+        "expo-crypto": "14.1.5",
         "expo-device": "56.0.4",
         "expo-file-system": "56.0.8",
         "expo-font": "56.0.7",
