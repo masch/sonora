@@ -1,124 +1,8 @@
-# API Specification
+# Delta for API
 
-## Requirements
+Delta against `openspec/specs/api/spec.md`.
 
-### Requirement: Version environment variables
-
-The API `Env` interface MUST include three optional bindings:
-
-| Binding                | Type   | Default   | Description                              |
-| ---------------------- | ------ | --------- | ---------------------------------------- |
-| `MINIMUM_APP_VERSION`  | string | `"1.0.0"` | Minimum app version to enforce           |
-| `BLOCK_OLDER_VERSIONS` | string | `"false"` | Enables blocking (parsed as boolean)     |
-| `GRACE_PERIOD_DAYS`    | string | `"0"`     | Grace window in days (parsed as integer) |
-
-Defaults MUST be defined in `wrangler.toml` under `[vars]` and MAY be overridden at runtime via Cloudflare dashboard env vars.
-
-### Requirement: Version fields in config response
-
-The `GET /config` endpoint MUST include an `appVersion` object in its response body.
-
-- `minimumVersion` — string from `MINIMUM_APP_VERSION`
-- `blockOlderVersions` — boolean parsed from `BLOCK_OLDER_VERSIONS`
-- `gracePeriodDays` — integer parsed from `GRACE_PERIOD_DAYS`
-
-The response SHALL satisfy the updated `RemoteConfigPayloadSchema`.
-
-#### Scenario: Config endpoint returns appVersion section
-
-- GIVEN env vars `MINIMUM_APP_VERSION=2.0.0`, `BLOCK_OLDER_VERSIONS=true`, `GRACE_PERIOD_DAYS=7`
-- WHEN the client requests `GET /config`
-- THEN the response body includes `appVersion: { minimumVersion: "2.0.0", blockOlderVersions: true, gracePeriodDays: 7 }`
-
-#### Scenario: Missing env vars fall back to defaults
-
-- GIVEN no version-related env vars are set in wrangler.toml
-- WHEN the client requests `GET /config`
-- THEN the response body includes `appVersion: { minimumVersion: "1.0.0", blockOlderVersions: false, gracePeriodDays: 0 }`
-
-### Requirement: Webhook signature validation
-
-The `processWebhook` method MUST validate the `X-Signature` header using HMAC-SHA256 before fetching payment details. Invalid signatures MUST throw a generic external error (`InvalidSignature`) and log detailed internal diagnostics at `warn` level.
-
-The `X-Signature` format MUST be parsed as `ts=<timestamp>,v1=<hmac_hex>` where `ts` is a Unix timestamp in seconds. The message template for HMAC-SHA256 MUST be `id:{data.id_url};request-id:{x-request-id};ts:{ts};` where `data.id_url` = `data.id` in lowercase.
-
-| Element       | Constraint                                                                                    |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| Algorithm     | HMAC-SHA256 (via MP SDK's `WebhookSignatureValidator`, which uses `crypto.subtle` internally) |
-| Key           | UTF-8 encoded `webhookSecret`                                                                 |
-| Header source | `X-Signature` request header                                                                  |
-
-#### Scenario: Valid signature processes webhook
-
-- GIVEN a valid `X-Signature` header with matching HMAC-SHA256
-- WHEN `processWebhook` receives the webhook payload
-- THEN the method proceeds to fetch payment details and returns a `WebhookResult`
-
-#### Scenario: Invalid HMAC rejects with generic error
-
-- GIVEN an `X-Signature` header with mismatched HMAC
-- WHEN `processWebhook` validates the signature
-- THEN it throws `InvalidSignature` with a generic message (no HMAC details leaked externally)
-
-#### Scenario: Missing or malformed X-Signature header
-
-- GIVEN the request has no `X-Signature` header, or the header format is unparseable
-- WHEN `processWebhook` attempts validation
-- THEN it throws `InvalidSignature` and logs the raw header for debugging
-
-### Requirement: Fail-fast configuration
-
-The `MercadoPagoProvider` constructor MUST throw `TypeError` if `webhookSecret` is `undefined`, `null`, or an empty string. The factory export MUST NOT fall back to `""` — it MUST propagate the construction failure to startup.
-
-#### Scenario: Missing secret throws at construction
-
-- GIVEN no `MP_WEBHOOK_SECRET` env var is set
-- WHEN `MercadoPagoProvider` is constructed with `webhookSecret` as `undefined` or `""`
-- THEN the constructor throws `TypeError` with a message indicating the secret is required
-
-#### Scenario: Factory with missing env var fails fast
-
-- GIVEN `MP_WEBHOOK_SECRET` is unset in the environment
-- WHEN the factory function creates `MercadoPagoProvider`
-- THEN the factory does not construct the provider — it throws at initialization time
-
-### Requirement: Replay protection
-
-The `processWebhook` method MUST reject signatures whose `ts` (millisecond timestamp) falls outside a configurable max age window. The default window MUST be 5 minutes. The window period SHALL be configurable via a `signatureMaxAgeMinutes` parameter.
-
-#### Scenario: Signature within time window is accepted
-
-- GIVEN a valid `X-Signature` with `ts` less than 5 minutes old
-- WHEN `processWebhook` validates the signature
-- THEN the signature is accepted and processing continues normally
-
-#### Scenario: Expired signature is rejected
-
-- GIVEN a valid `X-Signature` with `ts` more than 5 minutes in the past
-- WHEN `processWebhook` validates the signature
-- THEN it throws `InvalidSignature` and logs the age discrepancy
-
-#### Scenario: Future timestamp is rejected
-
-- GIVEN a valid `X-Signature` with `ts` more than 5 minutes in the future (clock skew)
-- WHEN `processWebhook` validates the signature
-- THEN it throws `InvalidSignature`
-
-### Requirement: Metrics and logging on invalid signature
-
-Every invalid signature attempt MUST be logged internally at `warn` level with: `ts` value, `x-request-id`, `data.id`, and failure reason. A metric counter (`invalid_signature_total`) MUST be incremented on every rejection.
-
-#### Scenario: Invalid signature increments counter
-
-- GIVEN a webhook request with an invalid `X-Signature`
-- WHEN the validation fails
-- THEN the `invalid_signature_total` counter is incremented by exactly 1
-
-#### Scenario: Log contains diagnostic details
-
-- GIVEN a webhook request with an invalid `X-Signature`
-- WHEN the validation fails
-- THEN the log entry includes `ts`, `x-request-id`, `data.id`, and the specific failure reason
+## ADDED Requirements
 
 ### Requirement: Device ID pass-through middleware
 
@@ -139,6 +23,8 @@ export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: 
 | 3        | Value is whitespace-only (matches `rawDeviceId.trim().length === 0` when original length > 0) | Reject with 400                                    | `INVALID_DEVICE_ID` |
 | 4        | Value length > 256 characters                                                                 | Reject with 400                                    | `INVALID_DEVICE_ID` |
 | 5        | Non-empty, ≤256 chars, not whitespace-only                                                    | Set `c.var.deviceId` to value as-is (NO hashing)   | —                   |
+
+The `injectDeviceId()` middleware handles the `X-Device-Id` header. Device ID hashing happens on the client; the middleware passes through the already-hashed value unchanged.
 
 #### Scenario: Pre-hashed 64-char hex value passes through
 
@@ -197,6 +83,8 @@ export interface Variables {
 }
 ```
 
+The `devicePlatform` field is set by `injectDeviceId()` middleware from the `X-Device-Platform` header.
+
 ### Requirement: Device platform header injection in middleware
 
 The `injectDeviceId()` middleware MUST also read the `X-Device-Platform` header and set `c.var.devicePlatform`:
@@ -209,8 +97,11 @@ if (platformHeader !== undefined) {
   if (validPlatforms.includes(platformHeader as (typeof validPlatforms)[number])) {
     c.set('devicePlatform', platformHeader as 'ios' | 'android' | 'web');
   }
+  // Invalid values are silently ignored — no rejection, just not set
 }
 ```
+
+Validation rules for `X-Device-Platform`:
 
 | Condition                               | Action                                                  |
 | --------------------------------------- | ------------------------------------------------------- |
@@ -218,7 +109,7 @@ if (platformHeader !== undefined) {
 | Value is one of `ios`, `android`, `web` | Set `c.var.devicePlatform` to the value                 |
 | Value is any other string               | Silently ignored — `devicePlatform` remains unset       |
 
-Invalid platform values MUST NOT produce an error response.
+Invalid platform values MUST NOT produce an error response — the header is advisory and optional for backward compatibility.
 
 #### Scenario: Device platform is set from header
 
@@ -247,6 +138,8 @@ The `POST /payments/experiences/:id/access` route handler MUST use `c.var.device
 
 The header value takes precedence over the body field when both are present. When the header is absent, the route MUST fall back to the body's `platform` field (existing behavior).
 
+This allows a transition period where old clients send `platform` in the body while new clients send it in the header.
+
 #### Scenario: Header platform is persisted
 
 - GIVEN a request with `X-Device-Platform: android`
@@ -261,9 +154,13 @@ The header value takes precedence over the body field when both are present. Whe
 - WHEN `POST /payments/experiences/:id/access` runs
 - THEN the inserted `experienceAccesses` record has `platform: "ios"` (header wins; body is ignored)
 
+The access route uses `platformGuard()` middleware (same as purchase creation), so `X-Device-Platform` is always required. The legacy `body.platform` field is ignored when the header is present.
+
 ### Requirement: Platform persistence in purchase creation
 
 The `POST /payments/create` route handler MUST persist the platform from `c.var.devicePlatform` into the `purchases` record.
+
+The `platform` field in the `purchases.insert` values MUST be set to `c.var.devicePlatform` when available, or `'unknown'` when absent (since the column is NOT NULL with no default).
 
 #### Scenario: Platform is stored on purchase creation
 
@@ -298,6 +195,8 @@ const DEFAULT_HEADERS = [
 ];
 ```
 
+This ensures web clients can include `X-Device-Platform` in their requests without triggering CORS preflight failures.
+
 #### Scenario: Web client CORS preflight includes x-device-platform
 
 - GIVEN the web client sends an OPTIONS preflight request
@@ -312,3 +211,11 @@ const DEFAULT_HEADERS = [
 - WHEN CORS is configured
 - THEN the custom `ALLOWED_HEADERS` list is used as-is
 - AND `X-Device-Platform` MUST be present in that list for web clients to work
+
+## MODIFIED Requirements
+
+No existing requirements in `openspec/specs/api/spec.md` are modified by this change. The existing version env vars, config response, webhook signature, and replay protection requirements are unaffected.
+
+## REMOVED Requirements
+
+No existing requirements are removed.
