@@ -1,3 +1,5 @@
+import type { Platform } from '@sonora/shared';
+import { PAYMENT_ROUTES } from '@sonora/shared';
 import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
@@ -11,13 +13,9 @@ import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
 import { healthRouter } from './routes/health';
-import { PAYMENT_ROUTES } from '@sonora/shared';
-import type { Platform } from '@sonora/shared';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
-
-export { injectDeviceId };
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
