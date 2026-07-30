@@ -43,8 +43,8 @@ describe('device-id middleware', () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { deviceId: string | null };
-      const expectedHash = await hashDeviceId(id);
-      expect(body.deviceId).toBe(expectedHash);
+      // Now pass-through: c.var.deviceId is the raw header value, not hashed
+      expect(body.deviceId).toBe(id);
     });
 
     it('does not set the deviceId variable if X-Device-Id header is missing', async () => {
@@ -118,6 +118,115 @@ describe('device-id middleware', () => {
       expect(body.code).toBe('INVALID_DEVICE_ID');
       expect(body.detail).toBe('The X-Device-Id header must be 256 characters or fewer.');
       expect(body.status).toBe(400);
+    });
+  });
+
+  describe('X-Device-Platform header', () => {
+    it('sets devicePlatform to ios when X-Device-Platform is ios', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({
+          deviceId: c.get('deviceId') || null,
+          devicePlatform: c.get('devicePlatform') || null,
+        });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Platform': 'ios', 'X-Device-Id': 'test-id' },
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { deviceId: string; devicePlatform: string };
+      expect(body.devicePlatform).toBe('ios');
+    });
+
+    it('sets devicePlatform to android and web', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ devicePlatform: c.get('devicePlatform') || null });
+      });
+
+      const res1 = await app.request('/test', {
+        headers: { 'X-Device-Platform': 'android', 'X-Device-Id': 'id' },
+      });
+      expect(res1.status).toBe(200);
+      expect(((await res1.json()) as { devicePlatform: string }).devicePlatform).toBe('android');
+
+      const res2 = await app.request('/test', {
+        headers: { 'X-Device-Platform': 'web', 'X-Device-Id': 'id' },
+      });
+      expect(res2.status).toBe(200);
+      expect(((await res2.json()) as { devicePlatform: string }).devicePlatform).toBe('web');
+    });
+
+    it('silently ignores invalid X-Device-Platform value', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ devicePlatform: c.get('devicePlatform') || null });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Platform': 'windows', 'X-Device-Id': 'id' },
+      });
+
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { devicePlatform: string | null }).devicePlatform).toBeNull();
+    });
+
+    it('silently ignores case-mismatched platform value', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ devicePlatform: c.get('devicePlatform') || null });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Platform': 'iOS', 'X-Device-Id': 'id' },
+      });
+
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { devicePlatform: string | null }).devicePlatform).toBeNull();
+    });
+
+    it('leaves devicePlatform undefined when X-Device-Platform is missing', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({ devicePlatform: c.get('devicePlatform') || null });
+      });
+
+      const res = await app.request('/test', {
+        headers: { 'X-Device-Id': 'test-id' },
+      });
+
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { devicePlatform: string | null }).devicePlatform).toBeNull();
+    });
+
+    it('sets both deviceId and devicePlatform when both headers present', async () => {
+      const app = new Hono<{ Variables: { deviceId?: string; devicePlatform?: string } }>();
+      app.use('*', injectDeviceId());
+      app.get('/test', (c) => {
+        return c.json({
+          deviceId: c.get('deviceId') || null,
+          devicePlatform: c.get('devicePlatform') || null,
+        });
+      });
+
+      const res = await app.request('/test', {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'android',
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { deviceId: string; devicePlatform: string };
+      expect(body.deviceId).toBe('550e8400-e29b-4a4a-a716-446655440000');
+      expect(body.devicePlatform).toBe('android');
     });
   });
 });

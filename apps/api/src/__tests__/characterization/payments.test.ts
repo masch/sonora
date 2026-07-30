@@ -46,6 +46,7 @@ describe('POST /payments/create — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
@@ -68,6 +69,7 @@ describe('POST /payments/create — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({}),
       },
@@ -91,6 +93,7 @@ describe('POST /payments/create — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: '{not-json',
       },
@@ -110,6 +113,7 @@ describe('POST /payments/create — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({
           experienceId: VALID_UUID,
@@ -137,6 +141,7 @@ describe('POST /payments/create — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
@@ -272,6 +277,7 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ source: 'free', email: 'u@e.com', platform: 'ios' }),
       },
@@ -308,6 +314,7 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ source: 'free', email: null }),
       },

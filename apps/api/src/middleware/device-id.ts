@@ -1,5 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Env, Variables } from '../index';
+import { PLATFORMS } from '@sonora/shared';
+import type { Platform } from '@sonora/shared';
 
 export async function hashDeviceId(deviceId: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(deviceId);
@@ -8,13 +10,14 @@ export async function hashDeviceId(deviceId: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// VALID_PLATFORMS and Platform type imported from @sonora/shared
+// PLATFORM_DEFAULT available for fallback: 'unknown'
+
 export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: Variables }> => {
   return async (c, next) => {
     const rawDeviceId = c.req.header('X-Device-Id');
     if (rawDeviceId !== undefined) {
       // Validate: reject empty, whitespace-only, or overly long values
-      // The SHA-256 hash neutralizes any malicious content, and Android uses
-      // a 64-bit hex ID (not UUID v4), so we accept any reasonable identifier.
       if (rawDeviceId.length === 0) {
         return c.json(
           {
@@ -46,9 +49,19 @@ export const injectDeviceId = (): MiddlewareHandler<{ Bindings: Env; Variables: 
         );
       }
 
-      const hashed = await hashDeviceId(rawDeviceId);
-      c.set('deviceId', hashed);
+      // PASSTHROUGH — client sends pre-hashed value, do NOT hash again
+      c.set('deviceId', rawDeviceId);
     }
+
+    // X-Device-Platform handling
+    const platformHeader = c.req.header('X-Device-Platform');
+    if (platformHeader !== undefined) {
+      if (PLATFORMS.includes(platformHeader as Platform)) {
+        c.set('devicePlatform', platformHeader as Platform);
+      }
+      // Invalid platform values are silently ignored
+    }
+
     await next();
   };
 };

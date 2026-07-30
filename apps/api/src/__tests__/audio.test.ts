@@ -1,6 +1,6 @@
 import { sign } from 'hono/jwt';
 import { describe, expect, it, vi } from 'vitest';
-import app, { hashDeviceId } from '../index';
+import app from '../index';
 
 const mockR2Bucket = {
   put: vi.fn(async (key: string, _: any, __?: any) => {
@@ -49,11 +49,11 @@ describe('Audio Router', () => {
     secret = 'test-jwt-secret',
     deviceId = '550e8400-e29b-4a4a-a716-446655440000',
   ) => {
-    const hashedDeviceId = await hashDeviceId(deviceId);
+    // deviceId in JWT must match c.var.deviceId (raw pass-through value)
     return await sign(
       {
         key,
-        deviceId: hashedDeviceId,
+        deviceId,
         exp: Math.floor(Date.now() / 1000) + 60,
       },
       secret,

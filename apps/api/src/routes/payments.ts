@@ -8,6 +8,7 @@ import {
   WebhookBodySchema,
   PAYMENT_ROUTES,
   type PurchaseStatus,
+  type Platform,
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -17,6 +18,7 @@ import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-d
 import { validationHook } from '../middleware/validation-error';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
+import { platformGuard } from '../middleware/platform-guard';
 import { paymentsGuard } from '../middleware/payments-guard';
 import { rateLimit, RATE_LIMIT_DEFAULTS } from '../middleware/rate-limit-guard';
 
@@ -65,6 +67,7 @@ paymentsRouter.post(
   '/create',
   dbGuard(),
   deviceIdGuard(),
+  platformGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.PAYMENTS_CREATE),
   zValidator('json', CreatePaymentBodySchema, validationHook),
   async (c) => {
@@ -113,6 +116,7 @@ paymentsRouter.post(
         status: 'pending',
         metadata: redirectUrl ? { redirectUrl } : undefined,
         deviceId: c.var.deviceId,
+        platform: c.var.devicePlatform,
       })
       .returning();
 
@@ -574,7 +578,7 @@ paymentsRouter.post(
     const body = c.req.valid('json') as {
       source: 'free' | 'paid' | 'restored';
       email?: string | null;
-      platform?: 'ios' | 'android' | 'web' | null;
+      platform?: Platform | null;
     };
 
     const deviceId = c.var.deviceId;
@@ -592,7 +596,7 @@ paymentsRouter.post(
       deviceId,
       source: body.source,
       priceAtAccess: experience?.price ?? null,
-      platform: body.platform ?? null,
+      platform: c.var.devicePlatform ?? body.platform ?? null,
     });
 
     return created(c, { status: 'ok' });

@@ -110,6 +110,7 @@ describe('CORS behavior', () => {
         'Cache-Control',
         'Pragma',
         'X-Device-Id',
+        'X-Device-Platform',
         'X-Signature',
         'X-Timestamp',
         'X-Nonce',

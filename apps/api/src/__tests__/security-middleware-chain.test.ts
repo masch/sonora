@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import app, { setDbClient, hashDeviceId } from '../index';
+import app, { setDbClient } from '../index';
 import { createPaymentProviders } from '../payments';
 
 vi.mock('../payments', () => ({
@@ -45,18 +45,17 @@ const EXPERIENCE_ID = '660e8400-e29b-4a4a-a716-446655440000';
 /**
  * Compute the KV key the middleware would use for a given prefix/deviceId.
  *
- * NOTE: the middleware uses the HASHED deviceId (from c.var.deviceId),
- * not the raw X-Device-Id header value. injectDeviceId() SHA-256 hashes it.
+ * NOTE: injectDeviceId() now passes through the raw X-Device-Id header value
+ * (no SHA-256 hashing). c.var.deviceId is the raw value.
  */
 async function rateLimitKey(
   prefix: string,
   rawDeviceId: string,
   windowSeconds: number,
 ): Promise<string> {
-  const hashedDeviceId = await hashDeviceId(rawDeviceId);
   const now = Math.floor(Date.now() / 1000);
   const windowStart = Math.floor(now / windowSeconds) * windowSeconds;
-  return `rate-limit:${prefix}:${hashedDeviceId}:${windowStart}`;
+  return `rate-limit:${prefix}:${rawDeviceId}:${windowStart}`;
 }
 
 describe('Full middleware chain — POST /payments/create with rate limiting', () => {
@@ -114,6 +113,7 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': VALID_UUID,
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({
           experienceId: EXPERIENCE_ID,
@@ -140,6 +140,7 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': VALID_UUID,
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({
           experienceId: EXPERIENCE_ID,
@@ -173,6 +174,7 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
         headers: {
           'Content-Type': 'application/json',
           'X-Device-Id': VALID_UUID,
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ experienceId: EXPERIENCE_ID }),
       },
