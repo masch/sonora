@@ -14,6 +14,10 @@ function run(args: string): ExecResult {
     const stdout = execSync(`bun run ${SCRIPT} ${args}`, {
       cwd: CWD,
       encoding: 'utf-8',
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL || 'libsql://dummy.turso.io',
+      },
     }) as unknown as string;
     return { stdout, stderr: '' };
   } catch (err: unknown) {
