@@ -152,13 +152,17 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
-.PHONY: pin-deps scripts-typecheck
-
+.PHONY: pin-deps
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
 
+.PHONY: scripts-typecheck
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
+
+.PHONY: verify-openspec-archived
+verify-openspec-archived: ## Verify completed OpenSpec changes in openspec/changes/ are archived in openspec/archived/
+	bun run scripts/verify-openspec-archived.ts
 
 # ── One-time Data Migrations ─────────────────────
 #
