@@ -13,4 +13,5 @@ export * from './utils/format-price';
 export * from './locales/en';
 export * from './locales/es';
 export * from './utils/uuid';
+export * from './utils/sha256';
 export * from './config';

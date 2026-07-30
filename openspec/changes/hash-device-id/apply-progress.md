@@ -130,3 +130,118 @@ The following commits are ready (blocked by OpenCode lifecycle guard on `git com
 
 - **Lines changed**: ~120 additions, ~50 deletions (within PR 1 budget of 200–250)
 - **PR boundary**: PR 1 complete — backend only. Ready for review.
+
+---
+
+# Apply Progress — PR 2 (Mobile + Shared)
+
+## Status: Complete
+
+All 46 mobile service tests pass (4 files), all 147 shared tests pass (10 files). All tasks 2.1–2.6 are implemented. Changes are tracked below.
+
+## TDD Cycle Evidence
+
+| Task                                 | Phase    | Command                                                                          | Result                                 |
+| ------------------------------------ | -------- | -------------------------------------------------------------------------------- | -------------------------------------- |
+| 2.1 Add expo-crypto dependency       | N/A      | `bun install`                                                                    | 2 packages installed, lockfile updated |
+| 2.2 sha256 utility (shared)          | RED      | Wrote sha256.test.ts with 6 test cases                                           | Module not found (expected)            |
+| 2.2 sha256 utility (shared)          | GREEN    | Implemented sha256.ts + exported from index                                      | 6/6 tests passed                       |
+| 2.2 sha256 utility (shared)          | REFACTOR | Verified all 147 shared tests pass                                               | 10 files, 147 passed                   |
+| 2.3 DeviceService native             | RED      | Updated device-service.test.ts: mock expo-crypto, expect hashed values           | 6 tests fail (expect hash, get raw ID) |
+| 2.3 DeviceService native             | GREEN    | Added expo-crypto import + hash call in device-service.ts                        | 6/6 tests passed                       |
+| 2.4 DeviceService web                | RED      | Updated device-service.web.test.ts: mock sha256, expect hashed values            | 3 tests fail                           |
+| 2.4 DeviceService web                | GREEN    | Added sha256 call in device-service.web.ts                                       | 3/3 tests passed                       |
+| 2.5 + 2.6 api-client platform header | RED      | Updated api-client.test.ts: expect X-Device-Platform on both methods             | 32 tests (new assertions fail)         |
+| 2.5 + 2.6 api-client platform header | GREEN    | Added Platform import + X-Device-Platform to getAuthHeader and fetchWithDeviceId | 32/32 tests passed                     |
+
+## Completed Tasks & Files Changed
+
+### 2.1 Add expo-crypto dependency
+
+- **File**: `apps/mobile/package.json`
+- **Change**: Added `"expo-crypto": "~14.1.0"` to dependencies
+- **Tests**: `bun install` completed successfully (2 packages installed)
+
+### 2.2 Create shared SHA-256 utility
+
+- **Files**:
+  - `packages/shared/src/utils/sha256.ts` (NEW) — Web Crypto API implementation
+  - `packages/shared/src/index.ts` — added `export * from './utils/sha256'`
+  - `packages/shared/src/__tests__/sha256.test.ts` (NEW) — 6 test cases
+- **Tests**:
+  - Known test vector: `sha256("test-device-123")` → `"a6896270a62b75eaa63ba4724c236adc366bd774d53a252437d0759ca314058b"`
+  - Deterministic: same input → same output
+  - Different inputs → different digests
+  - 64-char lowercase hex format verified
+  - Empty string produces correct SHA-256 (`e3b0c44...`)
+  - Unicode/non-ASCII input handled correctly
+
+### 2.3 Update DeviceService native — hash with expo-crypto
+
+- **File**: `apps/mobile/src/services/device-service.ts`
+- **Changes**:
+  - Added `import * as Crypto from 'expo-crypto'`
+  - Raw device ID is now hashed with `Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawDeviceId)` before returning
+  - Raw ID never stored/exposed outside function scope
+  - Fallback behavior unchanged
+- **Tests** (`device-service.test.ts`):
+  - Android path: raw `'mock-android-id'` → returns MOCK_HASH + verifies digestStringAsync call with correct args
+  - iOS path: raw `'mock-ios-id'` → returns MOCK_HASH + verifies digestStringAsync call
+  - SQLite fallback: persisted UUID is hashed before return
+  - Generate + persist UUID path: generated UUID is hashed before return
+  - Error fallback: returns `'fallback-device-id'` unchanged
+  - Raw ID never exposed: assertion `expect(deviceId).not.toBe('sensitive-raw-id')`
+
+### 2.4 Update DeviceService web — hash with shared sha256
+
+- **File**: `apps/mobile/src/services/device-service.web.ts`
+- **Changes**:
+  - Added `sha256` import from `@sonora/shared`
+  - Raw device ID is now hashed with `await sha256(rawDeviceId)` before returning
+- **Tests** (`device-service.web.test.ts`):
+  - localStorage UUID path: returns hash, verifies `sha256` called with raw UUID
+  - Generate + persist UUID path: returns hash, verifies `sha256` called with new UUID
+  - Error fallback: returns `'fallback-web-device-id'`, logs error
+
+### 2.5 + 2.6 Update api-client — add X-Device-Platform headers
+
+- **File**: `apps/mobile/src/services/api-client.ts`
+- **Changes**:
+  - Added `import { Platform } from 'react-native'`
+  - `getAuthHeader()`: returns `{ 'X-Device-Id': deviceId, 'X-Device-Platform': Platform.OS as string }`
+  - `fetchWithDeviceId()`: calls `headers.set('X-Device-Platform', Platform.OS as string)`
+- **Tests** (`api-client.test.ts`):
+  - All HTTP methods (GET, POST, PUT, PATCH, DELETE) include both headers
+  - `fetchWithDeviceId` includes both headers
+  - Missing deviceId still throws for both paths
+  - All pre-existing cache/transform/error tests unchanged
+
+## Task Checkboxes (persisted in tasks.md)
+
+- [x] 2.1 Add expo-crypto dependency
+- [x] 2.2 Create shared sha256 utility
+- [x] 2.3 Update DeviceService native — hash with expo-crypto
+- [x] 2.4 Update DeviceService web — hash with shared sha256
+- [x] 2.5 Update getAuthHeader() — add X-Device-Platform
+- [x] 2.6 Update fetchWithDeviceId() — add X-Device-Platform
+
+## Remaining Tasks
+
+- [ ] 3.1 Create migrate-device-ids.ts script (PR 3)
+- [ ] 3.2 Add migration script tests (PR 3)
+- [ ] Parent: Start/reuse bounded review
+- [ ] Parent: Deploy DDL migration + data migration
+- [ ] Parent: Verify CORS preflight on web
+
+## Deviations from Design
+
+- **expo-crypto version**: Design spec suggested `"expo-crypto": "~14.1.0"` — used as-is, compatible with Expo SDK 56.
+- **Web DeviceService**: Design suggested two options (expo-crypto vs shared sha256). Used shared `sha256` from `@sonora/shared` since the web platform has Web Crypto API natively — matches design intent.
+- **api-client Platform.OS on web**: On web, `Platform.OS` from `react-native` correctly returns `'web'` via React Native web polyfill. No hardcoded fallback needed.
+- **No app-storage tests modified**: `getDeviceId()` returns hashed ID transparently — no API change for storage layer.
+
+## Workload Estimation
+
+- **Lines changed**: ~152 additions, ~45 deletions (within PR 2 budget of 200–250)
+- **Files touched**: 11 (9 modified, 2 new)
+- **PR boundary**: PR 2 complete — mobile + shared only. Ready for review.

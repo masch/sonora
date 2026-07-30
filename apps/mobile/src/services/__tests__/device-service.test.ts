@@ -3,6 +3,7 @@ import SqliteStorage from 'expo-sqlite/kv-store';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { generateUuid } from '@sonora/shared';
+import * as Crypto from 'expo-crypto';
 
 jest.mock('expo-sqlite/kv-store', () => ({
   getItem: jest.fn(),
@@ -19,11 +20,19 @@ jest.mock('@sonora/shared', () => ({
   generateUuid: jest.fn(),
 }));
 
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  digestStringAsync: jest.fn(),
+}));
+
+const MOCK_HASH = 'abc123def456abc123def456abc123def456abc123def456abc123def4567890';
+
 describe('DeviceService', () => {
   const originalOS = Platform.OS;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (Crypto.digestStringAsync as jest.Mock).mockResolvedValue(MOCK_HASH);
   });
 
   afterAll(() => {
@@ -33,7 +42,7 @@ describe('DeviceService', () => {
     });
   });
 
-  it('returns android ID on android OS', async () => {
+  it('returns hashed android ID on android OS', async () => {
     Object.defineProperty(Platform, 'OS', {
       value: 'android',
       configurable: true,
@@ -41,11 +50,15 @@ describe('DeviceService', () => {
     (Application.getAndroidId as jest.Mock).mockReturnValue('mock-android-id');
 
     const deviceId = await DeviceService.getPlatformDeviceId();
-    expect(deviceId).toBe('mock-android-id');
+    expect(deviceId).toBe(MOCK_HASH);
     expect(Application.getAndroidId).toHaveBeenCalled();
+    expect(Crypto.digestStringAsync).toHaveBeenCalledWith(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      'mock-android-id',
+    );
   });
 
-  it('returns ios ID on ios OS', async () => {
+  it('returns hashed ios ID on ios OS', async () => {
     Object.defineProperty(Platform, 'OS', {
       value: 'ios',
       configurable: true,
@@ -53,11 +66,15 @@ describe('DeviceService', () => {
     (Application.getIosIdForVendorAsync as jest.Mock).mockResolvedValue('mock-ios-id');
 
     const deviceId = await DeviceService.getPlatformDeviceId();
-    expect(deviceId).toBe('mock-ios-id');
+    expect(deviceId).toBe(MOCK_HASH);
     expect(Application.getIosIdForVendorAsync).toHaveBeenCalled();
+    expect(Crypto.digestStringAsync).toHaveBeenCalledWith(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      'mock-ios-id',
+    );
   });
 
-  it('falls back to SQLite storage when device ID is not available from OS', async () => {
+  it('hashes persisted UUID from SQLite when device ID is not available from OS', async () => {
     Object.defineProperty(Platform, 'OS', {
       value: 'android',
       configurable: true,
@@ -66,11 +83,15 @@ describe('DeviceService', () => {
     (SqliteStorage.getItem as jest.Mock).mockResolvedValue('persisted-sqlite-id');
 
     const deviceId = await DeviceService.getPlatformDeviceId();
-    expect(deviceId).toBe('persisted-sqlite-id');
+    expect(deviceId).toBe(MOCK_HASH);
     expect(SqliteStorage.getItem).toHaveBeenCalledWith('device_id_key');
+    expect(Crypto.digestStringAsync).toHaveBeenCalledWith(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      'persisted-sqlite-id',
+    );
   });
 
-  it('generates and persists new UUID when SQLite storage is also empty', async () => {
+  it('generates, persists, and hashes new UUID when SQLite storage is also empty', async () => {
     Object.defineProperty(Platform, 'OS', {
       value: 'ios',
       configurable: true,
@@ -80,9 +101,13 @@ describe('DeviceService', () => {
     (generateUuid as jest.Mock).mockReturnValue('new-generated-uuid');
 
     const deviceId = await DeviceService.getPlatformDeviceId();
-    expect(deviceId).toBe('new-generated-uuid');
+    expect(deviceId).toBe(MOCK_HASH);
     expect(generateUuid).toHaveBeenCalled();
     expect(SqliteStorage.setItem).toHaveBeenCalledWith('device_id_key', 'new-generated-uuid');
+    expect(Crypto.digestStringAsync).toHaveBeenCalledWith(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      'new-generated-uuid',
+    );
   });
 
   it('returns fallback string if an error occurs', async () => {
@@ -94,5 +119,17 @@ describe('DeviceService', () => {
 
     const deviceId = await DeviceService.getPlatformDeviceId();
     expect(deviceId).toBe('fallback-device-id');
+  });
+
+  it('ensures raw device ID is never exposed outside the function', async () => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    (Application.getAndroidId as jest.Mock).mockReturnValue('sensitive-raw-id');
+
+    const deviceId = await DeviceService.getPlatformDeviceId();
+    expect(deviceId).toBe(MOCK_HASH);
+    expect(deviceId).not.toBe('sensitive-raw-id');
   });
 });

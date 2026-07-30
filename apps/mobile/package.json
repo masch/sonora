@@ -17,6 +17,7 @@
     "expo-asset": "56.0.20",
     "expo-audio": "56.0.12",
     "expo-background-fetch": "56.0.22",
+    "expo-crypto": "14.1.0",
     "expo-constants": "56.0.21",
     "expo-device": "56.0.4",
     "expo-file-system": "56.0.8",

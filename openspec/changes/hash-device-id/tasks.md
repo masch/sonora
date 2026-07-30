@@ -501,12 +501,12 @@ Chain strategy: stacked-to-main
 - [x] 1.7 Update POST /experiences/:id/access header precedence <!-- sdd-owner: implementation -->
 - [x] 1.8 Update rate limit helper in security-middleware-chain.test.ts <!-- sdd-owner: implementation -->
 - [x] 1.9 Update device-id-guard.test.ts expectations <!-- sdd-owner: implementation -->
-- [ ] 2.1 Add expo-crypto dependency <!-- sdd-owner: implementation -->
-- [ ] 2.2 Create shared sha256 utility <!-- sdd-owner: implementation -->
-- [ ] 2.3 Update DeviceService native — hash with expo-crypto <!-- sdd-owner: implementation -->
-- [ ] 2.4 Update DeviceService web — hash with shared sha256 <!-- sdd-owner: implementation -->
-- [ ] 2.5 Update getAuthHeader() — add X-Device-Platform <!-- sdd-owner: implementation -->
-- [ ] 2.6 Update fetchWithDeviceId() — add X-Device-Platform <!-- sdd-owner: implementation -->
+- [x] 2.1 Add expo-crypto dependency <!-- sdd-owner: implementation -->
+- [x] 2.2 Create shared sha256 utility <!-- sdd-owner: implementation -->
+- [x] 2.3 Update DeviceService native — hash with expo-crypto <!-- sdd-owner: implementation -->
+- [x] 2.4 Update DeviceService web — hash with shared sha256 <!-- sdd-owner: implementation -->
+- [x] 2.5 Update getAuthHeader() — add X-Device-Platform <!-- sdd-owner: implementation -->
+- [x] 2.6 Update fetchWithDeviceId() — add X-Device-Platform <!-- sdd-owner: implementation -->
 - [ ] 3.1 Create migrate-device-ids.ts script <!-- sdd-owner: implementation -->
 - [ ] 3.2 Add migration script tests <!-- sdd-owner: implementation -->
 
