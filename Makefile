@@ -160,29 +160,44 @@ pin-deps: install ## Pin all workspace dependencies to exact versions from bun.l
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
 
-.PHONY: db-migrate-local-dry-run
-db-migrate-local-dry-run: ## Dry-run device ID migration (local DB, no changes)
-	cd $(API_DIR) && DATABASE_URL="$(DATABASE_URL_LOCAL_CLEAN)" bun run scripts/migrate-device-ids.ts --dry-run
+# ── One-time Data Migrations ─────────────────────
+#
+# Default: dry-run (safe). Pass LIVE=1 for live execution.
+#
+# Usage:
+#   make db-migrate-local                                             # list available
+#   make db-migrate-local MIGRATION=migrate-device-ids.ts             # dry-run (default)
+#   make db-migrate-local MIGRATION=migrate-device-ids.ts LIVE=1      # live
+#
+# Targets: local | staging | production
+    
+MIGRATION ?=
+LIVE ?=
+ARGS ?= $(if $(LIVE),,--dry-run)
 
 .PHONY: db-migrate-local
-db-migrate-local: ## Run device ID migration (local DB)
-	cd $(API_DIR) && DATABASE_URL="$(DATABASE_URL_LOCAL_CLEAN)" bun run scripts/migrate-device-ids.ts
-
-.PHONY: db-migrate-staging-dry-run
-db-migrate-staging-dry-run: ## Dry-run device ID migration (staging Neon DB, no changes)
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrate-device-ids.ts --dry-run
+db-migrate-local: ## Run/select a one-time data migration (local DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		bun run scripts/_run-migration.ts; \
+		exit 1; \
+	fi; \
+	DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/$(MIGRATION) $(ARGS)
 
 .PHONY: db-migrate-staging
-db-migrate-staging: ## Run device ID migration (staging Neon DB)
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrate-device-ids.ts
-
-.PHONY: db-migrate-production-dry-run
-db-migrate-production-dry-run: ## Dry-run device ID migration (production Neon DB, no changes)
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrate-device-ids.ts --dry-run
+db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		bun run scripts/_run-migration.ts; \
+		exit 1; \
+	fi; \
+	DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/$(MIGRATION) $(ARGS)
 
 .PHONY: db-migrate-production
-db-migrate-production: ## Run device ID migration (production Neon DB)
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrate-device-ids.ts
+db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		bun run scripts/_run-migration.ts; \
+		exit 1; \
+	fi; \
+	DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/$(MIGRATION) $(ARGS)
 
 # ── Utilities ─────────────────────────────────
 

@@ -1,23 +1,43 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { parseArgs } from '../scripts/migrate-cli';
+import type { MigrationConfig } from '../scripts/migrate-helpers';
+
+// ── Shared test config ─────────────────────────────────────────────────
+
+const TEST_MIGRATION_CONFIG: MigrationConfig = {
+  tables: [{ name: 'sonora.test_table', idColumn: 'id', targetColumn: 'value' }],
+  detect: (v) => v === 'already-done',
+  transform: (v) => Promise.resolve(`hashed:${v}`),
+};
+
+const TEST_MIGRATION_NAME = 'Test Migration';
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
-const { mockPoolEnd, mockRunMigration, mockFormatReport, mockDb, MOCK_RESULT } = vi.hoisted(() => {
-  const mockPoolEnd = vi.fn().mockResolvedValue(undefined);
-  const mockRunMigration = vi.fn();
-  const mockFormatReport = vi.fn().mockReturnValue('── Migration Report ──\n  OK');
-  const mockDb = { mock: 'db-client' };
-  const MOCK_RESULT = {
-    totalRows: 10,
-    rawRows: 3,
-    alreadyHashedRows: 5,
-    nullRows: 2,
-    updatedRows: 3,
-    errors: [],
-  };
-  return { mockPoolEnd, mockRunMigration, mockFormatReport, mockDb, MOCK_RESULT };
-});
+const { mockPoolEnd, mockRunMigration, mockFormatReport, mockDb, MOCK_RESULT, mockQuestion } =
+  vi.hoisted(() => {
+    const mockPoolEnd = vi.fn().mockResolvedValue(undefined);
+    const mockRunMigration = vi.fn();
+    const mockFormatReport = vi.fn().mockReturnValue('── Migration Report ──\n  OK');
+    const mockDb = { mock: 'db-client' };
+    const MOCK_RESULT = {
+      totalRows: 10,
+      rawRows: 3,
+      alreadyTargetRows: 5,
+      nullRows: 2,
+      updatedRows: 3,
+      errors: [],
+    };
+    const mockQuestion = vi.fn((_p: string, cb: (a: string) => void) => cb('yes'));
+    return {
+      mockPoolEnd,
+      mockRunMigration,
+      mockFormatReport,
+      mockDb,
+      MOCK_RESULT,
+      mockQuestion,
+    };
+  });
 
 vi.mock('pg', () => ({
   Pool: vi.fn(function (this: { end: unknown }) {
@@ -34,7 +54,46 @@ vi.mock('../scripts/migrate-helpers', () => ({
   formatReport: (...args: unknown[]) => mockFormatReport(...args),
 }));
 
-// ── Tests ───────────────────────────────────────────────────────────────
+vi.mock('node:readline', () => ({
+  createInterface: vi.fn(() => ({
+    question: mockQuestion,
+    close: vi.fn(),
+  })),
+}));
+
+// ── askConfirmation ────────────────────────────────────────────────────
+
+describe('askConfirmation', () => {
+  beforeEach(() => {
+    mockQuestion.mockReset();
+  });
+
+  it('returns true when user types "yes"', async () => {
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('yes'));
+    const { askConfirmation } = await import('../scripts/migrate-cli');
+    expect(await askConfirmation('confirm?')).toBe(true);
+  });
+
+  it('returns true when user types "y"', async () => {
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('y'));
+    const { askConfirmation } = await import('../scripts/migrate-cli');
+    expect(await askConfirmation('confirm?')).toBe(true);
+  });
+
+  it('returns true when user types "s"', async () => {
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('s'));
+    const { askConfirmation } = await import('../scripts/migrate-cli');
+    expect(await askConfirmation('confirm?')).toBe(true);
+  });
+
+  it('returns false when user types anything else', async () => {
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('no'));
+    const { askConfirmation } = await import('../scripts/migrate-cli');
+    expect(await askConfirmation('confirm?')).toBe(false);
+  });
+});
+
+// ── parseArgs ──────────────────────────────────────────────────────────
 
 describe('parseArgs', () => {
   const ORIGINAL_ENV = process.env.DATABASE_URL;
@@ -67,6 +126,8 @@ describe('parseArgs', () => {
   });
 });
 
+// ── runCli ─────────────────────────────────────────────────────────────
+
 describe('runCli', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,10 +135,11 @@ describe('runCli', () => {
 
   it('returns exitCode 1 when DATABASE_URL is missing', async () => {
     const { runCli } = await import('../scripts/migrate-cli');
-    const { result, exitCode } = await runCli({
-      dryRun: false,
-      connectionString: undefined,
-    });
+    const { result, exitCode } = await runCli(
+      { dryRun: false, connectionString: undefined },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
     expect(exitCode).toBe(1);
     expect(result.rawRows).toBe(0);
     expect(mockPoolEnd).not.toHaveBeenCalled();
@@ -87,18 +149,19 @@ describe('runCli', () => {
     mockRunMigration.mockResolvedValue({ ...MOCK_RESULT });
 
     const { runCli } = await import('../scripts/migrate-cli');
-    const { result, exitCode } = await runCli({
-      dryRun: true,
-      connectionString: 'postgres://local:5432/sonora',
-    });
+    const { result, exitCode } = await runCli(
+      { dryRun: true, connectionString: 'postgres://local:5432/sonora' },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
 
     expect(exitCode).toBe(0);
     expect(result.updatedRows).toBe(3);
-    expect(mockRunMigration).toHaveBeenCalledWith(mockDb, true);
+    expect(mockRunMigration).toHaveBeenCalledWith(mockDb, TEST_MIGRATION_CONFIG, true);
     expect(mockFormatReport).toHaveBeenCalledWith(MOCK_RESULT);
   });
 
-  it('runs migration in live mode without dry-run warning', async () => {
+  it('runs migration in live mode (non-TTY, skips prompt)', async () => {
     mockRunMigration.mockResolvedValue({
       ...MOCK_RESULT,
       rawRows: 0,
@@ -106,27 +169,67 @@ describe('runCli', () => {
     });
 
     const { runCli } = await import('../scripts/migrate-cli');
-    const { result, exitCode } = await runCli({
-      dryRun: false,
-      connectionString: 'postgres://local:5432/sonora',
-    });
+    const { result, exitCode } = await runCli(
+      { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
 
     expect(exitCode).toBe(0);
     expect(result.updatedRows).toBe(0);
-    expect(mockRunMigration).toHaveBeenCalledWith(mockDb, false);
+    expect(mockRunMigration).toHaveBeenCalledWith(mockDb, TEST_MIGRATION_CONFIG, false);
+  });
+
+  it('runs live mode in TTY with confirmed prompt', async () => {
+    const origIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('yes'));
+
+    mockRunMigration.mockResolvedValue({ ...MOCK_RESULT });
+
+    const { runCli } = await import('../scripts/migrate-cli');
+    const { result, exitCode } = await runCli(
+      { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(result.updatedRows).toBe(3);
+    expect(mockQuestion).toHaveBeenCalled();
+    process.stdin.isTTY = origIsTTY;
+  });
+
+  it('aborts in TTY live mode when user declines', async () => {
+    const origIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('no'));
+
+    const { runCli } = await import('../scripts/migrate-cli');
+    const { exitCode } = await runCli(
+      { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(mockQuestion).toHaveBeenCalled();
+    expect(mockPoolEnd).not.toHaveBeenCalled();
+    process.stdin.isTTY = origIsTTY;
   });
 
   it('returns exitCode 2 when migration has errors', async () => {
     mockRunMigration.mockResolvedValue({
       ...MOCK_RESULT,
-      errors: [{ row: { device_id: 'bad-id' }, error: 'Update failed' }],
+      errors: [{ row: { id: 'bad-id' }, error: 'Update failed' }],
     });
 
     const { runCli } = await import('../scripts/migrate-cli');
-    const { exitCode } = await runCli({
-      dryRun: false,
-      connectionString: 'postgres://local:5432/sonora',
-    });
+    const { exitCode } = await runCli(
+      { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
+      TEST_MIGRATION_CONFIG,
+      TEST_MIGRATION_NAME,
+    );
 
     expect(exitCode).toBe(2);
   });

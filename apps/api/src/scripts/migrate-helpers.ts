@@ -1,139 +1,142 @@
 /**
- * Pure helper functions for the device ID migration script.
+ * Generic helpers for one-time data migrations.
  *
- * Exported so they can be unit-tested independently of the DB connection.
+ * Provides reusable patterns: scan tables, classify rows, dry-run, report.
+ * Each migration provides its own config: tables, columns, detect/transform functions.
  */
 import { sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { sha256 } from '@sonora/shared';
 import type * as schema from '../db/schema';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export interface MigrationUpdate {
-  table: 'sonora.purchases' | 'sonora.experience_accesses';
-  id: string;
-  hashed: string;
+export interface MigrationTable {
+  /** Fully qualified table name (e.g. 'sonora.purchases') */
+  name: string;
+  /** Primary key column */
+  idColumn: string;
+  /** Column to scan and transform */
+  targetColumn: string;
+}
+
+export interface MigrationConfig {
+  /** Tables to scan */
+  tables: MigrationTable[];
+  /** Returns true when the value is already in the target form (skip) */
+  detect: (value: string | null) => boolean;
+  /** Transforms a raw value into the target form */
+  transform: (value: string) => Promise<string>;
 }
 
 export interface MigrationResult {
-  /** Total rows with a device_id (including nulls/empties) */
   totalRows: number;
-  /** Rows whose device_id is a raw (unhashed) value */
   rawRows: number;
-  /** Rows whose device_id is already a 64-char hex hash */
-  alreadyHashedRows: number;
-  /** Rows whose device_id is NULL or empty string */
+  alreadyTargetRows: number;
   nullRows: number;
-  /** Rows successfully updated (or would-be-updated in dry-run) */
   updatedRows: number;
-  /** Errors encountered during updates */
   errors: Array<{ row: unknown; error: string }>;
 }
 
-// ── Detection ────────────────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────────────
 
 const HASH_REGEX = /^[0-9a-f]{64}$/i;
 
 /**
- * Returns `true` when `value` is already a SHA-256 hex digest
+ * Returns true when value is already a SHA-256 hex digest
  * (exactly 64 lowercase/uppercase hex characters).
+ * Useful for migration detect functions.
  */
 export function isHashed(value: string | null): boolean {
   if (value === null || value === '') return false;
   return HASH_REGEX.test(value);
 }
 
-// ── Core migration logic ─────────────────────────────────────────────
-
-type Row = Record<string, unknown>;
+// ── Core runner ──────────────────────────────────────────────────────
 
 /**
- * Run the full migration: scan both tables, classify each device_id,
- * and optionally apply the UPDATEs.
+ * Run a generic data migration: scan tables, classify rows, apply updates.
  *
- * @param db     — A Drizzle `NodePgDatabase` instance
- * @param dryRun — When `true`, count what WOULD be updated without executing
+ * @param db     — Drizzle `NodePgDatabase` instance
+ * @param config — Migration config (tables, detect, transform)
+ * @param dryRun — When true, count would-be changes without executing
  */
 export async function runMigration(
   db: NodePgDatabase<typeof schema>,
+  config: MigrationConfig,
   dryRun: boolean,
 ): Promise<MigrationResult> {
   const result: MigrationResult = {
     totalRows: 0,
     rawRows: 0,
-    alreadyHashedRows: 0,
+    alreadyTargetRows: 0,
     nullRows: 0,
     updatedRows: 0,
     errors: [],
   };
 
-  // ── Scan both tables ──────────────────────────────────────────────
+  // ── Scan all tables ────────────────────────────────────────────────
 
-  const [purchaseResult, accessResult] = await Promise.all([
-    db.execute<Row>(sql`SELECT id, device_id FROM sonora.purchases`),
-    db.execute<Row>(sql`SELECT id, device_id FROM sonora.experience_accesses`),
-  ]);
+  const scans = config.tables.map((table) =>
+    db.execute<Record<string, unknown>>(
+      sql.raw(`SELECT ${table.idColumn}, ${table.targetColumn} FROM ${table.name}`),
+    ),
+  );
 
-  const allRows: Array<{
+  const scanResults = await Promise.all(scans);
+
+  interface Row {
     id: string;
-    device_id: string | null;
-    table: 'sonora.purchases' | 'sonora.experience_accesses';
-  }> = [
-    ...purchaseResult.rows.map((r) => ({
-      id: r.id as string,
-      device_id: r.device_id as string | null,
-      table: 'sonora.purchases' as const,
-    })),
-    ...accessResult.rows.map((r) => ({
-      id: r.id as string,
-      device_id: r.device_id as string | null,
-      table: 'sonora.experience_accesses' as const,
-    })),
-  ];
+    value: string | null;
+    table: string;
+  }
 
-  result.totalRows = allRows.length;
-
-  // ── Classify rows ─────────────────────────────────────────────────
-
-  const updates: MigrationUpdate[] = [];
-
-  for (const row of allRows) {
-    if (row.device_id === null || row.device_id === '') {
-      result.nullRows++;
-    } else if (isHashed(row.device_id)) {
-      result.alreadyHashedRows++;
-    } else {
-      result.rawRows++;
-      const hashed = await sha256(row.device_id);
-      updates.push({ table: row.table, id: row.id, hashed });
+  const allRows: Row[] = [];
+  for (let i = 0; i < config.tables.length; i++) {
+    const table = config.tables[i];
+    for (const row of scanResults[i].rows) {
+      allRows.push({
+        id: row[table.idColumn] as string,
+        value: row[table.targetColumn] as string | null,
+        table: table.name,
+      });
     }
   }
 
-  // ── Apply (or dry-run) ───────────────────────────────────────────
+  result.totalRows = allRows.length;
 
-  if (updates.length === 0) {
-    return result;
+  // ── Classify ───────────────────────────────────────────────────────
+
+  const updates: Array<{ table: string; id: string; transformed: string }> = [];
+
+  for (const row of allRows) {
+    if (row.value === null || row.value === '') {
+      result.nullRows++;
+    } else if (config.detect(row.value)) {
+      result.alreadyTargetRows++;
+    } else {
+      result.rawRows++;
+      const transformed = await config.transform(row.value);
+      updates.push({ table: row.table, id: row.id, transformed });
+    }
   }
+
+  if (updates.length === 0) return result;
 
   if (dryRun) {
     result.updatedRows = updates.length;
     return result;
   }
 
-  // Live mode — execute each UPDATE individually so one failure
-  // doesn't block the rest (per spec: continue on failure).
+  // ── Apply ──────────────────────────────────────────────────────────
+
   for (const update of updates) {
     try {
-      if (update.table === 'sonora.purchases') {
-        await db.execute(
-          sql`UPDATE sonora.purchases SET device_id = ${update.hashed} WHERE id = ${update.id}`,
-        );
-      } else {
-        await db.execute(
-          sql`UPDATE sonora.experience_accesses SET device_id = ${update.hashed} WHERE id = ${update.id}`,
-        );
-      }
+      const table = config.tables.find((t) => t.name === update.table)!;
+      await db.execute(
+        sql.raw(
+          `UPDATE ${table.name} SET ${table.targetColumn} = '${update.transformed}' WHERE ${table.idColumn} = '${update.id}'`,
+        ),
+      );
       result.updatedRows++;
     } catch (err) {
       result.errors.push({
@@ -146,6 +149,8 @@ export async function runMigration(
   return result;
 }
 
+// ── Report ───────────────────────────────────────────────────────────
+
 /**
  * Return a human-readable summary string from a MigrationResult.
  */
@@ -153,8 +158,8 @@ export function formatReport(result: MigrationResult): string {
   const lines: string[] = ['── Migration Report ──'];
   lines.push(`  Total rows scanned:  ${result.totalRows}`);
   lines.push(`  NULL/empty:          ${result.nullRows}`);
-  lines.push(`  Already hashed:      ${result.alreadyHashedRows}`);
-  lines.push(`  Raw (needs hash):    ${result.rawRows}`);
+  lines.push(`  Already in target:   ${result.alreadyTargetRows}`);
+  lines.push(`  Raw (to transform):  ${result.rawRows}`);
   lines.push(`  Updated:             ${result.updatedRows}`);
 
   if (result.errors.length > 0) {
