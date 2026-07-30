@@ -6,7 +6,7 @@
  */
 import { sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type * as schema from '../db/schema';
+import type * as schema from '../../db/schema';
 
 // ── Types ────────────────────────────────────────────────────────────
 

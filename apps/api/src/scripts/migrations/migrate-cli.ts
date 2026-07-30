@@ -7,7 +7,7 @@
 import { createInterface } from 'node:readline';
 import { Pool } from 'pg';
 import { logger } from '@sonora/shared';
-import { createDbClient } from '../db';
+import { createDbClient } from '../../db';
 import { runMigration, formatReport } from './migrate-helpers';
 import type { MigrationConfig, MigrationResult } from './migrate-helpers';
 

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isHashed, runMigration, formatReport } from '../scripts/migrate-helpers';
-import type { MigrationConfig, MigrationResult } from '../scripts/migrate-helpers';
+import { isHashed, runMigration, formatReport } from '../../src/scripts/migrations/migrate-helpers';
+import type {
+  MigrationConfig,
+  MigrationResult,
+} from '../../src/scripts/migrations/migrate-helpers';
 
 // ── Device ID migration config ─────────────────────────────────────────
 

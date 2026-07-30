@@ -55,9 +55,9 @@
  * from mobile client logs.
  */
 import { sha256 } from '@sonora/shared';
-import { parseArgs, runCli } from '../src/scripts/migrate-cli';
-import { isHashed } from '../src/scripts/migrate-helpers';
-import type { MigrationConfig } from '../src/scripts/migrate-helpers';
+import { parseArgs, runCli } from '../../../src/scripts/migrations/migrate-cli';
+import { isHashed } from '../../../src/scripts/migrations/migrate-helpers';
+import type { MigrationConfig } from '../../../src/scripts/migrations/migrate-helpers';
 
 // ── Migration-specific config ─────────────────────────────────────────
 

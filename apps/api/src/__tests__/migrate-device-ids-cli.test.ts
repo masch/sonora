@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { parseArgs } from '../scripts/migrate-cli';
-import type { MigrationConfig } from '../scripts/migrate-helpers';
+import { parseArgs } from '../../src/scripts/migrations/migrate-cli';
+import type { MigrationConfig } from '../../src/scripts/migrations/migrate-helpers';
 
 // ── Shared test config ─────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ vi.mock('../db', () => ({
   createDbClient: vi.fn(() => mockDb),
 }));
 
-vi.mock('../scripts/migrate-helpers', () => ({
+vi.mock('../../src/scripts/migrations/migrate-helpers', () => ({
   runMigration: (...args: unknown[]) => mockRunMigration(...args),
   formatReport: (...args: unknown[]) => mockFormatReport(...args),
 }));
@@ -70,25 +70,25 @@ describe('askConfirmation', () => {
 
   it('returns true when user types "yes"', async () => {
     mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('yes'));
-    const { askConfirmation } = await import('../scripts/migrate-cli');
+    const { askConfirmation } = await import('../../src/scripts/migrations/migrate-cli');
     expect(await askConfirmation('confirm?')).toBe(true);
   });
 
   it('returns true when user types "y"', async () => {
     mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('y'));
-    const { askConfirmation } = await import('../scripts/migrate-cli');
+    const { askConfirmation } = await import('../../src/scripts/migrations/migrate-cli');
     expect(await askConfirmation('confirm?')).toBe(true);
   });
 
   it('returns true when user types "s"', async () => {
     mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('s'));
-    const { askConfirmation } = await import('../scripts/migrate-cli');
+    const { askConfirmation } = await import('../../src/scripts/migrations/migrate-cli');
     expect(await askConfirmation('confirm?')).toBe(true);
   });
 
   it('returns false when user types anything else', async () => {
     mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('no'));
-    const { askConfirmation } = await import('../scripts/migrate-cli');
+    const { askConfirmation } = await import('../../src/scripts/migrations/migrate-cli');
     expect(await askConfirmation('confirm?')).toBe(false);
   });
 });
@@ -134,7 +134,7 @@ describe('runCli', () => {
   });
 
   it('returns exitCode 1 when DATABASE_URL is missing', async () => {
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { result, exitCode } = await runCli(
       { dryRun: false, connectionString: undefined },
       TEST_MIGRATION_CONFIG,
@@ -148,7 +148,7 @@ describe('runCli', () => {
   it('runs migration in dry-run mode and shows warning when raw rows exist', async () => {
     mockRunMigration.mockResolvedValue({ ...MOCK_RESULT });
 
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { result, exitCode } = await runCli(
       { dryRun: true, connectionString: 'postgres://local:5432/sonora' },
       TEST_MIGRATION_CONFIG,
@@ -168,7 +168,7 @@ describe('runCli', () => {
       updatedRows: 0,
     });
 
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { result, exitCode } = await runCli(
       { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
       TEST_MIGRATION_CONFIG,
@@ -187,7 +187,7 @@ describe('runCli', () => {
 
     mockRunMigration.mockResolvedValue({ ...MOCK_RESULT });
 
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { result, exitCode } = await runCli(
       { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
       TEST_MIGRATION_CONFIG,
@@ -205,7 +205,7 @@ describe('runCli', () => {
     process.stdin.isTTY = true;
     mockQuestion.mockImplementation((_p: string, cb: (a: string) => void) => cb('no'));
 
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { exitCode } = await runCli(
       { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
       TEST_MIGRATION_CONFIG,
@@ -224,7 +224,7 @@ describe('runCli', () => {
       errors: [{ row: { id: 'bad-id' }, error: 'Update failed' }],
     });
 
-    const { runCli } = await import('../scripts/migrate-cli');
+    const { runCli } = await import('../../src/scripts/migrations/migrate-cli');
     const { exitCode } = await runCli(
       { dryRun: false, connectionString: 'postgres://local:5432/sonora' },
       TEST_MIGRATION_CONFIG,

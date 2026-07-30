@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
 
-const SCRIPT = 'scripts/_run-migration.ts';
+const SCRIPT = 'scripts/migrations/_run-migration.ts';
 const CWD = process.cwd();
 
 interface ExecResult {
@@ -30,14 +30,14 @@ describe('_run-migration.ts', () => {
     const { stdout, stderr } = run('');
     const output = stdout + stderr;
 
-    expect(output).toContain('migrate-device-ids.ts');
+    expect(output).toContain('device-id/');
   });
 
   it('outputs usage instructions when no argument is given', () => {
     const { stdout, stderr } = run('');
     const output = stdout + stderr;
 
-    expect(output).toContain('MIGRATION=<filename>');
+    expect(output).toContain('MIGRATION=<dirname>');
     expect(output).toContain('LIVE=1');
   });
 
@@ -49,7 +49,7 @@ describe('_run-migration.ts', () => {
   });
 
   it('runs an existing migration and shows its startup log', () => {
-    const { stdout, stderr } = run('migrate-device-ids.ts');
+    const { stdout, stderr } = run('device-id/');
     const output = stdout + stderr;
 
     // The migration starts up, tries DB connection, and logs the migration name
