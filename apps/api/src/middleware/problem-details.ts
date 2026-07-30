@@ -165,6 +165,11 @@ export const ERRORS_4XX = {
     detail: 'The X-Device-Id header must be a non-empty string of 256 characters or fewer.',
     status: HTTP.BAD_REQUEST,
   } as const,
+  PLATFORM_REQUIRED: {
+    code: 'PLATFORM_REQUIRED',
+    detail: 'The X-Device-Platform header is required.',
+    status: HTTP.BAD_REQUEST,
+  } as const,
   RATE_LIMIT_EXCEEDED: {
     code: 'RATE_LIMIT_EXCEEDED',
     detail: 'Too many requests. Please try again later.',

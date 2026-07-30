@@ -153,11 +153,51 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 .PHONY: pin-deps scripts-typecheck
+
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
 
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
+
+# ── One-time Data Migrations ─────────────────────
+#
+# Default: dry-run (safe). Pass LIVE=1 for live execution.
+#
+# Usage:
+#   make db-migrate-local                                             # list available
+#   make db-migrate-local MIGRATION=device-id                         # dry-run (default)
+#   make db-migrate-local MIGRATION=device-id LIVE=1                  # live
+#
+# Targets: local | staging | production
+    
+MIGRATION ?=
+LIVE ?=
+ARGS ?= $(if $(LIVE),,--dry-run)
+
+.PHONY: db-migrate-local
+db-migrate-local: ## Run/select a one-time data migration (local DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-staging
+db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-production
+db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
 
 # ── Utilities ─────────────────────────────────
 
