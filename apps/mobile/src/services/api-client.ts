@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { APP_CONFIG } from '@/config/app-config';
 import { appStorage, getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
@@ -11,7 +12,10 @@ class MobileApiClient extends BaseApiClient {
       logger.error('Failed to retrieve device ID for API headers', err);
       throw err;
     }
-    return { 'X-Device-Id': deviceId };
+    return {
+      'X-Device-Id': deviceId,
+      'X-Device-Platform': Platform.OS as string,
+    };
   }
 }
 
@@ -63,7 +67,7 @@ export const ApiClient = {
   },
 
   /**
-   * Performs a raw fetch request enforcing that the mandatory X-Device-Id header is attached.
+   * Performs a raw fetch request enforcing that the mandatory X-Device-Id and X-Device-Platform headers are attached.
    */
   async fetchWithDeviceId(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
     const deviceId = await getDeviceId();
@@ -72,6 +76,7 @@ export const ApiClient = {
     }
     const headers = new Headers(init.headers || {});
     headers.set('X-Device-Id', deviceId);
+    headers.set('X-Device-Platform', Platform.OS as string);
 
     return fetch(input, {
       ...init,

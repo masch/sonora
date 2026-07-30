@@ -91,6 +91,14 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
 
+// Mock expo-crypto globally — provides SHA-256 hashing for DeviceService
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  digestStringAsync: jest
+    .fn()
+    .mockResolvedValue('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'),
+}));
+
 // Mock react-native-firebase packages globally
 jest.mock('@react-native-firebase/app', () => ({
   __esModule: true,

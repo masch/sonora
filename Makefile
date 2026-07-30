@@ -153,11 +153,36 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 .PHONY: pin-deps scripts-typecheck
+
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
 
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
+
+.PHONY: db-migrate-local-dry-run
+db-migrate-local-dry-run: ## Dry-run device ID migration (local DB, no changes)
+	cd $(API_DIR) && DATABASE_URL="$(DATABASE_URL_LOCAL_CLEAN)" bun run scripts/migrate-device-ids.ts --dry-run
+
+.PHONY: db-migrate-local
+db-migrate-local: ## Run device ID migration (local DB)
+	cd $(API_DIR) && DATABASE_URL="$(DATABASE_URL_LOCAL_CLEAN)" bun run scripts/migrate-device-ids.ts
+
+.PHONY: db-migrate-staging-dry-run
+db-migrate-staging-dry-run: ## Dry-run device ID migration (staging Neon DB, no changes)
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrate-device-ids.ts --dry-run
+
+.PHONY: db-migrate-staging
+db-migrate-staging: ## Run device ID migration (staging Neon DB)
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrate-device-ids.ts
+
+.PHONY: db-migrate-production-dry-run
+db-migrate-production-dry-run: ## Dry-run device ID migration (production Neon DB, no changes)
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrate-device-ids.ts --dry-run
+
+.PHONY: db-migrate-production
+db-migrate-production: ## Run device ID migration (production Neon DB)
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrate-device-ids.ts
 
 # ── Utilities ─────────────────────────────────
 
