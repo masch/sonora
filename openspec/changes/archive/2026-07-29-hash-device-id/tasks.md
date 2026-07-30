@@ -507,12 +507,12 @@ Chain strategy: stacked-to-main
 - [x] 2.4 Update DeviceService web — hash with shared sha256 <!-- sdd-owner: implementation -->
 - [x] 2.5 Update getAuthHeader() — add X-Device-Platform <!-- sdd-owner: implementation -->
 - [x] 2.6 Update fetchWithDeviceId() — add X-Device-Platform <!-- sdd-owner: implementation -->
-- [ ] 3.1 Create migrate-device-ids.ts script <!-- sdd-owner: implementation -->
-- [ ] 3.2 Add migration script tests <!-- sdd-owner: implementation -->
+- [x] 3.1 Create migrate-device-ids.ts script <!-- sdd-owner: implementation -->
+- [x] 3.2 Add migration script tests <!-- sdd-owner: implementation -->
 
-- [ ] Start or reuse bounded review for PR 1 <!-- sdd-owner: parent -->
-- [ ] Start or reuse bounded review for PR 2 <!-- sdd-owner: parent -->
-- [ ] Start or reuse bounded review for PR 3 <!-- sdd-owner: parent -->
-- [ ] Deploy DDL migration and run data migration before backend deploy <!-- sdd-owner: parent -->
-- [ ] Verify CORS preflight on web after backend deploy <!-- sdd-owner: parent -->
-- [ ] Mobile deploy via EAS after backend is live <!-- sdd-owner: parent -->
+- [x] Start or reuse bounded review for PR 1 <!-- sdd-owner: parent -->
+- [x] Start or reuse bounded review for PR 2 <!-- sdd-owner: parent -->
+- [x] Start or reuse bounded review for PR 3 <!-- sdd-owner: parent -->
+- [x] Deploy DDL migration and run data migration before backend deploy <!-- sdd-owner: parent -->
+- [x] Verify CORS preflight on web after backend deploy <!-- sdd-owner: parent -->
+- [x] Mobile deploy via EAS after backend is live <!-- sdd-owner: parent -->

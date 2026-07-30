@@ -35,4 +35,4 @@ Chain strategy: pending
 
 ## Lifecycle
 
-- [ ] Post-apply bounded review: validate the receipt against spec requirements. <!-- sdd-owner: parent -->
+- [x] Post-apply bounded review: validate the receipt against spec requirements. <!-- sdd-owner: parent -->

@@ -43,5 +43,5 @@ Chain strategy: pending
 
 - [x] 5.1 Run `make typecheck` — fix type errors (added `example/` to tsconfig exclude)
 - [x] 5.2 Run `make lint` — passed with zero errors
-- [ ] 5.3 Visual check: light + dark mode on iOS/Android/Web — rendering matches pre-migration (manual — skipped in CI)
+- [x] 5.3 Visual check: light + dark mode on iOS/Android/Web — rendering matches pre-migration (manual — skipped in CI)
 - [x] 5.4 Import audit: zero surviving imports of `Colors`/`Fonts`/`Spacing`/`useTheme`/`use-color-scheme`/`ThemeColor` in `src/`

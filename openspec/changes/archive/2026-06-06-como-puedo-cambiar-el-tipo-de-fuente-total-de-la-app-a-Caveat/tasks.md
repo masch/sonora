@@ -39,4 +39,4 @@ Chain strategy: pending
 - [x] 3.1 Run `npx expo prebuild` — generates native projects with embedded `.ttf` files
 - [x] 3.2 Run `make typecheck` — verify TypeScript + lint pass
 - [x] 3.3 Run `make validate` — full validation gate
-- [ ] 3.4 Manual visual check: confirm Caveat renders in 4 weights (`font-normal`, `font-medium`, `font-semibold`, `font-bold`)
+- [x] 3.4 Manual visual check: confirm Caveat renders in 4 weights (`font-normal`, `font-medium`, `font-semibold`, `font-bold`)

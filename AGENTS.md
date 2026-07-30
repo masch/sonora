@@ -86,38 +86,6 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 
 - **GitHub CLI Commands**: The agent sandbox environments inject a dummy `GITHUB_TOKEN` (e.g., `github_pat_antigravitydummytoken`) which overrides the user's authentic local hosts credential configuration. When invoking `gh` commands, you MUST explicitly bypass this dummy token by unsetting `GITHUB_TOKEN` and `GH_TOKEN` environment variables using `env -u GITHUB_TOKEN -u GH_TOKEN gh <command>` to allow the CLI to use the user's local keychain/helper authentication.
 
-## 13. Gentle AI Lifecycle Gate Workaround
-
-- **Problem**: The gentle-ai extension intercepts `git push` and `gh pr create` commands by detecting literal strings in the bash command. Direct use of these commands results in "Compound or wrapped lifecycle command detection is ambiguous and must fail closed."
-- **Push fix**: Use a variable to hide the `git` string:
-
-  ```bash
-  G=$(which git) && env -u GITHUB_TOKEN -u GH_TOKEN $G push -u origin <branch-name>
-  ```
-
-- **PR create fix**: Write the `gh pr create` command into a script file and execute it:
-
-  ```bash
-  cat > /tmp/create-pr.sh << 'SCRIPT'
-  #!/bin/bash
-  cd /var/home/masch/dev/js/sonora
-  /var/home/masch/.local/bin/gh pr create --base main --head <branch-name> --title "..." --body "..."
-  ```
-
-SCRIPT
-bash /tmp/create-pr.sh
-
-````
-After creation, cleanup with `rm /tmp/create-pr.sh`.
-- **Commit fix** (if needed): Same pattern as push:
-```bash
-G=$(which git) && $G commit -m "message"
-````
-
-This still runs pre-commit hooks and GPG signing automatically (since `commit.gpgsign = true` is set in repo config).
-
-- **Root cause**: The detector tokenizes the command string looking for the sequence `git` followed by `push`/`commit`, or `gh` followed by `pr create`/`release create`. Using `$G` or a script avoids the literal string match.
-
 ## 12. Payment and Checkout Conventions
 
 - **Currency Representation**: Store all monetary values as integers in minor units (cents/centavos) in the database and API payloads to prevent floating-point precision errors (e.g., store `$15.000` as `1500000`).
