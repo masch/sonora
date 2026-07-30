@@ -8,7 +8,6 @@ import {
   WebhookBodySchema,
   PAYMENT_ROUTES,
   type PurchaseStatus,
-  type Platform,
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -569,6 +568,7 @@ paymentsRouter.post(
   '/experiences/:id/access',
   dbGuard(),
   deviceIdGuard(),
+  platformGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.EXPERIENCES_ACCESS),
   zValidator('param', IdParamSchema, validationHook),
   zValidator('json', LogAccessBodySchema, validationHook),
@@ -578,7 +578,6 @@ paymentsRouter.post(
     const body = c.req.valid('json') as {
       source: 'free' | 'paid' | 'restored';
       email?: string | null;
-      platform?: Platform | null;
     };
 
     const deviceId = c.var.deviceId;
@@ -596,7 +595,7 @@ paymentsRouter.post(
       deviceId,
       source: body.source,
       priceAtAccess: experience?.price ?? null,
-      platform: c.var.devicePlatform ?? body.platform ?? null,
+      platform: c.var.devicePlatform,
     });
 
     return created(c, { status: 'ok' });

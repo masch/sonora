@@ -1,28 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
-import { hashDeviceId, injectDeviceId } from '../middleware/device-id';
+import { injectDeviceId } from '../middleware/device-id';
 
 describe('device-id middleware', () => {
-  describe('hashDeviceId', () => {
-    it('hashes a device ID using SHA-256', async () => {
-      const deviceId = 'test-device-123';
-      const hash = await hashDeviceId(deviceId);
-      expect(hash).toBe('a6896270a62b75eaa63ba4724c236adc366bd774d53a252437d0759ca314058b');
-    });
-
-    it('produces the same hash for the same input', async () => {
-      const hash1 = await hashDeviceId('device-abc');
-      const hash2 = await hashDeviceId('device-abc');
-      expect(hash1).toBe(hash2);
-    });
-
-    it('produces different hashes for different inputs', async () => {
-      const hash1 = await hashDeviceId('device-abc');
-      const hash2 = await hashDeviceId('device-def');
-      expect(hash1).not.toBe(hash2);
-    });
-  });
-
   describe('injectDeviceId middleware', () => {
     it.each([
       { label: 'UUID v4', id: '550e8400-e29b-4a4a-a716-446655440000' },
