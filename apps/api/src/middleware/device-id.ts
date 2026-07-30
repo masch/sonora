@@ -3,13 +3,6 @@ import type { Env, Variables } from '../index';
 import { PLATFORMS } from '@sonora/shared';
 import type { Platform } from '@sonora/shared';
 
-export async function hashDeviceId(deviceId: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(deviceId);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 // VALID_PLATFORMS and Platform type imported from @sonora/shared
 // PLATFORM_DEFAULT available for fallback: 'unknown'
 

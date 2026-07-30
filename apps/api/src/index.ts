@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
-import { hashDeviceId, injectDeviceId } from './middleware/device-id';
+import { injectDeviceId } from './middleware/device-id';
 import { customLogger } from './middleware/logger';
 import { ERRORS, problem } from './middleware/problem-details';
 import { associationRouter } from './routes/association';
@@ -17,7 +17,7 @@ import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
 
-export { hashDeviceId };
+export { injectDeviceId };
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
