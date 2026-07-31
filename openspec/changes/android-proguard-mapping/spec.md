@@ -18,11 +18,11 @@
 
 ### FR-2: Upload Mapping as CI Artifact
 
-| ID     | Requirement                                                                                                                                               | Priority |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| FR-2.1 | The `build-android` job SHALL upload the mapping file as a GitHub Actions artifact named `android-mapping`.                                               | HIGH     |
-| FR-2.2 | The artifact SHALL use `if-no-files-found: warn` (not `error`) to avoid breaking CI if the mapping file is temporarily absent (e.g., R8 not yet enabled). | MEDIUM   |
-| FR-2.3 | The artifact retention SHALL be 30 days.                                                                                                                  | HIGH     |
+| ID     | Requirement                                                                                                                                              | Priority |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| FR-2.1 | The `build-android` job SHALL upload the mapping file as a GitHub Actions artifact named `android-mapping`.                                              | HIGH     |
+| FR-2.2 | The artifact SHALL use `if-no-files-found: error` so a missing mapping file fails the build fast (fail-fast contract — mapping is required for release). | MEDIUM   |
+| FR-2.3 | The artifact retention SHALL be 30 days.                                                                                                                 | HIGH     |
 
 ### FR-3: Pass Mapping Through Pipeline
 

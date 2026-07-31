@@ -23,8 +23,8 @@ The `eas-build-android-release-ci-unsigned` target in the Makefile MUST copy the
 
 - GIVEN the mapping file is not present at the expected Gradle output path
 - WHEN the target attempts the copy operation
-- THEN the copy command MAY fail silently (the target MUST NOT abort on a missing mapping file)
-- AND the target SHOULD continue without error so the APK/AAB build result is not lost
+- THEN the copy command MUST fail (exit non-zero)
+- AND the target MUST abort so the pipeline surfaces the missing-mapping configuration issue (fail-fast contract)
 
 ### Requirement: Consistent Naming Convention
 

@@ -2,7 +2,7 @@
 
 **Change:** `android-proguard-mapping`
 **Phase:** Verify
-**Branch:** `feat/android-proguard-mapping` (HEAD `7776f98` — includes NFR-2 fix)
+**Branch:** `feat/android-proguard-mapping` (HEAD — includes NFR-2 fail-fast decision)
 **Date:** 2026-07-31
 
 ## Overall Status
@@ -10,7 +10,7 @@
 **CONDITIONAL PASS (code verified) — ARCHIVE READY (pending post-archive follow-ups).**
 
 - FR-1 through FR-4 (the code implementation) **PASS** by direct inspection, YAML parse, and `make -n` dry run.
-- NFR-2 (graceful degradation) **RESOLVED** — see NFR-2 Fix below.
+- Mapping policy **MANDATORY / fail-fast** per maintainer decision (2026-07-31): missing mapping blocks the release at every stage. Replaces the earlier graceful-degradation (NFR-2) approach.
 - FR-5 (manual R8 verification) **PENDING** — one-time manual task, not runnable in this environment. Per delegation, reported as pending, NOT a code failure.
 - Archive proceeds per parent approval; manual/runtime verification tasks (Phases 1, 2-verify, 5) are recorded as post-archive follow-ups.
 
@@ -170,34 +170,41 @@ Per delegation: one-time manual task, NOT yet run. Reported pending, not a failu
 | NFR                                             | Result              | Evidence                                                                                                       |
 | ----------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
 | NFR-1: 30-day retention                         | ✅ PASS             | `retention-days: 30` on upload step.                                                                           |
-| NFR-2: Pipeline MUST NOT fail if mapping absent | ✅ **PASS**         | Fixed in commit `7776f98`: `                                                                                   |     | true`on Makefile`cp`+`continue-on-error: true` on download step (see NFR-2 Fix). upload-google-play warns on missing mappingFile. |
+| NFR-2: Pipeline MUST NOT fail if mapping absent | ✅ **PASS**         | Replaced by Mandatory Mapping (fail-fast) policy per maintainer decision. `cp` fails without `                 |     | true`, upload uses`error`, download has no`continue-on-error`. Missing mapping now blocks the release (intended). |
 | NFR-3: Zero behavioral change to app binary     | ✅ PASS             | Only Makefile `cp` line + workflow steps added. No Gradle plugins, no ProGuard rules, no build-config changes. |
 | NFR-4: Negligible time increase                 | ✅ PASS (by design) | `cp` + artifact download/upload are sub-second operations; no new builds added. Not runtime-measured.          |
 
-    ### NFR-2 Gap — RESOLVED (commit `7776f98`)
+    ### Mapping Policy — MANDATORY / fail-fast (maintainer decision 2026-07-31)
 
-    The spec requires graceful degradation end-to-end. The original implementation only made the **upload** step graceful:
-
-    1. **Makefile `cp` lacked `|| true`** → if `mapping.txt` is absent, the build target aborts.
-    2. **`download-artifact@v4` fails when the artifact does not exist** → `deploy-play-store` fails and the AAB never reaches Play Console.
-    3. **`mappingFile` input is unconditional** → `r0adkll/upload-google-play@v1` may receive a non-existent path.
-
-    **Fix applied in `7776f98`:**
+    The maintainer chose fail-fast: the mapping file is a REQUIRED part of the production release contract. The earlier NFR-2 graceful-degradation fix (`|| true` on `cp`, `continue-on-error` on download) was **reverted** in favor of strict enforcement:
 
     ```makefile
-    cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt) || true
+    cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt)
+    ```
+
+    ```yaml
+    - name: Upload Android Mapping Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-mapping
+        path: apps/mobile/sonora-*-mapping.txt
+        if-no-files-found: error
+        retention-days: 30
     ```
 
     ```yaml
     - name: Download Android Mapping Artifact
       uses: actions/download-artifact@v4
-      continue-on-error: true
       with:
         name: android-mapping
         path: apps/mobile
     ```
 
-    The `mappingFile` input remains unconditional but is safe: `r0adkll/upload-google-play@v1` emits a warning (not an error) when `mappingFile` does not exist (`core.warning` in `main.ts`). Combined with `|| true` and `continue-on-error`, the pipeline now degrades gracefully at every stage: build target continues, deploy job continues, and the AAB is still uploaded to Play Console even if the mapping file is absent.
+    **Effect**: if `mapping.txt` is not generated (R8 disabled, AGP path change, build failure), the pipeline fails at the first missing stage — `build-android` fails at the `cp`, or `deploy-play-store` fails at download. The AAB never reaches Play Console without a deobfuscation file. The `mappingFile` input remains unconditional and safe (the action warns if missing, but it will never be missing because prior stages fail first).
+
+    **Trade-off accepted**: a transient mapping-generation problem blocks the release until fixed — surfaced in CI rather than silently degrading.
+
+    Specs updated to match: `build-tooling/spec.md` and `mobile-deployment/spec.md` now define fail-fast scenarios (MUST fail on absence).
 
 ---
 
@@ -280,7 +287,7 @@ No test files were changed by this commit (`git show 66e5b99 --name-only` lists 
 
 ## Blockers
 
-1. **RESOLVED:** NFR-2 / graceful-degradation gap fixed in `7776f98` (`|| true` on Makefile `cp`, `continue-on-error` on download step).
+1. **RESOLVED:** Mapping policy is now MANDATORY / fail-fast per maintainer decision. Specs updated; implementation matches (`cp` no `|| true`, upload `error`, download no `continue-on-error`).
 2. **PARENT-OWNED (post-archive follow-ups):** manual R8 verification (Phase 1), local Makefile verification (Phase 2), CI integration run (Phase 5), post-apply bounded review, and Phase 1 R8 findings documentation — recorded as follow-ups per parent approval to archive now.
 3. **TDD evidence:** apply-progress lacks the `TDD Cycle Evidence` table (strict TDD active) — reconcile with an explicit N/A/structural entry in apply-progress.
 
