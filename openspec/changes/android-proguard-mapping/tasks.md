@@ -28,6 +28,8 @@ Two files to modify: `Makefile` and `.github/workflows/deploy-mobile-android-pro
 
 ### Phase 1 — R8 Verification (one-time, manual)
 
+> **Post-archive follow-ups (parent-approved, 2026-07-31):** These manual tasks cannot run in this environment and are recorded as follow-ups to complete after archive. The code implementation does not depend on them (FR-1..4 pass independently).
+
 - [ ] Run `npx expo prebuild --platform android --clean` in `apps/mobile/` to generate the native android project. <!-- sdd-owner: implementation -->
 - [ ] Inspect `apps/mobile/android/app/build.gradle` and confirm `buildTypes.release.minifyEnabled` is `true` and `proguardFiles` references default R8 rules. <!-- sdd-owner: implementation -->
 - [ ] Run `cd apps/mobile/android && ./gradlew :app:assembleRelease` and verify that `apps/mobile/android/app/build/outputs/mapping/release/mapping.txt` is generated. <!-- sdd-owner: implementation -->
@@ -37,7 +39,7 @@ Two files to modify: `Makefile` and `.github/workflows/deploy-mobile-android-pro
 
 - [x] In `Makefile`, target `eas-build-android-release-ci-unsigned` (around line 911), append a `&& \` and a `cp` command after the existing AAB `mv` line to copy the mapping file:
       `cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt)`. <!-- sdd-owner: implementation -->
-- [ ] Verify the Makefile change by running the target locally with explicit `OUTPUT_APK`, `OUTPUT_AAB`, and `OUTPUT_MAPPING` and confirming the mapping file is created at the expected path. <!-- sdd-owner: implementation -->
+- [ ] Verify the Makefile change by running the target locally with explicit `OUTPUT_APK`, `OUTPUT_AAB`, and `OUTPUT_MAPPING` and confirming the mapping file is created at the expected path. <!-- sdd-owner: implementation --> <!-- post-archive follow-up (parent-approved) -->
 
 ### Phase 3 — Build Job Workflow Changes
 
@@ -52,8 +54,10 @@ Two files to modify: `Makefile` and `.github/workflows/deploy-mobile-android-pro
 
 ### Phase 5 — Integration Verification
 
-- [ ] Trigger a CI run via `workflow_dispatch` on the production Android workflow and confirm: - `build-android` job succeeds and produces `android-mapping` artifact with 30-day retention. - `deploy-play-store` job downloads the mapping artifact and includes `mappingFile` in the upload call. - No CI step fails if the mapping file happens to be absent (`if-no-files-found: warn` is observed). <!-- sdd-owner: implementation -->
+- [ ] Trigger a CI run via `workflow_dispatch` on the production Android workflow and confirm: - `build-android` job succeeds and produces `android-mapping` artifact with 30-day retention. - `deploy-play-store` job downloads the mapping artifact and includes `mappingFile` in the upload call. - No CI step fails if the mapping file happens to be absent (`if-no-files-found: warn` is observed). <!-- sdd-owner: implementation --> <!-- post-archive follow-up (parent-approved) -->
 
 ### Post-Apply Review
+
+> **Post-archive follow-up (parent-approved, 2026-07-31):** The verify phase ran an independent review of both files (FR-1..4 PASS, NFR-2 resolved). An explicit bounded review transaction is recorded as a follow-up to run after merge.
 
 - [ ] Start or reuse bounded review across the two modified files (`Makefile`, `deploy-mobile-android-production.yml`) to confirm each change matches the spec and design exactly. <!-- sdd-owner: parent -->
