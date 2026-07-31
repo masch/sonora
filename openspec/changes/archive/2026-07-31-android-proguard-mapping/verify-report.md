@@ -11,7 +11,7 @@
 
 - FR-1 through FR-4 (the code implementation) **PASS** by direct inspection, YAML parse, and `make -n` dry run.
 - Mapping policy **MANDATORY / fail-fast** per maintainer decision (2026-07-31): missing mapping blocks the release at every stage. Replaces the earlier graceful-degradation (NFR-2) approach.
-- FR-5 (manual R8 verification) **PENDING** — one-time manual task, not runnable in this environment. Per delegation, reported as pending, NOT a code failure.
+- FR-5 (R8 activation) **DONE** — R8 was NOT enabled by default; activated via `expo-build-properties` (`enableMinifyInReleaseBuilds: true`). Verified by re-running `expo prebuild` and confirming `gradle.properties` contains `android.enableMinifyInReleaseBuilds=true`.
 - Archive proceeds per parent approval; manual/runtime verification tasks (Phases 1, 2-verify, 5) are recorded as post-archive follow-ups.
 
 ---
@@ -104,7 +104,7 @@ isNonAuthoritative: false
 | AC-2: CI artifact `android-mapping` (30d) appears | ⏳ **PENDING** (needs CI run)      | Upload step present and correct (see FR-2); artifact appearance requires a real `build-android` run.                                                                                                                                                                                                                                    |
 | AC-3: deploy-play-store downloads mapping         | ⏳ **PENDING** (needs CI run)      | Download step present and correctly ordered (see FR-3); runtime log evidence requires a CI run.                                                                                                                                                                                                                                         |
 | AC-4: Play Console receives mappingFile           | ⏳ **PENDING** (needs deployment)  | `mappingFile` input present (see FR-4); Play Console deobfuscation-file evidence requires an actual deployment.                                                                                                                                                                                                                         |
-| AC-5: R8 confirmed enabled                        | ⏳ **PENDING** (manual, Phase 1)   | Not runnable here by delegation — reported pending, not failed.                                                                                                                                                                                                                                                                         |
+| AC-5: R8 confirmed enabled                        | ✅ **PASS**                        | `expo prebuild` verified: `gradle.properties` now contains `android.enableMinifyInReleaseBuilds=true` (line 64) and `app/build.gradle` `release` block uses `minifyEnabled enableMinifyInReleaseBuilds`. R8 activation via `expo-build-properties` in `app.config.ts`.                                                                  |
 
 ---
 
@@ -159,9 +159,17 @@ cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),
 - FR-4.1 ✅ `mappingFile` input present on `r0adkll/upload-google-play@v1`.
 - FR-4.2 ✅ Path uses `needs.build-android.outputs.tag_name` (not `sign-android`), matching the `OUTPUT_MAPPING` name produced in the build job (`sonora-<tag>-mapping.txt`).
 
-### FR-5: Verify R8 configuration — ⏳ PENDING (manual, not runnable here)
+### FR-5: Enable R8 configuration — ✅ DONE (was PENDING)
 
-Per delegation: one-time manual task, NOT yet run. Reported pending, not a failure of the code change. Tasks: `npx expo prebuild`, inspect `minifyEnabled`, run `assembleRelease`, document findings.
+**Initial finding:** Expo SDK 56 defaults `minifyEnabled` to `false`. The generated `android/app/build.gradle` has `def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()` with `minifyEnabled enableMinifyInReleaseBuilds` — so without the property, R8 is OFF and NO mapping.txt is generated. This would break the fail-fast policy on every build.
+
+**Fix applied:** Added `expo-build-properties` plugin to `app.config.ts` with `android.enableMinifyInReleaseBuilds: true`, and installed `expo-build-properties@~56.0.24`.
+
+**Verification (prebuild re-run):**
+
+- `gradle.properties` line 64: `android.enableMinifyInReleaseBuilds=true` ✅
+- `app/build.gradle` release block: `minifyEnabled enableMinifyInReleaseBuilds` → resolves to true ✅
+- `proguard-rules.pro` exists with reanimated + turbomodule keep rules (Crashlytics compatible) ✅
 
 ---
 
@@ -291,8 +299,8 @@ No test files were changed by this commit (`git show 66e5b99 --name-only` lists 
 2. **PARENT-OWNED (post-archive follow-ups):** manual R8 verification (Phase 1), local Makefile verification (Phase 2), CI integration run (Phase 5), post-apply bounded review, and Phase 1 R8 findings documentation — recorded as follow-ups per parent approval to archive now.
 3. **TDD evidence:** apply-progress lacks the `TDD Cycle Evidence` table (strict TDD active) — reconcile with an explicit N/A/structural entry in apply-progress.
 
-## Not Verified Here (by delegation)
+## Not Verified Here
 
-- FR-5 / AC-5 R8 verification (manual, one-time).
 - AC-2 / AC-3 (require a real CI run on `feat/android-proguard-mapping` via `workflow_dispatch`).
 - AC-4 (requires an actual Play Console deployment).
+- Full `./gradlew :app:assembleRelease` runtime verification of mapping.txt generation (requires Java + Android SDK, not available locally). R8 activation was verified at the config level via prebuild; runtime mapping generation is a post-merge CI follow-up.

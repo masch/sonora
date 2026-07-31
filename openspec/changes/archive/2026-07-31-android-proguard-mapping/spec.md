@@ -39,24 +39,25 @@
 | FR-4.1 | The `r0adkll/upload-google-play@v1` step SHALL include the `mappingFile` input pointing to the downloaded mapping file.  | HIGH     |
 | FR-4.2 | The mapping file path SHALL use the tag name from `needs.build-android.outputs.tag_name` to match the signed AAB naming. | HIGH     |
 
-### FR-5: Verify R8 Configuration
+### FR-5: Enable R8 Configuration
 
-| ID     | Requirement                                                                                                                                            | Priority |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| FR-5.1 | A one-time verification SHALL confirm that `android/app/build.gradle` has `minifyEnabled true` for the `release` build type after `npx expo prebuild`. | MEDIUM   |
-| FR-5.2 | A one-time verification SHALL confirm that `mapping.txt` is generated during `./gradlew :app:assembleRelease`.                                         | MEDIUM   |
-| FR-5.3 | If R8 is not enabled, the fix SHALL be documented but is out of scope for this change.                                                                 | LOW      |
+| ID     | Requirement                                                                                                                                                       | Priority |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| FR-5.1 | The app SHALL enable R8 minification/obfuscation for release builds via `expo-build-properties` (`android.enableMinifyInReleaseBuilds: true`) in `app.config.ts`. | HIGH     |
+| FR-5.2 | A verification SHALL confirm that `android/app/build.gradle` has `minifyEnabled true` for the `release` build type after `npx expo prebuild`.                     | MEDIUM   |
+| FR-5.3 | A verification SHALL confirm that `mapping.txt` is generated during `./gradlew :app:assembleRelease`.                                                             | MEDIUM   |
+| FR-5.4 | R8 activation SHALL be compatible with Crashlytics (already integrated) and existing `proguard-rules.pro` (reanimated + turbomodule keep rules).                  | MEDIUM   |
 
 ---
 
 ## 2. Non-Functional Requirements
 
-| ID    | Requirement                                                                                                                                                                    | Priority |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| NFR-1 | The mapping artifact MUST use 30-day retention — long enough for the Play Console to become the permanent home, short enough to auto-clean.                                    | HIGH     |
-| NFR-2 | The `deploy-play-store` job MUST NOT fail if the mapping artifact is missing (use no-op or conditional step). A missing mapping file should not block Play Console deployment. | MEDIUM   |
-| NFR-3 | Zero behavioral change to the app binary — no new Gradle plugins, no custom ProGuard rules, no build config changes.                                                           | HIGH     |
-| NFR-4 | The total CI pipeline time increase MUST be negligible (< 1 second for the `cp` command, < 5 seconds for artifact download/upload).                                            | HIGH     |
+| ID    | Requirement                                                                                                                                                                                             | Priority |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| NFR-1 | The mapping artifact MUST use 30-day retention — long enough for the Play Console to become the permanent home, short enough to auto-clean.                                                             | HIGH     |
+| NFR-2 | The `deploy-play-store` job MUST NOT fail if the mapping artifact is missing (use no-op or conditional step). A missing mapping file should not block Play Console deployment.                          | MEDIUM   |
+| NFR-3 | Zero behavioral change to the app binary EXCEPT R8 minification/obfuscation in release builds (intended — enables mapping generation, reduces APK size). No custom ProGuard rules beyond Expo defaults. | HIGH     |
+| NFR-4 | The total CI pipeline time increase MUST be negligible (< 1 second for the `cp` command, < 5 seconds for artifact download/upload).                                                                     | HIGH     |
 
 ---
 

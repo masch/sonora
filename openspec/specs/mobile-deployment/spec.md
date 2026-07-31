@@ -96,21 +96,21 @@ The mapping file is a REQUIRED part of the production release contract. If the m
 - AND the AAB MUST NOT be uploaded to Play Console
 - AND the failure MUST surface in CI so the configuration issue (e.g., R8 disabled) is caught before release
 
-### Requirement: One-Time R8 Configuration Verification
+### Requirement: R8 Configuration Activation
 
-The pipeline maintainers MUST verify that the Android Gradle build has R8/minification enabled for release builds, ensuring the mapping file is generated.
+The app MUST enable R8 minification/obfuscation for release builds so the mapping file is generated. Expo SDK 56 defaults `minifyEnabled` to `false` unless `android.enableMinifyInReleaseBuilds=true` is set.
 
-#### Scenario: R8 is enabled in the generated Gradle config
+#### Scenario: R8 is enabled via expo-build-properties
 
-- GIVEN the Android project is generated via `npx expo prebuild --platform android`
-- WHEN the `android/app/build.gradle` file is inspected
-- THEN the `release` build type MUST have `minifyEnabled true`
+- GIVEN `app.config.ts` configures `expo-build-properties` with `android.enableMinifyInReleaseBuilds: true`
+- WHEN `npx expo prebuild --platform android` runs
+- THEN the generated `gradle.properties` MUST contain `android.enableMinifyInReleaseBuilds=true`
+- AND the generated `android/app/build.gradle` release build type MUST have `minifyEnabled true`
 - AND R8 MUST be the default obfuscator (AGP 3.4+, which is used by Expo SDK 56)
 
-#### Scenario: R8 is not enabled
+#### Scenario: R8 was not previously enabled
 
-- GIVEN `minifyEnabled` is not `true` in the release build type
-- WHEN a production AAB is built
-- THEN no `mapping.txt` is generated
-- AND the pipeline MUST fail fast at the mapping capture step (see Mandatory Mapping requirement)
-- AND the maintainers MUST add `minifyEnabled true` and a `proguard-rules.pro` to enable mapping generation
+- GIVEN the project had `minifyEnabled` defaulting to `false` (Expo SDK 56 default)
+- WHEN the mapping pipeline is introduced
+- THEN the app MUST activate R8 via `expo-build-properties` in `app.config.ts`
+- AND the activation MUST be verified by re-running `expo prebuild` and inspecting the generated `gradle.properties` and `build.gradle`
