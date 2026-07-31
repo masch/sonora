@@ -99,7 +99,8 @@ jobs:
         run: |
           make eas-build-android-release-ci-unsigned \
             OUTPUT_APK="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.apk" \
-            OUTPUT_AAB="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.aab"
+            OUTPUT_AAB="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.aab" \
+            OUTPUT_MAPPING="sonora-${{ steps.tag-release.outputs.tag }}-mapping.txt"
 
       - name: Upload Unsigned APK Artifact
         uses: actions/upload-artifact@v4
@@ -116,6 +117,14 @@ jobs:
           path: apps/mobile/sonora-*-unsigned.aab
           if-no-files-found: error
           retention-days: 1
+
+      - name: Upload Android Mapping Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-mapping
+          path: apps/mobile/sonora-*-mapping.txt
+          if-no-files-found: error
+          retention-days: 30
 
   sign-android:
     runs-on: ubuntu-latest
@@ -240,7 +249,7 @@ jobs:
 
   deploy-play-store:
     runs-on: ubuntu-latest
-    needs: sign-android
+    needs: [sign-android, build-android]
     environment: production
     steps:
       - uses: actions/checkout@v5
@@ -251,6 +260,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-aab
+          path: apps/mobile
+      - name: Download Android Mapping Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-mapping
           path: apps/mobile
       - name: Generate Tag-Based Release Notes
         id: release-notes
@@ -265,3 +279,4 @@ jobs:
           packageName: org.masch.sonora.app
           releaseFiles: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.aab
           track: ${{ inputs.play_track || 'internal' }}
+          mappingFile: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}-mapping.txt
