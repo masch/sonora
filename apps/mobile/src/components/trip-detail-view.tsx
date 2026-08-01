@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import FeedbackForm from '@/components/feedback-form';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
+import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { Icon } from '@/components/icon';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
@@ -294,15 +295,7 @@ export default function TripDetailView({
             />
           )}
 
-          {refreshingExperience && (
-            <ThemedText
-              className="text-center text-xs font-semibold"
-              themeColor="textSecondary"
-              testID="preparing-audio-hint"
-            >
-              {t('experiences.geofenceBlocked.preparingAudio' as TranslationKeys)}
-            </ThemedText>
-          )}
+          {refreshingExperience && <PreparingAudioHint />}
 
           {/* Manual feedback button */}
           <TwView className="self-stretch">

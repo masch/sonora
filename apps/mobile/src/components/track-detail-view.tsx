@@ -18,6 +18,7 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
+import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
@@ -236,15 +237,7 @@ export default function TrackDetailView({
             </TwView>
           )}
 
-          {refreshingExperience && (
-            <ThemedText
-              className="text-center text-xs font-semibold"
-              themeColor="textSecondary"
-              testID="preparing-audio-hint"
-            >
-              {t('experiences.geofenceBlocked.preparingAudio' as TranslationKeys)}
-            </ThemedText>
-          )}
+          {refreshingExperience && <PreparingAudioHint />}
 
           {/* Manual feedback button */}
           <TwView className="self-stretch mt-2">
