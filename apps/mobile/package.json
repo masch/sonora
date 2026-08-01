@@ -18,6 +18,8 @@
     "expo-audio": "56.0.13",
     "expo-background-fetch": "56.0.23",
     "expo-constants": "56.0.22",
+    "expo-build-properties": "56.0.24",
+    "expo-crypto": "56.0.4",
     "expo-device": "56.0.4",
     "expo-file-system": "56.0.8",
     "expo-font": "56.0.7",

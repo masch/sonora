@@ -157,12 +157,56 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
-.PHONY: pin-deps scripts-typecheck
+.PHONY: pin-deps
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
 
+.PHONY: scripts-typecheck
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
+
+.PHONY: verify-openspec-archived
+verify-openspec-archived: ## Verify completed OpenSpec changes in openspec/changes/ are archived in openspec/archived/
+	bun run scripts/verify-openspec-archived.ts
+
+# ── One-time Data Migrations ─────────────────────
+#
+# Default: dry-run (safe). Pass LIVE=1 for live execution.
+#
+# Usage:
+#   make db-migrate-local                                             # list available
+#   make db-migrate-local MIGRATION=device-id                         # dry-run (default)
+#   make db-migrate-local MIGRATION=device-id LIVE=1                  # live
+#
+# Targets: local | staging | production
+    
+MIGRATION ?=
+LIVE ?=
+ARGS ?= $(if $(LIVE),,--dry-run)
+
+.PHONY: db-migrate-local
+db-migrate-local: ## Run/select a one-time data migration (local DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-staging
+db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-production
+db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
 
 # ── Utilities ─────────────────────────────────
 
@@ -341,6 +385,38 @@ api-r2-buckets-production: ## Create R2 audio buckets for production environment
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-private-audio
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-public-audio
 	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-production-public-audio
+
+
+# ── KV Namespaces ────────────────────────────────
+
+KV_CONFIG_STAGING = wrangler.staging.toml
+KV_CONFIG_PRODUCTION = wrangler.toml
+
+.PHONY: api-kv-staging
+api-kv-staging: ## Create RATE_LIMIT_STORE KV namespace for staging
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" --config wrangler.staging.toml 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list --config wrangler.staging.toml 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.staging.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-production
+api-kv-production: ## Create RATE_LIMIT_STORE KV namespace for production
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-list-staging
+api-kv-list-staging: ## List staging KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list --config wrangler.staging.toml
+
+.PHONY: api-kv-list-production
+api-kv-list-production: ## List production KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -829,7 +905,8 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	  cd .. && \
 	  zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" || true && \
 	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release-unsigned.apk) && \
-	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab)
+	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab) && \
+	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt)
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)

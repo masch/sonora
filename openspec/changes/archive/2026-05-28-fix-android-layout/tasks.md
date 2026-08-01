@@ -28,6 +28,6 @@ Chain strategy: size-exception
 ## Phase 3: Verification
 
 - [x] 3.1 Run `make validate` — tests, lint, typecheck
-- [ ] 3.2 Visual verify on Android emulator — Home centered, Settings no double top padding
-- [ ] 3.3 Visual regression check on iOS simulator — both screens render correctly
-- [ ] 3.4 Confirm BottomTabInset=80 on real Android device (manual, flagged)
+- [x] 3.2 Visual verify on Android emulator — Home centered, Settings no double top padding
+- [x] 3.3 Visual regression check on iOS simulator — both screens render correctly
+- [x] 3.4 Confirm BottomTabInset=80 on real Android device (manual, flagged)

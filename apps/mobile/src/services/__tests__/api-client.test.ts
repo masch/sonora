@@ -20,6 +20,24 @@ jest.mock('@/utils/logger', () => ({
   },
 }));
 
+// Mock Platform globally for api-client tests
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+}));
+
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    expoConfig: { extra: {} },
+    manifest: {
+      extra: {},
+    },
+    get devLaunchUrl() {
+      return undefined;
+    },
+  },
+}));
+
 function mockFetchOk(data: unknown) {
   globalThis.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -121,6 +139,21 @@ describe('ApiClient', () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           'X-Device-Id': 'test-uuid-value',
+        }),
+      }),
+    );
+  });
+
+  it('automatically injects X-Device-Platform header with the runtime platform', async () => {
+    mockFetchOk({});
+
+    await ApiClient.get('/test', { skipCache: true });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Device-Platform': 'ios',
         }),
       }),
     );
@@ -386,10 +419,10 @@ describe('ApiClient', () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not an error object'));
   });
 
-  /* ─── Mandatory X-Device-Id enforcement tests ─── */
+  /* ─── Mandatory header enforcement tests ─── */
 
-  describe('Mandatory X-Device-Id header enforcement', () => {
-    it('automatically attaches X-Device-Id header to GET, POST, PUT, PATCH, DELETE requests', async () => {
+  describe('Mandatory header enforcement', () => {
+    it('automatically attaches X-Device-Id and X-Device-Platform headers to GET, POST, PUT, PATCH, DELETE requests', async () => {
       mockFetchOk({ success: true });
       (getDeviceId as jest.Mock).mockResolvedValue('device-12345');
 
@@ -397,7 +430,10 @@ describe('ApiClient', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+          headers: expect.objectContaining({
+            'X-Device-Id': 'device-12345',
+            'X-Device-Platform': 'ios',
+          }),
         }),
       );
 
@@ -405,7 +441,10 @@ describe('ApiClient', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+          headers: expect.objectContaining({
+            'X-Device-Id': 'device-12345',
+            'X-Device-Platform': 'ios',
+          }),
         }),
       );
 
@@ -414,7 +453,10 @@ describe('ApiClient', () => {
         expect.any(String),
         expect.objectContaining({
           method: 'PUT',
-          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+          headers: expect.objectContaining({
+            'X-Device-Id': 'device-12345',
+            'X-Device-Platform': 'ios',
+          }),
         }),
       );
 
@@ -423,7 +465,10 @@ describe('ApiClient', () => {
         expect.any(String),
         expect.objectContaining({
           method: 'PATCH',
-          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+          headers: expect.objectContaining({
+            'X-Device-Id': 'device-12345',
+            'X-Device-Platform': 'ios',
+          }),
         }),
       );
 
@@ -432,7 +477,10 @@ describe('ApiClient', () => {
         expect.any(String),
         expect.objectContaining({
           method: 'DELETE',
-          headers: expect.objectContaining({ 'X-Device-Id': 'device-12345' }),
+          headers: expect.objectContaining({
+            'X-Device-Id': 'device-12345',
+            'X-Device-Platform': 'ios',
+          }),
         }),
       );
     });
@@ -445,18 +493,19 @@ describe('ApiClient', () => {
       );
     });
 
-    it('attaches X-Device-Id in fetchWithDeviceId and throws if missing', async () => {
+    it('attaches X-Device-Id and X-Device-Platform in fetchWithDeviceId', async () => {
       mockFetchOk({ fetchOk: true });
       (getDeviceId as jest.Mock).mockResolvedValue('device-fetch-999');
 
       await ApiClient.fetchWithDeviceId('https://api.test/stream');
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        'https://api.test/stream',
-        expect.objectContaining({
-          headers: expect.any(Headers),
-        }),
-      );
+      const [, fetchInit] = (globalThis.fetch as jest.Mock).mock.calls.find(
+        ([url]: [string]) => url === 'https://api.test/stream',
+      )!;
+      expect(fetchInit.headers.get('X-Device-Id')).toBe('device-fetch-999');
+      expect(fetchInit.headers.get('X-Device-Platform')).toBe('ios');
+    });
 
+    it('throws error when deviceId is missing in fetchWithDeviceId', async () => {
       (getDeviceId as jest.Mock).mockResolvedValue('');
       await expect(ApiClient.fetchWithDeviceId('https://api.test/stream')).rejects.toThrow(
         'Mandatory X-Device-Id is missing in client storage',

@@ -53,6 +53,13 @@ jobs:
       - uses: ./.github/actions/setup
       - run: make format-check
 
+  openspec-archived:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: make verify-openspec-archived
+
   validate-mobile:
     needs: changes
     if: ${{ needs.changes.outputs.mobile == 'true' }}

@@ -15,6 +15,39 @@ function createTestApp(env: Record<string, unknown> = {}) {
 }
 
 describe('configureCors middleware', () => {
+  it('includes X-Signature, X-Timestamp, X-Nonce in Access-Control-Allow-Headers on preflight', async () => {
+    const fetch = createTestApp({});
+    const res = await fetch(
+      new Request('http://localhost/test', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'http://localhost:8082',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'x-signature, x-timestamp, x-nonce, retry-after',
+        },
+      }),
+    );
+
+    const allowHeaders = res.headers.get('Access-Control-Allow-Headers')?.toLowerCase() ?? '';
+    expect(allowHeaders).toContain('x-signature');
+    expect(allowHeaders).toContain('x-timestamp');
+    expect(allowHeaders).toContain('x-nonce');
+    expect(allowHeaders).toContain('retry-after');
+  });
+
+  it('includes Retry-After in Access-Control-Expose-Headers on POST', async () => {
+    const fetch = createTestApp({});
+    const res = await fetch(
+      new Request('http://localhost/test', {
+        method: 'POST',
+        headers: { Origin: 'http://localhost:8082' },
+      }),
+    );
+
+    const exposeHeaders = res.headers.get('Access-Control-Expose-Headers') ?? '';
+    expect(exposeHeaders).toContain('Retry-After');
+  });
+
   it('includes Access-Control-Allow-Credentials: true on preflight OPTIONS requests', async () => {
     const fetch = createTestApp({});
     const res = await fetch(

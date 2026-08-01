@@ -1,23 +1,25 @@
 import { zValidator } from '@hono/zod-validator';
 import {
-  z,
   CreatePaymentBodySchema,
   EmailQuerySchema,
   LogAccessBodySchema,
   logger,
-  WebhookBodySchema,
   PAYMENT_ROUTES,
+  WebhookBodySchema,
+  z,
   type PurchaseStatus,
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
-import { ERRORS, problem, created, HTTP, success } from '../middleware/problem-details';
-import { validationHook } from '../middleware/validation-error';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
+import { platformGuard } from '../middleware/platform-guard';
 import { paymentsGuard } from '../middleware/payments-guard';
+import { created, ERRORS, HTTP, problem, success } from '../middleware/problem-details';
+import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
+import { validationHook } from '../middleware/validation-error';
 
 const ReturnParamSchema = z.object({
   status: z.string(),
@@ -63,6 +65,9 @@ paymentsRouter.use('*', paymentsGuard());
 paymentsRouter.post(
   '/create',
   dbGuard(),
+  deviceIdGuard(),
+  platformGuard(),
+  rateLimit(RATE_LIMIT_DEFAULTS.PAYMENTS_CREATE),
   zValidator('json', CreatePaymentBodySchema, validationHook),
   async (c) => {
     const db = c.var.db;
@@ -110,6 +115,7 @@ paymentsRouter.post(
         status: 'pending',
         metadata: redirectUrl ? { redirectUrl } : undefined,
         deviceId: c.var.deviceId,
+        platform: c.var.devicePlatform,
       })
       .returning();
 
@@ -562,6 +568,8 @@ paymentsRouter.post(
   '/experiences/:id/access',
   dbGuard(),
   deviceIdGuard(),
+  platformGuard(),
+  rateLimit(RATE_LIMIT_DEFAULTS.EXPERIENCES_ACCESS),
   zValidator('param', IdParamSchema, validationHook),
   zValidator('json', LogAccessBodySchema, validationHook),
   async (c) => {
@@ -570,7 +578,6 @@ paymentsRouter.post(
     const body = c.req.valid('json') as {
       source: 'free' | 'paid' | 'restored';
       email?: string | null;
-      platform?: 'ios' | 'android' | 'web' | null;
     };
 
     const deviceId = c.var.deviceId;
@@ -588,7 +595,7 @@ paymentsRouter.post(
       deviceId,
       source: body.source,
       priceAtAccess: experience?.price ?? null,
-      platform: body.platform ?? null,
+      platform: c.var.devicePlatform,
     });
 
     return created(c, { status: 'ok' });

@@ -103,7 +103,19 @@ describe('CORS behavior', () => {
 
     const headers = res.headers.get('access-control-allow-headers')?.split(',') || [];
     expect(headers.sort()).toEqual(
-      ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'Pragma', 'X-Device-Id'].sort(),
+      [
+        'Content-Type',
+        'Authorization',
+        'Range',
+        'Cache-Control',
+        'Pragma',
+        'X-Device-Id',
+        'X-Device-Platform',
+        'X-Signature',
+        'X-Timestamp',
+        'X-Nonce',
+        'Retry-After',
+      ].sort(),
     );
   });
 
@@ -209,6 +221,40 @@ describe('CORS behavior', () => {
     });
   });
 
+  it('uses ALLOWED_METHODS from env when provided', async () => {
+    const req = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    const res = await app.fetch(req, {
+      ALLOWED_ORIGIN: 'http://localhost:8081',
+      ALLOWED_METHODS: 'GET,POST',
+    } as never);
+    const methods = res.headers.get('access-control-allow-methods')?.split(',') || [];
+    expect(methods.sort()).toEqual(['GET', 'POST'].sort());
+    expect(methods).not.toContain('DELETE');
+  });
+
+  it('uses ALLOWED_HEADERS from env when provided', async () => {
+    const req = new Request('http://localhost/feedback', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+    const res = await app.fetch(req, {
+      ALLOWED_ORIGIN: 'http://localhost:8081',
+      ALLOWED_HEADERS: 'Content-Type,X-Device-Id',
+    } as never);
+    const headers = res.headers.get('access-control-allow-headers')?.split(',') || [];
+    expect(headers.sort()).toEqual(['Content-Type', 'X-Device-Id'].sort());
+    expect(headers).not.toContain('Authorization');
+  });
+
   it('exposes Content-Length and Content-Range headers', async () => {
     const req = new Request('http://localhost/feedback', {
       method: 'OPTIONS',
@@ -219,7 +265,7 @@ describe('CORS behavior', () => {
     });
     const res = await app.fetch(req, { ALLOWED_ORIGIN: 'http://localhost:8081' } as never);
     expect(res.headers.get('access-control-expose-headers')).toBe(
-      'Content-Length,Content-Range,ETag,x-audio-etag',
+      'Content-Length,Content-Range,ETag,x-audio-etag,Retry-After',
     );
   });
 });
