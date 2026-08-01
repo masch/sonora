@@ -107,8 +107,9 @@ export default function ExploreScreen() {
     } catch (e) {
       logger.error(e);
       setError(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Initial fetch — no setState in the effect body itself, only in async callbacks

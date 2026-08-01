@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useAppTranslation } from '@/hooks/use-translation';
+import { useAppTranslation, type AppTFunction } from '@/hooks/use-translation';
 import { ApiClient } from '@/services/api-client';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
 import type { DownloadEntry as StoreDownloadEntry } from '@/store/download-manager-store';
@@ -35,6 +35,7 @@ function mapStoreEntry(
   entry: StoreDownloadEntry | undefined,
   localCache: LocalCache | null,
   currentTrackId: string | null,
+  t: AppTFunction,
 ): TrackDownloadState {
   if (!entry) {
     // No store entry — use cached local URI from FS check if it belongs to current track
@@ -71,7 +72,9 @@ function mapStoreEntry(
         status: 'error',
         progress: 0,
         localAudioUri: null,
-        errorMsg: entry.errorMsg,
+        // Store payloads carry an i18n key (+ params); translate at the hook
+        // boundary so the UI only ever sees localized text.
+        errorMsg: entry.errorMsg ? t(entry.errorMsg.key, entry.errorMsg.params) : null,
       };
     default:
       return { status: 'idle', progress: 0, localAudioUri: null, errorMsg: null };
@@ -103,14 +106,32 @@ export function useTrackDownload(
   // Cached local URI from filesystem check — survives across renders
   const [localCache, setLocalCache] = useState<LocalCache | null>(null);
 
+  // Web-only: the blob URL created by this hook for the current localCache
+  // entry. Revoked when replaced, cleared, or on unmount so it does not leak.
+  const ownedWebObjectUrlRef = useRef<string | null>(null);
+
+  function replaceOwnedWebObjectUrl(next: string | null): void {
+    const prev = ownedWebObjectUrlRef.current;
+    if (prev === next) return;
+    if (prev && typeof URL.revokeObjectURL === 'function') {
+      URL.revokeObjectURL(prev);
+    }
+    ownedWebObjectUrlRef.current = next;
+  }
+
   // Check for pre-existing local file and validate its ETag
   useEffect(() => {
     if (!trackId) return;
     const currentTrackId = trackId;
 
     let cancelled = false;
+    // The background ETag verification fetch is aborted by this controller
+    // after 5s. Both are owned by this effect so its cleanup can stop the
+    // timer directly and abort any in-flight request.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    async function checkAndValidateCache() {
+    async function checkAndValidateCache(verifyController: AbortController) {
       let cachedEtag: string | null = null;
       let localUri: string | null = null;
 
@@ -155,14 +176,14 @@ export function useTrackDownload(
 
       if (localUri) {
         // Set the cache initially so it is playable immediately
+        if (Platform.OS === 'web') {
+          replaceOwnedWebObjectUrl(localUri);
+        }
         setLocalCache({ trackId: currentTrackId, localUri, etag: cachedEtag });
 
         // If online and remoteAudioUrl is available, perform background verification of the ETag
         if (isOnline && remoteAudioUrl) {
           try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
             // Add a cache-buster query parameter to bypass intermediate caches
             const separator = remoteAudioUrl.includes('?') ? '&' : '?';
             const cacheBustUrl = `${remoteAudioUrl}${separator}_cb=${Date.now()}`;
@@ -176,9 +197,8 @@ export function useTrackDownload(
                 Pragma: 'no-cache',
               },
               cache: 'no-store',
-              signal: controller.signal,
+              signal: verifyController.signal,
             });
-            clearTimeout(timeoutId);
 
             if (response.ok || response.status === 206) {
               const serverEtag =
@@ -215,6 +235,7 @@ export function useTrackDownload(
                 useDownloadManagerStore.getState().cancel(currentTrackId);
 
                 if (!cancelled) {
+                  replaceOwnedWebObjectUrl(null);
                   setLocalCache(null);
                 }
               }
@@ -231,21 +252,27 @@ export function useTrackDownload(
           }
         }
       } else {
+        replaceOwnedWebObjectUrl(null);
         setLocalCache(null);
       }
     }
 
-    checkAndValidateCache();
+    checkAndValidateCache(controller);
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
+      // Free the blob URL owned by this hook (if the entry is replaced on a
+      // re-run, the next run registers its own URL).
+      replaceOwnedWebObjectUrl(null);
     };
   }, [trackId, remoteAudioUrl, isOnline]);
 
   // Derive state from store entry + cached local file
   const state = !trackId
     ? { status: 'idle' as DownloadStatus, progress: 0, localAudioUri: null, errorMsg: null }
-    : mapStoreEntry(storeEntry, localCache, trackId);
+    : mapStoreEntry(storeEntry, localCache, trackId, t);
 
   function startDownload() {
     if (!trackId || !remoteAudioUrl) {
@@ -260,6 +287,7 @@ export function useTrackDownload(
     if (!trackId) return;
 
     if (Platform.OS === 'web') {
+      replaceOwnedWebObjectUrl(null);
       setLocalCache(null);
       if (typeof caches !== 'undefined') {
         try {

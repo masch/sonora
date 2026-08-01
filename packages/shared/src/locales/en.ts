@@ -82,6 +82,7 @@ export const en = {
       blockedAlertMessage:
         'You need to be within {{radius}} meters of the starting point to listen to this deriva. Current distance: {{distance}}.',
       blockedAlertOk: 'Got it',
+      preparingAudio: 'Preparing audio…',
     },
     warnings: {
       locationAlertTitle: 'Location Warning',
@@ -221,6 +222,7 @@ export const en = {
     insufficientSpace: 'Insufficient storage space. Free: {{free}}MB, Required: {{required}}MB',
     downloadWriteFailed: 'Download failed to write target path',
     downloadFailed: 'Audio download failed',
+    fetchFailed: 'Failed to fetch audio (HTTP {{status}})',
     deleteFailed: 'Failed to delete audio file',
   },
   explore: {

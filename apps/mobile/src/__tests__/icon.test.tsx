@@ -1,6 +1,7 @@
 import type { ViewStyle } from 'react-native';
 import { render } from '@testing-library/react-native';
-import { Icon, ICON_MAP } from '@/components/icon';
+import { Icon } from '@/components/icon';
+import { ICON_MAP } from '@/components/icon-utils';
 
 interface MockSymbolViewProps {
   name: string | { ios: string; android: string; web: string };

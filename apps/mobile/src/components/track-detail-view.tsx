@@ -9,6 +9,8 @@ import { type TrackExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { usePurchase } from '@/hooks/use-purchase';
+import { useRefreshExperienceOnPurchase } from '@/hooks/use-refresh-experience-on-purchase';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -17,7 +19,6 @@ import { TwImage } from '@/tw/image';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { PaymentPrompt } from '@/components/payment-prompt';
-import { usePurchase } from '@/hooks/use-purchase';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
 import type { TranslationKeys } from '@/i18n/types';
@@ -30,9 +31,19 @@ const formatDuration = (seconds: number) => {
 
 interface TrackDetailViewProps {
   track: TrackExperience;
+  /** Fired when the purchase resolves to 'purchased' and the track has no
+   *  audioUrl yet (e.g. the list was fetched before the payment). The parent
+   *  should re-fetch the experience so the signed audioUrl becomes available. */
+  onPurchased?: () => void;
+  /** True while the parent re-fetches the experience after a purchase. */
+  refreshingExperience?: boolean;
 }
 
-export default function TrackDetailView({ track }: TrackDetailViewProps) {
+export default function TrackDetailView({
+  track,
+  onPurchased,
+  refreshingExperience,
+}: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const feedback = useFeedbackSubmit();
@@ -40,6 +51,11 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
   const userInitiatedPlayRef = useRef(false);
   const rewind = useAudioRewind();
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
+
+  // When the purchase resolves but the fetched experience predates the
+  // payment (no signed audioUrl), ask the parent to re-fetch the list so
+  // the play/download button unlocks without a reload.
+  useRefreshExperienceOnPurchase(purchaseState.status, !!track.audioUrl, onPurchased);
 
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, {
@@ -218,6 +234,16 @@ export default function TrackDetailView({ track }: TrackDetailViewProps) {
                 disabled={!track.audioUrl || purchaseState.status === 'loading'}
               />
             </TwView>
+          )}
+
+          {refreshingExperience && (
+            <ThemedText
+              className="text-center text-xs font-semibold"
+              themeColor="textSecondary"
+              testID="preparing-audio-hint"
+            >
+              {t('experiences.geofenceBlocked.preparingAudio' as TranslationKeys)}
+            </ThemedText>
           )}
 
           {/* Manual feedback button */}

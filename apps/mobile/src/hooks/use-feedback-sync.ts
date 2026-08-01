@@ -6,6 +6,7 @@ import { useRemoteConfigStore } from '@/store/remote-config-store';
 import type { FeedbackEntry } from '@/types/feedback';
 import { logger } from '@/utils/logger';
 import { ApiClient } from '@/services/api-client';
+import { subscribeToNetwork } from '@/utils/net-info';
 
 /**
  * Listens for offline→online transitions and flushes all pending
@@ -16,8 +17,10 @@ export function useFeedbackSync(): void {
   const flushingRef = useRef(false);
   const syncIntervalSec = useRemoteConfigStore((s) => s.config.feedback.syncIntervalSec);
 
+  // Subscription effect: return the unsubscribe function directly (the
+  // subscribe call already provided it) so it is torn down on unmount.
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = subscribeToNetwork((state) => {
       const isOnline = state.isConnected ?? false;
       if (isOnline && !flushingRef.current) {
         flushingRef.current = true;
@@ -27,6 +30,11 @@ export function useFeedbackSync(): void {
       }
     });
 
+    return unsubscribe;
+  }, []);
+
+  // Interval effect: the cleanup clears the timer so it does not leak.
+  useEffect(() => {
     const interval = setInterval(async () => {
       const state = await NetInfo.fetch();
       const isOnline = state.isConnected ?? false;
@@ -38,10 +46,7 @@ export function useFeedbackSync(): void {
       }
     }, syncIntervalSec * 1000);
 
-    return () => {
-      unsubscribe();
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [syncIntervalSec]);
 }
 

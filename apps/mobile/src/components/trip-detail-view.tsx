@@ -18,6 +18,7 @@ import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { usePurchase } from '@/hooks/use-purchase';
+import { useRefreshExperienceOnPurchase } from '@/hooks/use-refresh-experience-on-purchase';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -33,9 +34,20 @@ import TrackDetailMap from './track-detail-map';
 interface TripDetailViewProps {
   track: TripExperience;
   showGPSDetails: boolean;
+  /** Fired when the purchase resolves to 'purchased' and the track has no
+   *  audioUrl yet (e.g. the list was fetched before the payment). The parent
+   *  should re-fetch the experience so the signed audioUrl becomes available. */
+  onPurchased?: () => void;
+  /** True while the parent re-fetches the experience after a purchase. */
+  refreshingExperience?: boolean;
 }
 
-export default function TripDetailView({ track, showGPSDetails }: TripDetailViewProps) {
+export default function TripDetailView({
+  track,
+  showGPSDetails,
+  onPurchased,
+  refreshingExperience,
+}: TripDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const feedback = useFeedbackSubmit();
@@ -109,6 +121,11 @@ export default function TripDetailView({ track, showGPSDetails }: TripDetailView
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
   const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
   const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
+
+  // When the purchase resolves but the fetched experience predates the
+  // payment (no signed audioUrl), ask the parent to re-fetch the list so
+  // the play/download button unlocks without a reload.
+  useRefreshExperienceOnPurchase(purchaseState.status, !!track.audioUrl, onPurchased);
 
   const { confirm, component: confirmComponent } = useConfirm();
   const openBlockedAlert = () => setShowGeofenceBlockedAlert(true);
@@ -275,6 +292,16 @@ export default function TripDetailView({ track, showGPSDetails }: TripDetailView
               onCancelDownload={download.deleteTrackLocal}
               disabled={!track.audioUrl || purchaseState.status === 'loading'}
             />
+          )}
+
+          {refreshingExperience && (
+            <ThemedText
+              className="text-center text-xs font-semibold"
+              themeColor="textSecondary"
+              testID="preparing-audio-hint"
+            >
+              {t('experiences.geofenceBlocked.preparingAudio' as TranslationKeys)}
+            </ThemedText>
           )}
 
           {/* Manual feedback button */}

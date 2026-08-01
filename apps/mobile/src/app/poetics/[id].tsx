@@ -72,6 +72,26 @@ export default function TrackDetailScreen() {
   }, [id]);
 
   const { track, loading, error } = state;
+  const [refreshingExperience, setRefreshingExperience] = useState(false);
+
+  // After a successful purchase the fetched experience may predate the
+  // payment, so it has no signed audioUrl. Re-fetch so the backend can
+  // include the audio link now that the purchase is approved (the client is
+  // network-first, so this also refreshes the shared list cache).
+  const handlePurchased = async () => {
+    setRefreshingExperience(true);
+    try {
+      const list = await fetchExperiences();
+      const found = list.find((e) => e.slug === id || e.id === id);
+      if (found) {
+        setState((prev) => ({ ...prev, track: found }));
+      }
+      setRefreshingExperience(false);
+    } catch (err) {
+      logger.error('[DETAIL] Failed to refresh experience after purchase:', err);
+      setRefreshingExperience(false);
+    }
+  };
 
   const handleRetry = () => {
     setState((prev) => ({
@@ -162,9 +182,20 @@ export default function TrackDetailScreen() {
         contentContainerClassName={isTrip ? CONTENT_PADDING : 'grow'}
       >
         {isTrip ? (
-          <TripDetailView track={track} showGPSDetails={false} />
+          <TripDetailView
+            key={track.id}
+            track={track}
+            showGPSDetails={false}
+            onPurchased={handlePurchased}
+            refreshingExperience={refreshingExperience}
+          />
         ) : (
-          <TrackDetailView track={track} />
+          <TrackDetailView
+            key={track.id}
+            track={track}
+            onPurchased={handlePurchased}
+            refreshingExperience={refreshingExperience}
+          />
         )}
       </ScrollScreenWrapper>
     </>

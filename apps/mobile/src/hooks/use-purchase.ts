@@ -117,14 +117,17 @@ export function usePurchase(
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
+    // Ignore stale writes if the effect is torn down while an await is in flight.
+    let cancelled = false;
 
     const init = async () => {
       const isCached = await checkLocalCache();
-      if (isCached) return;
+      if (isCached || cancelled) return;
 
       const isRemote = await checkRemoteEmail();
-      if (isRemote) return;
+      if (isRemote || cancelled) return;
 
+      if (cancelled) return;
       setState((prev) => ({
         ...prev,
         status: free ? 'free' : 'paid',
@@ -133,7 +136,21 @@ export function usePurchase(
       }));
     };
     init();
+
+    return () => {
+      cancelled = true;
+    };
   }, [free, price, checkLocalCache, checkRemoteEmail]);
+
+  // Clear any active polling interval on unmount so the timer does not leak.
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current.intervalId) {
+        clearInterval(pollingRef.current.intervalId);
+        pollingRef.current.intervalId = null;
+      }
+    };
+  }, []);
 
   // Re-verify purchase status on focus to refresh state when returning from Mercado Pago callback
   useFocusEffect(
@@ -336,6 +353,33 @@ export function usePurchase(
       subscription?.remove();
     };
   }, [startPolling]);
+
+  // Web only: Mercado Pago checkout runs in a popup. When the popup closes,
+  // focus returns to this tab — the popup's callback screen writes the
+  // purchased id to local storage before closing. Re-check local + remote
+  // state so the play button unlocks without a reload, and resume polling if
+  // a payment is still unresolved (e.g. the initial polling window expired
+  // while the popup was open).
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const onFocus = () => {
+      void (async () => {
+        const isCached = await checkLocalCache();
+        if (isCached) return;
+
+        await checkRemoteEmail();
+
+        const pending = pollingRef.current;
+        if (pending.purchaseId && !pending.intervalId) {
+          startPolling(pending.purchaseId);
+        }
+      })();
+    };
+
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [checkLocalCache, checkRemoteEmail, startPolling]);
 
   return [state, { pay, restore, refresh, checkStatus }];
 }
