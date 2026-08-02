@@ -7,7 +7,7 @@ import {
   INSTRUCTIONS_SLUG,
   INSTRUCTIONS_FALLBACK_TRACK_ID,
 } from '@/data/experiences';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export interface UseInstructionsAudioResult {
   /** Resolved audio URL — from the API instructions trip, or APP_CONFIG fallback */
@@ -57,12 +57,10 @@ export function useInstructionsAudio(): UseInstructionsAudioResult {
     };
   }, []);
 
-  const instructionsTrip = useMemo((): PlayableExperience | null => {
-    const found = experiences?.find(
-      (exp) => exp.slug === INSTRUCTIONS_SLUG && exp.format === 'trip',
-    );
-    return found && isPlayableExperience(found) ? found : null;
-  }, [experiences]);
+  // Derived value: React Compiler memoizes it automatically, no manual useMemo needed.
+  const found = experiences?.find((exp) => exp.slug === INSTRUCTIONS_SLUG && exp.format === 'trip');
+  const instructionsTrip: PlayableExperience | null =
+    found && isPlayableExperience(found) ? found : null;
 
   return {
     audioUrl: instructionsTrip?.audioUrl ?? APP_CONFIG.audio.instructionsUrl,

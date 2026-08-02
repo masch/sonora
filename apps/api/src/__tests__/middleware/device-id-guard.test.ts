@@ -91,7 +91,7 @@ describe('deviceIdGuard integration', () => {
     app.get('/needs-device', deviceIdGuard(), (c) => c.json({ ok: true }));
 
     const res = await app.request('/needs-device', {
-      headers: { 'X-Device-Id': 'my-device' },
+      headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });

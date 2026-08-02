@@ -1,7 +1,22 @@
+import { Platform } from 'react-native';
 import { APP_CONFIG } from '@/config/app-config';
 import { appStorage, getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
+import { getAppVersion } from '@/utils/app-version';
 import { BaseApiClient, type RequestOptions } from '@sonora/shared';
+
+/**
+ * Base headers attached to every request leaving the frontend.
+ * Device identifiers come from storage; the app version comes from the
+ * build-time APP_VERSION_NAME (see getAppVersion).
+ */
+function buildBaseHeaders(deviceId: string): Record<string, string> {
+  return {
+    'X-Device-Id': deviceId,
+    'X-Device-Platform': Platform.OS as string,
+    'X-App-Version': getAppVersion().versionName,
+  };
+}
 
 class MobileApiClient extends BaseApiClient {
   protected override async getAuthHeader(): Promise<Record<string, string>> {
@@ -11,7 +26,7 @@ class MobileApiClient extends BaseApiClient {
       logger.error('Failed to retrieve device ID for API headers', err);
       throw err;
     }
-    return { 'X-Device-Id': deviceId };
+    return buildBaseHeaders(deviceId);
   }
 }
 
@@ -23,7 +38,7 @@ const client = new MobileApiClient({
   logError: (msg) => logger.error(msg),
 });
 
-export { RequestOptions };
+export type { RequestOptions };
 
 export const ApiClient = {
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -63,15 +78,20 @@ export const ApiClient = {
   },
 
   /**
-   * Performs a raw fetch request enforcing that the mandatory X-Device-Id header is attached.
+   * Performs a raw fetch request enforcing that the mandatory X-Device-Id and X-Device-Platform headers are attached.
    */
   async fetchWithDeviceId(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
     const deviceId = await getDeviceId();
     if (!deviceId) {
-      throw new Error('Mandatory X-Device-Id is missing in client storage');
+      const err = new Error('Mandatory X-Device-Id is missing in client storage');
+      logger.error('Failed to retrieve device ID for API headers', err);
+      throw err;
     }
     const headers = new Headers(init.headers || {});
-    headers.set('X-Device-Id', deviceId);
+    const baseHeaders = buildBaseHeaders(deviceId);
+    for (const [name, value] of Object.entries(baseHeaders)) {
+      headers.set(name, value);
+    }
 
     return fetch(input, {
       ...init,

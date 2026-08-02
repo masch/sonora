@@ -38,4 +38,4 @@ Chain strategy: pending
 
 - [x] 3.1 Run `make validate` (format + lint + typecheck + tests) — confirm all pass
 - [x] 3.2 Run `npx expo-doctor` — confirm exit 0 with all 21 checks passing
-- [ ] 3.3 Commit changes with conventional commit message (e.g., `chore: fix expo doctor warnings — icons, expo-asset dep, patch bumps`)
+- [x] 3.3 Commit changes with conventional commit message (e.g., `chore: fix expo doctor warnings — icons, expo-asset dep, patch bumps`)

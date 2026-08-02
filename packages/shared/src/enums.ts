@@ -6,6 +6,7 @@ export type AccessSource = (typeof ACCESS_SOURCES)[number];
 
 export const PLATFORMS = ['ios', 'android', 'web'] as const;
 export type Platform = (typeof PLATFORMS)[number];
+export const PLATFORM_DEFAULT = 'unknown' as const;
 
 export const CURRENCIES = ['ARS'] as const;
 export type Currency = (typeof CURRENCIES)[number];

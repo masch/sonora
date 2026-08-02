@@ -37,6 +37,30 @@ describe('POST /payments/create', () => {
   let mockProvider: any;
   let mockDb: any;
 
+  it('returns 400 DEVICE_ID_REQUIRED when X-Device-Id header is missing', async () => {
+    mockDb.limit.mockResolvedValue([
+      { id: '550e8400-e29b-4a4a-a716-446655440000', free: false, price: 15000 },
+    ]);
+    mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ experienceId: '550e8400-e29b-4a4a-a716-446655440000' }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; detail: string; status: number };
+    expect(body.code).toBe('DEVICE_ID_REQUIRED');
+    expect(body.detail).toBe('The X-Device-Id header is required.');
+    expect(body.status).toBe(400);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     setDbClient(null);
@@ -83,7 +107,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({ experienceId: '00000000-0000-0000-0000-000000000000' }),
       },
       {},
@@ -104,7 +132,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({ experienceId: '550e8400-e29b-41d4-a716-446655440000' }),
       },
       {},
@@ -127,7 +159,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({ experienceId: '550e8400-e29b-41d4-a716-446655440000' }),
       },
       {},
@@ -151,7 +187,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},
@@ -186,7 +226,7 @@ describe('POST /payments/create', () => {
     );
   });
 
-  it('includes hashed device ID in purchase values if X-Device-Id header is present', async () => {
+  it('includes platform from X-Device-Platform header in purchase values', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
     const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
     mockDb.limit.mockResolvedValue([experienceMock]);
@@ -199,7 +239,8 @@ describe('POST /payments/create', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Device-Id': 'device-12345',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
         },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
@@ -209,7 +250,37 @@ describe('POST /payments/create', () => {
     expect(res.status).toBe(200);
     expect(mockDb.values).toHaveBeenCalledWith(
       expect.objectContaining({
-        deviceId: '21e8b3e125c62cabbc21c923352284eb031e69d7e6c651ff9a48d6be8ada3ab9',
+        platform: 'ios',
+      }),
+    );
+  });
+
+  it('includes raw device ID in purchase values if X-Device-Id header is present (pass-through)', async () => {
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    mockDb.limit.mockResolvedValue([experienceMock]);
+    mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+        body: JSON.stringify({ experienceId: VALID_UUID }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    // Now pass-through: deviceId is the raw header value, not the hash
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deviceId: '550e8400-e29b-4a4a-a716-446655440000',
       }),
     );
   });
@@ -225,7 +296,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({
           experienceId: VALID_UUID,
           redirectUrl: 'sonora://payment/callback',
@@ -264,7 +339,11 @@ describe('POST /payments/create', () => {
       '/payments/create',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
         body: JSON.stringify({ experienceId: VALID_UUID }),
       },
       {},

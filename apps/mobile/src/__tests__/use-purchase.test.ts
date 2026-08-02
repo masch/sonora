@@ -1,4 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 // Mocks must be defined BEFORE imports
 const mockCreatePayment = jest.fn();
@@ -415,6 +416,107 @@ describe('usePurchase', () => {
       // It should strip query parameters and extract 'purchase-123', matching the current purchaseId
       // and call getPaymentStatus
       expect(mockGetPaymentStatus).toHaveBeenCalledWith('purchase-123');
+    });
+  });
+
+  describe('web popup focus return', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      delete (globalThis as { window?: unknown }).window;
+    });
+
+    it('unlocks without a reload when focus returns after the popup wrote the cache', async () => {
+      jest.replaceProperty(Platform, 'OS', 'web');
+
+      const focusListeners: (() => void)[] = [];
+      Object.assign(globalThis, {
+        window: {
+          addEventListener: (event: string, cb: () => void) => {
+            if (event === 'focus') focusListeners.push(cb);
+          },
+          removeEventListener: jest.fn(),
+        },
+      });
+
+      // Empty cache at mount → status 'paid'
+      mockGetPurchasedIds.mockResolvedValue(new Set());
+      const { result, unmount } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      // Simulate the popup's callback screen writing the purchased id
+      mockGetPurchasedIds.mockResolvedValue(new Set(['exp-1']));
+
+      // Popup closes → focus returns to the main tab
+      await act(async () => {
+        focusListeners.forEach((listener) => listener());
+      });
+
+      await waitFor(() => expect(result.current[0].status).toBe('purchased'));
+
+      // Unmount while the fake window still exists so the effect cleanup runs
+      await act(async () => {
+        unmount();
+      });
+    });
+
+    it('resumes polling on focus return when the initial polling expired', async () => {
+      jest.replaceProperty(Platform, 'OS', 'web');
+
+      const focusListeners: (() => void)[] = [];
+      Object.assign(globalThis, {
+        window: {
+          addEventListener: (event: string, cb: () => void) => {
+            if (event === 'focus') focusListeners.push(cb);
+          },
+          removeEventListener: jest.fn(),
+        },
+      });
+
+      mockCreatePayment.mockResolvedValue({
+        purchaseId: 'p-1',
+        checkoutUrl: 'https://mp.com/checkout',
+      });
+      mockOpenAuthSessionAsync.mockResolvedValue({ type: 'success' });
+      mockGetPaymentStatus.mockResolvedValue({
+        purchaseId: 'p-1',
+        status: 'pending',
+        experienceId: 'exp-1',
+        provider: 'mercadopago',
+        amount: 15000,
+        currency: 'ARS',
+      });
+
+      const { result, unmount } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        await result.current[1].pay();
+      });
+
+      // Initial polling expires after the 30s window (15 attempts)
+      await act(async () => {
+        jest.advanceTimersByTime(31000);
+      });
+      await waitFor(() => expect(result.current[0].error).toBe('payments.pending'));
+      const callsBefore = mockGetPaymentStatus.mock.calls.length;
+
+      // Popup closes → focus returns → polling resumes for the pending payment
+      await act(async () => {
+        focusListeners.forEach((listener) => listener());
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      await waitFor(() => {
+        expect(mockGetPaymentStatus.mock.calls.length).toBeGreaterThan(callsBefore);
+      });
+
+      // Unmount while the fake window still exists so the effect cleanup runs
+      await act(async () => {
+        unmount();
+      });
     });
   });
 });

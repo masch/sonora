@@ -112,6 +112,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           fonts: fontConfig.nativeFonts,
         },
       ],
+      [
+        'expo-build-properties',
+        {
+          android: {
+            // Enable R8 minification/obfuscation in release builds so the
+            // mapping.txt deobfuscation file is generated and uploaded to
+            // Google Play Console (required for crash/ANR symbolication).
+            enableMinifyInReleaseBuilds: true,
+          },
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

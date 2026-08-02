@@ -21,6 +21,7 @@ jobs:
       mobile: ${{ steps.filter.outputs.mobile }}
       api: ${{ steps.filter.outputs.api }}
       admin: ${{ steps.filter.outputs.admin }}
+      config: ${{ steps.filter.outputs.config }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
@@ -30,12 +31,20 @@ jobs:
             mobile:
               - 'apps/mobile/**'
               - 'packages/shared/**'
+              - 'bun.lock'
             api:
               - 'apps/api/**'
               - 'packages/shared/**'
+              - 'bun.lock'
             admin:
               - 'apps/admin/**'
               - 'packages/shared/**'
+              - 'bun.lock'
+            config:
+              - 'bun.lock'
+              - 'apps/mobile/package.json'
+              - 'apps/mobile/metro.config.js'
+              - 'apps/mobile/babel.config.js'
 
   format:
     runs-on: ubuntu-latest
@@ -43,6 +52,13 @@ jobs:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - run: make format-check
+
+  openspec-archived:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: make verify-openspec-archived
 
   validate-mobile:
     needs: changes
@@ -64,6 +80,9 @@ jobs:
         run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
       - name: React Doctor (full scan — required)
         run: make doctor
+      - name: Verify Web Bundle (catch CJS interop bugs)
+        if: ${{ needs.changes.outputs.config == 'true' }}
+        run: make verify-web
 
   validate-api:
     needs: changes

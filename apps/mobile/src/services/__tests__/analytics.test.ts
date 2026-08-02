@@ -45,6 +45,10 @@ jest.mock('firebase/analytics', () => ({
     mockWebLogEvent(...(args as [never, string, Record<string, string>?])),
 }));
 
+jest.mock('@/utils/app-version', () => ({
+  getAppVersion: () => ({ versionName: 'test-version', formatted: 'test-version' }),
+}));
+
 const platform: { OS: string } = Platform as { OS: string };
 const originalOS = platform.OS;
 
@@ -61,7 +65,11 @@ describe('AnalyticsService', () => {
   it('tracks events on native platform', () => {
     platform.OS = 'ios';
     AnalyticsService.trackEvent('test_event', { foo: 'bar' });
-    expect(mockLogEvent).toHaveBeenCalledWith('test_event', { foo: 'bar', platform: 'ios' });
+    expect(mockLogEvent).toHaveBeenCalledWith('test_event', {
+      foo: 'bar',
+      platform: 'ios',
+      app_version: 'test-version',
+    });
   });
 
   it('records errors on native platform', () => {
@@ -69,6 +77,7 @@ describe('AnalyticsService', () => {
     const error = new Error('Test error');
     AnalyticsService.recordError(error, 'Custom description');
     expect(mockSetAttribute).toHaveBeenCalledWith('custom_description', 'Custom description');
+    expect(mockSetAttribute).toHaveBeenCalledWith('app_version', 'test-version');
     expect(mockRecordError).toHaveBeenCalledWith(error);
   });
 
@@ -79,6 +88,7 @@ describe('AnalyticsService', () => {
     expect(mockWebLogEvent).toHaveBeenCalledWith(expect.any(Object), 'test_web_event', {
       foo: 'web_bar',
       platform: 'web',
+      app_version: 'test-version',
     });
   });
 
@@ -92,6 +102,7 @@ describe('AnalyticsService', () => {
       '[Web Error]',
       error,
       'Web custom description',
+      { app_version: 'test-version' },
     );
     consoleErrorSpy.mockRestore();
   });

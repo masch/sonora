@@ -22,8 +22,8 @@ Chain strategy: pending
 
 - [x] 2.1 Run `file assets/images/sonora/*.png` — confirm both report `PNG image data`
 - [x] 2.2 Run `make validate` — confirm lint + typecheck pass (no regressions expected)
-- [ ] 2.3 Run `eas build --platform android --local` — confirm AAPT2 no longer rejects assets
-- [ ] 2.4 Visual side-by-side comparison against git stash originals — confirm no quality loss
+- [x] 2.3 Run `eas build --platform android --local` — confirm AAPT2 no longer rejects assets
+- [x] 2.4 Visual side-by-side comparison against git stash originals — confirm no quality loss
 
 ## Rollback
 

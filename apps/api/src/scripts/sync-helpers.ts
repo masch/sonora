@@ -34,15 +34,26 @@ export function setNested(obj: Record<string, unknown>, key: string, value: stri
     return;
   }
 
-  let current = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (!(part in current)) {
-      current[part] = {};
+  const lastIdx = parts.length - 1;
+
+  function setAt(node: Record<string, unknown>, idx: number): void {
+    if (idx === lastIdx) {
+      node[parts[idx]] = value;
+      return;
     }
-    current = current[part] as Record<string, unknown>;
+    const part = parts[idx];
+    if (
+      !Object.hasOwn(node, part) ||
+      typeof node[part] !== 'object' ||
+      node[part] === null ||
+      Array.isArray(node[part])
+    ) {
+      node[part] = Object.create(null) as Record<string, unknown>;
+    }
+    setAt(node[part] as Record<string, unknown>, idx + 1);
   }
-  current[parts[parts.length - 1]] = value;
+
+  setAt(obj, 0);
 }
 
 /**

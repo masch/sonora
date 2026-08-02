@@ -46,27 +46,32 @@ kill-metro: ## Kill any process running on Metro port 8081
 
 .PHONY: start
 start: ## Launch Expo dev server
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-wrangler
 start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-wrangler-android
 start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-staging
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start-web
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run web
+
+.PHONY: verify-web
+verify-web: ## Build web bundle and execute it to verify CJS interop (catches circular dependencies)
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun expo export --platform web
+	node -e "require('fs').readdirSync('apps/mobile/dist/_expo/static/js/web').filter(f => f.endsWith('.js')).forEach(f => require('./apps/mobile/dist/_expo/static/js/web/' + f))"
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
@@ -92,7 +97,7 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	cd apps/mobile && bunx react-doctor --verbose --scope full -y
+	cd apps/mobile && bun run doctor --verbose --scope full -y --blocking warning
 
 # shellcheck disable=SC1073,SC1050,SC1072
 # If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
@@ -101,7 +106,7 @@ DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bunx react-doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
+	cd apps/mobile && bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -129,7 +134,7 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 		echo "Installing: $$PKGSPECS"; \
 		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PKGSPECS; \
 		echo "Re-checking recommended versions..."; \
-		cd "$$ROOT" && PACKAGES=$$(cd "$$MOBILE" && npx expo install --check 2>&1 | \
+		cd "$$ROOT" && PACKAGES=$$(cd "$$MOBILE" && APP_VERSION_NAME="$(APP_VERSION_NAME)" npx expo install --check 2>&1 | \
 			sed -n 's/  \([^ ]*\)@[^ ]* - expected version: ~\?\([^ ]*\)/\1@\2/p'); \
 		if [ -n "$$PACKAGES" ]; then \
 			echo "Upgrading: $$PACKAGES"; \
@@ -152,12 +157,56 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
-.PHONY: pin-deps scripts-typecheck
+.PHONY: pin-deps
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
 
+.PHONY: scripts-typecheck
 scripts-typecheck: ## Type-check scripts/ with tsc
 	bunx tsc --project scripts/tsconfig.json --noEmit
+
+.PHONY: verify-openspec-archived
+verify-openspec-archived: ## Verify completed OpenSpec changes in openspec/changes/ are archived in openspec/archived/
+	bun run scripts/verify-openspec-archived.ts
+
+# ── One-time Data Migrations ─────────────────────
+#
+# Default: dry-run (safe). Pass LIVE=1 for live execution.
+#
+# Usage:
+#   make db-migrate-local                                             # list available
+#   make db-migrate-local MIGRATION=device-id                         # dry-run (default)
+#   make db-migrate-local MIGRATION=device-id LIVE=1                  # live
+#
+# Targets: local | staging | production
+    
+MIGRATION ?=
+LIVE ?=
+ARGS ?= $(if $(LIVE),,--dry-run)
+
+.PHONY: db-migrate-local
+db-migrate-local: ## Run/select a one-time data migration (local DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_LOCAL_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-staging
+db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
+
+.PHONY: db-migrate-production
+db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
+	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	else \
+		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+	fi
 
 # ── Utilities ─────────────────────────────────
 
@@ -336,6 +385,38 @@ api-r2-buckets-production: ## Create R2 audio buckets for production environment
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-private-audio
 	cd $(API_DIR) && bunx wrangler r2 bucket create sonora-production-public-audio
 	cd $(API_DIR) && bunx wrangler r2 bucket dev-url enable sonora-production-public-audio
+
+
+# ── KV Namespaces ────────────────────────────────
+
+KV_CONFIG_STAGING = wrangler.staging.toml
+KV_CONFIG_PRODUCTION = wrangler.toml
+
+.PHONY: api-kv-staging
+api-kv-staging: ## Create RATE_LIMIT_STORE KV namespace for staging
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" --config wrangler.staging.toml 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list --config wrangler.staging.toml 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.staging.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-production
+api-kv-production: ## Create RATE_LIMIT_STORE KV namespace for production
+	@cd $(API_DIR) && \
+		ID=$$(bunx wrangler kv namespace create "RATE_LIMIT_STORE" 2>&1 | grep -oP 'id = "\K[^"]+') && \
+		echo "$$ID" || \
+		bunx wrangler kv namespace list 2>/dev/null | \
+		bun -e "const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const n=j.find(x=>x.title==='RATE_LIMIT_STORE'); if(n) console.log(n.id);"
+	@echo "→ Paste that ID in apps/api/wrangler.toml under [[kv_namespaces]]"
+
+.PHONY: api-kv-list-staging
+api-kv-list-staging: ## List staging KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list --config wrangler.staging.toml
+
+.PHONY: api-kv-list-production
+api-kv-list-production: ## List production KV namespaces
+	cd $(API_DIR) && bunx wrangler kv namespace list
 
 .PHONY: api-upload-audio-staging
 api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
@@ -732,7 +813,7 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 
 .PHONY: doctor-ci
 doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
-	cd apps/mobile && bunx react-doctor --scope changed -y --blocking warning --verbose
+	cd apps/mobile && bun run doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
@@ -824,7 +905,8 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	  cd .. && \
 	  zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" || true && \
 	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release-unsigned.apk) && \
-	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab)
+	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab) && \
+	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt)
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)

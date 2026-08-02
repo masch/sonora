@@ -1,6 +1,6 @@
 import { sign } from 'hono/jwt';
 import { describe, expect, it, vi } from 'vitest';
-import app, { hashDeviceId } from '../index';
+import app from '../index';
 
 const mockR2Bucket = {
   put: vi.fn(async (key: string, _: any, __?: any) => {
@@ -47,13 +47,13 @@ describe('Audio Router', () => {
   const generateToken = async (
     key: string,
     secret = 'test-jwt-secret',
-    deviceId = 'test-device-id',
+    deviceId = '550e8400-e29b-4a4a-a716-446655440000',
   ) => {
-    const hashedDeviceId = await hashDeviceId(deviceId);
+    // deviceId in JWT must match c.var.deviceId (raw pass-through value)
     return await sign(
       {
         key,
-        deviceId: hashedDeviceId,
+        deviceId,
         exp: Math.floor(Date.now() / 1000) + 60,
       },
       secret,
@@ -190,7 +190,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,
@@ -205,7 +205,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,
@@ -224,7 +224,7 @@ describe('Audio Router', () => {
         `/audio/stream?key=experiences/test.mp3&token=${token}`,
         {
           headers: {
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,
@@ -244,7 +244,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
             Range: 'bytes=0-10',
           },
         },
@@ -264,7 +264,7 @@ describe('Audio Router', () => {
         '/audio/stream?key=experiences/test.mp3&token=invalid-key',
         {
           headers: {
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,
@@ -279,7 +279,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,
@@ -294,7 +294,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
             Range: 'bytes=100-200',
           },
         },
@@ -310,7 +310,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         { JWT_SECRET: 'test-jwt-secret' },
@@ -336,14 +336,14 @@ describe('Audio Router', () => {
       const token = await generateToken(
         'experiences/test.mp3',
         'test-jwt-secret',
-        'test-device-id',
+        '550e8400-e29b-4a4a-a716-446655440000',
       );
       const res = await app.request(
         '/audio/stream?key=experiences/test.mp3',
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Device-Id': 'different-device-id',
+            'X-Device-Id': '660e8400-e29b-4a4a-a716-446655440001',
           },
         },
         env,
@@ -364,7 +364,7 @@ describe('Audio Router', () => {
         {
           headers: {
             Authorization: `Bearer ${tokenWithoutDevice}`,
-            'X-Device-Id': 'test-device-id',
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
           },
         },
         env,

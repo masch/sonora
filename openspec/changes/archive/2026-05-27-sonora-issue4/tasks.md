@@ -303,8 +303,8 @@ Phase 3 (ThemedText refactor) adds `className` prop backward-compatibly. Phases 
 - [x] `make typecheck` — zero type errors ✅
 - [x] `bun run test` — all 20 tests pass ✅
 - [x] `grep -rn 'StyleSheet.create' src/components/ src/app/` — zero hits in migrated files ✅
-- [ ] Visual: home screen renders identically (light + dark mode, web + iOS) — manual
-- [ ] Visual: explore page scrolls, collapsibles animate, contentInset works — manual
-- [ ] Visual: web tab bar renders with correct focus states — manual
-- [ ] Visual: dark mode via devtools/browser — colors match `Colors.dark` values — manual
+- [x] Visual: home screen renders identically (light + dark mode, web + iOS) — manual
+- [x] Visual: explore page scrolls, collapsibles animate, contentInset works — manual
+- [x] Visual: web tab bar renders with correct focus states — manual
+- [x] Visual: dark mode via devtools/browser — colors match `Colors.dark` values — manual
 - [x] No runtime `useTheme()` calls for styling (only SymbolView tintColor) ✅

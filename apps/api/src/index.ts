@@ -1,8 +1,10 @@
+import type { Platform } from '@sonora/shared';
+import { PAYMENT_ROUTES } from '@sonora/shared';
 import { Hono } from 'hono';
 import type { DbClient } from './db';
 import { configureCors } from './middleware/cors';
 import { injectDb } from './middleware/db-injector';
-import { hashDeviceId, injectDeviceId } from './middleware/device-id';
+import { injectDeviceId } from './middleware/device-id';
 import { customLogger } from './middleware/logger';
 import { ERRORS, problem } from './middleware/problem-details';
 import { associationRouter } from './routes/association';
@@ -11,12 +13,9 @@ import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
 import { healthRouter } from './routes/health';
-import { PAYMENT_ROUTES } from '@sonora/shared';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { translationsRouter } from './routes/translations';
-
-export { hashDeviceId };
 
 export interface Env {
   FEEDBACK_STORE?: KVNamespace;
@@ -43,11 +42,14 @@ export interface Env {
   DEFAULT_PAYMENT_PROVIDER?: string;
   ENABLE_API_LOGGING?: string;
   APP_SCHEME?: string;
+  RATE_LIMIT_STORE?: KVNamespace;
+  RATE_LIMITING_ENABLED?: string;
 }
 
 export interface Variables {
   db: DbClient;
   deviceId: string;
+  devicePlatform: Platform;
   privateBucket: R2Bucket;
   publicBucket: R2Bucket;
   jwtSecret: string;
@@ -90,8 +92,7 @@ app.route('/.well-known', associationRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${msg}`);
+  return problem(c, ERRORS.INTERNAL, `Unhandled error: ${err.message}`);
 });
 
 export default app;
