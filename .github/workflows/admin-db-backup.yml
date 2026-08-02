@@ -59,20 +59,25 @@ jobs:
           DATE_TAG=$(date +%Y-%m-%d)
           ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-          echo "Syncing audio-bucket to backup bucket (latest)..."
-          aws s3 sync s3://audio-bucket s3://sonora-db-backups/audio/latest --endpoint-url "$ENDPOINT"
+          echo "Syncing sonora-production-public-audio..."
+          aws s3 sync s3://sonora-production-public-audio s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync s3://sonora-production-public-audio "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
 
-          echo "Syncing audio-bucket to archive path ($DATE_TAG)..."
-          aws s3 sync s3://audio-bucket "s3://sonora-db-backups/audio/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
+          echo "Syncing sonora-production-private-audio..."
+          aws s3 sync s3://sonora-production-private-audio s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync s3://sonora-production-private-audio "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
 
           # Post-check: Verify objects exist in latest backup bucket
-          COUNT=$(aws s3 ls s3://sonora-db-backups/audio/latest/ --endpoint-url "$ENDPOINT" | wc -l)
-          if [ "$COUNT" -eq 0 ]; then
-            echo "Error: No audio files found in sonora-db-backups/audio/latest/ after sync!"
+          PUBLIC_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/public/latest/ --endpoint-url "$ENDPOINT" | wc -l)
+          PRIVATE_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/private/latest/ --endpoint-url "$ENDPOINT" | wc -l)
+          TOTAL_COUNT=$((PUBLIC_COUNT + PRIVATE_COUNT))
+
+          if [ "$TOTAL_COUNT" -eq 0 ]; then
+            echo "Error: No audio files found in sonora-db-backups/audio/ after sync!"
             exit 1
           fi
 
-          echo "Audio backup sync complete ($COUNT files present in latest backup)."
+          echo "Audio backup sync complete ($PUBLIC_COUNT public, $PRIVATE_COUNT private files present)."
 
       - name: Cleanup local temp files
         shell: bash
