@@ -82,6 +82,7 @@ export const es = {
       blockedAlertMessage:
         'Para escuchar este deriva tenés que estar a menos de {{radius}} metros del punto de inicio. Distancia actual: {{distance}}.',
       blockedAlertOk: 'Entendido',
+      preparingAudio: 'Preparando audio…',
     },
     warnings: {
       locationAlertTitle: 'Alerta de Ubicación',
@@ -222,6 +223,7 @@ export const es = {
       'Espacio de almacenamiento insuficiente. Libre: {{free}}MB, Requerido: {{required}}MB',
     downloadWriteFailed: 'La descarga no pudo escribirse en la ruta destino',
     downloadFailed: 'Error al descargar el audio',
+    fetchFailed: 'Error al obtener el audio (HTTP {{status}})',
     deleteFailed: 'Error al borrar el archivo de audio',
   },
   explore: {

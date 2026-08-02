@@ -46,23 +46,23 @@ kill-metro: ## Kill any process running on Metro port 8081
 
 .PHONY: start
 start: ## Launch Expo dev server
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-wrangler
 start-wrangler: ## Launch Expo dev server pointing to local wrangler (port 8787) for iOS/Web
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://localhost:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-wrangler-android
 start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (port 8787) for Android emulator
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:8787" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-staging
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start
+	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun start-web
 
 .PHONY: dev-web
 dev-web: ## Launch Expo dev server for web
@@ -92,7 +92,7 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	cd apps/mobile && bunx react-doctor --verbose --scope full -y
+	cd apps/mobile && bun run doctor --verbose --scope full -y --blocking warning
 
 # shellcheck disable=SC1073,SC1050,SC1072
 # If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
@@ -101,7 +101,7 @@ DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bunx react-doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
+	cd apps/mobile && bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -808,7 +808,7 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 
 .PHONY: doctor-ci
 doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
-	cd apps/mobile && bunx react-doctor --scope changed -y --blocking warning --verbose
+	cd apps/mobile && bun run doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run

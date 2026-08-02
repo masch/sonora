@@ -6,14 +6,39 @@ import { AnalyticsService } from '@/services/analytics';
 import { ApiClient } from '@/services/api-client';
 import { getDeviceId } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
+import type { TranslationKeys } from '@/i18n/types';
 
 export type DownloadStatus = 'idle' | 'queued' | 'downloading' | 'completed' | 'error';
+
+/**
+ * Download failure payload stored on the entry. Carries an i18n key (+ optional
+ * interpolation params) so the UI can translate at render time — the store
+ * itself has no access to the translation hook.
+ */
+export interface DownloadErrorPayload {
+  key: TranslationKeys;
+  params?: Record<string, string | number>;
+}
+
+/**
+ * Typed error for known download failures. The `key`/`params` are persisted
+ * to the store entry and translated by the consuming hook/component.
+ */
+class DownloadError extends Error {
+  constructor(
+    readonly key: TranslationKeys,
+    readonly params?: Record<string, string | number>,
+  ) {
+    super(`DownloadError: ${key}`);
+    this.name = 'DownloadError';
+  }
+}
 
 export interface DownloadEntry {
   status: DownloadStatus;
   progress: number;
   localUri: string | null;
-  errorMsg: string | null;
+  errorMsg: DownloadErrorPayload | null;
   title: string;
 }
 
@@ -35,11 +60,29 @@ export interface DownloadManagerActions {
   cancel: (trackId: string) => void;
   getDownload: (trackId: string) => DownloadEntry | undefined;
   _completeDownload: (trackId: string, localUri: string) => void;
-  _failDownload: (trackId: string, errorMsg: string) => void;
+  _failDownload: (trackId: string, error: DownloadErrorPayload) => void;
   _updateProgress: (trackId: string, progress: number) => void;
 }
 
 export type DownloadManagerStore = DownloadManagerState & DownloadManagerActions;
+
+// Web playback uses blob URLs created via URL.createObjectURL as the store's
+// localUri. They must stay alive as long as the download entry owns them, so
+// they are registered here on creation and revoked only when the entry
+// discards them (cancel of a completed download, or a failed re-download).
+const webObjectUrlRegistry = new Map<string, string>();
+
+function registerWebObjectUrl(trackId: string, url: string): void {
+  webObjectUrlRegistry.set(trackId, url);
+}
+
+function revokeWebObjectUrl(trackId: string): void {
+  const url = webObjectUrlRegistry.get(trackId);
+  webObjectUrlRegistry.delete(trackId);
+  if (url && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(url);
+  }
+}
 
 async function performFileDownload(
   trackId: string,
@@ -69,7 +112,7 @@ async function performFileDownload(
   ).downloadAsync();
 
   if (!result || !result.uri) {
-    throw new Error('Download failed to write file');
+    throw new DownloadError('errors.downloadWriteFailed');
   }
 
   // Save ETag to metadata file if available
@@ -110,7 +153,9 @@ async function performWebDownload(
       if (cached) {
         const blob = await cached.blob();
         onProgress(100);
-        return { localUri: URL.createObjectURL(blob) };
+        const localUri = URL.createObjectURL(blob);
+        registerWebObjectUrl(trackId, localUri);
+        return { localUri };
       }
     } catch {
       // Cache miss or storage error — fall through to network download
@@ -119,7 +164,7 @@ async function performWebDownload(
 
   const response = await ApiClient.fetchWithDeviceId(url);
   if (!response.ok) {
-    throw new Error(`Failed to fetch audio: ${response.statusText}`);
+    throw new DownloadError('errors.fetchFailed', { status: String(response.status) });
   }
 
   const etag = response.headers.get('x-audio-etag') || response.headers.get('etag');
@@ -128,7 +173,9 @@ async function performWebDownload(
   // Fallback if Cache Storage or body reader is unavailable
   if (typeof caches === 'undefined' || !reader) {
     const blob = await response.blob();
-    return { localUri: URL.createObjectURL(blob) };
+    const localUri = URL.createObjectURL(blob);
+    registerWebObjectUrl(trackId, localUri);
+    return { localUri };
   }
 
   const cache = await caches.open('sonora-audio-cache');
@@ -153,6 +200,7 @@ async function performWebDownload(
 
   const blob = new Blob(chunks as BlobPart[], { type: 'audio/mpeg' });
   const localUri = URL.createObjectURL(blob);
+  registerWebObjectUrl(trackId, localUri);
 
   // Cache the response constructed from the downloaded blob using a stable cache key
   const cachedResponse = new Response(blob, {
@@ -182,9 +230,16 @@ async function performDownload(trackId: string, url: string, title: string) {
 
     useDownloadManagerStore.getState()._completeDownload(trackId, localUri);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Download failed';
-    logger.error('Download failed for', trackId, msg);
-    useDownloadManagerStore.getState()._failDownload(trackId, msg);
+    const raw = err instanceof Error ? err.message : String(err);
+    logger.error('Download failed for', trackId, raw);
+    useDownloadManagerStore
+      .getState()
+      ._failDownload(
+        trackId,
+        err instanceof DownloadError
+          ? { key: err.key, params: err.params }
+          : { key: 'errors.downloadFailed' },
+      );
   }
 }
 
@@ -275,6 +330,11 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
     const entry = get().downloads[trackId];
     if (!entry) return;
 
+    // A completed entry's blob URL is no longer the active playback source.
+    if (entry.status === 'completed') {
+      revokeWebObjectUrl(trackId);
+    }
+
     const filteredQueue = get().queue.filter((item) => item.trackId !== trackId);
     const isActive = entry.status === 'downloading';
 
@@ -327,19 +387,21 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
     processQueue(get, set);
   },
 
-  _failDownload: (trackId: string, errorMsg: string) => {
+  _failDownload: (trackId: string, error: DownloadErrorPayload) => {
     const entry = get().downloads[trackId];
     if (!entry) {
       logger.error('Attempted to fail download for non-existent track:', trackId);
       return;
     }
+    // The failed download's object URL (if any) is never exposed — free it.
+    revokeWebObjectUrl(trackId);
     const { title } = entry;
     AnalyticsService.trackEvent('audio_download_failed', {
       track_id: trackId,
-      error_msg: errorMsg,
+      error_msg: error.key,
       title,
     });
-    AnalyticsService.recordError(new Error(errorMsg), `Download failed for track ${trackId}`);
+    AnalyticsService.recordError(new Error(error.key), `Download failed for track ${trackId}`);
     set({
       downloads: {
         ...get().downloads,
@@ -347,7 +409,7 @@ export const useDownloadManagerStore = create<DownloadManagerStore>((set, get) =
           status: 'error',
           progress: 0,
           localUri: null,
-          errorMsg,
+          errorMsg: error,
           title,
         },
       },

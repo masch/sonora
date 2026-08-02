@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { APP_CONFIG } from '../config/app-config';
-
 /**
  * Monitors network connectivity using @react-native-community/netinfo.
  * Exposes `isOnline` boolean that auto-updates on connectivity changes.
  */
 import { AnalyticsService } from '@/services/analytics';
+import { subscribeToNetwork } from '@/utils/net-info';
 
 /**
  * On web, NetInfo checks connectivity by sending a HEAD request to a
@@ -33,7 +33,7 @@ export function useNetworkStatus(): NetworkStatusState {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = subscribeToNetwork((state) => {
       const connected = state.isConnected ?? false;
       setIsOnline(connected);
       AnalyticsService.trackEvent('network_status_changed', {
@@ -42,9 +42,7 @@ export function useNetworkStatus(): NetworkStatusState {
       });
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   return { isOnline };
