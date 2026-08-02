@@ -58,14 +58,23 @@ jobs:
 
           DATE_TAG=$(date +%Y-%m-%d)
           ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          TEMP_DIR=$(mktemp -d)
 
-          echo "Syncing sonora-production-public-audio..."
-          aws s3 sync s3://sonora-production-public-audio s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT" --copy-props none
-          aws s3 sync s3://sonora-production-public-audio "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --copy-props none
+          echo "Downloading public audio from R2..."
+          aws s3 sync s3://sonora-production-public-audio "$TEMP_DIR/public" --endpoint-url "$ENDPOINT"
 
-          echo "Syncing sonora-production-private-audio..."
-          aws s3 sync s3://sonora-production-private-audio s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT" --copy-props none
-          aws s3 sync s3://sonora-production-private-audio "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --copy-props none
+          echo "Syncing public audio to latest and archive..."
+          aws s3 sync "$TEMP_DIR/public" s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync "$TEMP_DIR/public" "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
+
+          echo "Downloading private audio from R2..."
+          aws s3 sync s3://sonora-production-private-audio "$TEMP_DIR/private" --endpoint-url "$ENDPOINT"
+
+          echo "Syncing private audio to latest and archive..."
+          aws s3 sync "$TEMP_DIR/private" s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync "$TEMP_DIR/private" "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
+
+          rm -rf "$TEMP_DIR"
 
           # Post-check: Verify objects exist in latest backup bucket
           PUBLIC_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/public/latest/ --endpoint-url "$ENDPOINT" | wc -l)
