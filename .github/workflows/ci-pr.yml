@@ -14,6 +14,7 @@ permissions:
   pull-requests: write
   issues: write
   statuses: write
+  checks: write
 
 concurrency:
   group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
@@ -66,8 +67,14 @@ jobs:
             if [ -n "$HEAD_SHA" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state="failure" \
-                -f context="4-CI PR Check / Check PR broccoli comment" \
+                -f context="Check PR broccoli emoji approval (🥦)" \
                 -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
+              gh api "repos/$REPO/check-runs" \
+                -f name="Check PR broccoli emoji approval (🥦)" \
+                -f head_sha="$HEAD_SHA" \
+                -f status="completed" \
+                -f conclusion="failure" \
+                -f output='{"title":"Broccoli Approval Required","summary":"New commit requires a new 🥦 comment"}' > /dev/null 2>&1 || true
             fi
             exit 1
           fi
@@ -76,8 +83,14 @@ jobs:
           if [ -n "$HEAD_SHA" ]; then
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state="success" \
-              -f context="4-CI PR Check / Check PR broccoli comment" \
+              -f context="Check PR broccoli emoji approval (🥦)" \
               -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
+            gh api "repos/$REPO/check-runs" \
+              -f name="Check PR broccoli emoji approval (🥦)" \
+              -f head_sha="$HEAD_SHA" \
+              -f status="completed" \
+              -f conclusion="success" \
+              -f output='{"title":"Broccoli Approval Passed","summary":"Latest comment since commit is 🥦"}' > /dev/null 2>&1 || true
           fi
 
   changes:
