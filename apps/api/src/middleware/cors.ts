@@ -1,5 +1,5 @@
-import { cors } from 'hono/cors';
 import type { MiddlewareHandler } from 'hono';
+import { cors } from 'hono/cors';
 import type { Env } from '../index';
 
 const DEFAULT_METHODS = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
@@ -11,6 +11,7 @@ const DEFAULT_HEADERS = [
   'Pragma',
   'X-Device-Id',
   'X-Device-Platform',
+  'X-App-Version',
   'X-Signature',
   'X-Timestamp',
   'X-Nonce',

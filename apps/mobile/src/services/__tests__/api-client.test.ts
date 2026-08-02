@@ -20,6 +20,10 @@ jest.mock('@/utils/logger', () => ({
   },
 }));
 
+jest.mock('@/utils/app-version', () => ({
+  getAppVersion: () => ({ versionName: 'test-version', formatted: 'test-version' }),
+}));
+
 // Mock Platform globally for api-client tests
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
@@ -422,7 +426,7 @@ describe('ApiClient', () => {
   /* ─── Mandatory header enforcement tests ─── */
 
   describe('Mandatory header enforcement', () => {
-    it('automatically attaches X-Device-Id and X-Device-Platform headers to GET, POST, PUT, PATCH, DELETE requests', async () => {
+    it('automatically attaches X-Device-Id, X-Device-Platform, and X-App-Version headers to GET, POST, PUT, PATCH, DELETE requests', async () => {
       mockFetchOk({ success: true });
       (getDeviceId as jest.Mock).mockResolvedValue('device-12345');
 
@@ -433,6 +437,7 @@ describe('ApiClient', () => {
           headers: expect.objectContaining({
             'X-Device-Id': 'device-12345',
             'X-Device-Platform': 'ios',
+            'X-App-Version': 'test-version',
           }),
         }),
       );
@@ -444,6 +449,7 @@ describe('ApiClient', () => {
           headers: expect.objectContaining({
             'X-Device-Id': 'device-12345',
             'X-Device-Platform': 'ios',
+            'X-App-Version': 'test-version',
           }),
         }),
       );
@@ -456,6 +462,7 @@ describe('ApiClient', () => {
           headers: expect.objectContaining({
             'X-Device-Id': 'device-12345',
             'X-Device-Platform': 'ios',
+            'X-App-Version': 'test-version',
           }),
         }),
       );
@@ -468,6 +475,7 @@ describe('ApiClient', () => {
           headers: expect.objectContaining({
             'X-Device-Id': 'device-12345',
             'X-Device-Platform': 'ios',
+            'X-App-Version': 'test-version',
           }),
         }),
       );
@@ -480,6 +488,7 @@ describe('ApiClient', () => {
           headers: expect.objectContaining({
             'X-Device-Id': 'device-12345',
             'X-Device-Platform': 'ios',
+            'X-App-Version': 'test-version',
           }),
         }),
       );
@@ -493,7 +502,7 @@ describe('ApiClient', () => {
       );
     });
 
-    it('attaches X-Device-Id and X-Device-Platform in fetchWithDeviceId', async () => {
+    it('attaches X-Device-Id, X-Device-Platform, and X-App-Version in fetchWithDeviceId', async () => {
       mockFetchOk({ fetchOk: true });
       (getDeviceId as jest.Mock).mockResolvedValue('device-fetch-999');
 
@@ -503,6 +512,7 @@ describe('ApiClient', () => {
       )!;
       expect(fetchInit.headers.get('X-Device-Id')).toBe('device-fetch-999');
       expect(fetchInit.headers.get('X-Device-Platform')).toBe('ios');
+      expect(fetchInit.headers.get('X-App-Version')).toBe('test-version');
     });
 
     it('throws error when deviceId is missing in fetchWithDeviceId', async () => {
