@@ -26,7 +26,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'pull_request_review' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Verify2 latest PR comment is 🥦
+      - name: Verify latest PR comment is 🥦
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
