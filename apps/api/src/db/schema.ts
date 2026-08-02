@@ -87,7 +87,7 @@ export const purchases = sonoraSchema.table('purchases', {
   amount: integer('amount').notNull(),
   currency: currencyEnum('currency').notNull().default('ARS'),
   metadata: jsonb('metadata'),
-  deviceId: text('device_id'),
+  deviceId: text('device_id').notNull(),
   platform: platformEnum('platform').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -99,7 +99,7 @@ export const experienceAccesses = sonoraSchema.table('experience_accesses', {
     .notNull()
     .references(() => experiences.id, { onDelete: 'cascade' }),
   email: text('email'),
-  deviceId: text('device_id'),
+  deviceId: text('device_id').notNull(),
   source: accessSourceEnum('source').notNull(),
   priceAtAccess: integer('price_at_access'),
   platform: platformEnum('platform'),
