@@ -823,7 +823,7 @@ doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on war
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
-	@LAST=$$(ls /tmp/sonora-precommit-*.log 2>/dev/null | sed 's/.*sonora-precommit-\([0-9]*\).*/\1/' | sort -u | tail -1); \
+	@LAST=$$(ls -t /tmp/sonora-precommit-*.log 2>/dev/null | head -1 | sed -E 's/.*sonora-precommit-(.+)-[^-]+\.log/\1/'); \
 	if [ -z "$$LAST" ]; then \
 	  echo "No pre-commit logs found"; \
 	else \
@@ -832,6 +832,15 @@ precommit-logs: ## Show temp files from last pre-commit run
 	    cat "$$f"; \
 	    echo ""; \
 	  done; \
+	fi
+
+.PHONY: precommit-logs-watch
+precommit-logs-watch: ## Follow logs from last pre-commit run in real-time
+	@LAST=$$(ls -t /tmp/sonora-precommit-*.log 2>/dev/null | head -1 | sed -E 's/.*sonora-precommit-(.+)-[^-]+\.log/\1/'); \
+	if [ -z "$$LAST" ]; then \
+	  echo "No pre-commit logs found"; \
+	else \
+	  tail -f -n +1 /tmp/sonora-precommit-$${LAST}-*.log; \
 	fi
 
 # ── CI ────────────────────────────────────────
@@ -912,7 +921,8 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	  zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" || true && \
 	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release-unsigned.apk) && \
 	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab) && \
-	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt)
+	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt) && \
+	  cp android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip $(if $(OUTPUT_NATIVE_SYMBOLS),$(OUTPUT_NATIVE_SYMBOLS),sonora-release-native-debug-symbols.zip) 2>/dev/null || true
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)

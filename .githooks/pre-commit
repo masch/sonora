@@ -2,7 +2,7 @@
 
 set -e
 
-_RUN_TS=$(date +%s)
+_RUN_TS=$(date +%Y-%m-%d_%H-%M-%S)
 
 # 0. Restore expo-env.d.ts if expo-cli trampled it
 _f="apps/mobile/expo-env.d.ts"
