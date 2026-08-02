@@ -57,22 +57,40 @@ jobs:
             fi
           fi
 
-          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, commit date: ${COMMIT_DATE:-unknown}, filter date: ${FILTER_DATE:-unknown})..."
+          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, commit date: ${COMMIT_DATE:-unknown}, filter date: ${FILTER_DATE:-none})..."
+
+          ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[] | {date: .created_at, body: .body}]' 2>/dev/null || echo "[]")
+          REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '[.[] | {date: (.submitted_at // .created_at), body: .body}]' 2>/dev/null || echo "[]")
 
           if [ -n "$FILTER_DATE" ]; then
-            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq ".[] | select(.created_at >= \"$FILTER_DATE\") | .body // empty")
-            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq ".[] | select(.submitted_at >= \"$FILTER_DATE\") | .body // empty")
+            LAST_COMMENT=$(jq -n --argjson c "$ISSUE_COMMENTS" --argjson r "$REVIEWS" --arg fdate "$FILTER_DATE" '
+              ($c + $r)
+              | map(select(.body != null and .body != "" and .date >= $fdate))
+              | sort_by(.date)
+              | last
+              | .body // ""
+            ')
           else
-            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[].body // empty')
-            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[].body // empty')
+            LAST_COMMENT=$(jq -n --argjson c "$ISSUE_COMMENTS" --argjson r "$REVIEWS" '
+              ($c + $r)
+              | map(select(.body != null and .body != ""))
+              | sort_by(.date)
+              | last
+              | .body // ""
+            ')
           fi
 
-          LAST_COMMENT=$(printf "%s\n%s" "$ISSUE_COMMENTS" "$REVIEWS" | grep -v "^$" | tail -n 1 | tr -d '\r' | xargs)
+          LAST_COMMENT_TRIMMED=$(echo "$LAST_COMMENT" | tr -d '\r' | xargs)
 
-          echo "Latest comment/review on PR #$PR_NUMBER since commit date: '${LAST_COMMENT:-<none>}'"
+          echo "Latest comment/review on PR #$PR_NUMBER since commit date: '${LAST_COMMENT_TRIMMED:-<none>}'"
 
-          if [ "$LAST_COMMENT" != "🥦" ]; then
-            echo "::error::The latest comment on PR #$PR_NUMBER since commit $HEAD_SHA must be 🥦 but was '${LAST_COMMENT:-<none>}'."
+          IS_BROCCOLI=0
+          if echo "$LAST_COMMENT_TRIMMED" | grep -qE "(🥦|:broccoli:)"; then
+            IS_BROCCOLI=1
+          fi
+
+          if [ "$IS_BROCCOLI" -eq 0 ]; then
+            echo "::error::The latest comment on PR #$PR_NUMBER since commit $HEAD_SHA must be 🥦 or :broccoli: but was '${LAST_COMMENT_TRIMMED:-<none>}'."
             if [ -n "$HEAD_SHA" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="failure" -f context="Check PR broccoli comment" -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
               gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="failure" -f context="Check PR broccoli emoji approval (🥦)" -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
@@ -82,7 +100,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Latest comment since commit $HEAD_SHA is 🥦 — check passed!"
+          echo "✅ Latest comment since commit $HEAD_SHA is 🥦 / :broccoli: — check passed!"
           if [ -n "$HEAD_SHA" ]; then
             gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="success" -f context="Check PR broccoli comment" -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
             gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="success" -f context="Check PR broccoli emoji approval (🥦)" -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
