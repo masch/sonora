@@ -44,32 +44,49 @@ jobs:
       - name: Database backup — pg_dump → gzip → GPG → R2
         run: make api-db-backup
 
-      - name: Audio backup — wrangler copy to backup bucket
+      - name: Audio backup — AWS S3 sync to R2
         shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
         run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "Error: R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY secret is missing or empty in environment 'production'."
+            exit 1
+          fi
+
           DATE_TAG=$(date +%Y-%m-%d)
+          ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
           TEMP_DIR=$(mktemp -d)
 
-          echo "Listing objects in audio-bucket..."
-          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
-            | jq -r '.result.objects[]?.key' \
-            | while read -r key; do
-                LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
+          echo "Downloading public audio from R2..."
+          aws s3 sync s3://sonora-production-public-audio "$TEMP_DIR/public" --endpoint-url "$ENDPOINT"
 
-                echo "Downloading $key..."
-                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
+          echo "Syncing public audio to latest and archive..."
+          aws s3 sync "$TEMP_DIR/public" s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync "$TEMP_DIR/public" "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
 
-                echo "Uploading to backup bucket (latest)..."
-                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
-                  --file "$LOCAL_PATH" --remote
+          echo "Downloading private audio from R2..."
+          aws s3 sync s3://sonora-production-private-audio "$TEMP_DIR/private" --endpoint-url "$ENDPOINT"
 
-                echo "Archiving to date-stamped path..."
-                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
-                  --file "$LOCAL_PATH" --remote
-              done
+          echo "Syncing private audio to latest and archive..."
+          aws s3 sync "$TEMP_DIR/private" s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT"
+          aws s3 sync "$TEMP_DIR/private" "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
 
           rm -rf "$TEMP_DIR"
+
+          # Post-check: Verify objects exist in latest backup bucket
+          PUBLIC_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/public/latest/ --endpoint-url "$ENDPOINT" | wc -l)
+          PRIVATE_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/private/latest/ --endpoint-url "$ENDPOINT" | wc -l)
+          TOTAL_COUNT=$((PUBLIC_COUNT + PRIVATE_COUNT))
+
+          if [ "$TOTAL_COUNT" -eq 0 ]; then
+            echo "Error: No audio files found in sonora-db-backups/audio/ after sync!"
+            exit 1
+          fi
+
+          echo "Audio backup sync complete ($PUBLIC_COUNT public, $PRIVATE_COUNT private files present)."
 
       - name: Cleanup local temp files
         shell: bash
