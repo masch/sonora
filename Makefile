@@ -677,8 +677,14 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	pg_dump --clean --if-exists --inserts --no-owner --no-acl "$$DB_URL" \
 	  | gzip \
 	  | gpg --symmetric --cipher-algo AES256 --batch --passphrase "$$KEY" \
-	  > "$$TEMP_FILE" && \
-	echo "Uploading to R2..." && \
+	  > "$$TEMP_FILE"; \
+	FILE_SIZE=$$(stat -c%s "$$TEMP_FILE" 2>/dev/null || stat -f%z "$$TEMP_FILE" 2>/dev/null || echo 0); \
+	if [ "$$FILE_SIZE" -lt 100 ]; then \
+	  echo "Error: Database backup file is empty or invalid ($$FILE_SIZE bytes). Aborting."; \
+	  rm -rf "$$TEMP_DIR"; \
+	  exit 1; \
+	fi; \
+	echo "Uploading to R2 ($$FILE_SIZE bytes)..." && \
 	bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" --remote && \
 	TOKEN="$(CLOUDFLARE_API_TOKEN)"; \
 	ACCOUNT="$(CLOUDFLARE_ACCOUNT_ID)"; \
@@ -687,7 +693,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	  CUTOFF=$$(date -d "90 days ago" +%Y-%m-%d); \
 	  curl -s -H "Authorization: Bearer $$TOKEN" \
 	    "https://api.cloudflare.com/client/v4/accounts/$$ACCOUNT/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
-	    | jq -r '.result.objects[]?.key' \
+	    | jq -r '(.result | if type=="array" then .[] else (.objects // [])[] end)?.key // empty' \
 	    | while read -r key; do \
 	        DATE_PART=$$(echo "$$key" | grep -oP '\d{4}-\d{2}-\d{2}'); \
 	        if [ -n "$$DATE_PART" ] && [[ "$$DATE_PART" < "$$CUTOFF" ]]; then \

@@ -51,25 +51,36 @@ jobs:
           TEMP_DIR=$(mktemp -d)
 
           echo "Listing objects in audio-bucket..."
-          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
-            | jq -r '.result.objects[]?.key' \
-            | while read -r key; do
-                LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
+          COUNT=0
+          while read -r key; do
+            [ -z "$key" ] && continue
+            COUNT=$((COUNT + 1))
+            LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
 
-                echo "Downloading $key..."
-                bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
+            echo "Downloading $key..."
+            bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
 
-                echo "Uploading to backup bucket (latest)..."
-                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
-                  --file "$LOCAL_PATH" --remote
+            echo "Uploading to backup bucket (latest)..."
+            bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
+              --file "$LOCAL_PATH" --remote
 
-                echo "Archiving to date-stamped path..."
-                bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
-                  --file "$LOCAL_PATH" --remote
-              done
+            echo "Archiving to date-stamped path..."
+            bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
+              --file "$LOCAL_PATH" --remote
+          done < <(
+            curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
+              | jq -r '(.result | if type=="array" then .[] else (.objects // [])[] end)?.key // empty'
+          )
 
           rm -rf "$TEMP_DIR"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "Error: No audio files were backed up! Expected at least 1 object in audio-bucket."
+            exit 1
+          fi
+
+          echo "Audio backup complete ($COUNT files processed)."
 
       - name: Cleanup local temp files
         shell: bash
