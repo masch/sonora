@@ -60,12 +60,12 @@ jobs:
           ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
           echo "Syncing sonora-production-public-audio..."
-          aws s3 sync s3://sonora-production-public-audio s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT" --no-copy-props
-          aws s3 sync s3://sonora-production-public-audio "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --no-copy-props
+          aws s3 sync s3://sonora-production-public-audio s3://sonora-db-backups/audio/public/latest --endpoint-url "$ENDPOINT" --copy-props none
+          aws s3 sync s3://sonora-production-public-audio "s3://sonora-db-backups/audio/public/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --copy-props none
 
           echo "Syncing sonora-production-private-audio..."
-          aws s3 sync s3://sonora-production-private-audio s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT" --no-copy-props
-          aws s3 sync s3://sonora-production-private-audio "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --no-copy-props
+          aws s3 sync s3://sonora-production-private-audio s3://sonora-db-backups/audio/private/latest --endpoint-url "$ENDPOINT" --copy-props none
+          aws s3 sync s3://sonora-production-private-audio "s3://sonora-db-backups/audio/private/archive/$DATE_TAG" --endpoint-url "$ENDPOINT" --copy-props none
 
           # Post-check: Verify objects exist in latest backup bucket
           PUBLIC_COUNT=$(aws s3 ls s3://sonora-db-backups/audio/public/latest/ --endpoint-url "$ENDPOINT" | wc -l)
