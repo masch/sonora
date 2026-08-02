@@ -17,10 +17,6 @@ permissions:
   checks: write
   actions: write
 
-concurrency:
-  group: broccoli-pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   check-broccoli:
     name: Check PR broccoli comment
