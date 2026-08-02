@@ -36,32 +36,43 @@ jobs:
             exit 0
           fi
 
-          echo "Fetching comments and reviews for PR #$PR_NUMBER..."
-          ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[].body // empty')
-          REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[].body // empty')
-
-          LAST_COMMENT=$(printf "%s\n%s" "$ISSUE_COMMENTS" "$REVIEWS" | grep -v "^$" | tail -n 1 | tr -d '\r' | xargs)
-
-          echo "Latest comment/review on PR #$PR_NUMBER: '$LAST_COMMENT'"
-
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           else
             HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
           fi
 
+          COMMIT_DATE=""
+          if [ -n "$HEAD_SHA" ]; then
+            COMMIT_DATE=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.committer.date // .commit.author.date' 2>/dev/null || true)
+          fi
+
+          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, date: ${COMMIT_DATE:-unknown})..."
+
+          if [ -n "$COMMIT_DATE" ]; then
+            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq ".[] | select(.created_at >= \"$COMMIT_DATE\") | .body // empty")
+            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq ".[] | select(.submitted_at >= \"$COMMIT_DATE\") | .body // empty")
+          else
+            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[].body // empty')
+            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[].body // empty')
+          fi
+
+          LAST_COMMENT=$(printf "%s\n%s" "$ISSUE_COMMENTS" "$REVIEWS" | grep -v "^$" | tail -n 1 | tr -d '\r' | xargs)
+
+          echo "Latest comment/review on PR #$PR_NUMBER since commit date: '${LAST_COMMENT:-<none>}'"
+
           if [ "$LAST_COMMENT" != "🥦" ]; then
-            echo "::error::The latest comment on PR #$PR_NUMBER must be 🥦 but was '${LAST_COMMENT:-<none>}'."
+            echo "::error::The latest comment on PR #$PR_NUMBER since commit $HEAD_SHA must be 🥦 but was '${LAST_COMMENT:-<none>}'."
             if [ -n "$HEAD_SHA" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state="failure" \
                 -f context="4-CI PR Check / Check PR broccoli comment" \
-                -f description="Latest comment is not 🥦" > /dev/null 2>&1 || true
+                -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
             fi
             exit 1
           fi
 
-          echo "✅ Latest comment is 🥦 — check passed!"
+          echo "✅ Latest comment since commit $HEAD_SHA is 🥦 — check passed!"
           if [ -n "$HEAD_SHA" ]; then
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state="success" \
