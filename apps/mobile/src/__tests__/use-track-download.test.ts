@@ -97,7 +97,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
           status: 'error',
           progress: 0,
           localUri: null,
-          errorMsg: 'Network failed',
+          errorMsg: { key: 'errors.downloadFailed' },
           title: 'Track 1',
         },
       },
@@ -108,7 +108,7 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     );
 
     expect(result.current.status).toBe('error');
-    expect(result.current.errorMsg).toBe('Network failed');
+    expect(result.current.errorMsg).toBe('errors.downloadFailed');
   });
 
   it('startDownload calls download store enqueue', async () => {

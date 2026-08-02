@@ -75,7 +75,9 @@ describe('DownloadManagerStore', () => {
     useDownloadManagerStore.getState().enqueue('track-3', 'url-3', 'Track 3');
     useDownloadManagerStore.getState().enqueue('track-4', 'url-4', 'Track 4');
 
-    useDownloadManagerStore.getState()._failDownload('track-1', 'Network error');
+    useDownloadManagerStore.getState()._failDownload('track-1', {
+      key: 'errors.downloadFailed',
+    });
 
     const state = useDownloadManagerStore.getState();
     expect(state.downloads['track-1'].status).toBe('error');

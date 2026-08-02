@@ -55,12 +55,14 @@ export interface BaseExperience {
 
 export interface TrackExperience extends BaseExperience {
   format: 'track';
-  audioUrl: string;
+  /** Signed audio link — omitted by the API until the user has access. */
+  audioUrl: string | null;
 }
 
 export interface TripExperience extends BaseExperience {
   format: 'trip';
-  audioUrl: string;
+  /** Signed audio link — omitted by the API until the user has access. */
+  audioUrl: string | null;
   waypoints: Waypoint[];
 }
 

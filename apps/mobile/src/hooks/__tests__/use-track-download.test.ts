@@ -40,7 +40,7 @@ let mockStore: {
         status: string;
         progress: number;
         localUri: string | null;
-        errorMsg: string | null;
+        errorMsg: { key: string; params?: Record<string, string | number> } | null;
         title: string;
       }
     | undefined
@@ -125,7 +125,7 @@ describe('useTrackDownload hook (refactored — store-driven)', () => {
       status: 'error',
       progress: 0,
       localUri: null,
-      errorMsg: 'errors.insufficientSpace',
+      errorMsg: { key: 'errors.insufficientSpace' },
       title: trackTitle,
     };
 

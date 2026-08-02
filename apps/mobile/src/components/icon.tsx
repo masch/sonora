@@ -2,21 +2,9 @@ import React from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import type { SFSymbol, AndroidSymbol, SymbolWeight } from 'expo-symbols';
+import { ICON_MAP, type GenericIconName } from './icon-utils';
 
-// Unified project icon definitions mapping name key to platform icons
-export const ICON_MAP = {
-  play: { ios: 'play.fill', android: 'play_arrow', web: 'play_arrow' },
-  pause: { ios: 'pause.fill', android: 'pause', web: 'pause' },
-  download: { ios: 'arrow.down.circle.fill', android: 'downloading', web: 'downloading' },
-  reset: { ios: 'arrow.counterclockwise', android: 'replay', web: 'replay' },
-  rewind: { ios: 'gobackward.10', android: 'replay_10', web: 'replay_10' },
-  map: { ios: 'map', android: 'map', web: 'map' },
-  music: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
-  chat: { ios: 'bubble.left', android: 'forum', web: 'forum' },
-  chevronRight: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
-} as const;
-
-export type GenericIconName = keyof typeof ICON_MAP;
+export type { GenericIconName } from './icon-utils';
 
 interface IconProps {
   name?: GenericIconName;

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import app from '../../index';
 
 describe('CORS behavior', () => {
@@ -111,6 +111,7 @@ describe('CORS behavior', () => {
         'Pragma',
         'X-Device-Id',
         'X-Device-Platform',
+        'X-App-Version',
         'X-Signature',
         'X-Timestamp',
         'X-Nonce',

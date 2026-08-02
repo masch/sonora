@@ -32,7 +32,7 @@ export interface LocalTrackMetadata {
   description: string;
   durationSeconds: number;
   startCoordinates: { latitude: number; longitude: number };
-  audioRemoteUrl: string;
+  audioRemoteUrl: string | null;
   feedbackTrigger?: FeedbackTriggerMode;
   category: string;
   subLabel: string;
