@@ -4,13 +4,112 @@ on:
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+  checks: write
 
 concurrency:
   group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  check-broccoli:
+    name: Check PR broccoli emoji approval (🥦)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'pull_request_review' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify latest PR comment is 🥦
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Not a PR event. Skipping."
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          fi
+
+          FILTER_DATE=""
+          if [ -n "$HEAD_SHA" ]; then
+            COMMIT_DATE=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.committer.date // .commit.author.date' 2>/dev/null || true)
+            if [ -n "$COMMIT_DATE" ]; then
+              COMMIT_SEC=$(date -d "$COMMIT_DATE" +%s 2>/dev/null || echo 0)
+              if [ "$COMMIT_SEC" -gt 0 ]; then
+                BUFFER_SEC=$((COMMIT_SEC - 60))
+                FILTER_DATE=$(date -u -d "@$BUFFER_SEC" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$COMMIT_DATE")
+              else
+                FILTER_DATE="$COMMIT_DATE"
+              fi
+            fi
+          fi
+
+          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, commit date: ${COMMIT_DATE:-unknown}, filter date: ${FILTER_DATE:-none})..."
+
+          ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[] | {date: .created_at, body: .body}]' 2>/dev/null || echo "[]")
+          REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '[.[] | {date: (.submitted_at // .created_at), body: .body}]' 2>/dev/null || echo "[]")
+
+          if [ -n "$FILTER_DATE" ]; then
+            LAST_COMMENT=$(jq -n --argjson c "$ISSUE_COMMENTS" --argjson r "$REVIEWS" --arg fdate "$FILTER_DATE" '
+              ($c + $r)
+              | map(select(.body != null and .body != "" and .date >= $fdate))
+              | sort_by(.date)
+              | last
+              | .body // ""
+            ')
+          else
+            LAST_COMMENT=$(jq -n --argjson c "$ISSUE_COMMENTS" --argjson r "$REVIEWS" '
+              ($c + $r)
+              | map(select(.body != null and .body != ""))
+              | sort_by(.date)
+              | last
+              | .body // ""
+            ')
+          fi
+
+          LAST_COMMENT_TRIMMED=$(echo "$LAST_COMMENT" | tr -d '\r' | xargs)
+
+          echo "Latest comment/review on PR #$PR_NUMBER since commit date: '${LAST_COMMENT_TRIMMED:-<none>}'"
+
+          IS_BROCCOLI=0
+          if echo "$LAST_COMMENT_TRIMMED" | grep -qE "(🥦|:broccoli:)"; then
+            IS_BROCCOLI=1
+          fi
+
+          if [ "$IS_BROCCOLI" -eq 0 ]; then
+            echo "::error::The latest comment on PR #$PR_NUMBER since commit $HEAD_SHA must be 🥦 or :broccoli: but was '${LAST_COMMENT_TRIMMED:-<none>}'."
+            if [ -n "$HEAD_SHA" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="failure" -f context="Check PR broccoli comment" -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
+              gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="failure" -f context="Check PR broccoli emoji approval (🥦)" -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
+              gh api "repos/$REPO/check-runs" -f name="Check PR broccoli comment" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="failure" -f output='{"title":"Broccoli Approval Required","summary":"New commit requires a new 🥦 comment"}' > /dev/null 2>&1 || true
+              gh api "repos/$REPO/check-runs" -f name="Check PR broccoli emoji approval (🥦)" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="failure" -f output='{"title":"Broccoli Approval Required","summary":"New commit requires a new 🥦 comment"}' > /dev/null 2>&1 || true
+            fi
+            exit 1
+          fi
+
+          echo "✅ Latest comment since commit $HEAD_SHA is 🥦 / :broccoli: — check passed!"
+          if [ -n "$HEAD_SHA" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="success" -f context="Check PR broccoli comment" -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
+            gh api "repos/$REPO/statuses/$HEAD_SHA" -f state="success" -f context="Check PR broccoli emoji approval (🥦)" -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
+            gh api "repos/$REPO/check-runs" -f name="Check PR broccoli comment" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="success" -f output='{"title":"Broccoli Approval Passed","summary":"Latest comment since commit is 🥦"}' > /dev/null 2>&1 || true
+            gh api "repos/$REPO/check-runs" -f name="Check PR broccoli emoji approval (🥦)" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="success" -f output='{"title":"Broccoli Approval Passed","summary":"Latest comment since commit is 🥦"}' > /dev/null 2>&1 || true
+          fi
+
   changes:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
@@ -42,6 +141,7 @@ jobs:
               - 'apps/mobile/babel.config.js'
 
   format:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -49,6 +149,7 @@ jobs:
       - run: make format-check
 
   openspec-archived:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -57,7 +158,7 @@ jobs:
 
   validate-mobile:
     needs: changes
-    if: ${{ needs.changes.outputs.mobile == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -69,8 +170,10 @@ jobs:
       - run: bun --filter @sonora/mobile lint
       - run: bun --filter @sonora/mobile typecheck
       - name: Fetch base branch for diff scan
+        if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
       - name: React Doctor (diff scan — required)
+        if: github.event_name == 'pull_request'
         run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
       - name: React Doctor (full scan — required)
         run: make doctor
@@ -80,7 +183,7 @@ jobs:
 
   validate-api:
     needs: changes
-    if: ${{ needs.changes.outputs.api == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -91,7 +194,7 @@ jobs:
 
   validate-admin:
     needs: changes
-    if: ${{ needs.changes.outputs.admin == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.admin == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
