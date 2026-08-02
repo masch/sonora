@@ -44,43 +44,30 @@ jobs:
       - name: Database backup — pg_dump → gzip → GPG → R2
         run: make api-db-backup
 
-      - name: Audio backup — wrangler copy to backup bucket
+      - name: Audio backup — AWS S3 sync to R2
         shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
         run: |
           DATE_TAG=$(date +%Y-%m-%d)
-          TEMP_DIR=$(mktemp -d)
+          ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-          echo "Listing objects in audio-bucket..."
-          COUNT=0
-          while read -r key; do
-            [ -z "$key" ] && continue
-            COUNT=$((COUNT + 1))
-            LOCAL_PATH="${TEMP_DIR}/$(basename "$key")"
+          echo "Syncing audio-bucket to backup bucket (latest)..."
+          aws s3 sync s3://audio-bucket s3://sonora-db-backups/audio/latest --endpoint-url "$ENDPOINT"
 
-            echo "Downloading $key..."
-            bun --cwd apps/api wrangler r2 object get "audio-bucket/${key}" --file "$LOCAL_PATH" --remote
+          echo "Syncing audio-bucket to archive path ($DATE_TAG)..."
+          aws s3 sync s3://audio-bucket "s3://sonora-db-backups/audio/archive/$DATE_TAG" --endpoint-url "$ENDPOINT"
 
-            echo "Uploading to backup bucket (latest)..."
-            bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/latest/${key}" \
-              --file "$LOCAL_PATH" --remote
-
-            echo "Archiving to date-stamped path..."
-            bun --cwd apps/api wrangler r2 object put "sonora-db-backups/audio/archive/${DATE_TAG}/${key}" \
-              --file "$LOCAL_PATH" --remote
-          done < <(
-            curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/audio-bucket/objects?delimiter=/" \
-              | jq -r '(.result | if type=="array" then .[] else (.objects // [])[] end)?.key // empty'
-          )
-
-          rm -rf "$TEMP_DIR"
-
+          # Post-check: Verify objects exist in latest backup bucket
+          COUNT=$(aws s3 ls s3://sonora-db-backups/audio/latest/ --endpoint-url "$ENDPOINT" | wc -l)
           if [ "$COUNT" -eq 0 ]; then
-            echo "Error: No audio files were backed up! Expected at least 1 object in audio-bucket."
+            echo "Error: No audio files found in sonora-db-backups/audio/latest/ after sync!"
             exit 1
           fi
 
-          echo "Audio backup complete ($COUNT files processed)."
+          echo "Audio backup sync complete ($COUNT files present in latest backup)."
 
       - name: Cleanup local temp files
         shell: bash
