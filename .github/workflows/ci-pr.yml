@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
 
 permissions:
   contents: read
@@ -11,10 +13,38 @@ permissions:
   issues: write
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number || github.ref }}
+  group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check-broccoli:
+    name: Check PR broccoli emoji approval (🥦)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify latest PR comment is 🥦
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Not a PR event. Skipping."
+            exit 0
+          fi
+
+          echo "Fetching comments for PR #$PR_NUMBER..."
+          LAST_COMMENT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[-1].body // empty' | tr -d '\r' | xargs)
+
+          echo "Latest comment on PR #$PR_NUMBER: '$LAST_COMMENT'"
+
+          if [ "$LAST_COMMENT" != "🥦" ]; then
+            echo "::error::The latest comment on PR #$PR_NUMBER must be 🥦 but was '${LAST_COMMENT:-<none>}'."
+            exit 1
+          fi
+
+          echo "✅ Latest comment is 🥦 — check passed!"
+
   changes:
     runs-on: ubuntu-latest
     outputs:
