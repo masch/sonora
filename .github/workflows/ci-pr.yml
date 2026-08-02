@@ -13,6 +13,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  statuses: write
 
 concurrency:
   group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
@@ -43,12 +44,30 @@ jobs:
 
           echo "Latest comment/review on PR #$PR_NUMBER: '$LAST_COMMENT'"
 
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          fi
+
           if [ "$LAST_COMMENT" != "🥦" ]; then
             echo "::error::The latest comment on PR #$PR_NUMBER must be 🥦 but was '${LAST_COMMENT:-<none>}'."
+            if [ -n "$HEAD_SHA" ]; then
+              gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                -f state="failure" \
+                -f context="4-CI PR Check / Check PR broccoli comment" \
+                -f description="Latest comment is not 🥦" > /dev/null 2>&1 || true
+            fi
             exit 1
           fi
 
           echo "✅ Latest comment is 🥦 — check passed!"
+          if [ -n "$HEAD_SHA" ]; then
+            gh api "repos/$REPO/statuses/$HEAD_SHA" \
+              -f state="success" \
+              -f context="4-CI PR Check / Check PR broccoli comment" \
+              -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
+          fi
 
   changes:
     runs-on: ubuntu-latest
