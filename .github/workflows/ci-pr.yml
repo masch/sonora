@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   check-broccoli:
-    name: Check PR broccoli emoji approval (🥦)
+    name: Check PR broccoli comment
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'pull_request_review' }}
     runs-on: ubuntu-latest
     steps:
@@ -67,10 +67,10 @@ jobs:
             if [ -n "$HEAD_SHA" ]; then
               gh api "repos/$REPO/statuses/$HEAD_SHA" \
                 -f state="failure" \
-                -f context="Check PR broccoli emoji approval (🥦)" \
+                -f context="Check PR broccoli comment" \
                 -f description="New commit requires a new 🥦 comment" > /dev/null 2>&1 || true
               gh api "repos/$REPO/check-runs" \
-                -f name="Check PR broccoli emoji approval (🥦)" \
+                -f name="Check PR broccoli comment" \
                 -f head_sha="$HEAD_SHA" \
                 -f status="completed" \
                 -f conclusion="failure" \
@@ -83,10 +83,10 @@ jobs:
           if [ -n "$HEAD_SHA" ]; then
             gh api "repos/$REPO/statuses/$HEAD_SHA" \
               -f state="success" \
-              -f context="Check PR broccoli emoji approval (🥦)" \
+              -f context="Check PR broccoli comment" \
               -f description="Latest comment is 🥦" > /dev/null 2>&1 || true
             gh api "repos/$REPO/check-runs" \
-              -f name="Check PR broccoli emoji approval (🥦)" \
+              -f name="Check PR broccoli comment" \
               -f head_sha="$HEAD_SHA" \
               -f status="completed" \
               -f conclusion="success" \
