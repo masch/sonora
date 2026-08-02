@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   check-broccoli:
-    name: Check PR broccoli comment
+    name: Check PR broccoli emoji approval (🥦)
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'pull_request_review' }}
     runs-on: ubuntu-latest
     steps:
