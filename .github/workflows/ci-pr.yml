@@ -109,7 +109,6 @@ jobs:
           fi
 
   changes:
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
@@ -141,7 +140,6 @@ jobs:
               - 'apps/mobile/babel.config.js'
 
   format:
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -149,7 +147,6 @@ jobs:
       - run: make format-check
 
   openspec-archived:
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -158,7 +155,7 @@ jobs:
 
   validate-mobile:
     needs: changes
-    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.mobile == 'true' }}
+    if: ${{ needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -170,11 +167,9 @@ jobs:
       - run: bun --filter @sonora/mobile lint
       - run: bun --filter @sonora/mobile typecheck
       - name: Fetch base branch for diff scan
-        if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
+        run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref || 'main' }}
       - name: React Doctor (diff scan — required)
-        if: github.event_name == 'pull_request'
-        run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
+        run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref || 'main' }}
       - name: React Doctor (full scan — required)
         run: make doctor
       - name: Verify Web Bundle (catch CJS interop bugs)
@@ -183,7 +178,7 @@ jobs:
 
   validate-api:
     needs: changes
-    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.api == 'true' }}
+    if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -194,7 +189,7 @@ jobs:
 
   validate-admin:
     needs: changes
-    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.admin == 'true' }}
+    if: ${{ needs.changes.outputs.admin == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
