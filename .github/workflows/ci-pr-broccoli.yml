@@ -101,9 +101,9 @@ jobs:
 
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "Triggered by comment/review. Re-running failed pull_request workflow run for PR #$PR_NUMBER..."
-            PR_RUN_ID=$(gh api "repos/$REPO/actions/workflows/ci-pr-broccoli.yml/runs?event=pull_request" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)
+            PR_RUN_ID=$(gh api "repos/$REPO/actions/workflows/ci-pr-broccoli.yml/runs?head_sha=$HEAD_SHA&event=pull_request" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)
             if [ -n "$PR_RUN_ID" ]; then
               echo "Re-running pull_request run #$PR_RUN_ID..."
-              gh run rerun "$PR_RUN_ID" --failed > /dev/null 2>&1 || true
+              gh api -X POST "repos/$REPO/actions/runs/$PR_RUN_ID/rerun" > /dev/null 2>&1 || gh run rerun "$PR_RUN_ID" > /dev/null 2>&1 || true
             fi
           fi
