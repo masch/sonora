@@ -195,3 +195,12 @@ Deferred parent-owned lifecycle steps (P1 review, P2 PR delivery) are the only r
 - AC-1..10: all PASS.
 
 **Final gate**: `make validate` EXIT 0 with `GGA_TIMEOUT=900`. Jest totals: mobile 50/50 targeted suites, API cors 15/15, full suite green via validate. Runtime ledger: attempt settled `complete`.
+
+---
+
+## Final delivery update (2026-08-02)
+
+- Commit `24d8c22` (rebased onto `origin/main` — original base `chore/react-doctor-cleanup-purchase-refresh` was squash-merged into main as PR #365 and deleted; content verified identical, diff `2bdb72e..24d8c22` empty, typecheck EXIT 0, 50/50 tests green on new base).
+- **PR #366** opened: `feat(mobile): include app version in analytics, logs, and API requests` → base `main`, MERGEABLE, head SHA `24d8c22`.
+- Delivery `disabled/unmanaged` (RDD off, global) — no receipt fabricated; ordinary repository policy.
+- Runtime ledger: header attempt settled `complete`.
