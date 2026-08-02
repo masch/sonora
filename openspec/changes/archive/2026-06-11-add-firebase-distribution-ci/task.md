@@ -1,3 +1,0 @@
-- [x] Update deploy.yml to add firebase-distribute-all step
-- [x] Verify workflow configuration syntax
-- [x] Review implementation and clean up

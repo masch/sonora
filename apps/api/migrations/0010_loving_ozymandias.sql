@@ -1,1 +1,0 @@
-ALTER TABLE "sonora"."purchases" ADD COLUMN "device_id" text;
