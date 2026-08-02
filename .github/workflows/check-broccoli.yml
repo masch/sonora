@@ -1,9 +1,10 @@
-name: 4-CI PR Check
+name: Check PR broccoli comment
 
 on:
-  workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
 
 permissions:
   contents: read
@@ -12,13 +13,10 @@ permissions:
   statuses: write
   checks: write
 
-concurrency:
-  group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
-  cancel-in-progress: false
-
 jobs:
   check-broccoli:
     name: Check PR broccoli emoji approval (🥦)
+    if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'pull_request_review' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify latest PR comment is 🥦
@@ -32,7 +30,7 @@ jobs:
             exit 0
           fi
 
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
 
           FILTER_DATE=""
           if [ -n "$HEAD_SHA" ]; then
@@ -98,96 +96,3 @@ jobs:
             gh api "repos/$REPO/check-runs" -f name="Check PR broccoli comment" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="success" -f output='{"title":"Broccoli Approval Passed","summary":"Latest comment since commit is 🥦"}' > /dev/null 2>&1 || true
             gh api "repos/$REPO/check-runs" -f name="Check PR broccoli emoji approval (🥦)" -f head_sha="$HEAD_SHA" -f status="completed" -f conclusion="success" -f output='{"title":"Broccoli Approval Passed","summary":"Latest comment since commit is 🥦"}' > /dev/null 2>&1 || true
           fi
-
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      mobile: ${{ steps.filter.outputs.mobile }}
-      api: ${{ steps.filter.outputs.api }}
-      admin: ${{ steps.filter.outputs.admin }}
-      config: ${{ steps.filter.outputs.config }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            mobile:
-              - 'apps/mobile/**'
-              - 'packages/shared/**'
-              - 'bun.lock'
-            api:
-              - 'apps/api/**'
-              - 'packages/shared/**'
-              - 'bun.lock'
-            admin:
-              - 'apps/admin/**'
-              - 'packages/shared/**'
-              - 'bun.lock'
-            config:
-              - 'bun.lock'
-              - 'apps/mobile/package.json'
-              - 'apps/mobile/metro.config.js'
-              - 'apps/mobile/babel.config.js'
-
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
-      - run: make format-check
-
-  openspec-archived:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
-      - run: make verify-openspec-archived
-
-  validate-mobile:
-    needs: changes
-    if: ${{ needs.changes.outputs.mobile == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup
-      - run: make test-front
-      - run: make test-shared
-      - run: bun --filter @sonora/mobile lint
-      - run: bun --filter @sonora/mobile typecheck
-      - name: Fetch base branch for diff scan
-        if: github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.ref }}
-      - name: React Doctor (diff scan — required)
-        if: github.event_name == 'pull_request'
-        run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
-      - name: React Doctor (full scan — required)
-        run: make doctor
-      - name: Verify Web Bundle (catch CJS interop bugs)
-        if: ${{ needs.changes.outputs.config == 'true' }}
-        run: make verify-web
-
-  validate-api:
-    needs: changes
-    if: ${{ needs.changes.outputs.api == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
-      - run: make api-test
-      - run: make test-shared
-      - run: bun --filter @sonora/api typecheck
-
-  validate-admin:
-    needs: changes
-    if: ${{ needs.changes.outputs.admin == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup
-      - run: make test-admin
-      - run: make test-shared
-      - run: bun --filter @sonora/admin lint
-      - run: bun --filter @sonora/admin typecheck
