@@ -693,7 +693,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	  CUTOFF=$$(date -d "90 days ago" +%Y-%m-%d); \
 	  curl -s -H "Authorization: Bearer $$TOKEN" \
 	    "https://api.cloudflare.com/client/v4/accounts/$$ACCOUNT/r2/buckets/sonora-db-backups/objects?prefix=db/&delimiter=/" \
-	    | jq -r '(.result | if type=="array" then .[] else (.objects // [])[] end)?.key // empty' \
+	    | jq -r '.. .key? // empty' \
 	    | while read -r key; do \
 	        DATE_PART=$$(echo "$$key" | grep -oP '\d{4}-\d{2}-\d{2}'); \
 	        if [ -n "$$DATE_PART" ] && [[ "$$DATE_PART" < "$$CUTOFF" ]]; then \
