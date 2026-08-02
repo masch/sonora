@@ -696,7 +696,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	    | jq -r '.. .key? // empty' \
 	    | while read -r key; do \
 	        DATE_PART=$$(echo "$$key" | grep -oP '\d{4}-\d{2}-\d{2}'); \
-	        if [ -n "$$DATE_PART" ] && [[ "$$DATE_PART" < "$$CUTOFF" ]]; then \
+	        if [ -n "$$DATE_PART" ] && [ "$$DATE_PART" \< "$$CUTOFF" ]; then \
 	          echo "Deleting old backup: $$key"; \
 	          bun --cwd apps/api wrangler r2 object delete "sonora-db-backups/$$key" --remote; \
 	        fi \

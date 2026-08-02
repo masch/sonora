@@ -51,6 +51,11 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
         run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "Error: R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY secret is missing or empty in environment 'production'."
+            exit 1
+          fi
+
           DATE_TAG=$(date +%Y-%m-%d)
           ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
