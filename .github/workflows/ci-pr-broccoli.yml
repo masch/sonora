@@ -40,16 +40,25 @@ jobs:
             HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
           fi
 
-          COMMIT_DATE=""
+          FILTER_DATE=""
           if [ -n "$HEAD_SHA" ]; then
             COMMIT_DATE=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.committer.date // .commit.author.date' 2>/dev/null || true)
+            if [ -n "$COMMIT_DATE" ]; then
+              COMMIT_SEC=$(date -d "$COMMIT_DATE" +%s 2>/dev/null || echo 0)
+              if [ "$COMMIT_SEC" -gt 0 ]; then
+                BUFFER_SEC=$((COMMIT_SEC - 60))
+                FILTER_DATE=$(date -u -d "@$BUFFER_SEC" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "$COMMIT_DATE")
+              else
+                FILTER_DATE="$COMMIT_DATE"
+              fi
+            fi
           fi
 
-          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, date: ${COMMIT_DATE:-unknown})..."
+          echo "Fetching comments and reviews for PR #$PR_NUMBER (head: ${HEAD_SHA:-unknown}, commit date: ${COMMIT_DATE:-unknown}, filter date: ${FILTER_DATE:-unknown})..."
 
-          if [ -n "$COMMIT_DATE" ]; then
-            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq ".[] | select(.created_at >= \"$COMMIT_DATE\") | .body // empty")
-            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq ".[] | select(.submitted_at >= \"$COMMIT_DATE\") | .body // empty")
+          if [ -n "$FILTER_DATE" ]; then
+            ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq ".[] | select(.created_at >= \"$FILTER_DATE\") | .body // empty")
+            REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq ".[] | select(.submitted_at >= \"$FILTER_DATE\") | .body // empty")
           else
             ISSUE_COMMENTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[].body // empty')
             REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[].body // empty')
