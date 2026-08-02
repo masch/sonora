@@ -109,6 +109,7 @@ jobs:
           fi
 
   changes:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
@@ -140,6 +141,7 @@ jobs:
               - 'apps/mobile/babel.config.js'
 
   format:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -147,6 +149,7 @@ jobs:
       - run: make format-check
 
   openspec-archived:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -155,7 +158,7 @@ jobs:
 
   validate-mobile:
     needs: changes
-    if: ${{ needs.changes.outputs.mobile == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -180,7 +183,7 @@ jobs:
 
   validate-api:
     needs: changes
-    if: ${{ needs.changes.outputs.api == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -191,7 +194,7 @@ jobs:
 
   validate-admin:
     needs: changes
-    if: ${{ needs.changes.outputs.admin == 'true' }}
+    if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.admin == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
