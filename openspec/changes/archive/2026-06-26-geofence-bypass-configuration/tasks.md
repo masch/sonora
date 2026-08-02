@@ -1,5 +1,0 @@
-- [x] Add database schema field and seeding
-- [x] Align shared types
-- [x] Add translations
-- [x] Implement UI verification warning
-- [x] Verification

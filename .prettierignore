@@ -1,8 +1,0 @@
-**/node_modules
-.expo
-dist
-web-build
-coverage
-bun.lock
-.agents
-.claude

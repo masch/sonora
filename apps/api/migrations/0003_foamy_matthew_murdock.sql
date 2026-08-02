@@ -1,1 +1,0 @@
-ALTER TYPE "sonora"."experience_format" ADD VALUE 'general-feedback';

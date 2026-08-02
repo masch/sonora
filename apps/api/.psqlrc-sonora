@@ -1,7 +1,0 @@
-\x auto
-\pset pager off
-\pset null 'ø'
-\pset border 2
-\set COMP_KEYWORD_CASE upper
-\set HISTFILE /dev/null
-\set PROMPT1 '%[%033[1m%]%n@%/%[%033[0m%]%R%# '

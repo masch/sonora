@@ -1,3 +1,0 @@
-- [x] Create GitHub Actions deploy workflow file
-- [x] Verify workflow configuration syntax
-- [x] Review implementation and clean up

@@ -1,7 +1,0 @@
-- [x] Update card styles in `experiences-view.tsx`
-  - [x] Add background colors using home card constants
-  - [x] Apply layout/padding adjustments for cards
-  - [x] Adjust text colors for high readability
-- [x] Verify execution with tests
-  - [x] Run experiences unit tests
-- [x] Create walkthrough documentation
