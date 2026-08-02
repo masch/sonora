@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: pr-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check-broccoli:
