@@ -1,0 +1,21 @@
+# SDD Change State: ci-broccoli-approval
+
+change: ci-broccoli-approval
+project: sonora
+artifact_store: hybrid
+created: 2026-08-02
+
+phases:
+  explore: completed
+  propose: completed
+  spec: completed
+  design: completed
+  tasks: completed
+  apply: completed
+  verify: completed
+  archive: completed
+
+dependencies:
+  apply_ready: true
+  verify_ready: true
+  archive_ready: true
