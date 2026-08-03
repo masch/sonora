@@ -17,9 +17,11 @@ head SHA:
 
 - On `synchronize` (new push) → `pending` (`Awaiting 🥦 broccoli comment...`),
   invalidating the previous approval.
-- On `issue_comment` / `pull_request_review` → the LAST comment authored after
-  the current head SHA decides: contains 🥦 or `:broccoli:` → `success`;
-  otherwise → `failure`.
+- On `issue_comment` / `pull_request_review` (created/submitted **and edited**) →
+  the LAST comment authored after the current head SHA decides: contains 🥦 or
+  `:broccoli:` → `success`; otherwise → `failure`.
+- Editing an approval comment/review re-evaluates the gate, so removing the
+  🥦 from the last post-head item flips the status to `failure`.
 - Older 🥦 comments are ignored; only the last post-head comment counts.
 
 The workflow never writes the 🥦 itself. Only a human comment can grant
