@@ -20,7 +20,7 @@
     "@neondatabase/serverless": "1.1.0",
     "@sonora/shared": "workspace:*",
     "drizzle-orm": "0.45.2",
-    "hono": "4.12.31",
+    "hono": "4.12.32",
     "mercadopago": "3.2.0",
     "pg": "8.22.0"
   },
