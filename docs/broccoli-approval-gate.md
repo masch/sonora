@@ -107,3 +107,4 @@ Negative: assert no Check Run named `Check PR broccoli comment` ever appears
   only. It must never write the 🥦 into any comment; only a human-authored 🥦
   comment can produce `success`.
 - 2026-08-03: E2E verification trace (pending -> broccoli -> success -> push -> pending -> non-broccoli -> failure)
+- E2E: post-approval push trace
