@@ -52,8 +52,8 @@ jobs:
 
             // Single source of truth for number + base + head regardless of event type.
             const prNumber =
-              (github.event.pull_request && github.event.pull_request.number) ||
-              (github.event.issue && github.event.issue.number);
+              (context.payload.pull_request && context.payload.pull_request.number) ||
+              (context.payload.issue && context.payload.issue.number);
             if (!prNumber) return;
 
             const prRes = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
@@ -81,7 +81,7 @@ jobs:
             }
 
             const prAction =
-              context.eventName === 'pull_request' ? github.event.action : null;
+              context.eventName === 'pull_request' ? context.payload.action : null;
             const needsPendingReset =
               prAction === 'synchronize' || prAction === 'opened' || prAction === 'reopened';
             if (needsPendingReset) {
@@ -90,7 +90,7 @@ jobs:
             }
 
             // Evaluation events: issue_comment created, or review submitted/commented.
-            const reviewState = github.event.review && github.event.review.state;
+            const reviewState = context.payload.review && context.payload.review.state;
             const isCommentEval =
               context.eventName === 'issue_comment' ||
               (context.eventName === 'pull_request_review' &&
