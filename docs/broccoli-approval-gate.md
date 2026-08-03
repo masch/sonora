@@ -106,3 +106,4 @@ Negative: assert no Check Run named `Check PR broccoli comment` ever appears
 - **Never self-approve:** the workflow reads comments and updates the status
   only. It must never write the 🥦 into any comment; only a human-authored 🥦
   comment can produce `success`.
+- 2026-08-03: E2E verification trace (pending -> broccoli -> success -> push -> pending -> non-broccoli -> failure)
