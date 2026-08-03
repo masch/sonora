@@ -107,8 +107,22 @@ jobs:
               issue_number: prNumber,
               per_page: 100,
             });
+            // Reviews also carry the human signal; fold them into the timeline.
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100,
+            });
+            // Normalize both streams to { created_at, body } ordered by time.
+            const timeline = [
+              ...comments.map((c) => ({ created_at: c.created_at, body: c.body || '' })),
+              ...reviews.map((r) => ({ created_at: r.submitted_at, body: r.body || '' })),
+            ]
+              .filter((c) => c.body.trim().length > 0)
+              .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-            const postHead = comments.filter((c) => new Date(c.created_at).getTime() > headTime);
+            const postHead = timeline.filter((c) => new Date(c.created_at).getTime() > headTime);
             if (postHead.length === 0) {
               await writeStatus('failure', 'No comment authored after the latest head SHA.');
               return;
