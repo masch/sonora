@@ -85,7 +85,7 @@ jobs:
             const needsPendingReset =
               prAction === 'synchronize' || prAction === 'opened' || prAction === 'reopened';
             if (needsPendingReset) {
-              await writeStatus('pending', 'Awaiting \u{1F966} broccoli comment...');
+              await writeStatus('pending', 'Awaiting broccoli comment...');
               return;
             }
 
@@ -115,10 +115,11 @@ jobs:
             }
 
             const lastBody = postHead[postHead.length - 1].body || '';
-            const broccoli = /\u{1F966}/u.test(lastBody) || /:broccoli:/u.test(lastBody);
+            const broccoli =
+              /\u{1F966}/u.test(lastBody) || /:broccoli:/u.test(lastBody);
             await writeStatus(
               broccoli ? 'success' : 'failure',
               broccoli
-                ? 'Approved: last comment carries the \u{1F966} broccoli signal.'
-                : 'Last comment has no \u{1F966} broccoli signal on the latest head.',
+                ? 'Approved: last comment carries the broccoli signal.'
+                : 'Last comment has no broccoli signal on the latest head.',
             );
