@@ -7,6 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 invocation_logs = true
 
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+
 # KV binding for feedback idempotency (fast-path only — Postgres is authoritative)
 # Create the namespace with: npx wrangler kv:namespace create "FEEDBACK_STORE"
 # Then copy the id below:
