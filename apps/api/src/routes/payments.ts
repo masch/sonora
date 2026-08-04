@@ -13,6 +13,7 @@ import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
+import { sanitizeUrl } from '../lib/log-redaction';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
 import { platformGuard } from '../middleware/platform-guard';
@@ -124,7 +125,9 @@ paymentsRouter.post(
     try {
       baseUrl = new URL(c.req.url).origin;
     } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', { error });
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', {
+        error: error instanceof Error ? error.name : 'unknown',
+      });
       baseUrl = '';
     }
 
@@ -132,7 +135,7 @@ paymentsRouter.post(
     logger.info('[PAYMENTS] Creating payment checkout', {
       purchaseId: purchase.id,
       experienceId: experience.id,
-      receivedRedirectUrl: redirectUrl,
+      receivedRedirectUrl: redirectUrl ? sanitizeUrl(redirectUrl) : undefined,
     });
 
     const finalBackUrls = {
@@ -250,9 +253,9 @@ paymentsRouter.post(
     logger.info('[WEBHOOK] Updating purchase status & preserving metadata', {
       purchaseId: result.externalReference,
       newStatus,
-      existingMeta,
-      incomingMeta,
-      mergedMetadata,
+      existingMetadataPresent: Object.keys(existingMeta).length > 0,
+      incomingMetadataPresent: Object.keys(incomingMeta).length > 0,
+      mergedMetadataCount: Object.keys(mergedMetadata).length,
     });
 
     // Update purchase by our UUID, storing the real MP payment ID
@@ -298,7 +301,7 @@ paymentsRouter.get(
         purchaseId,
         status,
         foundPurchase: !!purchase,
-        metadata: purchase?.metadata,
+        hasMetadata: !!(purchase?.metadata && Object.keys(purchase.metadata).length > 0),
       });
 
       if (purchase?.metadata) {
@@ -321,8 +324,8 @@ paymentsRouter.get(
                   {
                     purchaseId,
                     status,
-                    rawRedirectUrl: meta.redirectUrl,
-                    error,
+                    rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
+                    error: error instanceof Error ? error.name : 'unknown',
                   },
                 );
                 targetUrl = '';
@@ -337,8 +340,8 @@ paymentsRouter.get(
             logger.info('[PAYMENTS] Return endpoint redirecting', {
               purchaseId,
               status,
-              rawRedirectUrl: meta.redirectUrl,
-              finalTargetUrl: targetUrl,
+              rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
+              finalTargetUrl: sanitizeUrl(targetUrl),
             });
 
             return c.redirect(targetUrl, HTTP.FOUND);
@@ -348,7 +351,7 @@ paymentsRouter.get(
               {
                 purchaseId,
                 status,
-                rawRedirectUrl: meta.redirectUrl,
+                rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
               },
             );
           }
@@ -379,8 +382,10 @@ paymentsRouter.get(
         }
       } catch (error) {
         logger.warn('[PAYMENTS] Failed to parse Referer header in return endpoint', {
-          referer,
-          error,
+          purchaseId,
+          status,
+          refererOrigin: sanitizeUrl(referer),
+          error: error instanceof Error ? error.name : 'unknown',
         });
       }
     }
@@ -390,7 +395,9 @@ paymentsRouter.get(
     try {
       baseUrl = new URL(c.req.url).origin;
     } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', { error });
+      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', {
+        error: error instanceof Error ? error.name : 'unknown',
+      });
       baseUrl = '';
     }
 
@@ -398,7 +405,7 @@ paymentsRouter.get(
     logger.info('[PAYMENTS] Return endpoint falling back to default callback URL', {
       purchaseId,
       status,
-      defaultFallbackUrl,
+      defaultFallbackUrl: sanitizeUrl(defaultFallbackUrl),
     });
 
     return c.redirect(defaultFallbackUrl, HTTP.FOUND);
