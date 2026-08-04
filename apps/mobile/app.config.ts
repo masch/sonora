@@ -120,6 +120,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             // mapping.txt deobfuscation file is generated and uploaded to
             // Google Play Console (required for crash/ANR symbolication).
             enableMinifyInReleaseBuilds: true,
+            debugSymbolLevel: 'SYMBOL_TABLE',
           },
         },
       ],

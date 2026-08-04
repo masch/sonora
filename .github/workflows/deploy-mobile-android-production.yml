@@ -100,7 +100,8 @@ jobs:
           make eas-build-android-release-ci-unsigned \
             OUTPUT_APK="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.apk" \
             OUTPUT_AAB="sonora-${{ steps.tag-release.outputs.tag }}-unsigned.aab" \
-            OUTPUT_MAPPING="sonora-${{ steps.tag-release.outputs.tag }}-mapping.txt"
+            OUTPUT_MAPPING="sonora-${{ steps.tag-release.outputs.tag }}-mapping.txt" \
+            OUTPUT_NATIVE_SYMBOLS="sonora-${{ steps.tag-release.outputs.tag }}-native-debug-symbols.zip"
 
       - name: Upload Unsigned APK Artifact
         uses: actions/upload-artifact@v4
@@ -124,6 +125,14 @@ jobs:
           name: android-mapping
           path: apps/mobile/sonora-*-mapping.txt
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Android Native Debug Symbols Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-native-debug-symbols
+          path: apps/mobile/sonora-*-native-debug-symbols.zip
+          if-no-files-found: ignore
           retention-days: 30
 
   sign-android:
@@ -266,6 +275,12 @@ jobs:
         with:
           name: android-mapping
           path: apps/mobile
+      - name: Download Android Native Debug Symbols Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-native-debug-symbols
+          path: apps/mobile
+          ignore-no-files-found: true
       - name: Generate Tag-Based Release Notes
         id: release-notes
         uses: ./.github/actions/generate-release-notes
@@ -280,3 +295,4 @@ jobs:
           releaseFiles: apps/mobile/sonora-${{ needs.sign-android.outputs.tag_name }}.aab
           track: ${{ inputs.play_track || 'internal' }}
           mappingFile: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}-mapping.txt
+          debugSymbols: apps/mobile/sonora-${{ needs.build-android.outputs.tag_name }}-native-debug-symbols.zip
