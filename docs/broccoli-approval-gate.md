@@ -12,7 +12,7 @@ their own PR. This repo gates merges to `main` on a **human** approval signal
 instead: the 🥦 (broccoli) emoji, authored as a comment on the PR.
 
 The workflow `.github/workflows/broccoli-approval.yml` writes a single, stable
-GitHub **Commit Status** with context **`Check PR broccoli comment`** on the PR
+GitHub **Commit Status** with context **`Check PR 🥦`** on the PR
 head SHA:
 
 - On `synchronize` (new push) → `pending` (`Awaiting 🥦 broccoli comment...`),
@@ -39,7 +39,7 @@ The workflow never writes the 🥦 itself. Only a human comment can grant
    select exactly:
 
    ```text
-   Check PR broccoli comment
+   Check PR 🥦
    ```
 
    - Capital **C** in "Check".
@@ -65,12 +65,12 @@ verification step below.
 gh api repos/{owner}/{repo}/commits/{sha}/status
 ```
 
-Look for the entry whose `context` is `Check PR broccoli comment` and check its
+Look for the entry whose `context` is `Check PR 🥦` and check its
 `state`.
 
 ### Live end-to-end (after the workflow exists on `main`)
 
-1. **Open a PR to `main`** → assert `Check PR broccoli comment` reports
+1. **Open a PR to `main`** → assert `Check PR 🥦` reports
    `pending` on the head SHA.
 2. **Comment `LGTM 🥦`** → assert the same context flips to `success`.
 3. **Push a new commit** (`synchronize`) → assert the context resets to
@@ -78,7 +78,7 @@ Look for the entry whose `context` is `Check PR broccoli comment` and check its
 4. **Comment again without the emoji** → assert `failure`.
 5. **Re-comment with 🥦 after the latest head** → assert `success`.
 
-Negative: assert no Check Run named `Check PR broccoli comment` ever appears
+Negative: assert no Check Run named `Check PR 🥦` ever appears
 (the historical collision, masch/sonora#374, must not reoccur).
 
 ## Design notes

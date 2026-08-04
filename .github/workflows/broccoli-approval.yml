@@ -46,7 +46,7 @@ jobs:
           script: |
             const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             const { owner, repo } = context.repo;
-            const CONTEXT = 'Check PR broccoli comment';
+            const CONTEXT = 'Check PR 🥦';
             const runUrl =
               `${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${context.runId}`;
 
@@ -72,7 +72,7 @@ jobs:
                 owner,
                 repo,
                 sha: headSha,
-                context: 'Check PR broccoli comment',
+                context: CONTEXT,
                 state,
                 description,
                 target_url: runUrl,
