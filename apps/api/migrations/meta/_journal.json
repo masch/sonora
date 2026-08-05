@@ -92,6 +92,13 @@
       "when": 1785682921491,
       "tag": "0012_glamorous_king_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785895799039,
+      "tag": "0013_stale_black_bolt",
+      "breakpoints": true
     }
   ]
 }

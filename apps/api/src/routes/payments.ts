@@ -16,10 +16,11 @@ import type { Env, Variables } from '../index';
 import { sanitizeUrl } from '../lib/log-redaction';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
-import { platformGuard } from '../middleware/platform-guard';
 import { paymentsGuard } from '../middleware/payments-guard';
+import { platformGuard } from '../middleware/platform-guard';
 import { created, ERRORS, HTTP, problem, success } from '../middleware/problem-details';
 import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
+import { urlGuard } from '../middleware/url-guard';
 import { validationHook } from '../middleware/validation-error';
 
 const ReturnParamSchema = z.object({
@@ -66,6 +67,7 @@ paymentsRouter.use('*', paymentsGuard());
 paymentsRouter.post(
   '/create',
   dbGuard(),
+  urlGuard(),
   deviceIdGuard(),
   platformGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.PAYMENTS_CREATE),
@@ -88,6 +90,10 @@ paymentsRouter.post(
       .limit(1);
 
     if (!experience) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
+    if (!experience.published) {
       return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
     }
 
@@ -121,15 +127,7 @@ paymentsRouter.post(
       .returning();
 
     // Determine base URL for MP back_urls (must be HTTPS for auto_return)
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(c.req.url).origin;
-    } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', {
-        error: error instanceof Error ? error.name : 'unknown',
-      });
-      baseUrl = '';
-    }
+    const baseUrl = c.var.requestUrl.origin;
 
     // Store original redirect URL in purchase metadata and log payment creation details
     logger.info('[PAYMENTS] Creating payment checkout', {
@@ -284,6 +282,7 @@ paymentsRouter.post(
 paymentsRouter.get(
   '/return/:status/:purchaseId',
   dbGuard(),
+  urlGuard(),
   zValidator('param', ReturnParamSchema, validationHook),
   async (c) => {
     const { status, purchaseId } = c.req.valid('param');
@@ -391,15 +390,8 @@ paymentsRouter.get(
     }
 
     // Default fallback: redirect to mobile app callback URL
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(c.req.url).origin;
-    } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', {
-        error: error instanceof Error ? error.name : 'unknown',
-      });
-      baseUrl = '';
-    }
+    // urlGuard() validates the request URL and exposes it via c.var.requestUrl.
+    const baseUrl = c.var.requestUrl.origin;
 
     const defaultFallbackUrl = `${baseUrl}${PAYMENT_ROUTES.CALLBACK}`;
     logger.info('[PAYMENTS] Return endpoint falling back to default callback URL', {
@@ -494,9 +486,28 @@ paymentsRouter.get(
     const { id } = c.req.valid('param');
     const { email } = c.req.valid('query') as { email: string };
 
+    // Unpublished experiences are hidden: treated as if they did not exist.
+    const [experience] = await db
+      .select({ published: experiences.published })
+      .from(experiences)
+      .where(eq(experiences.id, id))
+      .limit(1);
+
+    if (!experience || !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
     const [purchase] = await db
-      .select()
+      .select({
+        id: purchases.id,
+        status: purchases.status,
+        provider: purchases.provider,
+        amount: purchases.amount,
+        currency: purchases.currency,
+        createdAt: purchases.createdAt,
+      })
       .from(purchases)
+      .innerJoin(experiences, eq(experiences.id, purchases.experienceId))
       .where(
         and(
           eq(purchases.experienceId, id),
@@ -591,10 +602,14 @@ paymentsRouter.post(
 
     // Get current price for snapshot
     const [experience] = await db
-      .select({ price: experiences.price })
+      .select({ price: experiences.price, published: experiences.published })
       .from(experiences)
       .where(eq(experiences.id, id))
       .limit(1);
+
+    if (experience && !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
 
     await db.insert(experienceAccesses).values({
       experienceId: id,

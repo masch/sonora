@@ -1,20 +1,24 @@
 import { zValidator } from '@hono/zod-validator';
+import { AudioUploadBodySchema, logger, z } from '@sonora/shared';
+import { eq, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
-import { z, AudioUploadBodySchema, logger } from '@sonora/shared';
+import { experiences, waypoints } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
+import { dbGuard } from '../middleware/db-guard';
+import { jwtGuard } from '../middleware/jwt-guard';
 import { privateBucketGuard } from '../middleware/private-bucket-guard';
+import {
+  created,
+  ERRORS,
+  HTTP,
+  problem,
+  rangeNotSatisfiable,
+  streamResponse,
+} from '../middleware/problem-details';
 import { publicBucketGuard } from '../middleware/public-bucket-guard';
 import { validationHook } from '../middleware/validation-error';
-import {
-  ERRORS,
-  problem,
-  created,
-  HTTP,
-  streamResponse,
-  rangeNotSatisfiable,
-} from '../middleware/problem-details';
 
 const KeyParamSchema = z.object({
   key: z.string().min(1),
@@ -53,7 +57,14 @@ function parseRange(rangeHeader: string | null, objectSize: number): RangeInfo |
   const start = parseInt(parts[0], 10);
   const end = parts[1] ? parseInt(parts[1], 10) : objectSize - 1;
 
-  if (start >= objectSize || end >= objectSize) {
+  const isValidRange =
+    Number.isFinite(start) &&
+    Number.isFinite(end) &&
+    start >= 0 &&
+    start <= end &&
+    end < objectSize;
+
+  if (!isValidRange) {
     return rangeNotSatisfiable(objectSize);
   }
 
@@ -182,12 +193,12 @@ audioRouter.get(
  * Protegido por JWT Token.
  * Transmite el audio desde R2 soportando Range Requests.
  */
-import { jwtGuard } from '../middleware/jwt-guard';
 
 audioRouter.get(
   '/stream',
   privateBucketGuard(),
   jwtGuard(),
+  dbGuard(),
   zValidator('query', StreamQuerySchema, validationHook),
   async (c) => {
     const { key, token: queryToken } = c.req.valid('query');
@@ -207,6 +218,16 @@ audioRouter.get(
 
     if (!isAuthorized) {
       return problem(c, ERRORS.INVALID_TOKEN);
+    }
+
+    // Block streaming for audio owned exclusively by unpublished experiences.
+    const owners = await c.var.db
+      .select({ published: experiences.published })
+      .from(experiences)
+      .leftJoin(waypoints, eq(waypoints.experienceId, experiences.id))
+      .where(or(eq(experiences.audioUrl, key), eq(waypoints.audioUrl, key)));
+    if (owners.length > 0 && owners.every((owner) => !owner.published)) {
+      return problem(c, ERRORS.NOT_FOUND);
     }
 
     try {

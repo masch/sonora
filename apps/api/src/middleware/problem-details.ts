@@ -145,6 +145,11 @@ export const ERRORS_4XX = {
     detail: 'The request contains invalid fields.',
     status: HTTP.UNPROCESSABLE_ENTITY,
   } as const,
+  INVALID_REQUEST_URL: {
+    code: 'INVALID_REQUEST_URL',
+    detail: 'The request URL is not a valid absolute http(s) URL.',
+    status: HTTP.BAD_REQUEST,
+  } as const,
   MISSING_DATA_ID: {
     code: 'MISSING_DATA_ID',
     detail: 'The data.id query parameter is required.',

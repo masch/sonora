@@ -76,7 +76,7 @@ describe('payments log redaction invariants', () => {
   it('POST /payments/create logs receivedRedirectUrl with query string stripped', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
     mockDb.limit.mockResolvedValue([
-      { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 },
+      { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000, published: true },
     ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);

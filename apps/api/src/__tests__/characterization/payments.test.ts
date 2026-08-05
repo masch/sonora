@@ -36,7 +36,9 @@ describe('POST /payments/create — characterization', () => {
   afterEach(() => setDbClient(null));
 
   it('captures 200 for valid body', async () => {
-    mockDb.limit.mockResolvedValue([{ id: VALID_UUID, title: 'Trip', free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: VALID_UUID, title: 'Trip', free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-1' }]);
     setDbClient(mockDb);
     const res = await app.request(
@@ -103,7 +105,9 @@ describe('POST /payments/create — characterization', () => {
   });
 
   it('captures 200 with redirectUrl in metadata', async () => {
-    mockDb.limit.mockResolvedValue([{ id: VALID_UUID, title: 'Trip', free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: VALID_UUID, title: 'Trip', free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-2' }]);
     setDbClient(mockDb);
     const res = await app.request(
@@ -131,7 +135,9 @@ describe('POST /payments/create — characterization', () => {
   });
 
   it('captures 200 with X-Device-Id header', async () => {
-    mockDb.limit.mockResolvedValue([{ id: VALID_UUID, title: 'Trip', free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: VALID_UUID, title: 'Trip', free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-3' }]);
     setDbClient(mockDb);
     const res = await app.request(
@@ -260,7 +266,7 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue([{ price: 1000 }]),
+      limit: vi.fn().mockResolvedValue([{ price: 1000, published: true }]),
       insert: vi.fn().mockReturnThis(),
       values: vi.fn().mockResolvedValue(undefined),
     };
@@ -322,6 +328,26 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
     );
     expect(res.status).toBe(201);
   });
+
+  it('captures 404 when experience is unpublished (no access inserted)', async () => {
+    mockDb.limit.mockResolvedValue([{ price: 1000, published: false }]);
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/access`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+        body: JSON.stringify({ source: 'free' }),
+      },
+      {},
+    );
+    expect(res.status).toBe(404);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /payments/experiences/:id/purchased — characterization', () => {
@@ -333,6 +359,7 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     mockDb = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn(),
     };
@@ -353,7 +380,9 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
   });
 
   it('captures 200 with email (no purchase)', async () => {
-    mockDb.limit.mockResolvedValue([]);
+    mockDb.limit
+      .mockResolvedValueOnce([{ published: true }]) // experience lookup
+      .mockResolvedValueOnce([]); // purchases
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
@@ -362,6 +391,46 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ purchased: false });
+  });
+
+  it('captures 200 with purchased true when published experience was bought', async () => {
+    mockDb.limit
+      .mockResolvedValueOnce([{ published: true }]) // experience lookup
+      .mockResolvedValueOnce([
+        {
+          id: 'purchase-1',
+          status: 'approved',
+          provider: 'mercadopago',
+          amount: 100,
+          currency: 'ARS',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {},
+      {},
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { purchased: boolean; purchase?: { purchaseId: string } };
+    expect(body.purchased).toBe(true);
+    expect(body.purchase?.purchaseId).toBe('purchase-1');
+  });
+
+  it('captures 404 when experience is unpublished', async () => {
+    mockDb.limit.mockResolvedValueOnce([{ published: false }]);
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {},
+      {},
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()) as Record<string, unknown>).toHaveProperty(
+      'code',
+      'EXPERIENCE_NOT_FOUND',
+    );
   });
 });
 
