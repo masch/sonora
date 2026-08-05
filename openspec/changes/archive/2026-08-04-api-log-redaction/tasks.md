@@ -54,4 +54,4 @@ Per-unit line estimates (add/remove): U1 ≈ +265, U2 ≈ +295, U3 ≈ +165, U4 
 
 ## Post-apply lifecycle (parent-owned)
 
-- [ ] Start or reuse bounded review of the frozen candidate (expects chained PRs; apply must stage PR 1 = Work Unit 1, PR 2 = Work Unit 2, PR 3 = Work Units 3–5). <!-- sdd-owner: parent -->
+- [~] Start or reuse bounded review of the frozen candidate (SKIPPED by explicit user decision: "Commit sin review" — receipt-driven-development kill switch was off; user owns disposal status). <!-- sdd-owner: parent -->
