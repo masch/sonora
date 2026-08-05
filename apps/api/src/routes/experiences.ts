@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { experiences, waypoints, experienceAccesses, purchases } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { eq, and, or } from 'drizzle-orm';
+import { logger } from '@sonora/shared';
 import { sign } from 'hono/jwt';
 import { success } from '../middleware/problem-details';
 import { dbGuard } from '../middleware/db-guard';
@@ -20,9 +21,17 @@ experiencesRouter.get(
   rateLimit(RATE_LIMIT_DEFAULTS.EXPERIENCES_LIST),
   async (c) => {
     const db = c.var.db;
-    const list = await db.select().from(experiences);
+    const list = await db.select().from(experiences).where(eq(experiences.published, true));
     const result = [];
-    const baseUrl = new URL(c.req.url).origin;
+    let baseUrl: string;
+    try {
+      baseUrl = new URL(c.req.url).origin;
+    } catch (error) {
+      logger.warn('[EXPERIENCES] Failed to parse request URL origin', {
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+      baseUrl = '';
+    }
     const jwtSecret = c.var.jwtSecret;
     const expirySeconds = c.var.audioLinkExpirySeconds;
 

@@ -1,6 +1,6 @@
 import { sign } from 'hono/jwt';
 import { describe, expect, it, vi } from 'vitest';
-import app from '../index';
+import app, { setDbClient } from '../index';
 
 const mockR2Bucket = {
   put: vi.fn(async (key: string, _: any, __?: any) => {
@@ -183,6 +183,31 @@ describe('Audio Router', () => {
       expect(res.status).toBe(401);
     });
 
+    it('rejects stream when owning experience is unpublished', async () => {
+      const mockDb: any = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([{ published: false }]),
+      };
+      setDbClient(mockDb);
+
+      const token = await generateToken('experiences/test.mp3');
+      const res = await app.request(
+        '/audio/stream?key=experiences/test.mp3',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          },
+        },
+        env,
+      );
+
+      expect(res.status).toBe(404);
+      setDbClient(null);
+    });
+
     it('returns 404 when key does not exist', async () => {
       const token = await generateToken('non-existent.mp3');
       const res = await app.request(
@@ -301,6 +326,24 @@ describe('Audio Router', () => {
         env,
       );
       expect(res.status).toBe(416);
+    });
+
+    it('returns 416 for malformed or reversed ranges instead of streaming', async () => {
+      const token = await generateToken('experiences/test.mp3');
+      for (const range of ['bytes=abc-', 'bytes=10-5', 'bytes=-5', 'bytes=-']) {
+        const res = await app.request(
+          '/audio/stream?key=experiences/test.mp3',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+              Range: range,
+            },
+          },
+          env,
+        );
+        expect(res.status, `range=${range}`).toBe(416);
+      }
     });
 
     it('returns 500 when PRIVATE_BUCKET binding is missing', async () => {

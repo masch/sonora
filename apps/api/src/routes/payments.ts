@@ -91,6 +91,10 @@ paymentsRouter.post(
       return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
     }
 
+    if (!experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
     if (experience.free) {
       return problem(c, ERRORS.EXPERIENCE_IS_FREE);
     }
@@ -494,9 +498,28 @@ paymentsRouter.get(
     const { id } = c.req.valid('param');
     const { email } = c.req.valid('query') as { email: string };
 
+    // Unpublished experiences are hidden: treated as if they did not exist.
+    const [experience] = await db
+      .select({ published: experiences.published })
+      .from(experiences)
+      .where(eq(experiences.id, id))
+      .limit(1);
+
+    if (!experience || !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
     const [purchase] = await db
-      .select()
+      .select({
+        id: purchases.id,
+        status: purchases.status,
+        provider: purchases.provider,
+        amount: purchases.amount,
+        currency: purchases.currency,
+        createdAt: purchases.createdAt,
+      })
       .from(purchases)
+      .innerJoin(experiences, eq(experiences.id, purchases.experienceId))
       .where(
         and(
           eq(purchases.experienceId, id),
@@ -591,10 +614,14 @@ paymentsRouter.post(
 
     // Get current price for snapshot
     const [experience] = await db
-      .select({ price: experiences.price })
+      .select({ price: experiences.price, published: experiences.published })
       .from(experiences)
       .where(eq(experiences.id, id))
       .limit(1);
+
+    if (experience && !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
 
     await db.insert(experienceAccesses).values({
       experienceId: id,

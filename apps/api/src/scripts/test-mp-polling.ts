@@ -51,6 +51,7 @@ async function run() {
           latitude: -32.211913,
           longitude: -64.73809,
           imageKey: 'trips-deriva-centro-cover',
+          published: true,
         })
         .returning();
       experience = newExp;

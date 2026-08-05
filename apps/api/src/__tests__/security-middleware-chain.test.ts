@@ -101,7 +101,9 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
   });
 
   it('passes through when no KV binding is present (dev local)', async () => {
-    mockDb.limit.mockResolvedValue([{ id: EXPERIENCE_ID, free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: EXPERIENCE_ID, free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
 
@@ -129,7 +131,9 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
   });
 
   it('returns rate limit headers on successful requests through the full chain', async () => {
-    mockDb.limit.mockResolvedValue([{ id: EXPERIENCE_ID, free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: EXPERIENCE_ID, free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
 
@@ -157,7 +161,9 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
   });
 
   it('blocks requests after the payment rate limit is exceeded', async () => {
-    mockDb.limit.mockResolvedValue([{ id: EXPERIENCE_ID, free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: EXPERIENCE_ID, free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
 
@@ -192,7 +198,9 @@ describe('Full middleware chain — POST /payments/create with rate limiting', (
   });
 
   it('preserves existing middleware behavior (DEVICE_ID_REQUIRED still works)', async () => {
-    mockDb.limit.mockResolvedValue([{ id: EXPERIENCE_ID, free: false, price: 15000 }]);
+    mockDb.limit.mockResolvedValue([
+      { id: EXPERIENCE_ID, free: false, price: 15000, published: true },
+    ]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
 

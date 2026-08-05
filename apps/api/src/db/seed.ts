@@ -60,6 +60,7 @@ const trips = [
     currency: null,
     imageKey: INSTRUCTIONS_IMAGE_KEY,
     geofenceBypassable: false,
+    published: true,
   },
   {
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
@@ -77,6 +78,7 @@ const trips = [
     currency: 'ARS',
     imageKey: 'trips-deriva-centro-cover',
     geofenceBypassable: false,
+    published: true,
   },
 ] as const;
 
@@ -84,7 +86,7 @@ const tracks = [
   {
     id: '5a9463ce-daba-4756-892e-4dd4cb862309',
     slug: 'texto-maga',
-    title: 'Texto Maga',
+    title: 'En Nogales, una vez',
     description: 'Maga',
     format: 'track',
     themeKey: 'community',
@@ -95,6 +97,7 @@ const tracks = [
     free: true,
     imageKey: 'tracks-texto-maga-cover',
     geofenceBypassable: false,
+    published: true,
   },
   {
     id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d',
@@ -110,6 +113,7 @@ const tracks = [
     free: true,
     imageKey: 'tracks-pajaros-chiricotes-cover',
     geofenceBypassable: false,
+    published: false,
   },
 ] as const;
 
@@ -126,6 +130,7 @@ const generalFeedback = {
   free: true,
   imageKey: 'bonus-track',
   geofenceBypassable: false,
+  published: true,
 } as const;
 
 const defaultExperiences = [...trips, ...tracks, generalFeedback] as const;

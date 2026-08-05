@@ -1,12 +1,15 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
+import { eq, or } from 'drizzle-orm';
 import { z, AudioUploadBodySchema, logger } from '@sonora/shared';
+import { experiences, waypoints } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
 import { privateBucketGuard } from '../middleware/private-bucket-guard';
 import { publicBucketGuard } from '../middleware/public-bucket-guard';
 import { validationHook } from '../middleware/validation-error';
+import { jwtGuard } from '../middleware/jwt-guard';
 import {
   ERRORS,
   problem,
@@ -53,7 +56,14 @@ function parseRange(rangeHeader: string | null, objectSize: number): RangeInfo |
   const start = parseInt(parts[0], 10);
   const end = parts[1] ? parseInt(parts[1], 10) : objectSize - 1;
 
-  if (start >= objectSize || end >= objectSize) {
+  const isValidRange =
+    Number.isFinite(start) &&
+    Number.isFinite(end) &&
+    start >= 0 &&
+    start <= end &&
+    end < objectSize;
+
+  if (!isValidRange) {
     return rangeNotSatisfiable(objectSize);
   }
 
@@ -182,7 +192,6 @@ audioRouter.get(
  * Protegido por JWT Token.
  * Transmite el audio desde R2 soportando Range Requests.
  */
-import { jwtGuard } from '../middleware/jwt-guard';
 
 audioRouter.get(
   '/stream',
@@ -207,6 +216,18 @@ audioRouter.get(
 
     if (!isAuthorized) {
       return problem(c, ERRORS.INVALID_TOKEN);
+    }
+
+    // Block streaming for audio owned exclusively by unpublished experiences.
+    if (c.var.db) {
+      const owners = await c.var.db
+        .select({ published: experiences.published })
+        .from(experiences)
+        .leftJoin(waypoints, eq(waypoints.experienceId, experiences.id))
+        .where(or(eq(experiences.audioUrl, key), eq(waypoints.audioUrl, key)));
+      if (owners.length > 0 && owners.every((owner) => !owner.published)) {
+        return problem(c, ERRORS.NOT_FOUND);
+      }
     }
 
     try {
