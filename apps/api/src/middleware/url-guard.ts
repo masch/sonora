@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Env, Variables } from '../index';
+import { sanitizeUrl } from '../lib/log-redaction';
 import { ERRORS, problem } from './problem-details';
 
 /**
@@ -19,10 +20,18 @@ export const urlGuard = (): MiddlewareHandler<{ Bindings: Env; Variables: Variab
     try {
       url = new URL(c.req.url);
     } catch {
-      return problem(c, ERRORS.INVALID_REQUEST_URL);
+      return problem(
+        c,
+        ERRORS.INVALID_REQUEST_URL,
+        `Rejected unparseable request URL (${sanitizeUrl(c.req.url)})`,
+      );
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return problem(c, ERRORS.INVALID_REQUEST_URL);
+      return problem(
+        c,
+        ERRORS.INVALID_REQUEST_URL,
+        `Rejected non-http(s) request URL (${sanitizeUrl(c.req.url)})`,
+      );
     }
     c.set('requestUrl', url);
     return next();
