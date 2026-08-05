@@ -66,7 +66,7 @@ const trips = [
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     slug: 'umepay-bosque',
     title: 'DERIVA DEL BOSQUE AL RÍO',
-    description: 'Deriva del boque al río, 3 secciones, 600mts',
+    description: 'Deriva del bosque al río, 3 secciones, 600mts',
     format: 'trip',
     themeKey: 'landscapes',
     audioUrl: 'experiences/trips-deriva-centro.mp3',

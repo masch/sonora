@@ -198,8 +198,8 @@ export const en = {
   },
   feedback: {
     form: {
-      title: 'Leave feedback',
-      placeholder: 'Tell us about your experience…',
+      title: 'Tell us about your experience',
+      placeholder: '',
       submit: 'Send',
       sending: 'Sending…',
       sent: 'Thank you for your feedback!',

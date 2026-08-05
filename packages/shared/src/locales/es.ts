@@ -198,8 +198,8 @@ export const es = {
   },
   feedback: {
     form: {
-      title: 'Dejá tu opinión',
-      placeholder: 'Contanos sobre tu experiencia…',
+      title: 'Contanos tu experiencia',
+      placeholder: '',
       submit: 'Enviar',
       sending: 'Enviando…',
       sent: '¡Muchas gracias por tu opinión!',
