@@ -66,7 +66,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Audios',
+      track: 'Pausa sonora',
       trip: 'Derivas',
     },
     errors: {
@@ -105,7 +105,7 @@ export const es = {
     riverPath: 'Camino del río',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Senderos y estaciones',
-    exploreTracks: 'Poéticas',
+    exploreTracks: 'Pausa sonora',
     exploreTracksSub: 'Biblioteca sonora',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',
@@ -198,8 +198,8 @@ export const es = {
   },
   feedback: {
     form: {
-      title: 'Dejá tu opinión',
-      placeholder: 'Contanos sobre tu experiencia…',
+      title: 'Contanos tu experiencia',
+      placeholder: '',
       submit: 'Enviar',
       sending: 'Enviando…',
       sent: '¡Muchas gracias por tu opinión!',
