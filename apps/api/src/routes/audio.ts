@@ -1,23 +1,24 @@
 import { zValidator } from '@hono/zod-validator';
+import { AudioUploadBodySchema, logger, z } from '@sonora/shared';
+import { eq, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { verify } from 'hono/jwt';
-import { eq, or } from 'drizzle-orm';
-import { z, AudioUploadBodySchema, logger } from '@sonora/shared';
 import { experiences, waypoints } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
+import { dbGuard } from '../middleware/db-guard';
+import { jwtGuard } from '../middleware/jwt-guard';
 import { privateBucketGuard } from '../middleware/private-bucket-guard';
+import {
+  created,
+  ERRORS,
+  HTTP,
+  problem,
+  rangeNotSatisfiable,
+  streamResponse,
+} from '../middleware/problem-details';
 import { publicBucketGuard } from '../middleware/public-bucket-guard';
 import { validationHook } from '../middleware/validation-error';
-import { jwtGuard } from '../middleware/jwt-guard';
-import {
-  ERRORS,
-  problem,
-  created,
-  HTTP,
-  streamResponse,
-  rangeNotSatisfiable,
-} from '../middleware/problem-details';
 
 const KeyParamSchema = z.object({
   key: z.string().min(1),
@@ -197,6 +198,7 @@ audioRouter.get(
   '/stream',
   privateBucketGuard(),
   jwtGuard(),
+  dbGuard(),
   zValidator('query', StreamQuerySchema, validationHook),
   async (c) => {
     const { key, token: queryToken } = c.req.valid('query');
@@ -219,15 +221,13 @@ audioRouter.get(
     }
 
     // Block streaming for audio owned exclusively by unpublished experiences.
-    if (c.var.db) {
-      const owners = await c.var.db
-        .select({ published: experiences.published })
-        .from(experiences)
-        .leftJoin(waypoints, eq(waypoints.experienceId, experiences.id))
-        .where(or(eq(experiences.audioUrl, key), eq(waypoints.audioUrl, key)));
-      if (owners.length > 0 && owners.every((owner) => !owner.published)) {
-        return problem(c, ERRORS.NOT_FOUND);
-      }
+    const owners = await c.var.db
+      .select({ published: experiences.published })
+      .from(experiences)
+      .leftJoin(waypoints, eq(waypoints.experienceId, experiences.id))
+      .where(or(eq(experiences.audioUrl, key), eq(waypoints.audioUrl, key)));
+    if (owners.length > 0 && owners.every((owner) => !owner.published)) {
+      return problem(c, ERRORS.NOT_FOUND);
     }
 
     try {

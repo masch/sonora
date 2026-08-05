@@ -1,21 +1,22 @@
+import { and, eq, or } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { experiences, waypoints, experienceAccesses, purchases } from '../db/schema';
-import { type Env, type Variables } from '../index';
-import { eq, and, or } from 'drizzle-orm';
-import { logger } from '@sonora/shared';
 import { sign } from 'hono/jwt';
-import { success } from '../middleware/problem-details';
+import { experienceAccesses, experiences, purchases, waypoints } from '../db/schema';
+import { type Env, type Variables } from '../index';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
+import { success } from '../middleware/problem-details';
+import { urlGuard } from '../middleware/url-guard';
 
 import { jwtGuard } from '../middleware/jwt-guard';
-import { rateLimit, RATE_LIMIT_DEFAULTS } from '../middleware/rate-limit-guard';
+import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
 
 const experiencesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 experiencesRouter.get(
   '/',
   dbGuard(),
+  urlGuard(),
   deviceIdGuard(),
   jwtGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.EXPERIENCES_LIST),
@@ -23,15 +24,7 @@ experiencesRouter.get(
     const db = c.var.db;
     const list = await db.select().from(experiences).where(eq(experiences.published, true));
     const result = [];
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(c.req.url).origin;
-    } catch (error) {
-      logger.warn('[EXPERIENCES] Failed to parse request URL origin', {
-        error: error instanceof Error ? error.name : 'unknown',
-      });
-      baseUrl = '';
-    }
+    const baseUrl = c.var.requestUrl.origin;
     const jwtSecret = c.var.jwtSecret;
     const expirySeconds = c.var.audioLinkExpirySeconds;
 

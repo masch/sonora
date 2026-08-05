@@ -393,6 +393,31 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     expect(await res.json()).toEqual({ purchased: false });
   });
 
+  it('captures 200 with purchased true when published experience was bought', async () => {
+    mockDb.limit
+      .mockResolvedValueOnce([{ published: true }]) // experience lookup
+      .mockResolvedValueOnce([
+        {
+          id: 'purchase-1',
+          status: 'approved',
+          provider: 'mercadopago',
+          amount: 100,
+          currency: 'ARS',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {},
+      {},
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { purchased: boolean; purchase?: { purchaseId: string } };
+    expect(body.purchased).toBe(true);
+    expect(body.purchase?.purchaseId).toBe('purchase-1');
+  });
+
   it('captures 404 when experience is unpublished', async () => {
     mockDb.limit.mockResolvedValueOnce([{ published: false }]);
     setDbClient(mockDb);

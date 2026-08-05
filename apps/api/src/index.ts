@@ -50,6 +50,7 @@ export interface Variables {
   db: DbClient;
   deviceId: string;
   devicePlatform: Platform;
+  requestUrl: URL;
   privateBucket: R2Bucket;
   publicBucket: R2Bucket;
   jwtSecret: string;

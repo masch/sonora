@@ -1,5 +1,5 @@
 import { sign } from 'hono/jwt';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import app, { setDbClient } from '../index';
 
 const mockR2Bucket = {
@@ -178,6 +178,23 @@ describe('Audio Router', () => {
   });
 
   describe('GET /audio/stream', () => {
+    // dbGuard() runs on /stream, so stream tests must always provide a DB.
+    // Default mock resolves the owning experience as published (fails closed).
+    const streamDbMock: any = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([{ published: true }]),
+    };
+
+    beforeEach(() => {
+      setDbClient(streamDbMock);
+    });
+
+    afterEach(() => {
+      setDbClient(null);
+    });
+
     it('returns 401 when user is unauthorized', async () => {
       const res = await app.request('/audio/stream?key=experiences/test.mp3', {}, env);
       expect(res.status).toBe(401);
