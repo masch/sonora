@@ -66,7 +66,7 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Poetics',
+      track: 'Sonora pause',
       trip: 'Derivas',
     },
     errors: {
@@ -105,7 +105,7 @@ export const en = {
     riverPath: 'River path',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
-    exploreTracks: 'Poetics',
+    exploreTracks: 'Sonora pause',
     exploreTracksSub: 'Sound library',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',

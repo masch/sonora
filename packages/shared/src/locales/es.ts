@@ -66,7 +66,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Audios',
+      track: 'Pausa sonora',
       trip: 'Derivas',
     },
     errors: {
@@ -105,7 +105,7 @@ export const es = {
     riverPath: 'Camino del río',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Senderos y estaciones',
-    exploreTracks: 'Poéticas',
+    exploreTracks: 'Pausa sonora',
     exploreTracksSub: 'Biblioteca sonora',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',
