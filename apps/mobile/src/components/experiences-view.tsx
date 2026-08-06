@@ -294,7 +294,7 @@ function ExperiencesContent({
       </TwView>
 
       {/* Instructions Audio Player */}
-      <HomeAudioPlayer />
+      {selectedFormat === 'trip' && <HomeAudioPlayer />}
 
       <TwView className="gap-5">
         {filteredExperiences.length === 0 ? (
