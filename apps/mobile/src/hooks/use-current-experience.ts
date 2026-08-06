@@ -31,3 +31,18 @@ export function useCurrentExperience(): CurrentExperience {
     metadata: currentMetadata,
   };
 }
+
+export function isSameExperience(
+  current: CurrentExperience,
+  targetIdOrSlug?: string | null,
+): boolean {
+  if (!targetIdOrSlug) return false;
+  const cleanTarget = cleanExperienceId(targetIdOrSlug);
+  if (!cleanTarget) return false;
+
+  return (
+    current.experienceId === cleanTarget ||
+    current.metadata?.id === cleanTarget ||
+    current.metadata?.slug === cleanTarget
+  );
+}
