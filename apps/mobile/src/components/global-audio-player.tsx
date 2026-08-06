@@ -1,10 +1,10 @@
 import { Icon } from '@/components/icon';
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useCurrentExperience } from '@/hooks/use-current-experience';
+import { useCurrentExperience, isSameExperience } from '@/hooks/use-current-experience';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { cleanExperienceId, useAudioPlayerStore } from '@/store/audio-player-store';
+import { useAudioPlayerStore } from '@/store/audio-player-store';
 import { TwPressable, TwText, TwView } from '@/tw';
 import { usePathname, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
@@ -18,7 +18,8 @@ export function GlobalAudioPlayer() {
   const segments = useSegments() as string[];
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { experienceId, isPlaying, isPaused, metadata: currentMetadata } = useCurrentExperience();
+  const currentExperience = useCurrentExperience();
+  const { isPlaying, isPaused, metadata: currentMetadata } = currentExperience;
 
   const positionMs = useAudioPlayerStore((s) => s.positionMs);
   const durationMs = useAudioPlayerStore((s) => s.durationMs);
@@ -31,25 +32,11 @@ export function GlobalAudioPlayer() {
   const pathParts = pathname.split('/');
   const routeIdParam = pathParts[1] === ROUTES.POETICS ? pathParts[2] : undefined;
 
-  // Normalize route param ID to match clean experience ID formats
-  const cleanSegmentId = cleanExperienceId(routeIdParam) ?? undefined;
+  // Hide the global audio player only if viewing the detail page of the currently playing track/experience
+  const isDetailViewOfCurrentExperience = isSameExperience(currentExperience, routeIdParam);
 
-  // Hide the global audio player if the local audio player is already visible:
-  // 1. Playing instructions on the Home tab screen
-  // 2. Viewing the track details page of the currently playing track
-  const isLocalControllerVisible =
-    (experienceId === 'instructions' &&
-      (pathname === '/' || // Standard root path on Web/Mobile
-        pathname === '/index' || // Direct index route fallback
-        pathname === '/(tabs)' || // Tab group root segment path
-        pathname === '/(tabs)/index')) || // Explicit tab index path (e.g. deep-links / test environments)
-    (segments[0] === ROUTES.POETICS &&
-      cleanSegmentId !== undefined &&
-      (experienceId === cleanSegmentId ||
-        currentMetadata?.id === cleanSegmentId ||
-        currentMetadata?.slug === cleanSegmentId));
-
-  const isVisible = (isPlaying || isPaused) && currentUri !== null && !isLocalControllerVisible;
+  const isVisible =
+    (isPlaying || isPaused) && currentUri !== null && !isDetailViewOfCurrentExperience;
 
   if (!isVisible) {
     return null;
@@ -70,12 +57,18 @@ export function GlobalAudioPlayer() {
     stop();
   };
 
-  // Determine bottom offset: above bottom tabs when inside tab navigator, near bottom (safe area offset) otherwise
-  const isInTabs = segments[0] === '(tabs)';
+  // Determine bottom offset: above bottom tabs when inside tab navigator or web tab views, near bottom (safe area offset) otherwise
+  const firstSegment = segments[0] ? segments[0].replace(/^\//, '') : 'index';
+  const tabRoutes = ['index', 'explore', 'settings', 'derivas', 'messages'];
+  const isInTabs =
+    firstSegment === '(tabs)' || pathname === '/' || tabRoutes.includes(firstSegment);
+
   const bottomOffset = isInTabs
     ? Platform.OS === 'android'
       ? TAB_BAR_INSET + 12
-      : TAB_BAR_INSET
+      : Platform.OS === 'web'
+        ? 56
+        : TAB_BAR_INSET
     : Platform.OS === 'android'
       ? Math.max(insets.bottom, 16)
       : Math.max(insets.bottom, 12);
@@ -83,7 +76,7 @@ export function GlobalAudioPlayer() {
   return (
     <TwView
       testID="global-audio-player"
-      className="absolute left-0 right-0 border-b"
+      className="absolute left-0 right-0 border-b z-40"
       style={{
         bottom: bottomOffset,
         backgroundColor: colors.tabBarBg,
