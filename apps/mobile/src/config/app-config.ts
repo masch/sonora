@@ -1,6 +1,8 @@
 import { DEFAULT_REMOTE_CONFIG, INSTRUCTIONS_AUDIO_KEY } from '@sonora/shared';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { SPLASH_ICONS } from '@/constants/images';
+import { SPLASH_COLORS } from '@/constants/theme';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -60,6 +62,8 @@ const appEnv: 'production' | 'staging' = isProduction ? 'production' : 'staging'
 export const APP_CONFIG = {
   isProduction,
   appEnv,
+  splashColor: SPLASH_COLORS[appEnv],
+  splashIcon: SPLASH_ICONS[appEnv],
   apiBaseUrl: getApiBaseUrl(),
   audio: {
     /**

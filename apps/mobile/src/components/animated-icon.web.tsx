@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { APP_CONFIG } from '@/config/app-config';
 
-import { SPLASH_ICONS } from '@/constants/images';
-import { SPLASH_COLORS } from '@/constants/theme';
 import { TwImage, TwText, TwView } from '@/tw';
 import { getAppVersion } from '@/utils/app-version';
 
@@ -11,7 +9,7 @@ export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean })
   const [fading, setFading] = useState(false);
 
   const versionText = getAppVersion().formatted;
-  const backgroundColor = SPLASH_COLORS[APP_CONFIG.appEnv];
+  const backgroundColor = APP_CONFIG.splashColor;
 
   useEffect(() => {
     if (!isReady) return;
@@ -54,7 +52,7 @@ export function AnimatedIcon() {
     <TwView className="justify-center items-center w-[76px] h-[76px] z-[100]">
       <TwImage
         className="w-[76px] h-[76px] rounded-full overflow-hidden"
-        source={SPLASH_ICONS[APP_CONFIG.appEnv]}
+        source={APP_CONFIG.splashIcon}
         alt=""
         contentFit="cover"
         priority="high"

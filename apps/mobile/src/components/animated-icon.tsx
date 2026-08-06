@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { SPLASH_ICONS } from '@/constants/images';
-import { SPLASH_COLORS } from '@/constants/theme';
 import { TwImage, TwText, TwView } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
 
@@ -15,7 +13,7 @@ export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean })
   const opacity = useSharedValue(1);
 
   const versionText = getAppVersion().formatted;
-  const backgroundColor = SPLASH_COLORS[APP_CONFIG.appEnv];
+  const backgroundColor = APP_CONFIG.splashColor;
 
   useEffect(() => {
     if (!isReady) return;
@@ -59,7 +57,7 @@ export function AnimatedIcon() {
     <TwView className="justify-center items-center w-[76px] h-[76px] z-[100]">
       <TwImage
         className="w-[76px] h-[76px] rounded-full overflow-hidden"
-        source={SPLASH_ICONS[APP_CONFIG.appEnv]}
+        source={APP_CONFIG.splashIcon}
         alt=""
         contentFit="cover"
         priority="high"
