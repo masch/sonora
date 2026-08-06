@@ -12,6 +12,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { fetchThemes, fetchExperiences, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
 import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
 import type { TranslationKeys } from '@/i18n/types';
+import { HomeAudioPlayer } from '@/components/home-audio-player';
 import {
   TRACK_IMAGES,
   SONORA_TRIP_BG,
@@ -204,6 +205,9 @@ function ExperiencesContent({
           {t(`experiences.types.${selectedFormat}` as TranslationKeys)}
         </ThemedText>
       </TwView>
+
+      {/* Instructions Audio Player */}
+      <HomeAudioPlayer />
 
       {!isFormatLocked && (
         <TwView className="flex-row gap-2 mb-4 justify-center">
