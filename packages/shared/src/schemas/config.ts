@@ -19,7 +19,6 @@ export const RemoteConfigPayloadSchema = z.object({
     syncIntervalSec: z.number().positive(),
   }),
   appVersion: RemoteConfigAppVersionSchema,
-  showHomeInstructions: z.boolean(),
 });
 
 export type RemoteConfigPayload = z.infer<typeof RemoteConfigPayloadSchema>;
@@ -29,5 +28,4 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
   appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
-  showHomeInstructions: false,
 };

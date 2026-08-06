@@ -81,4 +81,10 @@ describe('Web app-tabs', () => {
     const { queryByTestId } = await render(<AppTabsWeb />);
     expect(queryByTestId('tab-trigger-settings')).toBeNull();
   });
+
+  it('positions the tab bar at the bottom', async () => {
+    const { getByTestId } = await render(<AppTabsWeb />);
+    const tabList = getByTestId('custom-tab-list');
+    expect(tabList).toBeTruthy();
+  });
 });

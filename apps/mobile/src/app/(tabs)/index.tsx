@@ -1,11 +1,8 @@
-import { HomeAudioPlayer } from '@/components/home-audio-player';
-import { AppVersionText } from '@/components/app-version-text';
 import { Icon } from '@/components/icon';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
@@ -23,8 +20,6 @@ export default function HomeScreen() {
   const tripIcon = getExperienceIcon('trip');
   const trackIcon = getExperienceIcon('track');
   const messageIcon = getExperienceIcon('general-feedback');
-
-  const showInstructions = useRemoteConfigStore((s) => s.config.showHomeInstructions);
 
   return (
     <ScrollScreenWrapper
@@ -44,9 +39,6 @@ export default function HomeScreen() {
 
       {/* Main Content Area */}
       <TwView className="px-8 pt-6">
-        {/* Interactive Home Audio Player */}
-        {showInstructions && <HomeAudioPlayer />}
-
         {/* Navigation List Menu */}
         <TwView className="gap-3">
           {/* Explorar Recorridos */}
@@ -157,8 +149,6 @@ export default function HomeScreen() {
         {/* Spacer to match the padding between elements */}
         <TwView className="h-3" />
       </TwView>
-
-      <AppVersionText />
     </ScrollScreenWrapper>
   );
 }

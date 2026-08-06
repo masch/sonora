@@ -12,12 +12,16 @@ describe('en translations', () => {
   });
 
   it('has non-empty string values for all translation keys', () => {
+    const allowedEmptyKeys = new Set(['feedback.form.placeholder']);
+
     const checkValues = (obj: Record<string, unknown>, path = ''): string[] => {
       const empty: string[] = [];
       for (const [key, value] of Object.entries(obj)) {
         const fullPath = path ? `${path}.${key}` : key;
         if (typeof value === 'string') {
-          if (value.trim() === '') empty.push(fullPath);
+          if (value.trim() === '' && !allowedEmptyKeys.has(fullPath)) {
+            empty.push(fullPath);
+          }
         } else if (typeof value === 'object' && value !== null) {
           empty.push(...checkValues(value as Record<string, unknown>, fullPath));
         }

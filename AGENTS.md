@@ -82,11 +82,7 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 
 - **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (currently 345600s = 4 days) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
 
-## 11. GitHub CLI Sandbox Environment Overrides
-
-- **GitHub CLI Commands**: The agent sandbox environments inject a dummy `GITHUB_TOKEN` (e.g., `github_pat_antigravitydummytoken`) which overrides the user's authentic local hosts credential configuration. When invoking `gh` commands, you MUST explicitly bypass this dummy token by unsetting `GITHUB_TOKEN` and `GH_TOKEN` environment variables using `env -u GITHUB_TOKEN -u GH_TOKEN gh <command>` to allow the CLI to use the user's local keychain/helper authentication.
-
-## 12. Payment and Checkout Conventions
+## 11. Payment and Checkout Conventions
 
 - **Currency Representation**: Store all monetary values as integers in minor units (cents/centavos) in the database and API payloads to prevent floating-point precision errors (e.g., store `$15.000` as `1500000`).
 - **Decimal Format Display**: Use the `formatPrice` helper to format values. Whole numbers of pesos should default to hiding decimals (e.g. `15.000`), while fraction amounts must display them (e.g. `150,50`).

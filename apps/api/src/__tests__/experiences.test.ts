@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { eq } from 'drizzle-orm';
 import app, { setDbClient } from '../index';
+import { experiences } from '../db/schema';
 
 describe('GET /experiences', () => {
   let mockDb: any;
@@ -31,10 +33,44 @@ describe('GET /experiences', () => {
     expect(await res.json()).toMatchObject({ code: 'DEVICE_ID_REQUIRED', status: 400 });
   });
 
+  it('filters out unpublished experiences via where(eq(published, true)) and exposes the published field', async () => {
+    const expMock = [
+      { id: 'exp-1', title: 'Free Trip', free: true, audioUrl: 'free-audio.mp3', published: true },
+      { id: 'exp-2', title: 'Paid Trip', free: false, audioUrl: 'paid-audio.mp3', published: true },
+    ];
+    const waypointsMock: any[] = [];
+    const accessesMock: any[] = [];
+    const purchasesMock: any[] = [];
+
+    let queryCallCount = 0;
+    mockDb.then = vi.fn().mockImplementation((resolve) => {
+      queryCallCount++;
+      if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
+      if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
+      if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      return Promise.resolve(waypointsMock).then(resolve);
+    });
+
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/experiences',
+      {
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockDb.where).toHaveBeenCalledWith(eq(experiences.published, true));
+    const body = (await res.json()) as any[];
+    expect(body[0].published).toBe(true);
+  });
+
   it('lists experiences and maps waypoints and free audio urls', async () => {
     const expMock = [
-      { id: 'exp-1', title: 'Free Trip', free: true, audioUrl: 'free-audio.mp3' },
-      { id: 'exp-2', title: 'Paid Trip', free: false, audioUrl: 'paid-audio.mp3' },
+      { id: 'exp-1', title: 'Free Trip', free: true, audioUrl: 'free-audio.mp3', published: true },
+      { id: 'exp-2', title: 'Paid Trip', free: false, audioUrl: 'paid-audio.mp3', published: true },
     ];
     const waypointsMock: any[] = [];
     const accessesMock: any[] = [];

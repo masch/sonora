@@ -160,6 +160,7 @@ sonora/
 
 - **[Admin Auth Architecture](docs/admin_auth_architecture.md)** — Admin portal HttpOnly cookie session management, environment-driven security (`SameSite`/`Secure`), and XSS immunity.
 - **[Payment Flow Architecture](docs/payment_flow_architecture.md)** — Detailed sequence flows, Web vs Native redirection logic, SSOT app scheme resolution (`app-identifiers.json`), and Mercado Pago webhook synchronization.
+- **[API Logging Redaction](docs/api_logging_redaction.md)** — How the API sanitizes request/response logging: shared redaction helper, allowlists, and the `ENABLE_API_LOGGING` toggle.
 
 ## API — Feedback Database
 
