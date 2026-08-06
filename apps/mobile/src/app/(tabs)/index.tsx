@@ -1,5 +1,4 @@
 import { HomeAudioPlayer } from '@/components/home-audio-player';
-import { AppVersionText } from '@/components/app-version-text';
 import { Icon } from '@/components/icon';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
@@ -157,8 +156,6 @@ export default function HomeScreen() {
         {/* Spacer to match the padding between elements */}
         <TwView className="h-3" />
       </TwView>
-
-      <AppVersionText />
     </ScrollScreenWrapper>
   );
 }
