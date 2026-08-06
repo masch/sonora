@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
  * e.g. "192.168.1.42:8081" (physical) or "10.0.2.2:8081" (emulator).
  * We extract the host part and re-use it for the API on port 3000.
  */
-function detectHostFromExpo(): string | null {
+export function detectHostFromExpo(): string | null {
   try {
     const debuggerHost = Constants.expoGoConfig?.debuggerHost;
     if (!debuggerHost) return null;
@@ -26,7 +26,7 @@ function detectHostFromExpo(): string | null {
   }
 }
 
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // 1. Explicit env var wins
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
@@ -51,15 +51,16 @@ function getApiBaseUrl(): string {
   return 'http://localhost:3000'; // web, iOS simulator, etc.
 }
 
-const apiClientKey = process.env.EXPO_PUBLIC_API_CLIENT_KEY!;
+const isProduction = Constants.expoConfig?.extra?.isProduction === true;
+const appEnv: 'production' | 'staging' = isProduction ? 'production' : 'staging';
 
 /**
  * Sonora Global App Configuration
  */
 export const APP_CONFIG = {
-  isProduction: Constants.expoConfig?.extra?.isProduction === true,
+  isProduction,
+  appEnv,
   apiBaseUrl: getApiBaseUrl(),
-  apiClientKey,
   audio: {
     /**
      * Duration in milliseconds to rewind the audio player.
@@ -81,7 +82,9 @@ export const APP_CONFIG = {
      * Build-time env override to bypass geofence restriction entirely.
      * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    bypassGeofence: process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true',
+    bypassGeofence:
+      process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true' ||
+      DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
   },
   feedback: {
     /**

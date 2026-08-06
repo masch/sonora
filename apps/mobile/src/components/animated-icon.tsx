@@ -1,10 +1,10 @@
 import { getAppVersion } from '@/utils/app-version';
-import Constants from 'expo-constants';
+import { APP_CONFIG } from '@/config/app-config';
 import { useEffect, useState } from 'react';
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { SPLASH_ICON } from '@/constants/images';
+import { SPLASH_ICONS } from '@/constants/images';
 import { SPLASH_COLORS } from '@/constants/theme';
 import { TwImage, TwText, TwView } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
@@ -15,8 +15,7 @@ export function AnimatedSplashOverlay({ isReady = true }: { isReady?: boolean })
   const opacity = useSharedValue(1);
 
   const versionText = getAppVersion().formatted;
-  const isProduction = Constants.expoConfig?.extra?.isProduction === true;
-  const backgroundColor = isProduction ? SPLASH_COLORS.production : SPLASH_COLORS.staging;
+  const backgroundColor = SPLASH_COLORS[APP_CONFIG.appEnv];
 
   useEffect(() => {
     if (!isReady) return;
@@ -60,9 +59,12 @@ export function AnimatedIcon() {
     <TwView className="justify-center items-center w-[76px] h-[76px] z-[100]">
       <TwImage
         className="w-[76px] h-[76px] rounded-full overflow-hidden"
-        source={SPLASH_ICON}
+        source={SPLASH_ICONS[APP_CONFIG.appEnv]}
         alt=""
-        resizeMode="cover"
+        contentFit="cover"
+        priority="high"
+        cachePolicy="memory-disk"
+        transition={0}
       />
     </TwView>
   );
