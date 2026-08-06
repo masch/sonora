@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
-import { FlatList } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
-import { ThemedText } from '@/components/themed-text';
+import { HomeAudioPlayer } from '@/components/home-audio-player';
 import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
-import { TwView, TwTextInput, TwPressable } from '@/tw';
-import { TwImage } from '@/tw/image';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { fetchThemes, fetchExperiences, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
-import type { Theme, Experience, ExperienceFormat } from '@/data/experiences';
-import type { TranslationKeys } from '@/i18n/types';
-import { HomeAudioPlayer } from '@/components/home-audio-player';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { ThemedText } from '@/components/themed-text';
 import {
-  TRACK_IMAGES,
-  SONORA_TRIP_BG,
-  SONORA_TRACKS_BG,
   DEFAULT_TRACK_IMAGE,
+  SONORA_TRACKS_BG,
+  SONORA_TRIP_BG,
+  TRACK_IMAGES,
 } from '@/constants/images';
 import { ROUTES } from '@/constants/routes';
+import type { Experience, ExperienceFormat, Theme } from '@/data/experiences';
+import { fetchExperiences, fetchThemes, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
+import type { TranslationKeys } from '@/i18n/types';
+import { TwPressable, TwTextInput, TwView } from '@/tw';
+import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { FlatList } from 'react-native';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -206,9 +206,6 @@ function ExperiencesContent({
         </ThemedText>
       </TwView>
 
-      {/* Instructions Audio Player */}
-      <HomeAudioPlayer />
-
       {!isFormatLocked && (
         <TwView className="flex-row gap-2 mb-4 justify-center">
           {USER_EXPERIENCE_FORMATS.map((format) => {
@@ -295,6 +292,9 @@ function ExperiencesContent({
           }}
         />
       </TwView>
+
+      {/* Instructions Audio Player */}
+      <HomeAudioPlayer />
 
       <TwView className="gap-5">
         {filteredExperiences.length === 0 ? (

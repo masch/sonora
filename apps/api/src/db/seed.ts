@@ -60,7 +60,7 @@ const trips = [
     currency: null,
     imageKey: INSTRUCTIONS_IMAGE_KEY,
     geofenceBypassable: false,
-    published: true,
+    published: false,
   },
   {
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
