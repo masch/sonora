@@ -91,10 +91,6 @@ export const es = {
       cancel: 'Cancelar',
       continue: 'Continuar',
     },
-    detail: {
-      registry: 'Registro',
-      location: 'Ubicación',
-    },
   },
   home: {
     title: 'SONORA',
