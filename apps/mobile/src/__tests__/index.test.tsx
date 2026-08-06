@@ -73,7 +73,6 @@ jest.mock('@/store/remote-config-store', () => ({
   useRemoteConfigStore: jest.fn((selector?: (s: unknown) => unknown) => {
     const state = {
       config: {
-        showHomeInstructions: true,
         audio: { rewindOffsetMs: 10000 },
       },
     };
@@ -93,11 +92,10 @@ describe('Home screen (Redesigned)', () => {
 
     expect(getByText('home.title')).toBeTruthy();
     expect(getByText('home.poetic')).toBeTruthy();
-    expect(getByText('home.instructionsTitle')).toBeTruthy();
     expect(getByText('home.exploreRoutes')).toBeTruthy();
     expect(getByText('home.exploreTracks')).toBeTruthy();
 
-    expect(getByTestId('home-audio-player')).toBeTruthy();
+    expect(queryByTestId('home-audio-player')).toBeNull();
     expect(getByTestId('explore-routes-menu')).toBeTruthy();
     expect(getByTestId('explore-tracks-menu')).toBeTruthy();
 

@@ -61,6 +61,7 @@ export const experiences = sonoraSchema.table('experiences', {
   currency: currencyEnum('currency').default('ARS'),
   imageKey: text('image_key').notNull(),
   geofenceBypassable: boolean('geofence_bypassable').default(false).notNull(),
+  published: boolean('published').notNull(),
 });
 
 export const waypoints = sonoraSchema.table('waypoints', {

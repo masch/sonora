@@ -1,11 +1,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { logger } from '@sonora/shared';
 import { HttpClient, HttpError } from '../lib/http-client';
+
+vi.mock('@sonora/shared', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+/** Serialize every log call so absence assertions are total. */
+function serializedLogs(): string {
+  return JSON.stringify([
+    ...vi.mocked(logger.info).mock.calls,
+    ...vi.mocked(logger.warn).mock.calls,
+    ...vi.mocked(logger.error).mock.calls,
+  ]);
+}
 
 describe('HttpClient', () => {
   let client: HttpClient;
   let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockFetch = vi.fn();
     vi.stubGlobal('fetch', mockFetch);
     client = new HttpClient({
@@ -231,6 +250,60 @@ describe('HttpClient', () => {
 
       const callArgs = mockFetch.mock.calls[0][1];
       expect(callArgs.headers['Content-Type']).toBe('text/plain');
+    });
+  });
+
+  describe('log redaction', () => {
+    it('never logs outbound request headers or body', async () => {
+      const authedClient = new HttpClient({
+        baseUrl: 'https://api.example.com',
+        headers: { Authorization: 'Bearer outbound-secret' },
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(''),
+      });
+
+      await authedClient.post('/items', { email: 'buyer@example.com' });
+
+      expect(serializedLogs()).not.toContain('outbound-secret');
+      expect(serializedLogs()).not.toContain('buyer@example.com');
+    });
+
+    it('never logs outbound response text', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('{"token":"outbound-token-xyz"}'),
+      });
+
+      await client.get('/items');
+
+      const respCall = vi
+        .mocked(logger.info)
+        .mock.calls.find(([msg]) => String(msg).includes('[HTTP Response]'));
+      expect(respCall).toBeDefined();
+      expect(respCall?.[1]).toEqual({ status: 200 });
+      expect(serializedLogs()).not.toContain('outbound-token-xyz');
+    });
+
+    it('query-strips the URL in the error log', async () => {
+      mockFetch.mockRejectedValue(new TypeError('fetch failed'));
+      const providerClient = new HttpClient({ baseUrl: 'https://provider.example.com' });
+
+      await expect(providerClient.get('/api?client_secret=abc')).rejects.toThrow(TypeError);
+
+      const errCall = vi
+        .mocked(logger.error)
+        .mock.calls.find(([msg]) => String(msg).includes('[HTTP Request Error]'));
+      expect(errCall).toBeDefined();
+      expect(String(errCall?.[0])).toContain('https://provider.example.com/api');
+      expect(String(errCall?.[0])).not.toContain('client_secret=abc');
+      expect(errCall?.[1]).toEqual({ error: 'TypeError', status: undefined });
+      expect(serializedLogs()).not.toContain('client_secret=abc');
     });
   });
 });

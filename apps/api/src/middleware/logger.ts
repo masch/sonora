@@ -1,5 +1,12 @@
 import { logger } from '@sonora/shared';
 import type { MiddlewareHandler } from 'hono';
+import {
+  extractSafeBodyFields,
+  sanitizeHeaders,
+  sanitizeQuery,
+  sanitizeUrl,
+  UNPARSEABLE_BODY,
+} from '../lib/log-redaction';
 
 export const customLogger = (): MiddlewareHandler => {
   return async (c, next) => {
@@ -10,67 +17,59 @@ export const customLogger = (): MiddlewareHandler => {
     }
 
     const method = c.req.method;
-    const url = c.req.url;
+    const sanitizedUrl = sanitizeUrl(c.req.url);
     const startTime = Date.now();
 
-    let requestBody = '';
-    try {
-      const contentType = c.req.header('content-type');
-      if (contentType && contentType.includes('application/json') && c.req.raw.body) {
-        const clonedReq = c.req.raw.clone();
-        requestBody = await clonedReq.text();
-      }
-    } catch (e) {
-      logger.warn(`Failed to read request body for logging: ${method} ${url}`, e);
-    }
+    // ── Request side ──────────────────────────────────────────────
+    const contentType = c.req.header('content-type');
+    const reqMeta: Record<string, unknown> = {
+      headers: sanitizeHeaders((c.req.header() ?? {}) as Record<string, string>),
+      query: sanitizeQuery(c.req.query()),
+    };
 
-    let parsedRequestBody: unknown;
-    if (requestBody) {
+    if (contentType && contentType.includes('application/json') && c.req.raw.body) {
       try {
-        parsedRequestBody = JSON.parse(requestBody);
+        const clonedReq = c.req.raw.clone(); // clone before read — handler stream untouched
+        const raw = await clonedReq.text();
+        try {
+          reqMeta.body = extractSafeBodyFields(JSON.parse(raw)); // allowlisted fields only
+        } catch {
+          reqMeta.body = UNPARSEABLE_BODY; // omit marker, never raw text
+        }
       } catch (e) {
-        logger.warn(`Failed to parse JSON request body for logging: ${method} ${url}`, e);
-        parsedRequestBody = requestBody;
+        logger.warn(`Failed to read request body for logging: ${method} ${sanitizedUrl}`, {
+          error: e instanceof Error ? e.name : 'unknown',
+        });
       }
     }
+    logger.info(`[API Request] ${method} ${sanitizedUrl}`, reqMeta);
 
-    logger.info(`[API Request] ${method} ${url}`, {
-      headers: c.req.header(),
-      body: parsedRequestBody,
-    });
-
-    let responseBody: any = undefined;
-
+    // ── Response side ─────────────────────────────────────────────
     await next();
-
     const duration = Date.now() - startTime;
 
-    // Buffer and reconstruct the response body to log it without draining/locking the stream
-    if (c.res && c.res.body) {
-      const contentType = c.res.headers.get('content-type');
-      if (
-        contentType &&
-        (contentType.includes('application/json') || contentType.includes('text/'))
-      ) {
+    const resMeta: Record<string, unknown> = { status: c.res.status };
+    const resContentType = c.res.headers.get('content-type');
+    if (c.res.body && resContentType && resContentType.includes('application/json')) {
+      try {
+        const bodyBytes = await c.res.arrayBuffer(); // buffer exactly once
         try {
-          const bodyBytes = await c.res.arrayBuffer();
           const text = new TextDecoder().decode(bodyBytes);
-          try {
-            responseBody = JSON.parse(text);
-          } catch {
-            responseBody = text;
-          }
-          // Reconstruct response using the buffered bodyBytes to prevent stream drainage/locking
-          c.res = new Response(bodyBytes, c.res);
-        } catch (e) {
-          logger.warn('Failed to buffer response body for logging', e);
+          resMeta.body = extractSafeBodyFields(JSON.parse(text));
+        } catch {
+          // JSON content-type but unparseable text: no body fields logged
         }
+        // Rebuild: status/headers copied, byte-identical body for the real network client
+        c.res = new Response(bodyBytes, c.res);
+      } catch (e) {
+        logger.warn('Failed to buffer response body for logging', {
+          error: e instanceof Error ? e.name : 'unknown',
+        });
       }
     }
-
-    logger.info(`[API Response] ${method} ${url} - ${c.res.status} (${duration}ms)`, {
-      status: c.res.status,
-      body: responseBody,
-    });
+    logger.info(
+      `[API Response] ${method} ${sanitizedUrl} - ${c.res.status} (${duration}ms)`,
+      resMeta,
+    );
   };
 };

@@ -23,7 +23,6 @@ describe('config-cache', () => {
         audio: { rewindOffsetMs: 15000 },
         feedback: { syncIntervalSec: 60 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
-        showHomeInstructions: false,
       };
 
       await setCachedConfig(config);

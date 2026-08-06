@@ -124,8 +124,35 @@ describe('POST /payments/create', () => {
     expect(body).toHaveProperty('status', 404);
   });
 
+  it('returns 404 when experience is unpublished', async () => {
+    mockDb.limit.mockResolvedValue([
+      { id: '550e8400-e29b-41d4-a716-446655440000', free: false, price: 15000, published: false },
+    ]);
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/payments/create',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+        body: JSON.stringify({ experienceId: '550e8400-e29b-41d4-a716-446655440000' }),
+      },
+      {},
+    );
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'EXPERIENCE_NOT_FOUND');
+  });
+
   it('returns 400 when experience is free', async () => {
-    mockDb.limit.mockResolvedValue([{ id: '550e8400-e29b-41d4-a716-446655440000', free: true }]);
+    mockDb.limit.mockResolvedValue([
+      { id: '550e8400-e29b-41d4-a716-446655440000', free: true, published: true },
+    ]);
     setDbClient(mockDb);
 
     const res = await app.request(
@@ -151,7 +178,7 @@ describe('POST /payments/create', () => {
 
   it('returns 400 when experience has no price set', async () => {
     mockDb.limit.mockResolvedValue([
-      { id: '550e8400-e29b-41d4-a716-446655440000', free: false, price: null },
+      { id: '550e8400-e29b-41d4-a716-446655440000', free: false, price: null, published: true },
     ]);
     setDbClient(mockDb);
 
@@ -178,7 +205,13 @@ describe('POST /payments/create', () => {
 
   it('successfully creates checkout, generates unique placeholder ID, and updates DB', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
-    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    const experienceMock = {
+      id: VALID_UUID,
+      title: 'Amazing Trip',
+      free: false,
+      price: 15000,
+      published: true,
+    };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -228,7 +261,13 @@ describe('POST /payments/create', () => {
 
   it('includes platform from X-Device-Platform header in purchase values', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
-    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    const experienceMock = {
+      id: VALID_UUID,
+      title: 'Amazing Trip',
+      free: false,
+      price: 15000,
+      published: true,
+    };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -257,7 +296,13 @@ describe('POST /payments/create', () => {
 
   it('includes raw device ID in purchase values if X-Device-Id header is present (pass-through)', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
-    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    const experienceMock = {
+      id: VALID_UUID,
+      title: 'Amazing Trip',
+      free: false,
+      price: 15000,
+      published: true,
+    };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -287,7 +332,13 @@ describe('POST /payments/create', () => {
 
   it('creates checkout with API-based backUrls and stores redirectUrl in purchase metadata', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
-    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    const experienceMock = {
+      id: VALID_UUID,
+      title: 'Amazing Trip',
+      free: false,
+      price: 15000,
+      published: true,
+    };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);
@@ -330,7 +381,13 @@ describe('POST /payments/create', () => {
 
   it('creates checkout with API-based backUrls when no redirectUrl is provided', async () => {
     const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
-    const experienceMock = { id: VALID_UUID, title: 'Amazing Trip', free: false, price: 15000 };
+    const experienceMock = {
+      id: VALID_UUID,
+      title: 'Amazing Trip',
+      free: false,
+      price: 15000,
+      published: true,
+    };
     mockDb.limit.mockResolvedValue([experienceMock]);
     mockDb.returning.mockResolvedValue([{ id: 'purchase-999' }]);
     setDbClient(mockDb);

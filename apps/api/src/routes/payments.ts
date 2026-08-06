@@ -13,12 +13,14 @@ import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { experienceAccesses, experiences, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
+import { sanitizeUrl } from '../lib/log-redaction';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
-import { platformGuard } from '../middleware/platform-guard';
 import { paymentsGuard } from '../middleware/payments-guard';
+import { platformGuard } from '../middleware/platform-guard';
 import { created, ERRORS, HTTP, problem, success } from '../middleware/problem-details';
 import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
+import { urlGuard } from '../middleware/url-guard';
 import { validationHook } from '../middleware/validation-error';
 
 const ReturnParamSchema = z.object({
@@ -65,6 +67,7 @@ paymentsRouter.use('*', paymentsGuard());
 paymentsRouter.post(
   '/create',
   dbGuard(),
+  urlGuard(),
   deviceIdGuard(),
   platformGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.PAYMENTS_CREATE),
@@ -87,6 +90,10 @@ paymentsRouter.post(
       .limit(1);
 
     if (!experience) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
+    if (!experience.published) {
       return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
     }
 
@@ -120,19 +127,13 @@ paymentsRouter.post(
       .returning();
 
     // Determine base URL for MP back_urls (must be HTTPS for auto_return)
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(c.req.url).origin;
-    } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for backUrls', { error });
-      baseUrl = '';
-    }
+    const baseUrl = c.var.requestUrl.origin;
 
     // Store original redirect URL in purchase metadata and log payment creation details
     logger.info('[PAYMENTS] Creating payment checkout', {
       purchaseId: purchase.id,
       experienceId: experience.id,
-      receivedRedirectUrl: redirectUrl,
+      receivedRedirectUrl: redirectUrl ? sanitizeUrl(redirectUrl) : undefined,
     });
 
     const finalBackUrls = {
@@ -250,9 +251,9 @@ paymentsRouter.post(
     logger.info('[WEBHOOK] Updating purchase status & preserving metadata', {
       purchaseId: result.externalReference,
       newStatus,
-      existingMeta,
-      incomingMeta,
-      mergedMetadata,
+      existingMetadataPresent: Object.keys(existingMeta).length > 0,
+      incomingMetadataPresent: Object.keys(incomingMeta).length > 0,
+      mergedMetadataCount: Object.keys(mergedMetadata).length,
     });
 
     // Update purchase by our UUID, storing the real MP payment ID
@@ -281,6 +282,7 @@ paymentsRouter.post(
 paymentsRouter.get(
   '/return/:status/:purchaseId',
   dbGuard(),
+  urlGuard(),
   zValidator('param', ReturnParamSchema, validationHook),
   async (c) => {
     const { status, purchaseId } = c.req.valid('param');
@@ -298,7 +300,7 @@ paymentsRouter.get(
         purchaseId,
         status,
         foundPurchase: !!purchase,
-        metadata: purchase?.metadata,
+        hasMetadata: !!(purchase?.metadata && Object.keys(purchase.metadata).length > 0),
       });
 
       if (purchase?.metadata) {
@@ -321,8 +323,8 @@ paymentsRouter.get(
                   {
                     purchaseId,
                     status,
-                    rawRedirectUrl: meta.redirectUrl,
-                    error,
+                    rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
+                    error: error instanceof Error ? error.name : 'unknown',
                   },
                 );
                 targetUrl = '';
@@ -337,8 +339,8 @@ paymentsRouter.get(
             logger.info('[PAYMENTS] Return endpoint redirecting', {
               purchaseId,
               status,
-              rawRedirectUrl: meta.redirectUrl,
-              finalTargetUrl: targetUrl,
+              rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
+              finalTargetUrl: sanitizeUrl(targetUrl),
             });
 
             return c.redirect(targetUrl, HTTP.FOUND);
@@ -348,7 +350,7 @@ paymentsRouter.get(
               {
                 purchaseId,
                 status,
-                rawRedirectUrl: meta.redirectUrl,
+                rawRedirectUrl: sanitizeUrl(meta.redirectUrl),
               },
             );
           }
@@ -379,26 +381,23 @@ paymentsRouter.get(
         }
       } catch (error) {
         logger.warn('[PAYMENTS] Failed to parse Referer header in return endpoint', {
-          referer,
-          error,
+          purchaseId,
+          status,
+          refererOrigin: sanitizeUrl(referer),
+          error: error instanceof Error ? error.name : 'unknown',
         });
       }
     }
 
     // Default fallback: redirect to mobile app callback URL
-    let baseUrl: string;
-    try {
-      baseUrl = new URL(c.req.url).origin;
-    } catch (error) {
-      logger.warn('[PAYMENTS] Failed to parse request URL origin for return fallback', { error });
-      baseUrl = '';
-    }
+    // urlGuard() validates the request URL and exposes it via c.var.requestUrl.
+    const baseUrl = c.var.requestUrl.origin;
 
     const defaultFallbackUrl = `${baseUrl}${PAYMENT_ROUTES.CALLBACK}`;
     logger.info('[PAYMENTS] Return endpoint falling back to default callback URL', {
       purchaseId,
       status,
-      defaultFallbackUrl,
+      defaultFallbackUrl: sanitizeUrl(defaultFallbackUrl),
     });
 
     return c.redirect(defaultFallbackUrl, HTTP.FOUND);
@@ -487,9 +486,28 @@ paymentsRouter.get(
     const { id } = c.req.valid('param');
     const { email } = c.req.valid('query') as { email: string };
 
+    // Unpublished experiences are hidden: treated as if they did not exist.
+    const [experience] = await db
+      .select({ published: experiences.published })
+      .from(experiences)
+      .where(eq(experiences.id, id))
+      .limit(1);
+
+    if (!experience || !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
     const [purchase] = await db
-      .select()
+      .select({
+        id: purchases.id,
+        status: purchases.status,
+        provider: purchases.provider,
+        amount: purchases.amount,
+        currency: purchases.currency,
+        createdAt: purchases.createdAt,
+      })
       .from(purchases)
+      .innerJoin(experiences, eq(experiences.id, purchases.experienceId))
       .where(
         and(
           eq(purchases.experienceId, id),
@@ -584,10 +602,14 @@ paymentsRouter.post(
 
     // Get current price for snapshot
     const [experience] = await db
-      .select({ price: experiences.price })
+      .select({ price: experiences.price, published: experiences.published })
       .from(experiences)
       .where(eq(experiences.id, id))
       .limit(1);
+
+    if (experience && !experience.published) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
 
     await db.insert(experienceAccesses).values({
       experienceId: id,

@@ -1,4 +1,5 @@
 import { logger } from '@sonora/shared';
+import { sanitizeHeaders, sanitizeUrl } from './log-redaction';
 
 export class HttpError extends Error {
   constructor(
@@ -46,9 +47,8 @@ export class HttpClient {
     };
     const bodyString = options.body ? JSON.stringify(options.body) : undefined;
 
-    logger.info(`[HTTP Request] ${method} ${url}`, {
-      headers,
-      body: options.body,
+    logger.info(`[HTTP Request] ${method} ${sanitizeUrl(url)}`, {
+      headers: sanitizeHeaders(headers),
     });
 
     try {
@@ -70,12 +70,13 @@ export class HttpClient {
           responseText = await res.text();
         }
       } catch (e) {
-        logger.warn('Failed to read response body text for logging:', e);
+        logger.warn('Failed to read response body text for logging:', {
+          error: e instanceof Error ? e.name : 'unknown',
+        });
       }
 
-      logger.info(`[HTTP Response] ${method} ${url} - ${res.status} (${duration}ms)`, {
+      logger.info(`[HTTP Response] ${method} ${sanitizeUrl(url)} - ${res.status} (${duration}ms)`, {
         status: res.status,
-        body: responseText,
       });
 
       if (!res.ok) {
@@ -90,7 +91,13 @@ export class HttpClient {
       return (await res.json()) as T;
     } catch (err) {
       const duration = Date.now() - startTime;
-      logger.error(`[HTTP Request Error] ${method} ${url} - Failed after ${duration}ms:`, err);
+      logger.error(
+        `[HTTP Request Error] ${method} ${sanitizeUrl(url)} - Failed after ${duration}ms:`,
+        {
+          error: err instanceof Error ? err.name : 'unknown',
+          status: err instanceof HttpError ? err.status : undefined,
+        },
+      );
       if (err instanceof HttpError) throw err;
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new HttpError(408, `Request timeout after ${timeout}ms`);

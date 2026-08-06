@@ -102,6 +102,11 @@ jest.mock('react-native-webview', () => ({
   WebView: 'WebView',
 }));
 
+jest.mock('@/components/track-detail-map', () => {
+  const MockTrackDetailMap = () => null;
+  return { __esModule: true, default: MockTrackDetailMap };
+});
+
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
 
@@ -167,14 +172,12 @@ describe('TrackDetailScreen', () => {
   it('renders experience details card layout and manual feedback button for track format', async () => {
     mockExperiences[0].format = 'track';
     mockExperiences[0].themeKey = 'birds';
-    const { queryByTestId, getByTestId, getByText } = await render(<TrackDetailScreen />);
+    const { queryByTestId, getByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
       expect(queryByTestId('gps-precision-badge')).toBeNull();
       expect(getByTestId('experience-title')).toBeTruthy();
       expect(getByTestId('experience-category')).toBeTruthy();
-      expect(getByText('45:00')).toBeTruthy();
-      expect(getByText('experiences.detail.registry')).toBeTruthy();
-      expect(getByText('experiences.detail.location')).toBeTruthy();
+      expect(getByTestId('track-detail-map')).toBeTruthy();
       expect(getByTestId('feedback-manual-button')).toBeTruthy();
     });
     // Restore format

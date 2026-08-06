@@ -91,11 +91,4 @@ export const APP_CONFIG = {
      */
     syncIntervalSec: DEFAULT_REMOTE_CONFIG.feedback.syncIntervalSec,
   },
-  features: {
-    /**
-     * Show the instructions section on the home screen.
-     * Default sourced from @sonora/shared — overrideable via GET /api/config.
-     */
-    showHomeInstructions: DEFAULT_REMOTE_CONFIG.showHomeInstructions,
-  },
 } as const;
