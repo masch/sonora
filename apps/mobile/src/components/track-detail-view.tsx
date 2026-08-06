@@ -16,19 +16,13 @@ import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
+import TrackDetailMap from '@/components/track-detail-map';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
 import type { TranslationKeys } from '@/i18n/types';
-
-const formatDuration = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-};
 
 interface TrackDetailViewProps {
   track: TrackExperience;
@@ -156,50 +150,15 @@ export default function TrackDetailView({
             {track.description}
           </ThemedText>
 
-          {/* Metadata Details Rows */}
-          <TwView className="gap-3 pt-2">
-            {/* Duration Row */}
-            <TwView className="flex-row items-center gap-3">
-              <Icon
-                ios="clock"
-                android="schedule"
-                web="schedule"
-                size={18}
-                tintColor={colors.homeCardSubtext}
-              />
-              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
-                {formatDuration(track.durationSeconds)}
-              </ThemedText>
+          {/* Map for track origin point */}
+          {track.latitude != null && track.longitude != null && (
+            <TwView
+              className="mt-3 -mx-3 relative rounded-xl overflow-hidden"
+              testID="track-detail-map"
+            >
+              <TrackDetailMap latitude={track.latitude} longitude={track.longitude} />
             </TwView>
-
-            {/* Registry Row */}
-            <TwView className="flex-row items-center gap-3">
-              <Icon
-                ios="person"
-                android="person"
-                web="person"
-                size={18}
-                tintColor={colors.homeCardSubtext}
-              />
-              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
-                {t('experiences.detail.registry' as TranslationKeys)}
-              </ThemedText>
-            </TwView>
-
-            {/* Location Row */}
-            <TwView className="flex-row items-center gap-3">
-              <Icon
-                ios="mappin.and.ellipse"
-                android="location_on"
-                web="location_on"
-                size={18}
-                tintColor={colors.homeCardSubtext}
-              />
-              <ThemedText className="text-sm font-medium" style={{ color: colors.homeCardSubtext }}>
-                {t('experiences.detail.location' as TranslationKeys)}
-              </ThemedText>
-            </TwView>
-          </TwView>
+          )}
 
           {/* Payment prompt or Audio controls — depending on purchase state */}
           {purchaseState.status === 'paid' ? (
