@@ -145,7 +145,7 @@ describe('GlobalAudioPlayer', () => {
     ['/(tabs)', ['(tabs)']],
     ['/(tabs)/index', ['(tabs)', 'index']],
   ])(
-    'hides when playing instructions on the Home screen with pathname "%s"',
+    'shows when playing instructions on the Home screen with pathname "%s"',
     async (pathname, segments) => {
       mockSegments = segments;
       mockPathname = pathname;
@@ -153,11 +153,11 @@ describe('GlobalAudioPlayer', () => {
       mockState.currentUri = 'file://instructions.mp3';
 
       const { queryByTestId } = await render(<GlobalAudioPlayer />);
-      expect(queryByTestId('global-audio-player')).toBeNull();
+      expect(queryByTestId('global-audio-player')).not.toBeNull();
     },
   );
 
-  it('hides when playing instructions on the Home tab screen with a blob URI but metadata id instructions', async () => {
+  it('shows when playing instructions on the Home tab screen with a blob URI and metadata id instructions', async () => {
     mockSegments = ['(tabs)', 'index'];
     mockPathname = '/(tabs)/index';
     mockState.status = 'playing';
@@ -168,7 +168,7 @@ describe('GlobalAudioPlayer', () => {
     };
 
     const { queryByTestId } = await render(<GlobalAudioPlayer />);
-    expect(queryByTestId('global-audio-player')).toBeNull();
+    expect(queryByTestId('global-audio-player')).not.toBeNull();
   });
 
   it('hides when on track detail screen and the playing track matches', async () => {
