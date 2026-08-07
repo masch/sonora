@@ -6,6 +6,7 @@ import { ApiClient } from '@/services/api-client';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
 import type { DownloadEntry as StoreDownloadEntry } from '@/store/download-manager-store';
 import { logger } from '@/utils/logger';
+import { useAudioPlayerStore } from '@/store/audio-player-store';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 
 export type DownloadStatus = 'idle' | 'downloading' | 'completed' | 'error';
@@ -263,9 +264,11 @@ export function useTrackDownload(
       cancelled = true;
       clearTimeout(timeoutId);
       controller.abort();
-      // Free the blob URL owned by this hook (if the entry is replaced on a
-      // re-run, the next run registers its own URL).
-      replaceOwnedWebObjectUrl(null);
+      // Free the blob URL owned by this hook unless it is currently being played
+      const activeUri = useAudioPlayerStore.getState().currentUri;
+      if (ownedWebObjectUrlRef.current && ownedWebObjectUrlRef.current !== activeUri) {
+        replaceOwnedWebObjectUrl(null);
+      }
     };
   }, [trackId, remoteAudioUrl, isOnline]);
 

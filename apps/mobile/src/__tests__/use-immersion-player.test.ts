@@ -103,6 +103,56 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
     });
   });
 
+  it('play() reuses currentUri when pausing and resuming same experience with different local URI', async () => {
+    const storePlay = jest.fn();
+    const originalPlay = useAudioPlayerStore.getState().play;
+    useAudioPlayerStore.setState({
+      currentUri: 'blob:http://localhost/original-blob',
+      status: 'paused',
+      currentMetadata: { id: 'track-123', title: 'Test Track' },
+      play: storePlay as never,
+    });
+
+    const { result } = await renderHook(() =>
+      useImmersionPlayer('blob:http://localhost/new-blob', {
+        id: 'track-123',
+        title: 'Test Track',
+      }),
+    );
+    result.current.play();
+
+    expect(storePlay).toHaveBeenCalledWith('blob:http://localhost/original-blob');
+
+    await act(() => {
+      useAudioPlayerStore.setState({ play: originalPlay as never });
+    });
+  });
+
+  it('play() reuses currentUri when matching by slug', async () => {
+    const storePlay = jest.fn();
+    const originalPlay = useAudioPlayerStore.getState().play;
+    useAudioPlayerStore.setState({
+      currentUri: 'blob:http://localhost/original-blob',
+      status: 'paused',
+      currentMetadata: { slug: 'my-slug', title: 'Test Track' },
+      play: storePlay as never,
+    });
+
+    const { result } = await renderHook(() =>
+      useImmersionPlayer('blob:http://localhost/new-blob', {
+        slug: 'my-slug',
+        title: 'Test Track',
+      }),
+    );
+    result.current.play();
+
+    expect(storePlay).toHaveBeenCalledWith('blob:http://localhost/original-blob');
+
+    await act(() => {
+      useAudioPlayerStore.setState({ play: originalPlay as never });
+    });
+  });
+
   it('play() does nothing when localAudioUri is null', async () => {
     const storePlay = jest.fn();
     const originalPlay = useAudioPlayerStore.getState().play;
