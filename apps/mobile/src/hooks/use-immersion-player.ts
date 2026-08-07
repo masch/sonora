@@ -46,7 +46,17 @@ export function useImmersionPlayer(
   const seekTo = useAudioPlayerStore((s) => s.seekTo);
   const setNowPlayingMetadata = useAudioPlayerStore((s) => s.setNowPlayingMetadata);
 
-  const isCurrentTrack = localAudioUri !== null && currentUri === localAudioUri;
+  const currentMetadata = useAudioPlayerStore((s) => s.currentMetadata);
+
+  const isSameExperience = Boolean(
+    (mediaMetadata.id &&
+      (currentMetadata?.id === mediaMetadata.id || currentMetadata?.slug === mediaMetadata.id)) ||
+    (mediaMetadata.slug &&
+      (currentMetadata?.slug === mediaMetadata.slug || currentMetadata?.id === mediaMetadata.slug)),
+  );
+
+  const isCurrentTrack =
+    (localAudioUri !== null && currentUri === localAudioUri) || isSameExperience;
   const status: PlayerStatus = isCurrentTrack ? storeStatus : 'idle';
   const displayPositionMs = isCurrentTrack ? positionMs : 0;
   const displayDurationMs = isCurrentTrack ? durationMs : 0;
@@ -54,10 +64,15 @@ export function useImmersionPlayer(
 
   // Sync metadata after render — avoids "Cannot update a component while rendering" error
   useEffect(() => {
-    if (isCurrentTrack) {
+    if (
+      isCurrentTrack &&
+      (currentMetadata?.id !== mediaMetadata.id ||
+        currentMetadata?.slug !== mediaMetadata.slug ||
+        currentMetadata?.title !== mediaMetadata.title)
+    ) {
       setNowPlayingMetadata(mediaMetadata);
     }
-  }, [mediaMetadata, setNowPlayingMetadata, isCurrentTrack]);
+  }, [mediaMetadata, setNowPlayingMetadata, isCurrentTrack, currentMetadata]);
 
   return {
     status,
@@ -65,8 +80,9 @@ export function useImmersionPlayer(
     durationMs: displayDurationMs,
     errorMsg: displayErrorMsg,
     play: () => {
-      if (localAudioUri) {
-        storePlay(localAudioUri);
+      const targetUri = isSameExperience && currentUri ? currentUri : localAudioUri;
+      if (targetUri) {
+        storePlay(targetUri);
       }
     },
     pause,

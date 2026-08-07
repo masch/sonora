@@ -6,10 +6,11 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
 import { TwPressable, TwText, TwView } from '@/tw';
-import { usePathname, useSegments } from 'expo-router';
+import { usePathname, useRouter, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ROUTES } from '@/constants/routes';
+import { INSTRUCTIONS_SLUG, GENERAL_FEEDBACK_EXPERIENCE_ID } from '@/data/experiences';
 
 export function GlobalAudioPlayer() {
   const { t } = useAppTranslation();
@@ -17,9 +18,10 @@ export function GlobalAudioPlayer() {
   const handleRewind = useAudioRewind();
   const segments = useSegments() as string[];
   const pathname = usePathname();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const currentExperience = useCurrentExperience();
-  const { isPlaying, isPaused, metadata: currentMetadata } = currentExperience;
+  const { isPlaying, isPaused, metadata: currentMetadata, experienceId } = currentExperience;
 
   const positionMs = useAudioPlayerStore((s) => s.positionMs);
   const durationMs = useAudioPlayerStore((s) => s.durationMs);
@@ -55,6 +57,15 @@ export function GlobalAudioPlayer() {
 
   const handleClose = () => {
     stop();
+  };
+
+  const handleTitlePress = () => {
+    const targetId = experienceId || currentMetadata?.slug || currentMetadata?.id;
+    if (targetId === INSTRUCTIONS_SLUG || targetId === GENERAL_FEEDBACK_EXPERIENCE_ID) {
+      router.push(ROUTES.PATH.DERIVAS);
+    } else if (targetId) {
+      router.push(ROUTES.PATH.POETICS_DETAIL(targetId, currentMetadata?.title));
+    }
   };
 
   // Determine bottom offset: above bottom tabs when inside tab navigator or web tab views, near bottom (safe area offset) otherwise
@@ -112,7 +123,13 @@ export function GlobalAudioPlayer() {
         </TwPressable>
 
         {/* Title */}
-        <TwView className="flex-1 mx-4">
+        <TwPressable
+          className="flex-1 mx-4 active:opacity-60"
+          onPress={handleTitlePress}
+          accessibilityRole="button"
+          accessibilityLabel={currentMetadata?.title || t('home.instructionsName')}
+          testID="global-player-title-button"
+        >
           <TwText
             numberOfLines={1}
             className="text-sm font-bold text-center"
@@ -121,7 +138,7 @@ export function GlobalAudioPlayer() {
           >
             {currentMetadata?.title || t('home.instructionsName')}
           </TwText>
-        </TwView>
+        </TwPressable>
 
         {/* Action Buttons (Rewind + Play/Pause) */}
         <TwView className="flex-row items-center">
