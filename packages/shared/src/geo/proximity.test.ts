@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { resolveListenRadius, resolveProximity, type GeoFenceConfig } from './proximity';
 
 const geofence: GeoFenceConfig = {
-  trip: { radiusMeters: 50, defaultMode: 'type' },
-  track: { radiusMeters: 110, defaultMode: 'entity' },
+  trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+  track: { radiusMeters: 110, defaultMode: 'entityRadius' },
   bypassGeofence: false,
 };
 
@@ -12,7 +12,7 @@ describe('resolveListenRadius precedence', () => {
     expect(
       resolveListenRadius({
         format: 'trip',
-        geoMode: 'entity',
+        geoMode: 'entityRadius',
         radiusMeters: null,
         bypassGeofence: true,
         geofence,
@@ -20,23 +20,23 @@ describe('resolveListenRadius precedence', () => {
     ).toEqual({ status: 'unrestricted', reason: 'bypass' });
   });
 
-  it('entity mode gates by its own radiusMeters', () => {
+  it('entityRadius mode gates by its own radiusMeters', () => {
     expect(
       resolveListenRadius({
         format: 'track',
-        geoMode: 'entity',
+        geoMode: 'entityRadius',
         radiusMeters: 30,
         bypassGeofence: false,
         geofence,
       }),
-    ).toEqual({ status: 'gated', radiusMeters: 30, mode: 'entity' });
+    ).toEqual({ status: 'gated', radiusMeters: 30, mode: 'entityRadius' });
   });
 
-  it('entity mode fails closed on missing (null) radius', () => {
+  it('entityRadius mode fails closed on missing (null) radius', () => {
     expect(
       resolveListenRadius({
         format: 'track',
-        geoMode: 'entity',
+        geoMode: 'entityRadius',
         radiusMeters: null,
         bypassGeofence: false,
         geofence,
@@ -44,12 +44,12 @@ describe('resolveListenRadius precedence', () => {
     ).toEqual({ status: 'blocked', reason: 'invalid-radius' });
   });
 
-  it('entity mode fails closed on non-positive radius', () => {
+  it('entityRadius mode fails closed on non-positive radius', () => {
     for (const radius of [0, -5]) {
       expect(
         resolveListenRadius({
           format: 'track',
-          geoMode: 'entity',
+          geoMode: 'entityRadius',
           radiusMeters: radius,
           bypassGeofence: false,
           geofence,
@@ -58,44 +58,44 @@ describe('resolveListenRadius precedence', () => {
     }
   });
 
-  it('type mode uses geofence.trip.radiusMeters', () => {
+  it('formatDefaultRadius mode uses geofence.trip.radiusMeters', () => {
     expect(
       resolveListenRadius({
         format: 'trip',
-        geoMode: 'type',
+        geoMode: 'formatDefaultRadius',
         bypassGeofence: false,
         geofence,
       }),
-    ).toEqual({ status: 'gated', radiusMeters: 50, mode: 'type' });
+    ).toEqual({ status: 'gated', radiusMeters: 50, mode: 'formatDefaultRadius' });
   });
 
-  it('type mode uses geofence.track.radiusMeters', () => {
+  it('formatDefaultRadius mode uses geofence.track.radiusMeters', () => {
     expect(
       resolveListenRadius({
         format: 'track',
-        geoMode: 'type',
+        geoMode: 'formatDefaultRadius',
         bypassGeofence: false,
         geofence,
       }),
-    ).toEqual({ status: 'gated', radiusMeters: 110, mode: 'type' });
+    ).toEqual({ status: 'gated', radiusMeters: 110, mode: 'formatDefaultRadius' });
   });
 
-  it('any mode is unrestricted', () => {
+  it('unrestricted mode is un-gated', () => {
     expect(
       resolveListenRadius({
         format: 'track',
-        geoMode: 'any',
+        geoMode: 'unrestricted',
         bypassGeofence: false,
         geofence,
       }),
-    ).toEqual({ status: 'unrestricted', reason: 'any' });
+    ).toEqual({ status: 'unrestricted', reason: 'unrestricted' });
   });
 
   it('missing geoMode falls back to geofence[format].defaultMode (trip -> type)', () => {
     expect(resolveListenRadius({ format: 'trip', bypassGeofence: false, geofence })).toEqual({
       status: 'gated',
       radiusMeters: 50,
-      mode: 'type',
+      mode: 'formatDefaultRadius',
     });
   });
 
@@ -113,7 +113,7 @@ describe('resolveProximity', () => {
   it('user at origin (within radius) -> allowed, inclusive boundary holds', () => {
     const result = resolveProximity({
       format: 'trip',
-      geoMode: 'entity',
+      geoMode: 'entityRadius',
       radiusMeters: 50,
       bypassGeofence: false,
       geofence,
@@ -130,7 +130,7 @@ describe('resolveProximity', () => {
     const user = { latitude: -31.979027 + 0.003, longitude: -64.635817 };
     const result = resolveProximity({
       format: 'trip',
-      geoMode: 'entity',
+      geoMode: 'entityRadius',
       radiusMeters: 50,
       bypassGeofence: false,
       geofence,
@@ -146,7 +146,7 @@ describe('resolveProximity', () => {
   it('user === null -> no-fix, blocked until a fix', () => {
     const result = resolveProximity({
       format: 'trip',
-      geoMode: 'entity',
+      geoMode: 'entityRadius',
       radiusMeters: 50,
       bypassGeofence: false,
       geofence,
@@ -159,10 +159,10 @@ describe('resolveProximity', () => {
     expect(result.resolution).toBe('no-fix');
   });
 
-  it('unrestricted (any) -> canListen true with null distance/effective radius', () => {
+  it('unrestricted -> canListen true with null distance/effective radius', () => {
     const result = resolveProximity({
       format: 'track',
-      geoMode: 'any',
+      geoMode: 'unrestricted',
       bypassGeofence: false,
       geofence,
       user: { latitude: 99, longitude: 99 },
@@ -177,7 +177,7 @@ describe('resolveProximity', () => {
   it('bypass -> canListen true, resolution bypass (wins over invalid entity radius)', () => {
     const result = resolveProximity({
       format: 'track',
-      geoMode: 'entity',
+      geoMode: 'entityRadius',
       radiusMeters: null,
       bypassGeofence: true,
       geofence,
@@ -189,10 +189,10 @@ describe('resolveProximity', () => {
     expect(result.resolution).toBe('bypass');
   });
 
-  it('entity with unresolved radius -> blocked (fail-closed)', () => {
+  it('entityRadius with unresolved radius -> blocked (fail-closed)', () => {
     const result = resolveProximity({
       format: 'track',
-      geoMode: 'entity',
+      geoMode: 'entityRadius',
       radiusMeters: null,
       bypassGeofence: false,
       geofence,

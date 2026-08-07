@@ -8,8 +8,8 @@ import {
 
 const fullPayload: RemoteConfigPayload = {
   geofence: {
-    trip: { radiusMeters: 50, defaultMode: 'type' },
-    track: { radiusMeters: 50, defaultMode: 'type' },
+    trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
   },
   audio: { rewindOffsetMs: 10000 },
@@ -26,9 +26,9 @@ describe('RemoteConfigPayloadSchema', () => {
   describe('per-format geofence shape (GEOF.1)', () => {
     it('defaults: trip radiusMeters 50 / defaultMode type, track present & positive', () => {
       expect(DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters).toBe(50);
-      expect(DEFAULT_REMOTE_CONFIG.geofence.trip.defaultMode).toBe('type');
+      expect(DEFAULT_REMOTE_CONFIG.geofence.trip.defaultMode).toBe('formatDefaultRadius');
       expect(DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters).toBeGreaterThan(0);
-      expect(DEFAULT_REMOTE_CONFIG.geofence.track.defaultMode).toBe('type');
+      expect(DEFAULT_REMOTE_CONFIG.geofence.track.defaultMode).toBe('formatDefaultRadius');
       expect(DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence).toBe(false);
     });
 
@@ -102,8 +102,8 @@ describe('RemoteConfigPayloadSchema', () => {
     it('parses appVersion without grace periods (optional)', () => {
       const payload: RemoteConfigPayload = {
         geofence: {
-          trip: { radiusMeters: 50, defaultMode: 'type' },
-          track: { radiusMeters: 50, defaultMode: 'type' },
+          trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 10000 },
@@ -138,8 +138,8 @@ describe('RemoteConfigPayloadSchema', () => {
     it('DEFAULT_REMOTE_CONFIG satisfies RemoteConfigPayload', () => {
       const check: RemoteConfigPayload = DEFAULT_REMOTE_CONFIG;
       expect(check.geofence.bypassGeofence).toBe(false);
-      expect(check.geofence.trip.defaultMode).toBe('type');
-      expect(check.geofence.track.defaultMode).toBe('type');
+      expect(check.geofence.trip.defaultMode).toBe('formatDefaultRadius');
+      expect(check.geofence.track.defaultMode).toBe('formatDefaultRadius');
     });
   });
 });

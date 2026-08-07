@@ -593,7 +593,7 @@
     "sonora.geo_mode": {
       "name": "geo_mode",
       "schema": "sonora",
-      "values": ["any", "type", "entity"]
+      "values": ["unrestricted", "formatDefaultRadius", "entityRadius"]
     },
     "sonora.language": {
       "name": "language",

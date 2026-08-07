@@ -42,7 +42,7 @@ export interface ProximityClient {
 }
 
 // Preserves today's default: trips gate at `geofence.trip.radiusMeters` (50 m).
-const DEFAULT_OVERRIDE: GeofenceOverride = { format: 'trip', geoMode: 'type' };
+const DEFAULT_OVERRIDE: GeofenceOverride = { format: 'trip', geoMode: 'formatDefaultRadius' };
 
 export function useOfflineGeofence(
   targetCoords: {

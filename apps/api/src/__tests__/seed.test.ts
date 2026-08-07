@@ -8,12 +8,12 @@ import { type GeoMode } from '@sonora/shared';
  * The API test environment has no live DATABASE_URL, so these assertions run against the
  * deterministic seed data definition rather than a seeded DB.
  *
- * NOTE on coverage: every official seed experience uses the geofence of ITS TYPE: the default
- * listening mode for each format is 'type' (uses geofence[format].radiusMeters). Per-entity
- * overrides (geoMode='entity') remain POSSIBLE via the schema but are NOT used in the seed.
- * The full precedence matrix (bypass > entity > type > any, fail-closed, inclusive boundary,
- * defaultMode fallback, no-fix) is covered in the shared proximity unit tests with test-only
- * data. This suite only asserts integrity of the REAL seed rows.
+ * NOTE on coverage: every official seed experience uses the geofence of ITS FORMAT default: the default
+ * listening mode for each format is 'formatDefaultRadius' (uses geofence[format].radiusMeters). Per-entity
+ * overrides (geoMode='entityRadius') remain POSSIBLE via the schema but are NOT used in the seed.
+ * The full precedence matrix (bypass > entityRadius > formatDefaultRadius > unrestricted, fail-closed,
+ * inclusive boundary, defaultMode fallback, no-fix) is covered in the shared proximity unit tests with
+ * test-only data. This suite only asserts integrity of the REAL seed rows.
  */
 const walkable = defaultExperiences.filter((e) => e.format === 'trip' || e.format === 'track');
 
@@ -32,12 +32,13 @@ const rows: SeedExperience[] = walkable.map((e) => ({
 }));
 
 describe('seed geo integrity (GEOF.5)', () => {
-  it('every walkable (trip/track) experience uses the geofence of its own type (geoMode=type)', () => {
+  it('every walkable (trip/track) experience uses the format default (geoMode=formatDefaultRadius)', () => {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
-      expect(row.geoMode, `trip/track seed ${row.slug} should use its type geofence (type)`).toBe(
-        'type',
-      );
+      expect(
+        row.geoMode,
+        `trip/track seed ${row.slug} should use its format default geofence`,
+      ).toBe('formatDefaultRadius');
     }
   });
 

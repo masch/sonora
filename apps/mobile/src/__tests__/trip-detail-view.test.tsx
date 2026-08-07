@@ -133,7 +133,7 @@ const tripTrack: TripExperience = {
   imageKey: 'trips-deriva-centro-cover',
   format: 'trip',
   audioUrl: 'https://example.com/audio.mp3',
-  geoMode: 'type',
+  geoMode: 'formatDefaultRadius',
   radiusMeters: null,
   waypoints: [],
 };
@@ -153,7 +153,11 @@ describe('TripDetailView geofence gate (post-purchase, too far)', () => {
       { format: string; geoMode: string; radiusMeters: number | null },
     ];
     expect(lastCall[0]).toEqual({ latitude: -34.6037, longitude: -58.3816 });
-    expect(lastCall[1]).toEqual({ format: 'trip', geoMode: 'type', radiusMeters: null });
+    expect(lastCall[1]).toEqual({
+      format: 'trip',
+      geoMode: 'formatDefaultRadius',
+      radiusMeters: null,
+    });
     // Isolated geofence gate (the component is far + no bypass): the banner still appears.
     expect(getByTestId('geofence-blocked-banner')).toBeTruthy();
   });

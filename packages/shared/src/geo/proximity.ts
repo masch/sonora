@@ -1,6 +1,6 @@
 import type { UserExperienceFormat } from '../experiences';
 
-export const GEO_MODES = ['any', 'type', 'entity'] as const;
+export const GEO_MODES = ['unrestricted', 'formatDefaultRadius', 'entityRadius'] as const;
 export type GeoMode = (typeof GEO_MODES)[number];
 
 /** Per-format geofence block (same shape for trip & track). */
@@ -30,13 +30,13 @@ export interface ListenRadiusInput {
 }
 
 export type RadiusResolution =
-  | { status: 'unrestricted'; reason: 'bypass' | 'any' }
-  | { status: 'gated'; radiusMeters: number; mode: 'entity' | 'type' }
+  | { status: 'unrestricted'; reason: 'bypass' | 'unrestricted' }
+  | { status: 'gated'; radiusMeters: number; mode: 'entityRadius' | 'formatDefaultRadius' }
   | { status: 'blocked'; reason: 'invalid-radius' };
 
 /**
  * Pure precedence resolver — the single source of truth for effective radius.
- * Two-tier: bypass > any > entity > type > defensive any fallback.
+ * Two-tier: bypass > unrestricted > entityRadius > formatDefaultRadius > defensive unrestricted fallback.
  */
 export function resolveListenRadius(input: ListenRadiusInput): RadiusResolution {
   const mode = input.geoMode ?? input.geofence[input.format].defaultMode;
@@ -46,30 +46,30 @@ export function resolveListenRadius(input: ListenRadiusInput): RadiusResolution 
     return { status: 'unrestricted', reason: 'bypass' };
   }
 
-  // 2. any -> always playable (no gating).
-  if (mode === 'any') {
-    return { status: 'unrestricted', reason: 'any' };
+  // 2. unrestricted -> always playable (no gating).
+  if (mode === 'unrestricted') {
+    return { status: 'unrestricted', reason: 'unrestricted' };
   }
 
-  // 3. entity -> entity's own radius; fail-closed if unresolved/invalid.
-  if (mode === 'entity') {
+  // 3. entityRadius -> entity's own radius; fail-closed if unresolved/invalid.
+  if (mode === 'entityRadius') {
     if (!(typeof input.radiusMeters === 'number' && input.radiusMeters > 0)) {
       return { status: 'blocked', reason: 'invalid-radius' };
     }
-    return { status: 'gated', radiusMeters: input.radiusMeters, mode: 'entity' };
+    return { status: 'gated', radiusMeters: input.radiusMeters, mode: 'entityRadius' };
   }
 
-  // 4. type -> per-format type-level fallback radius.
-  if (mode === 'type') {
+  // 4. formatDefaultRadius -> per-format default fallback radius.
+  if (mode === 'formatDefaultRadius') {
     return {
       status: 'gated',
       radiusMeters: input.geofence[input.format].radiusMeters,
-      mode: 'type',
+      mode: 'formatDefaultRadius',
     };
   }
 
   // 5. Defensive fallback (unknown mode) -> un-gated.
-  return { status: 'unrestricted', reason: 'any' };
+  return { status: 'unrestricted', reason: 'unrestricted' };
 }
 
 export interface ProximityDecisionInput extends ListenRadiusInput {

@@ -43,8 +43,8 @@ describe('useRemoteConfig', () => {
   it('returns merged config after init resolves', async () => {
     mockApiGet.mockResolvedValue({
       geofence: {
-        trip: { radiusMeters: 200, defaultMode: 'type' },
-        track: { radiusMeters: 50, defaultMode: 'entity' },
+        trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 50, defaultMode: 'entityRadius' },
         bypassGeofence: true,
       },
     });

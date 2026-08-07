@@ -19,8 +19,8 @@ describe('useOfflineGeofence hook', () => {
   // Per-format config shape (GEOF.1): same block for trip & track.
   const defaultConfig = {
     geofence: {
-      trip: { radiusMeters: 50, defaultMode: 'type' },
-      track: { radiusMeters: 50, defaultMode: 'entity' },
+      trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+      track: { radiusMeters: 50, defaultMode: 'entityRadius' },
       bypassGeofence: false,
     },
     audio: { rewindOffsetMs: 10000 },
@@ -102,8 +102,8 @@ describe('useOfflineGeofence hook', () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
         geofence: {
-          trip: { radiusMeters: 200, defaultMode: 'type' },
-          track: { radiusMeters: 500, defaultMode: 'entity' },
+          trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 500, defaultMode: 'entityRadius' },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 10000 },
@@ -144,8 +144,8 @@ describe('useOfflineGeofence hook', () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
         geofence: {
-          trip: { radiusMeters: 500, defaultMode: 'type' },
-          track: { radiusMeters: 500, defaultMode: 'entity' },
+          trip: { radiusMeters: 500, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 500, defaultMode: 'entityRadius' },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 10000 },
@@ -183,18 +183,18 @@ describe('useOfflineGeofence hook', () => {
     });
 
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity' }),
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entityRadius' }),
     );
 
     expect(result.current.isNearStart).toBe(true);
   });
 
-  it('entity mode uses its own radius, not the format fallback', async () => {
+  it('entityRadius mode uses its own radius, not the format fallback', async () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
         geofence: {
-          trip: { radiusMeters: 50, defaultMode: 'type' },
-          track: { radiusMeters: 100, defaultMode: 'entity' },
+          trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 100, defaultMode: 'entityRadius' },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 10000 },
@@ -204,7 +204,7 @@ describe('useOfflineGeofence hook', () => {
       error: null,
       refetch: jest.fn(),
     });
-    // ~89 m north of the origin — beyond the 30 m entity radius but within the 100 m type fallback.
+    // ~89 m north of the origin — beyond the 30 m entity radius but within the 100 m format default fallback.
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.978, longitude: -64.635 },
       accuracy: 5,
@@ -213,14 +213,18 @@ describe('useOfflineGeofence hook', () => {
     });
 
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity', radiusMeters: 30 }),
+      useOfflineGeofence(targetCoords, {
+        format: 'track',
+        geoMode: 'entityRadius',
+        radiusMeters: 30,
+      }),
     );
 
     expect(result.current.requiredRadiusMeters).toBe(30);
     expect(result.current.isNearStart).toBe(false);
   });
 
-  it('entity mode fails closed when its radius is unresolved', async () => {
+  it('entityRadius mode fails closed when its radius is unresolved', async () => {
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.979, longitude: -64.635 },
       accuracy: 5,
@@ -228,21 +232,25 @@ describe('useOfflineGeofence hook', () => {
       errorMsg: null,
     });
 
-    // Even at distance 0, an entity override without a positive radius must be blocked.
+    // Even at distance 0, an entityRadius override without a positive radius must be blocked.
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity', radiusMeters: null }),
+      useOfflineGeofence(targetCoords, {
+        format: 'track',
+        geoMode: 'entityRadius',
+        radiusMeters: null,
+      }),
     );
 
     expect(result.current.isNearStart).toBe(false);
     expect(result.current.requiredRadiusMeters).toBe(0);
   });
 
-  it('type mode uses the format-level fallback radius', async () => {
+  it('formatDefaultRadius mode uses the format-level fallback radius', async () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
         geofence: {
-          trip: { radiusMeters: 50, defaultMode: 'type' },
-          track: { radiusMeters: 100, defaultMode: 'type' },
+          trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 10000 },
@@ -261,15 +269,15 @@ describe('useOfflineGeofence hook', () => {
     });
 
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'type' }),
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'formatDefaultRadius' }),
     );
 
     expect(result.current.requiredRadiusMeters).toBe(100);
     expect(result.current.isNearStart).toBe(true);
   });
 
-  it('any mode is un-gated from any distance', async () => {
-    // User far (~5.5 km) away — still un-gated because mode is 'any'.
+  it('unrestricted mode is un-gated from any distance', async () => {
+    // User far (~5.5 km) away — still un-gated because mode is 'unrestricted'.
     (useLocationStore as unknown as jest.Mock).mockReturnValue({
       coords: { latitude: -31.929, longitude: -64.635 },
       accuracy: 5,
@@ -278,7 +286,7 @@ describe('useOfflineGeofence hook', () => {
     });
 
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'any' }),
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'unrestricted' }),
     );
 
     expect(result.current.isNearStart).toBe(true);
@@ -309,7 +317,7 @@ describe('useOfflineGeofence hook', () => {
     });
 
     const { result } = await renderHook(() =>
-      useOfflineGeofence(targetCoords, { format: 'trip', geoMode: 'type' }),
+      useOfflineGeofence(targetCoords, { format: 'trip', geoMode: 'formatDefaultRadius' }),
     );
 
     expect(result.current.isNearStart).toBe(false);

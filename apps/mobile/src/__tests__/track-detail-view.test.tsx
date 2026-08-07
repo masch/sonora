@@ -19,7 +19,7 @@ const mockExperience: Experience = {
   price: null,
   imageKey: 'tracks-pajaros-chiricotes-cover',
   geofenceBypassable: false,
-  geoMode: 'any',
+  geoMode: 'unrestricted',
   radiusMeters: null,
 };
 
@@ -177,7 +177,7 @@ beforeEach(() => {
   mockGeoffences.distanceMeters = null;
   mockGeoffences.requiredRadiusMeters = 50;
   mockBypass.current = false;
-  mockExperience.geoMode = 'any';
+  mockExperience.geoMode = 'unrestricted';
   mockExperience.radiusMeters = null;
   geofenceCallArgs.length = 0;
 });
@@ -198,7 +198,7 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
   });
 
   it('passes the track own geo data + format to useOfflineGeofence', async () => {
-    mockExperience.geoMode = 'entity';
+    mockExperience.geoMode = 'entityRadius';
     mockExperience.radiusMeters = 30;
     await render(<TrackDetailScreen />);
     await waitFor(() => {
@@ -210,11 +210,11 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
     ];
     const [coords, override] = lastCall;
     expect(coords).toEqual({ latitude: -32.211913, longitude: -64.73809 });
-    expect(override).toEqual({ format: 'track', geoMode: 'entity', radiusMeters: 30 });
+    expect(override).toEqual({ format: 'track', geoMode: 'entityRadius', radiusMeters: 30 });
   });
 
   it('GEOF.8: keeps an any-mode track always playable — no geofence banner', async () => {
-    mockExperience.geoMode = 'any';
+    mockExperience.geoMode = 'unrestricted';
     // "far away / not near" would normally gate, but any-mode resolves un-gated.
     mockGeoffences.isNearStart = true;
     const { queryByTestId } = await render(<TrackDetailScreen />);
@@ -224,7 +224,7 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
   });
 
   it('GEOF.8: entity/type track far away is blocked and shows banner + blocked alert on play', async () => {
-    mockExperience.geoMode = 'entity';
+    mockExperience.geoMode = 'entityRadius';
     mockExperience.radiusMeters = 30;
     mockGeoffences.isNearStart = false;
     mockGeoffences.distanceMeters = 250;
@@ -247,12 +247,12 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
   });
 
   it('GEOF.8: bypass still wins on a gating track (playable from anywhere)', async () => {
-    mockExperience.geoMode = 'type';
+    mockExperience.geoMode = 'formatDefaultRadius';
     mockGeoffences.isNearStart = false;
     mockBypass.current = true;
     const { queryByTestId, getByTestId } = await render(<TrackDetailScreen />);
     await waitFor(() => {
-      // No banner despite being far — the global bypass overrides the entity gate.
+      // No banner despite being far — the global bypass overrides the entityRadius gate.
       expect(queryByTestId('geofence-blocked-banner')).toBeNull();
     });
     // Play/download is not gated.

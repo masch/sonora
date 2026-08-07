@@ -19,7 +19,7 @@ describe('POST /experiences/:id/proximity', () => {
     {
       id: 'exp-1',
       format: 'trip',
-      geoMode: 'type',
+      geoMode: 'formatDefaultRadius',
       radiusMeters: null,
       latitude: -34.6,
       longitude: -58.4,
@@ -50,7 +50,7 @@ describe('POST /experiences/:id/proximity', () => {
       user,
       origin: { latitude: -34.6, longitude: -58.4 },
       format: 'trip',
-      geoMode: 'type',
+      geoMode: 'formatDefaultRadius',
       radiusMeters: null,
       bypassGeofence: DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
       geofence: DEFAULT_REMOTE_CONFIG.geofence,
@@ -217,7 +217,7 @@ describe('GET /experiences', () => {
         free: true,
         audioUrl: 'free-audio.mp3',
         published: true,
-        geoMode: 'type',
+        geoMode: 'formatDefaultRadius',
         radiusMeters: null,
       },
     ];
@@ -247,7 +247,7 @@ describe('GET /experiences', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as any[];
     expect(body).toHaveLength(1);
-    expect(body[0]).toHaveProperty('geoMode', 'type');
+    expect(body[0]).toHaveProperty('geoMode', 'formatDefaultRadius');
     expect(body[0]).toHaveProperty('radiusMeters', null);
   });
 

@@ -28,12 +28,12 @@ const mockApiGet = ApiClient.get as jest.Mock;
 const mockGetCachedConfig = getCachedConfig as jest.Mock;
 const mockSetCachedConfig = setCachedConfig as jest.Mock;
 
-// Per-format geofence shape (GEOF.1). Note: track.defaultMode is 'type' per
-// USER DECISION C (matches DEFAULT_REMOTE_CONFIG; entity backfill is a DB concern).
+// Per-format geofence shape (GEOF.1). Note: track.defaultMode is 'formatDefaultRadius' per
+// USER DECISION C (matches DEFAULT_REMOTE_CONFIG; both walkable formats use the format default).
 const DEFAULT_CONFIG = {
   geofence: {
-    trip: { radiusMeters: 50, defaultMode: 'type' },
-    track: { radiusMeters: 50, defaultMode: 'type' },
+    trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
   },
   audio: { rewindOffsetMs: 10000 },
@@ -142,8 +142,8 @@ describe('RemoteConfigStore', () => {
   it('fetch API and merge remote config on init', async () => {
     mockApiGet.mockResolvedValue({
       geofence: {
-        trip: { radiusMeters: 200, defaultMode: 'type' },
-        track: { radiusMeters: 50, defaultMode: 'type' },
+        trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: true,
       },
     });
@@ -159,8 +159,8 @@ describe('RemoteConfigStore', () => {
     expect(mockSetCachedConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         geofence: expect.objectContaining({
-          trip: { radiusMeters: 200, defaultMode: 'type' },
-          track: { radiusMeters: 50, defaultMode: 'type' },
+          trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
           bypassGeofence: true,
         }),
       }),
@@ -180,8 +180,8 @@ describe('RemoteConfigStore', () => {
   it('uses cached config when API fails and cache exists', async () => {
     const cachedConfig: RemoteConfigPayload = {
       geofence: {
-        trip: { radiusMeters: 300, defaultMode: 'type' },
-        track: { radiusMeters: 300, defaultMode: 'type' },
+        trip: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: true,
       },
       audio: { rewindOffsetMs: 20000 },
@@ -211,8 +211,8 @@ describe('RemoteConfigStore', () => {
   it('handles partial response — received fields override, missing keep defaults', async () => {
     mockApiGet.mockResolvedValue({
       geofence: {
-        trip: { radiusMeters: 50, defaultMode: 'type' },
-        track: { radiusMeters: 50, defaultMode: 'type' },
+        trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: true,
       },
     });
@@ -229,7 +229,7 @@ describe('RemoteConfigStore', () => {
   it('handles type mismatch — discards invalid field, keeps default', async () => {
     mockApiGet.mockResolvedValue({
       geofence: {
-        trip: { radiusMeters: 'not-a-number', defaultMode: 'type' },
+        trip: { radiusMeters: 'not-a-number', defaultMode: 'formatDefaultRadius' },
       },
     });
 
@@ -348,8 +348,8 @@ describe('RemoteConfigStore', () => {
   it('refetch triggers a new API call and updates config', async () => {
     mockApiGet.mockResolvedValueOnce({
       geofence: {
-        trip: { radiusMeters: 100, defaultMode: 'type' },
-        track: { radiusMeters: 100, defaultMode: 'type' },
+        trip: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: false,
       },
     });
@@ -360,8 +360,8 @@ describe('RemoteConfigStore', () => {
 
     mockApiGet.mockResolvedValueOnce({
       geofence: {
-        trip: { radiusMeters: 500, defaultMode: 'type' },
-        track: { radiusMeters: 500, defaultMode: 'type' },
+        trip: { radiusMeters: 500, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 500, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: false,
       },
     });

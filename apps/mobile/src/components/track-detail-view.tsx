@@ -55,8 +55,8 @@ export default function TrackDetailView({
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
 
   // GEOF.8 — gates playback/feedback only when the track's own geo data asks
-  // (entity/type). A track with geo_mode 'any' stays un-gated (always playable);
-  // the global bypassGeofence still outranks every mode.
+  // (entityRadius/formatDefaultRadius). A track with geo_mode 'unrestricted' stays
+  // un-gated (always playable); the global bypassGeofence still outranks every mode.
   const geofence = useOfflineGeofence(
     { latitude: track.latitude, longitude: track.longitude },
     { format: 'track', geoMode: track.geoMode, radiusMeters: track.radiusMeters },

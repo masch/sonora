@@ -20,8 +20,8 @@ describe('config-cache', () => {
       const { setCachedConfig } = importModule();
       const config = {
         geofence: {
-          trip: { radiusMeters: 100, defaultMode: 'type' as const },
-          track: { radiusMeters: 100, defaultMode: 'entity' as const },
+          trip: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' as const },
+          track: { radiusMeters: 100, defaultMode: 'entityRadius' as const },
           bypassGeofence: true,
         },
         audio: { rewindOffsetMs: 15000 },
@@ -39,8 +39,8 @@ describe('config-cache', () => {
     it('returns parsed config when cache exists', async () => {
       const config = {
         geofence: {
-          trip: { radiusMeters: 75, defaultMode: 'type' as const },
-          track: { radiusMeters: 75, defaultMode: 'entity' as const },
+          trip: { radiusMeters: 75, defaultMode: 'formatDefaultRadius' as const },
+          track: { radiusMeters: 75, defaultMode: 'entityRadius' as const },
           bypassGeofence: false,
         },
         audio: { rewindOffsetMs: 5000 },
