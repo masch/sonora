@@ -57,10 +57,13 @@ export default function TripDetailView({
   const [showGeofenceBlockedAlert, setShowGeofenceBlockedAlert] = useState(false);
   const userInitiatedPlayRef = useRef(false);
 
-  const geofence = useOfflineGeofence({
-    latitude: track.latitude,
-    longitude: track.longitude,
-  });
+  const geofence = useOfflineGeofence(
+    {
+      latitude: track.latitude,
+      longitude: track.longitude,
+    },
+    { format: 'trip', geoMode: track.geoMode, radiusMeters: track.radiusMeters },
+  );
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, {
     title: track.title,

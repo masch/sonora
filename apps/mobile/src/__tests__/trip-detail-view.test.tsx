@@ -22,16 +22,20 @@ jest.mock('@/hooks/use-purchase', () => ({
   ],
 }));
 
+const geofenceCallArgs: unknown[] = [];
 jest.mock('@/hooks/use-offline-geofence', () => ({
-  useOfflineGeofence: () => ({
-    isNearStart: false,
-    gpsAccuracy: 12,
-    gpsStatus: 'ready',
-    distanceMeters: 250,
-    requiredRadiusMeters: 50,
-    userCoordinates: { latitude: -34.61, longitude: -58.39 },
-    errorMsg: null,
-  }),
+  useOfflineGeofence: (...args: unknown[]) => {
+    geofenceCallArgs.push(args);
+    return {
+      isNearStart: false,
+      gpsAccuracy: 12,
+      gpsStatus: 'ready',
+      distanceMeters: 250,
+      requiredRadiusMeters: 50,
+      userCoordinates: { latitude: -34.61, longitude: -58.39 },
+      errorMsg: null,
+    };
+  },
 }));
 
 jest.mock('@/hooks/use-track-download', () => ({
@@ -129,10 +133,31 @@ const tripTrack: TripExperience = {
   imageKey: 'trips-deriva-centro-cover',
   format: 'trip',
   audioUrl: 'https://example.com/audio.mp3',
+  geoMode: 'type',
+  radiusMeters: null,
   waypoints: [],
 };
 
 describe('TripDetailView geofence gate (post-purchase, too far)', () => {
+  beforeEach(() => {
+    geofenceCallArgs.length = 0;
+  });
+
+  it('GEOF.9: preserves the 50 m gate with the new hook override (format trip, geoMode type)', async () => {
+    const { getByTestId } = await render(
+      <TripDetailView track={tripTrack} showGPSDetails={false} />,
+    );
+    expect(geofenceCallArgs.length).toBeGreaterThan(0);
+    const lastCall = geofenceCallArgs[geofenceCallArgs.length - 1] as [
+      { latitude: number; longitude: number },
+      { format: string; geoMode: string; radiusMeters: number | null },
+    ];
+    expect(lastCall[0]).toEqual({ latitude: -34.6037, longitude: -58.3816 });
+    expect(lastCall[1]).toEqual({ format: 'trip', geoMode: 'type', radiusMeters: null });
+    // Isolated geofence gate (the component is far + no bypass): the banner still appears.
+    expect(getByTestId('geofence-blocked-banner')).toBeTruthy();
+  });
+
   it('requests a fresh experience when purchased but the track has no audioUrl', async () => {
     const onPurchased = jest.fn();
     // The backend omits audioUrl until the purchase grants access.

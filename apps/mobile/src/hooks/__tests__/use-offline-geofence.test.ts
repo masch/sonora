@@ -1,5 +1,5 @@
-import { renderHook } from '@testing-library/react-native';
-import { useOfflineGeofence } from '../use-offline-geofence';
+import { renderHook, waitFor } from '@testing-library/react-native';
+import { useOfflineGeofence, type ProximityClient } from '../use-offline-geofence';
 import { useLocationStore } from '@/store/location-store';
 import { useRemoteConfig } from '../use-remote-config';
 
@@ -16,8 +16,13 @@ jest.mock('../use-remote-config', () => ({
 describe('useOfflineGeofence hook', () => {
   const targetCoords = { latitude: -31.979, longitude: -64.635 };
 
+  // Per-format config shape (GEOF.1): same block for trip & track.
   const defaultConfig = {
-    geofence: { radiusMeters: 50, bypassGeofence: false },
+    geofence: {
+      trip: { radiusMeters: 50, defaultMode: 'type' },
+      track: { radiusMeters: 50, defaultMode: 'entity' },
+      bypassGeofence: false,
+    },
     audio: { rewindOffsetMs: 10000 },
     feedback: { syncIntervalSec: 30 },
   };
@@ -45,6 +50,7 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.gpsStatus).toBe('initializing');
     expect(result.current.isNearStart).toBe(false);
     expect(result.current.userCoordinates).toBeNull();
+    // Default override: trip + type -> 50 m trip fallback radius.
     expect(result.current.requiredRadiusMeters).toBe(50);
   });
 
@@ -92,10 +98,14 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.isNearStart).toBe(true);
   });
 
-  it('should use geofence radius from useRemoteConfig', async () => {
+  it('should use the trip fallback radius from useRemoteConfig', async () => {
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
-        geofence: { radiusMeters: 200, bypassGeofence: false },
+        geofence: {
+          trip: { radiusMeters: 200, defaultMode: 'type' },
+          track: { radiusMeters: 500, defaultMode: 'entity' },
+          bypassGeofence: false,
+        },
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
       },
@@ -133,7 +143,11 @@ describe('useOfflineGeofence hook', () => {
     // Update the remote config mock and re-render
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: {
-        geofence: { radiusMeters: 500, bypassGeofence: false },
+        geofence: {
+          trip: { radiusMeters: 500, defaultMode: 'type' },
+          track: { radiusMeters: 500, defaultMode: 'entity' },
+          bypassGeofence: false,
+        },
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
       },
@@ -146,5 +160,238 @@ describe('useOfflineGeofence hook', () => {
 
     expect(result.current.requiredRadiusMeters).toBe(500);
     expect(result.current.isNearStart).toBe(true);
+  });
+
+  // ── GEOF.7 precedence + fail-closed via the shared resolver ───────────
+
+  it('bypassGeofence=true wins over all modes (un-gated)', async () => {
+    // A would-be invalid entity radius (missing radius) still can't gate under bypass.
+    (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
+      config: {
+        ...defaultConfig,
+        geofence: { ...defaultConfig.geofence, bypassGeofence: true },
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity' }),
+    );
+
+    expect(result.current.isNearStart).toBe(true);
+  });
+
+  it('entity mode uses its own radius, not the format fallback', async () => {
+    (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
+      config: {
+        geofence: {
+          trip: { radiusMeters: 50, defaultMode: 'type' },
+          track: { radiusMeters: 100, defaultMode: 'entity' },
+          bypassGeofence: false,
+        },
+        audio: { rewindOffsetMs: 10000 },
+        feedback: { syncIntervalSec: 30 },
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    // ~89 m north of the origin — beyond the 30 m entity radius but within the 100 m type fallback.
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.978, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity', radiusMeters: 30 }),
+    );
+
+    expect(result.current.requiredRadiusMeters).toBe(30);
+    expect(result.current.isNearStart).toBe(false);
+  });
+
+  it('entity mode fails closed when its radius is unresolved', async () => {
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    // Even at distance 0, an entity override without a positive radius must be blocked.
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'entity', radiusMeters: null }),
+    );
+
+    expect(result.current.isNearStart).toBe(false);
+    expect(result.current.requiredRadiusMeters).toBe(0);
+  });
+
+  it('type mode uses the format-level fallback radius', async () => {
+    (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
+      config: {
+        geofence: {
+          trip: { radiusMeters: 50, defaultMode: 'type' },
+          track: { radiusMeters: 100, defaultMode: 'type' },
+          bypassGeofence: false,
+        },
+        audio: { rewindOffsetMs: 10000 },
+        feedback: { syncIntervalSec: 30 },
+      },
+      ...defaultConfig,
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'type' }),
+    );
+
+    expect(result.current.requiredRadiusMeters).toBe(100);
+    expect(result.current.isNearStart).toBe(true);
+  });
+
+  it('any mode is un-gated from any distance', async () => {
+    // User far (~5.5 km) away — still un-gated because mode is 'any'.
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.929, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'track', geoMode: 'any' }),
+    );
+
+    expect(result.current.isNearStart).toBe(true);
+    expect(result.current.requiredRadiusMeters).toBe(0);
+  });
+
+  it('gates when the user is beyond the radius (inclusive boundary)', async () => {
+    // ~111 m north — beyond the 50 m trip radius.
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.978, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
+
+    expect(result.current.requiredRadiusMeters).toBe(50);
+    expect(result.current.isNearStart).toBe(false);
+  });
+
+  it('no-fix: without user coords the gated experience is blocked (not playable)', async () => {
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: null,
+      accuracy: null,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, { format: 'trip', geoMode: 'type' }),
+    );
+
+    expect(result.current.isNearStart).toBe(false);
+    expect(result.current.requiredRadiusMeters).toBe(50);
+  });
+
+  // ── Online seam (injected proximityClient) — fails open to offline ───
+
+  it('does not call the online client when not injected (offline-only)', async () => {
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    // No options/proximityClient provided — no online call.
+    await renderHook(() => useOfflineGeofence(targetCoords));
+    expect(jest.fn()).not.toHaveBeenCalled();
+  });
+
+  it('fails open to the offline/local result when the online check errors', async () => {
+    const proximityClient: ProximityClient = {
+      check: jest.fn().mockRejectedValue(new Error('network down')),
+    };
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, undefined, { proximityClient }),
+    );
+
+    await waitFor(() => expect(proximityClient.check).toHaveBeenCalledTimes(1));
+    // Local decision (distance 0 <= 50) is retained.
+    expect(result.current.isNearStart).toBe(true);
+  });
+
+  it('fails open to the offline/local result when the online check returns ok:false', async () => {
+    const proximityClient: ProximityClient = {
+      check: jest.fn().mockResolvedValue({ ok: false }),
+    };
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, undefined, { proximityClient }),
+    );
+
+    await waitFor(() => expect(proximityClient.check).toHaveBeenCalledTimes(1));
+    expect(result.current.isNearStart).toBe(true);
+  });
+
+  it('uses the authoritative online result when the online check succeeds', async () => {
+    const proximityClient: ProximityClient = {
+      check: jest.fn().mockResolvedValue({
+        ok: true,
+        canListen: false,
+        distanceMeters: 120,
+        effectiveRadiusMeters: 30,
+      }),
+    };
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, undefined, { proximityClient }),
+    );
+
+    await waitFor(() => expect(result.current.requiredRadiusMeters).toBe(30));
+    expect(result.current.isNearStart).toBe(false);
+    expect(result.current.distanceMeters).toBe(120);
   });
 });

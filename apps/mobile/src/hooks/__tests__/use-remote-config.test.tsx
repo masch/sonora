@@ -42,7 +42,11 @@ beforeEach(() => {
 describe('useRemoteConfig', () => {
   it('returns merged config after init resolves', async () => {
     mockApiGet.mockResolvedValue({
-      geofence: { radiusMeters: 200, bypassGeofence: true },
+      geofence: {
+        trip: { radiusMeters: 200, defaultMode: 'type' },
+        track: { radiusMeters: 50, defaultMode: 'entity' },
+        bypassGeofence: true,
+      },
     });
 
     // Init the store before the component renders
@@ -58,7 +62,7 @@ describe('useRemoteConfig', () => {
     const configText = screen.getByTestId('config').props.children;
     const config = JSON.parse(configText);
 
-    expect(config.geofence.radiusMeters).toBe(200);
+    expect(config.geofence.trip.radiusMeters).toBe(200);
     expect(config.geofence.bypassGeofence).toBe(true);
   });
 
@@ -81,7 +85,7 @@ describe('useRemoteConfig', () => {
       const { config } = useRemoteConfig();
       return (
         <Text testID="vals">
-          {`${config.geofence.radiusMeters}|${config.geofence.bypassGeofence}|${config.audio.rewindOffsetMs}|${config.feedback.syncIntervalSec}`}
+          {`${config.geofence.trip.radiusMeters}|${config.geofence.bypassGeofence}|${config.audio.rewindOffsetMs}|${config.feedback.syncIntervalSec}`}
         </Text>
       );
     }

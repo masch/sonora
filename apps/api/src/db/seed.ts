@@ -11,11 +11,6 @@ import { experiences, themes, waypoints } from './schema';
 
 const databaseUrl = process.env.DATABASE_URL;
 
-if (!databaseUrl) {
-  console.error('DATABASE_URL environment variable is required');
-  process.exit(1);
-}
-
 const defaultThemes = [
   {
     key: 'birds',
@@ -60,6 +55,8 @@ const trips = [
     currency: null,
     imageKey: INSTRUCTIONS_IMAGE_KEY,
     geofenceBypassable: false,
+    geoMode: 'type',
+    radiusMeters: null,
     published: false,
   },
   {
@@ -78,6 +75,8 @@ const trips = [
     currency: 'ARS',
     imageKey: 'trips-deriva-centro-cover',
     geofenceBypassable: false,
+    geoMode: 'type',
+    radiusMeters: null,
     published: true,
   },
 ] as const;
@@ -97,6 +96,8 @@ const tracks = [
     free: true,
     imageKey: 'tracks-texto-maga-cover',
     geofenceBypassable: false,
+    geoMode: 'type',
+    radiusMeters: null,
     published: true,
   },
   {
@@ -113,6 +114,8 @@ const tracks = [
     free: true,
     imageKey: 'tracks-pajaros-chiricotes-cover',
     geofenceBypassable: false,
+    geoMode: 'type',
+    radiusMeters: null,
     published: false,
   },
 ] as const;
@@ -130,10 +133,12 @@ const generalFeedback = {
   free: true,
   imageKey: 'bonus-track',
   geofenceBypassable: false,
+  geoMode: 'any',
+  radiusMeters: null,
   published: true,
 } as const;
 
-const defaultExperiences = [...trips, ...tracks, generalFeedback] as const;
+export const defaultExperiences = [...trips, ...tracks, generalFeedback] as const;
 
 const defaultWaypoints = [
   {
@@ -160,6 +165,10 @@ const defaultWaypoints = [
 ];
 
 async function main() {
+  if (!databaseUrl) {
+    console.error('DATABASE_URL environment variable is required');
+    throw new Error('DATABASE_URL environment variable is required');
+  }
   console.log('Seeding database...');
   const pool = new Pool({
     connectionString: databaseUrl,
@@ -204,7 +213,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

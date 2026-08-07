@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
+import { resolveProximity, type GeoMode } from '@sonora/shared';
+import { logger } from '@/utils/logger';
 import { useLocationStore } from '@/store/location-store';
-import { getHaversineDistance } from '@/utils/haversine';
 import { useRemoteConfig } from './use-remote-config';
 
 export interface GeofenceState {
@@ -12,43 +14,121 @@ export interface GeofenceState {
   errorMsg: string | null;
 }
 
+export interface GeofenceOverride {
+  geoMode: GeoMode;
+  radiusMeters?: number | null;
+  format: 'trip' | 'track';
+}
+
+/** Result of a best-effort online proximity check (POST /experiences/:id/proximity). */
+export interface ProximityClientResult {
+  ok: boolean;
+  canListen?: boolean;
+  distanceMeters?: number | null;
+  effectiveRadiusMeters?: number | null;
+}
+
+/**
+ * Optional online seam. When injected, the hook attempts a best-effort
+ * authoritative check; on success it wins, on ANY failure it fails open to
+ * the offline/local result. Without an injected client the hook is offline-only.
+ */
+export interface ProximityClient {
+  check(input: {
+    experienceId?: string;
+    latitude: number;
+    longitude: number;
+  }): Promise<ProximityClientResult>;
+}
+
+// Preserves today's default: trips gate at `geofence.trip.radiusMeters` (50 m).
+const DEFAULT_OVERRIDE: GeofenceOverride = { format: 'trip', geoMode: 'type' };
+
 export function useOfflineGeofence(
   targetCoords: {
     latitude: number;
     longitude: number;
   } | null,
+  override: GeofenceOverride = DEFAULT_OVERRIDE,
+  options: { proximityClient?: ProximityClient; experienceId?: string } = {},
 ): GeofenceState {
   const { config } = useRemoteConfig();
   const { coords, accuracy, status, errorMsg } = useLocationStore();
-  const radiusMeters = config.geofence.radiusMeters;
+  const [onlineDecision, setOnlineDecision] = useState<ProximityClientResult | null>(null);
 
-  if (!targetCoords || !coords) {
-    return {
-      isNearStart: false,
-      gpsAccuracy: accuracy,
-      gpsStatus: status,
+  // Offline/local decision — single source of truth is the shared resolver,
+  // reading the locally cached per-format geofence config.
+  let resolution: {
+    canListen: boolean;
+    distanceMeters: number | null;
+    effectiveRadiusMeters: number | null;
+  };
+
+  if (!targetCoords) {
+    resolution = {
+      canListen: false,
       distanceMeters: null,
-      requiredRadiusMeters: radiusMeters,
-      userCoordinates: coords,
-      errorMsg: errorMsg,
+      effectiveRadiusMeters: config.geofence[override.format].radiusMeters,
     };
+  } else {
+    resolution = resolveProximity({
+      user: coords,
+      origin: targetCoords,
+      format: override.format,
+      geoMode: override.geoMode,
+      radiusMeters: override.radiusMeters ?? null,
+      bypassGeofence: config.geofence.bypassGeofence,
+      geofence: config.geofence,
+    });
   }
 
-  const distance = getHaversineDistance(
-    coords.latitude,
-    coords.longitude,
-    targetCoords.latitude,
-    targetCoords.longitude,
-  );
+  let isNearStart = resolution.canListen;
+  let distanceMeters: number | null = resolution.distanceMeters;
+  let requiredRadiusMeters = resolution.effectiveRadiusMeters ?? 0;
 
-  const isNear = distance <= radiusMeters;
+  // Best-effort online seam — authoritative if it succeeds, otherwise the
+  // offline/local decision above stands (fail open).
+  useEffect(() => {
+    if (!options.proximityClient || !targetCoords || !coords) {
+      return;
+    }
+    let cancelled = false;
+    options.proximityClient
+      .check({
+        experienceId: options.experienceId,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      })
+      .then((resultValue) => {
+        if (!cancelled && resultValue.ok) {
+          setOnlineDecision(resultValue);
+        }
+      })
+      .catch((err) => {
+        // fail open: keep the offline/local result, but surface the online failure
+        logger.error(
+          'useOfflineGeofence: online proximity check failed, falling back to offline result',
+          err,
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [options.proximityClient, options.experienceId, targetCoords, coords]);
+
+  if (onlineDecision && onlineDecision.ok) {
+    isNearStart = onlineDecision.canListen ?? false;
+    distanceMeters = onlineDecision.distanceMeters ?? null;
+    requiredRadiusMeters = onlineDecision.effectiveRadiusMeters ?? 0;
+  }
 
   return {
-    isNearStart: isNear,
+    isNearStart,
     gpsAccuracy: accuracy,
     gpsStatus: status,
-    distanceMeters: distance,
-    requiredRadiusMeters: radiusMeters,
+    distanceMeters,
+    requiredRadiusMeters,
     userCoordinates: coords,
     errorMsg: errorMsg,
   };

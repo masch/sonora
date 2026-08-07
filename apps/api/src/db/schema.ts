@@ -18,11 +18,14 @@ import {
   PURCHASE_STATUSES,
   PLATFORMS,
   EXPERIENCE_FORMATS,
+  GEO_MODES,
 } from '@sonora/shared';
 
 export const sonoraSchema = pgSchema('sonora');
 
 export const experienceFormatEnum = sonoraSchema.enum('experience_format', [...EXPERIENCE_FORMATS]);
+
+export const experienceGeoModeEnum = sonoraSchema.enum('geo_mode', [...GEO_MODES]);
 
 export const paymentProviderEnum = sonoraSchema.enum('payment_provider', [...PAYMENT_PROVIDERS]);
 
@@ -61,6 +64,8 @@ export const experiences = sonoraSchema.table('experiences', {
   currency: currencyEnum('currency').default('ARS'),
   imageKey: text('image_key').notNull(),
   geofenceBypassable: boolean('geofence_bypassable').default(false).notNull(),
+  geoMode: experienceGeoModeEnum('geo_mode').notNull(),
+  radiusMeters: integer('radius_meters'),
   published: boolean('published').notNull(),
 });
 

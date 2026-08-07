@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { TRACK_IMAGES, DEFAULT_TRACK_IMAGE } from '@/constants/images';
@@ -9,8 +10,10 @@ import { type TrackExperience } from '@/data/experiences';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { usePurchase } from '@/hooks/use-purchase';
 import { useRefreshExperienceOnPurchase } from '@/hooks/use-refresh-experience-on-purchase';
+import { useConfirm } from '@/hooks/use-confirm';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -19,9 +22,12 @@ import { TwImage } from '@/tw/image';
 import { ThemedText } from '@/components/themed-text';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
+import { BottomModal } from '@/components/ui/bottom-modal';
 import TrackDetailMap from '@/components/track-detail-map';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { formatDistance } from '@/utils/format-distance';
 import type { TranslationKeys } from '@/i18n/types';
 
 interface TrackDetailViewProps {
@@ -43,9 +49,18 @@ export default function TrackDetailView({
   const colors = useThemeColors();
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
+  const [showGeofenceBlockedAlert, setShowGeofenceBlockedAlert] = useState(false);
   const userInitiatedPlayRef = useRef(false);
   const rewind = useAudioRewind();
   const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
+
+  // GEOF.8 — gates playback/feedback only when the track's own geo data asks
+  // (entity/type). A track with geo_mode 'any' stays un-gated (always playable);
+  // the global bypassGeofence still outranks every mode.
+  const geofence = useOfflineGeofence(
+    { latitude: track.latitude, longitude: track.longitude },
+    { format: 'track', geoMode: track.geoMode, radiusMeters: track.radiusMeters },
+  );
 
   // When the purchase resolves but the fetched experience predates the
   // payment (no signed audioUrl), ask the parent to re-fetch the list so
@@ -91,7 +106,7 @@ export default function TrackDetailView({
 
   const feedbackTrigger = useFeedbackTrigger(mappedTrackForFeedback, {
     didJustFinish: player.status === 'stopped',
-    isNearStart: true, // experiences are always playable, bypass geofence near checking
+    isNearStart: geofence.isNearStart,
   });
 
   const handleFeedbackSubmit = (message: string) => feedback.submitFeedback(track.id, message);
@@ -100,6 +115,45 @@ export default function TrackDetailView({
     feedback.dismissFeedback();
     setShowManualFeedback(false);
     feedbackTrigger.dismiss();
+  };
+
+  const isBypassable = track.geofenceBypassable === true;
+  const bypassGeofence = useRemoteConfigStore((s) => s.config.geofence.bypassGeofence);
+  const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
+  const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
+  const { confirm, component: confirmComponent } = useConfirm();
+  const openBlockedAlert = () => setShowGeofenceBlockedAlert(true);
+
+  const handlePlay = async () => {
+    if (showBypassWarning) {
+      const ok = await confirm({
+        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
+        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
+        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
+        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
+      });
+      if (!ok) return;
+    } else if (isPlaybackBlocked) {
+      openBlockedAlert();
+      return;
+    }
+    player.play();
+  };
+
+  const handleDownload = async () => {
+    if (showBypassWarning) {
+      const ok = await confirm({
+        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
+        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
+        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
+        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
+      });
+      if (!ok) return;
+    } else if (isPlaybackBlocked) {
+      openBlockedAlert();
+      return;
+    }
+    handlePlayAndDownload();
   };
 
   const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
@@ -160,6 +214,14 @@ export default function TrackDetailView({
             </TwView>
           )}
 
+          {/* Block playback banner if the track geo gate says cars playable */}
+          {isPlaybackBlocked && (
+            <GeofenceBlockedBanner
+              distanceMeters={geofence.distanceMeters}
+              requiredRadiusMeters={geofence.requiredRadiusMeters}
+            />
+          )}
+
           {/* Payment prompt or Audio controls — depending on purchase state */}
           {purchaseState.status === 'paid' ? (
             <TwView className="mt-4">
@@ -184,12 +246,12 @@ export default function TrackDetailView({
                 positionMs={player.positionMs}
                 durationMs={player.durationMs || track.durationSeconds * 1000}
                 playerError={player.errorMsg}
-                onPlay={player.play}
+                onPlay={handlePlay}
                 onPause={player.pause}
                 onStop={player.stop}
                 onRewind={rewind}
                 onReset={() => player.seekTo(0)}
-                onDownload={handlePlayAndDownload}
+                onDownload={handleDownload}
                 onCancelDownload={download.deleteTrackLocal}
                 disabled={!track.audioUrl || purchaseState.status === 'loading'}
               />
@@ -229,6 +291,39 @@ export default function TrackDetailView({
         status={feedback.feedbackStatus}
         errorMsg={feedback.feedbackError}
       />
+
+      {confirmComponent}
+
+      <BottomModal
+        visible={showGeofenceBlockedAlert}
+        onDismiss={() => setShowGeofenceBlockedAlert(false)}
+      >
+        <TwView className="px-6 pb-2">
+          <ThemedText type="subtitle" className="mb-2">
+            {t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
+          </ThemedText>
+          <ThemedText className="mb-6">
+            {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
+              radius: geofence.requiredRadiusMeters,
+              distance: formatDistance(
+                geofence.distanceMeters,
+                t,
+                t('experiences.geofenceBlocked.notAvailable'),
+              ),
+            })}
+          </ThemedText>
+          <TwPressable
+            testID="geofence-blocked-alert-ok"
+            accessibilityLabel={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            className="bg-blue-500 rounded-xl py-3 items-center"
+            onPress={() => setShowGeofenceBlockedAlert(false)}
+          >
+            <ThemedText className="text-white font-semibold">
+              {t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            </ThemedText>
+          </TwPressable>
+        </TwView>
+      </BottomModal>
     </TwView>
   );
 }
