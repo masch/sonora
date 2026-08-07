@@ -1,9 +1,4 @@
-import {
-  GENERAL_FEEDBACK_EXPERIENCE_ID,
-  INSTRUCTIONS_AUDIO_KEY,
-  INSTRUCTIONS_IMAGE_KEY,
-  INSTRUCTIONS_SLUG,
-} from '@sonora/shared';
+import { GENERAL_FEEDBACK_EXPERIENCE_ID } from '@sonora/shared';
 import { inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { createDbClient } from './index';
@@ -44,24 +39,6 @@ const defaultThemes = [
 ];
 
 const trips = [
-  {
-    id: 'a23baa7e-2c82-472f-9241-4f23e00c1733',
-    slug: INSTRUCTIONS_SLUG,
-    title: 'INSTRUCTIONS',
-    description: 'Cómo usar la app de Sonora',
-    format: 'trip',
-    themeKey: 'onboarding',
-    audioUrl: INSTRUCTIONS_AUDIO_KEY,
-    durationSeconds: 116,
-    latitude: -32.212228424258456,
-    longitude: -64.73806565212881,
-    free: true,
-    price: null,
-    currency: null,
-    imageKey: INSTRUCTIONS_IMAGE_KEY,
-    geofenceBypassable: false,
-    published: false,
-  },
   {
     id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
     slug: 'umepay-bosque',
@@ -148,13 +125,6 @@ const defaultWaypoints = [
     order: 2,
     latitude: -32.21333,
     longitude: -64.736273,
-    radiusMeters: 50,
-  },
-  {
-    experienceId: 'a23baa7e-2c82-472f-9241-4f23e00c1733',
-    order: 1,
-    latitude: -32.212228424258456,
-    longitude: -64.73806565212881,
     radiusMeters: 50,
   },
 ];
