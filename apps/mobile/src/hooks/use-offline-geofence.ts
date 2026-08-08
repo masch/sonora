@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { resolveProximity, type GeoMode } from '@sonora/shared';
+import { resolveProximity, type GeoMode, type UserExperienceFormat } from '@sonora/shared';
 import { logger } from '@/utils/logger';
 import { useLocationStore } from '@/store/location-store';
 import { useRemoteConfig } from './use-remote-config';
@@ -17,7 +17,7 @@ export interface GeofenceState {
 export interface GeofenceOverride {
   geoMode: GeoMode;
   radiusMeters?: number | null;
-  format: 'trip' | 'track';
+  format: UserExperienceFormat;
 }
 
 /** Result of a best-effort online proximity check (POST /experiences/:id/proximity). */

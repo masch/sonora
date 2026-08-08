@@ -30,12 +30,11 @@ describe('POST /experiences/:id/proximity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = {
-      select: vi.fn().mockReturnThis(),
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      orderBy: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      then: vi.fn().mockImplementation((resolve) => Promise.resolve(expMock).then(resolve)),
+      query: {
+        experiences: {
+          findFirst: vi.fn().mockResolvedValue(expMock[0]),
+        },
+      },
     };
   });
 
@@ -109,8 +108,11 @@ describe('POST /experiences/:id/proximity', () => {
 
   it('returns 404 NOT_FOUND for an unknown id', async () => {
     const emptyDb: any = {
-      ...mockDb,
-      then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
+      query: {
+        experiences: {
+          findFirst: vi.fn().mockResolvedValue(undefined),
+        },
+      },
     };
     setDbClient(emptyDb);
     const res = await app.request(
@@ -128,8 +130,11 @@ describe('POST /experiences/:id/proximity', () => {
 
   it('returns 404 NOT_FOUND when the experience is unpublished', async () => {
     const emptyUnpublishedDb: any = {
-      ...mockDb,
-      then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
+      query: {
+        experiences: {
+          findFirst: vi.fn().mockResolvedValue(undefined),
+        },
+      },
     };
     setDbClient(emptyUnpublishedDb);
     const res = await app.request(

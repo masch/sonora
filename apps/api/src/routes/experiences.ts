@@ -131,14 +131,20 @@ experiencesRouter.post(
   async (c) => {
     const db = c.var.db;
     const id = c.req.param('id');
-    const found = await db
-      .select()
-      .from(experiences)
-      .where(and(eq(experiences.id, id), eq(experiences.published, true)));
-    if (!found || found.length === 0) {
+    const exp = await db.query.experiences.findFirst({
+      where: (experiences, { and, eq }) =>
+        and(eq(experiences.id, id), eq(experiences.published, true)),
+      columns: {
+        format: true,
+        latitude: true,
+        longitude: true,
+        geoMode: true,
+        radiusMeters: true,
+      },
+    });
+    if (!exp) {
       return problem(c, ERRORS.NOT_FOUND, 'Experience not found');
     }
-    const exp = found[0];
     const { latitude, longitude } = c.req.valid('json') as ProximityBody;
 
     const geo = resolveProximity({
