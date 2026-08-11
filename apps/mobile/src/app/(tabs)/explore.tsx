@@ -28,6 +28,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/utils/logger';
 
 import { useAudioPlayerStore } from '@/store/audio-player-store';
+import { APP_CONFIG } from '@/config/app-config';
 
 import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_MAIN_BG } from '@/constants/images';
 
@@ -252,7 +253,7 @@ export default function ExploreScreen() {
             )}
 
             {/* TODO [CLEANUP]: Remove debug UI block after verifying lockscreen session fix */}
-            {__DEV__ && (
+            {APP_CONFIG.isDevMode && (
               /* Session ID Lockscreen Debug Buttons */
               <TwView className="card-container gap-3 self-stretch p-4 rounded-xl items-center">
                 <ThemedText className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider self-start mb-1">

@@ -1,10 +1,12 @@
 import type { TabTriggerSlotProps } from 'expo-router/ui';
 import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
+import type { TranslationKeys } from '@/i18n/types';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import { TwView, TwPressable } from '@/tw';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
 
 interface IconSymbols {
   ios: SFSymbol;
@@ -14,7 +16,7 @@ interface IconSymbols {
 
 interface TabButtonProps extends TabTriggerSlotProps {
   icon: IconSymbols;
-  label?: string;
+  labelKey?: TranslationKeys;
   hideLabel?: boolean;
   href?: string;
   target?: string;
@@ -22,7 +24,7 @@ interface TabButtonProps extends TabTriggerSlotProps {
 }
 
 export function TabButton({
-  label,
+  labelKey,
   hideLabel,
   isFocused,
   icon,
@@ -32,7 +34,9 @@ export function TabButton({
   target,
   rel,
 }: TabButtonProps) {
+  const { t } = useAppTranslation();
   const colors = useThemeColors();
+  const label = labelKey ? t(labelKey) : undefined;
 
   return (
     <TwPressable

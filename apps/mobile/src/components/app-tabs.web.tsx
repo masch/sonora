@@ -13,7 +13,7 @@ export default function AppTabs() {
       href={tab.name === 'index' ? '/' : `/${tab.name}`}
       asChild
     >
-      <TabButton icon={tab.symbolViewName} label={tab.label} hideLabel />
+      <TabButton icon={tab.symbolViewName} labelKey={tab.labelKey} hideLabel />
     </TabTrigger>
   ));
 

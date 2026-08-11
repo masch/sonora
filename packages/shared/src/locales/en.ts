@@ -34,9 +34,11 @@ export const en = {
   },
   tabs: {
     index: 'Home',
-    experiences: 'Experiences',
+    experiences: 'Derivas',
+    poetics: 'Sonora pause',
     explore: 'Explore',
     settings: 'Settings',
+    messages: 'Messages',
   },
   experiences: {
     title: 'Experiences',

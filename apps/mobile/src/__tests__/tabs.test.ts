@@ -50,4 +50,36 @@ describe('Tab definitions', () => {
     const names = TABS.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
+
+  it('shows explore tab when __DEV__ is true', () => {
+    const g = globalThis as unknown as { __DEV__: boolean };
+    const originalDev = g.__DEV__;
+    try {
+      g.__DEV__ = true;
+      let tabsModule: typeof import('@/constants/tabs');
+      jest.isolateModules(() => {
+        tabsModule = require('@/constants/tabs');
+      });
+      const exploreTab = tabsModule!.TABS.find((t) => t.name === 'explore');
+      expect(exploreTab?.hidden).toBe(false);
+    } finally {
+      g.__DEV__ = originalDev;
+    }
+  });
+
+  it('hides explore tab when __DEV__ is false', () => {
+    const g = globalThis as unknown as { __DEV__: boolean };
+    const originalDev = g.__DEV__;
+    try {
+      g.__DEV__ = false;
+      let tabsModule: typeof import('@/constants/tabs');
+      jest.isolateModules(() => {
+        tabsModule = require('@/constants/tabs');
+      });
+      const exploreTab = tabsModule!.TABS.find((t) => t.name === 'explore');
+      expect(exploreTab?.hidden).toBe(true);
+    } finally {
+      g.__DEV__ = originalDev;
+    }
+  });
 });
