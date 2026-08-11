@@ -35,6 +35,9 @@ export interface AudioPlayerActions {
   confirmInterrupt: () => void;
   cancelInterrupt: () => void;
   setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => void;
+  // TODO [CLEANUP]: Remove debug methods after verifying lockscreen session fix
+  triggerUnsafeLockscreenCrash: () => void;
+  triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => void;
   _setPlayer: (player: AudioPlayer | null) => void;
   _syncStatus: (partial: {
     status?: PlayerStatus;
@@ -51,18 +54,71 @@ const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   showSeekForward: false,
 };
 
-function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+let lastLockScreenMetadataStr = '';
+let isLockScreenActive = false;
+let lockScreenUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function enableLockScreenControlsSafe(
+  player: AudioPlayer,
+  metadata: ExperienceAudioMetadata | null,
+) {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return;
+
+  const serialized = JSON.stringify(metadata ?? {});
+  if (serialized === lastLockScreenMetadataStr && isLockScreenActive) {
+    return;
+  }
+
+  if (lockScreenUpdateTimer) {
+    clearTimeout(lockScreenUpdateTimer);
+  }
+
+  lockScreenUpdateTimer = setTimeout(() => {
+    lockScreenUpdateTimer = null;
     try {
       player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
+      lastLockScreenMetadataStr = serialized;
+      isLockScreenActive = true;
     } catch {
       // Gracefully handle — lock screen controls are best-effort
     }
+  }, 100);
+}
+
+// TODO [CLEANUP]: Remove debug helper after verifying lockscreen session fix
+export function enableLockScreenControlsUnsafe(
+  player: AudioPlayer,
+  metadata: ExperienceAudioMetadata | null,
+) {
+  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    // Fire rapid consecutive calls without debounce or deduplication.
+    // On native Android expo-audio, this dispatches multiple MediaSession.Builder calls with ID="",
+    // reproducing: java.lang.IllegalStateException: Session ID must be unique. ID=
+    player.setActiveForLockScreen(
+      true,
+      { ...(metadata ?? {}), title: 'Crash 1' },
+      LOCK_SCREEN_OPTIONS,
+    );
+    player.setActiveForLockScreen(
+      true,
+      { ...(metadata ?? {}), title: 'Crash 2' },
+      LOCK_SCREEN_OPTIONS,
+    );
   }
+}
+
+function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
+  enableLockScreenControlsSafe(player, metadata);
 }
 
 function disableLockScreenControls(player: AudioPlayer) {
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    if (lockScreenUpdateTimer) {
+      clearTimeout(lockScreenUpdateTimer);
+      lockScreenUpdateTimer = null;
+    }
+    lastLockScreenMetadataStr = '';
+    isLockScreenActive = false;
     try {
       player.setActiveForLockScreen(false);
     } catch {
@@ -212,6 +268,23 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
       set({ currentMetadata: metadata });
       if (_player && status === 'playing') {
         enableLockScreenControls(_player, metadata);
+      }
+    },
+
+    // TODO [CLEANUP]: Remove debug store actions after verifying lockscreen session fix
+    triggerUnsafeLockscreenCrash: () => {
+      const { _player, currentMetadata } = get();
+      if (_player) {
+        enableLockScreenControlsUnsafe(_player, currentMetadata);
+      }
+    },
+
+    triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
+      const { _player, currentMetadata } = get();
+      const meta = metadata ?? currentMetadata ?? { title: 'Test Audio Track' };
+      set({ currentMetadata: meta });
+      if (_player) {
+        enableLockScreenControlsSafe(_player, meta);
       }
     },
 

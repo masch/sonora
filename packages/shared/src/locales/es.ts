@@ -122,7 +122,7 @@ export const es = {
       freshStart: 'Empezar de cero',
       devtoolsWeb: 'usar las devtools del navegador',
       devtoolsDevice: 'sacudí el dispositivo o presioná <0>m</0> en la terminal',
-      devtoolsAndroid: 'presioná <0>cmd+m (or ctrl+m)</0>',
+      devtoolsAndroid: 'presioná <0>cmd+m (o ctrl+m)</0>',
       devtoolsIos: 'presioná <0>cmd+d</0>',
     },
     geofence: {
@@ -153,6 +153,9 @@ export const es = {
       btnPlay: 'Reproducir',
       btnPause: 'Pausar',
       btnStop: 'Detener',
+      // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
+      btnTriggerCrash: 'Generar error (Crash native)',
+      btnTriggerFix: 'Generar condición corregida',
       loading: 'Cargando...',
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',

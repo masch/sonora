@@ -7,6 +7,7 @@ function createMockPlayer() {
     seekTo: jest.fn().mockResolvedValue(undefined),
     replace: jest.fn(),
     remove: jest.fn(),
+    setActiveForLockScreen: jest.fn(),
   };
 }
 
@@ -180,5 +181,59 @@ describe('AudioPlayerStore', () => {
     const state = useAudioPlayerStore.getState();
     expect(state.status).toBe('error');
     expect(state.errorMsg).toBe('Playback failed');
+  });
+
+  // TODO [CLEANUP]: Remove debug test cases after verifying lockscreen session fix
+  it('triggerUnsafeLockscreenCrash calls setActiveForLockScreen twice in rapid succession', () => {
+    const mockPlayer = createMockPlayer();
+    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
+
+    useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash();
+
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(2);
+  });
+
+  it('triggerSafeLockscreenUpdate debounces/guards rapid lockscreen updates', () => {
+    jest.useFakeTimers();
+    const mockPlayer = createMockPlayer();
+    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
+
+    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Test 1' });
+    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Test 2' });
+
+    // Pending timer hasn't fired yet
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(150);
+
+    // Only 1 debounced call with latest metadata executed
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledWith(
+      true,
+      { title: 'Test 2' },
+      expect.any(Object),
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('prevents redundant lockscreen updates when metadata is identical and active', () => {
+    jest.useFakeTimers();
+    const mockPlayer = createMockPlayer();
+    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
+
+    // Initial activation call
+    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Same Track' });
+    jest.advanceTimersByTime(150);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+    // Second call with identical metadata after active
+    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Same Track' });
+    jest.advanceTimersByTime(150);
+
+    // Should NOT call setActiveForLockScreen again
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+    jest.useRealTimers();
   });
 });

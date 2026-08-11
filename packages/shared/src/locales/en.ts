@@ -153,6 +153,9 @@ export const en = {
       btnPlay: 'Play',
       btnPause: 'Pause',
       btnStop: 'Stop',
+      // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
+      btnTriggerCrash: 'Trigger error (Crash native)',
+      btnTriggerFix: 'Trigger fixed condition',
       loading: 'Loading...',
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',

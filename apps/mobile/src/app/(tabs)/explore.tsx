@@ -24,8 +24,10 @@ import {
 } from '@/data/experiences';
 import { TwView, TwPressable } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/utils/logger';
+
+import { useAudioPlayerStore } from '@/store/audio-player-store';
 
 import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_MAIN_BG } from '@/constants/images';
 
@@ -95,7 +97,7 @@ export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const loadExperience = async () => {
+  const loadExperience = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
@@ -110,20 +112,31 @@ export default function ExploreScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Initial fetch — no setState in the effect body itself, only in async callbacks
+  // Initial fetch — async/await after microtask boundary prevents synchronous setState in effect body
   useEffect(() => {
-    fetchExperiences()
-      .then((exps) => {
+    let isMounted = true;
+    const init = async () => {
+      try {
+        const exps = await fetchExperiences();
+        if (!isMounted) return;
         if (exps.length > 0) setActiveExperience(exps[0]);
         setError(false);
-      })
-      .catch((e) => {
+      } catch (e) {
+        if (!isMounted) return;
         logger.error(e);
         setError(true);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {
@@ -236,6 +249,40 @@ export default function ExploreScreen() {
 
             {activeExperience && isPlayableExperience(activeExperience) && (
               <ActiveExperienceSection experience={activeExperience} />
+            )}
+
+            {/* TODO [CLEANUP]: Remove debug UI block after verifying lockscreen session fix */}
+            {__DEV__ && (
+              /* Session ID Lockscreen Debug Buttons */
+              <TwView className="card-container gap-3 self-stretch p-4 rounded-xl items-center">
+                <ThemedText className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider self-start mb-1">
+                  {t('index.playerDebug.title')}
+                </ThemedText>
+
+                {/* Button 1: Unsafe / Crash */}
+                <TwPressable
+                  onPress={() => useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash()}
+                  className="w-full py-2.5 px-4 bg-red-600 active:bg-red-700 rounded-xl items-center justify-center"
+                  testID="trigger-lockscreen-crash-button"
+                  accessibilityLabel={t('index.playerDebug.btnTriggerCrash')}
+                >
+                  <ThemedText className="text-white font-semibold text-sm">
+                    {t('index.playerDebug.btnTriggerCrash')}
+                  </ThemedText>
+                </TwPressable>
+
+                {/* Button 2: Safe / Fix */}
+                <TwPressable
+                  onPress={() => useAudioPlayerStore.getState().triggerSafeLockscreenUpdate()}
+                  className="w-full py-2.5 px-4 bg-emerald-600 active:bg-emerald-700 rounded-xl items-center justify-center"
+                  testID="trigger-lockscreen-fix-button"
+                  accessibilityLabel={t('index.playerDebug.btnTriggerFix')}
+                >
+                  <ThemedText className="text-white font-semibold text-sm">
+                    {t('index.playerDebug.btnTriggerFix')}
+                  </ThemedText>
+                </TwPressable>
+              </TwView>
             )}
 
             {/* Development Hints */}
