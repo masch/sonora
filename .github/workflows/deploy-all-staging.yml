@@ -13,11 +13,6 @@ on:
         required: true
         type: string
         default: 'dev-team'
-      enable_dev_mode:
-        description: 'Enable React Native __DEV__ mode in Android JS bundle'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -70,6 +65,5 @@ jobs:
     uses: ./.github/workflows/deploy-mobile-android-staging.yml
     with:
       firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
-      enable_dev_mode: ${{ inputs.enable_dev_mode != false }}
       skip_tagging: true
     secrets: inherit
