@@ -184,13 +184,13 @@ describe('AudioPlayerStore', () => {
   });
 
   // TODO [CLEANUP]: Remove debug test cases after verifying lockscreen session fix
-  it('triggerUnsafeLockscreenCrash calls setActiveForLockScreen and creates conflicting second player', () => {
+  it('triggerUnsafeLockscreenCrash calls setActiveForLockScreen in rapid burst', () => {
     const mockPlayer = createMockPlayer();
     useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
 
     useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash();
 
-    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(5);
   });
 
   it('triggerSafeLockscreenUpdate debounces/guards rapid lockscreen updates', () => {

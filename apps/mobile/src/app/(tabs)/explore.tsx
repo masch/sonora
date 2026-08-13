@@ -22,10 +22,10 @@ import {
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { TwPressable, TwView } from '@/tw';
+import { TwPressable, TwTextInput, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { APP_CONFIG } from '@/config/app-config';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
@@ -36,7 +36,7 @@ import { SONORA_BANNER_BG, SONORA_LOGO, SONORA_MAIN_BG } from '@/constants/image
 const CONTENT_PADDING = 'pb-6';
 
 // Technical constants (paths & commands) excluded from translation lists
-const HINT_FILE_PATH = 'src/app/explore.tsx';
+const HINT_FILE_PATH = 'src/app/(tabs)/explore.tsx';
 const RESET_PROJECT_COMMAND = 'npm run reset-project';
 
 /** Sub-component that only mounts when an active experience is selected.
@@ -97,48 +97,42 @@ export default function ExploreScreen() {
   const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [burstCount, setBurstCount] = useState('5');
+  const isMountedRef = useRef(true);
 
   const loadExperience = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
       const exps = await fetchExperiences();
+      if (!isMountedRef.current) return;
       if (exps.length > 0) {
         setActiveExperience(exps[0]);
       }
       setError(false);
     } catch (e) {
+      if (!isMountedRef.current) return;
       logger.error(e);
       setError(true);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
-  // Initial fetch — async/await after microtask boundary prevents synchronous setState in effect body
   useEffect(() => {
-    let isMounted = true;
-    const init = async () => {
-      try {
-        const exps = await fetchExperiences();
-        if (!isMounted) return;
-        if (exps.length > 0) setActiveExperience(exps[0]);
-        setError(false);
-      } catch (e) {
-        if (!isMounted) return;
-        logger.error(e);
-        setError(true);
-      } finally {
-        if (isMounted) setLoading(false);
+    isMountedRef.current = true;
+    void Promise.resolve().then(() => {
+      if (isMountedRef.current) {
+        void loadExperience();
       }
-    };
-
-    init();
+    });
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, []);
+  }, [loadExperience]);
 
   if (loading) {
     return (
@@ -260,9 +254,28 @@ export default function ExploreScreen() {
                   {t('index.playerDebug.title')}
                 </ThemedText>
 
+                {/* Burst Count Config Input */}
+                <TwView className="flex-row items-center justify-between w-full gap-2 px-1">
+                  <ThemedText className="text-xs font-medium text-zinc-500">
+                    {t('index.playerDebug.burstCalls')}
+                  </ThemedText>
+                  <TwTextInput
+                    value={burstCount}
+                    onChangeText={setBurstCount}
+                    keyboardType="numeric"
+                    className="w-20 px-3 py-1 text-center bg-zinc-100 dark:bg-zinc-800 rounded-lg text-sm font-bold text-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700"
+                    testID="lockscreen-burst-input"
+                    accessibilityLabel={t('index.playerDebug.burstCalls')}
+                  />
+                </TwView>
+
                 {/* Button 1: Unsafe / Crash */}
                 <TwPressable
-                  onPress={() => useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash()}
+                  onPress={() =>
+                    useAudioPlayerStore
+                      .getState()
+                      .triggerUnsafeLockscreenCrash(parseInt(burstCount, 10) || 5)
+                  }
                   className="w-full py-2.5 px-4 bg-red-600 active:bg-red-700 rounded-xl items-center justify-center"
                   testID="trigger-lockscreen-crash-button"
                   accessibilityLabel={t('index.playerDebug.btnTriggerCrash')}

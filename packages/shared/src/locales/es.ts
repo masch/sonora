@@ -158,6 +158,7 @@ export const es = {
       // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
       btnTriggerCrash: 'Generar error (Crash native)',
       btnTriggerFix: 'Generar condición corregida',
+      burstCalls: 'Llamadas simultáneas:',
       loading: 'Cargando...',
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',
@@ -234,7 +235,7 @@ export const es = {
     sections: {
       fileRouting: {
         title: 'Ruteo por archivos',
-        desc: 'Esta app tiene dos pantallas: <0>src/app/index.tsx</0> and <0>src/app/explore.tsx</0>',
+        desc: 'Esta app tiene dos pantallas: <0>src/app/index.tsx</0> y <0>src/app/explore.tsx</0>',
         layout:
           'El archivo de layout en <0>src/app/_layout.tsx</0> configura el navegador de tabs.',
       },
@@ -281,7 +282,7 @@ export const es = {
       label: 'Español',
     },
     about: {
-      version: 'Version',
+      version: 'Versión',
       versionValue: '1.0.0',
       terms: 'Términos del servicio',
       privacy: 'Política de privacidad',

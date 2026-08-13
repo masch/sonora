@@ -1,12 +1,8 @@
+import { type AudioLockScreenOptions, type AudioMetadata, type AudioPlayer } from 'expo-audio';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
-import {
-  createAudioPlayer,
-  type AudioPlayer,
-  type AudioMetadata,
-  type AudioLockScreenOptions,
-} from 'expo-audio';
 
+import { APP_CONFIG } from '@/config/app-config';
 import { AnalyticsService } from '@/services/analytics';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
@@ -41,7 +37,7 @@ export interface AudioPlayerActions {
   cancelInterrupt: () => void;
   setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => void;
   // TODO [CLEANUP]: Remove debug methods after verifying lockscreen session fix
-  triggerUnsafeLockscreenCrash: () => void;
+  triggerUnsafeLockscreenCrash: (count?: number) => void;
   triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => void;
   _setPlayer: (player: AudioPlayer | null) => void;
   _syncStatus: (partial: {
@@ -94,23 +90,17 @@ export function enableLockScreenControlsSafe(
 export function enableLockScreenControlsUnsafe(
   player: AudioPlayer,
   metadata: ExperienceAudioMetadata | null,
+  count = 5,
 ) {
+  if (APP_CONFIG.isProduction) return;
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // 1. Activate on current player
-    player.setActiveForLockScreen(
-      true,
-      { ...(metadata ?? {}), title: 'Player 1 Crash' },
-      LOCK_SCREEN_OPTIONS,
-    );
-    // 2. Instantiate a second player and immediately activate lock screen on it.
-    // On native Android expo-audio, this dispatches a second MediaSession.Builder call with identical default ID="",
+    // Fire rapid consecutive lockscreen calls without debounce or guards during playback start.
+    // On native Android expo-audio, multiple MediaSession.Builder calls with ID="" are dispatched,
     // reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
-    const secondPlayer = createAudioPlayer(null);
-    secondPlayer.setActiveForLockScreen(
-      true,
-      { ...(metadata ?? {}), title: 'Player 2 Crash' },
-      LOCK_SCREEN_OPTIONS,
-    );
+    const iterations = Math.max(1, count);
+    for (let i = 1; i <= iterations; i++) {
+      player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
+    }
   }
 }
 
@@ -279,19 +269,27 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     },
 
     // TODO [CLEANUP]: Remove debug store actions after verifying lockscreen session fix
-    triggerUnsafeLockscreenCrash: () => {
-      const { _player, currentMetadata } = get();
+    triggerUnsafeLockscreenCrash: (count?: number) => {
+      const { _player, currentUri, currentMetadata } = get();
       if (_player) {
-        enableLockScreenControlsUnsafe(_player, currentMetadata);
+        if (currentUri) {
+          _player.replace(currentUri);
+          _player.play();
+        }
+        enableLockScreenControlsUnsafe(_player, currentMetadata, count);
       }
     },
 
     triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
       const { _player, currentMetadata } = get();
-      const meta = metadata ?? currentMetadata ?? { title: 'Test Audio Track' };
-      set({ currentMetadata: meta });
-      if (_player) {
-        enableLockScreenControlsSafe(_player, meta);
+      const meta = metadata ?? currentMetadata;
+      if (meta) {
+        set({ currentMetadata: meta });
+        if (_player) {
+          enableLockScreenControlsSafe(_player, meta);
+        }
+      } else if (_player) {
+        enableLockScreenControlsSafe(_player, null);
       }
     },
 

@@ -158,6 +158,7 @@ export const en = {
       // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
       btnTriggerCrash: 'Trigger error (Crash native)',
       btnTriggerFix: 'Trigger fixed condition',
+      burstCalls: 'Concurrent burst calls:',
       loading: 'Loading...',
       positionValue: '{{value}}s',
       durationValue: '{{value}}s',
