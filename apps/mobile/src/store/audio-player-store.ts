@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
-import type { AudioPlayer, AudioMetadata, AudioLockScreenOptions } from 'expo-audio';
+import {
+  createAudioPlayer,
+  type AudioPlayer,
+  type AudioMetadata,
+  type AudioLockScreenOptions,
+} from 'expo-audio';
 
 import { AnalyticsService } from '@/services/analytics';
 
@@ -91,17 +96,19 @@ export function enableLockScreenControlsUnsafe(
   metadata: ExperienceAudioMetadata | null,
 ) {
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // Fire rapid consecutive calls without debounce or deduplication.
-    // On native Android expo-audio, this dispatches multiple MediaSession.Builder calls with ID="",
-    // reproducing: java.lang.IllegalStateException: Session ID must be unique. ID=
+    // 1. Activate on current player
     player.setActiveForLockScreen(
       true,
-      { ...(metadata ?? {}), title: 'Crash 1' },
+      { ...(metadata ?? {}), title: 'Player 1 Crash' },
       LOCK_SCREEN_OPTIONS,
     );
-    player.setActiveForLockScreen(
+    // 2. Instantiate a second player and immediately activate lock screen on it.
+    // On native Android expo-audio, this dispatches a second MediaSession.Builder call with identical default ID="",
+    // reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
+    const secondPlayer = createAudioPlayer(null);
+    secondPlayer.setActiveForLockScreen(
       true,
-      { ...(metadata ?? {}), title: 'Crash 2' },
+      { ...(metadata ?? {}), title: 'Player 2 Crash' },
       LOCK_SCREEN_OPTIONS,
     );
   }
