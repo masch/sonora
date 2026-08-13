@@ -8,11 +8,6 @@ on:
         required: true
         type: string
         default: 'dev-team'
-      enable_dev_mode:
-        description: 'Enable React Native __DEV__ mode in JS bundle'
-        required: false
-        type: boolean
-        default: true
   workflow_call:
     inputs:
       firebase_groups:
@@ -20,11 +15,6 @@ on:
         required: false
         type: string
         default: 'dev-team'
-      enable_dev_mode:
-        description: 'Enable React Native __DEV__ mode in JS bundle'
-        required: false
-        type: boolean
-        default: true
       skip_tagging:
         description: 'Skip tagging'
         required: false
@@ -77,7 +67,6 @@ jobs:
         id: build-apk
         env:
           APP_ENV: staging
-          EXPO_DEV: ${{ inputs.enable_dev_mode != false && '1' || '0' }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_NO_INTERACTIVE: '1'
           APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
