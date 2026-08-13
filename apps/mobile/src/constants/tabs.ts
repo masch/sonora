@@ -42,7 +42,7 @@ export const TABS = [
     name: ROUTES.EXPLORE,
     labelKey: 'tabs.explore',
     symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
-    hidden: !APP_CONFIG.isDevMode,
+    hidden: APP_CONFIG.isProduction,
   },
   {
     name: ROUTES.SETTINGS,

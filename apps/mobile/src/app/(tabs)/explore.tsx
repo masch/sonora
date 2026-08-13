@@ -8,29 +8,29 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
+import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { ScrollScreenWrapper, TAB_BAR_INSET } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
-import { Icon } from '@/components/icon';
+import {
+  fetchExperiences,
+  isPlayableExperience,
+  type Experience,
+  type PlayableExperience,
+} from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import {
-  fetchExperiences,
-  type Experience,
-  type PlayableExperience,
-  isPlayableExperience,
-} from '@/data/experiences';
-import { TwView, TwPressable } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/utils/logger';
+import { useCallback, useEffect, useState } from 'react';
 
-import { useAudioPlayerStore } from '@/store/audio-player-store';
 import { APP_CONFIG } from '@/config/app-config';
+import { useAudioPlayerStore } from '@/store/audio-player-store';
 
-import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_MAIN_BG } from '@/constants/images';
+import { SONORA_BANNER_BG, SONORA_LOGO, SONORA_MAIN_BG } from '@/constants/images';
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pb-6';
@@ -253,7 +253,7 @@ export default function ExploreScreen() {
             )}
 
             {/* TODO [CLEANUP]: Remove debug UI block after verifying lockscreen session fix */}
-            {APP_CONFIG.isDevMode && (
+            {!APP_CONFIG.isProduction && (
               /* Session ID Lockscreen Debug Buttons */
               <TwView className="card-container gap-3 self-stretch p-4 rounded-xl items-center">
                 <ThemedText className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider self-start mb-1">
