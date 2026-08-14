@@ -17,4 +17,11 @@ config.resolver.nodeModulesPaths = [
 // Support .wasm files for expo-sqlite web (wa-sqlite)
 config.resolver.assetExts.push('wasm');
 
-module.exports = withNativewind(config, { input: './src/global.css' });
+// NativeWind configuration:
+// - input: points to the global Tailwind CSS stylesheet required for style generation.
+// - globalClassNamePolyfill: false disables global React.createElement monkey-patching
+//   since this codebase strictly uses styled Tw* wrapper components (src/tw/).
+module.exports = withNativewind(config, {
+  input: './src/global.css',
+  globalClassNamePolyfill: false,
+});
