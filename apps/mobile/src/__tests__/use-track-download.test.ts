@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useDownloadManagerStore } from '@/store/download-manager-store';
+import { useAudioPlayerStore } from '@/store/audio-player-store';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -174,5 +175,18 @@ describe('useTrackDownload (refactored — download store integration)', () => {
     expect(typeof result.current.progress).toBe('number');
     expect(typeof result.current.startDownload).toBe('function');
     expect(typeof result.current.deleteTrackLocal).toBe('function');
+  });
+
+  it('does not revoke web object url during unmount if audio is currently playing in store', async () => {
+    useAudioPlayerStore.setState({ currentUri: 'blob:http://localhost/test-blob' });
+    const revokeSpy = jest.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const { unmount } = await renderHook(() =>
+      useTrackDownload('track-1', 'https://remote.url/audio.mp3', 'Track Title'),
+    );
+    unmount();
+
+    expect(revokeSpy).not.toHaveBeenCalledWith('blob:http://localhost/test-blob');
+    revokeSpy.mockRestore();
   });
 });

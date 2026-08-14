@@ -26,7 +26,7 @@ jest.mock('@/utils/app-version', () => ({
 
 // Mock Platform globally for api-client tests
 jest.mock('react-native', () => ({
-  Platform: { OS: 'ios' },
+  Platform: { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios ?? obj.default },
 }));
 
 jest.mock('expo-constants', () => ({

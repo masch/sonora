@@ -1,7 +1,5 @@
 import { render } from '@testing-library/react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-
 let mockApp: {
   nativeApplicationVersion: string | null;
 } = {
@@ -14,9 +12,11 @@ jest.mock('expo-application', () => ({
   },
 }));
 
+let mockIsProduction = true;
+
 jest.mock('expo-constants', () => ({
   get expoConfig() {
-    return { extra: { isProduction: true } };
+    return { extra: { isProduction: mockIsProduction } };
   },
 }));
 
@@ -30,9 +30,12 @@ jest.mock('expo-linear-gradient', () => ({
 
 // react-native-reanimated, react-native-worklets already mocked in jest.setup.ts
 
+import { AnimatedSplashOverlay, AnimatedIcon } from '@/components/animated-icon';
+
 describe('AnimatedSplashOverlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsProduction = true;
     mockApp = { nativeApplicationVersion: '1.0.3' };
   });
 
@@ -45,5 +48,16 @@ describe('AnimatedSplashOverlay', () => {
     mockApp.nativeApplicationVersion = null;
     const { getByText } = await render(<AnimatedSplashOverlay isReady={true} />);
     expect(getByText('0.0.0')).toBeTruthy();
+  });
+
+  it('renders splash overlay in staging mode', async () => {
+    mockIsProduction = false;
+    const { getByText } = await render(<AnimatedSplashOverlay isReady={true} />);
+    expect(getByText('1.0.3')).toBeTruthy();
+  });
+
+  it('renders AnimatedIcon component', async () => {
+    const { toJSON } = await render(<AnimatedIcon />);
+    expect(toJSON()).not.toBeNull();
   });
 });

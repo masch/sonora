@@ -106,7 +106,7 @@ export const en = {
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsTitle: 'Instructions',
-    instructionsName: 'How to use web',
+    instructionsName: 'How to use Sonora',
     instructionsSubtitle: 'Load instructions to listen',
   },
   index: {
