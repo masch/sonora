@@ -40,7 +40,7 @@
     "firebase": "11.3.1",
     "i18next": "26.3.6",
     "nativewind": "5.0.0-preview.4",
-    "postcss": "8.5.23",
+    "postcss": "8.5.25",
     "promise": "8.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
