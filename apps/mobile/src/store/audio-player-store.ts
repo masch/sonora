@@ -106,10 +106,22 @@ export function enableLockScreenControlsUnsafe(
     // On native Android expo-audio, multiple MediaSession.Builder calls with identical default ID=""
     // are dispatched concurrently, reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
     const iterations = Math.max(1, count);
+    const extraPlayers: AudioPlayer[] = [];
     for (let i = 1; i <= iterations; i++) {
       const extraPlayer = createAudioPlayer(null);
+      extraPlayers.push(extraPlayer);
       extraPlayer.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
     }
+    // Clean up temporary extra players after triggering the race condition to prevent native memory leaks
+    setTimeout(() => {
+      for (const p of extraPlayers) {
+        try {
+          p.remove();
+        } catch {
+          // Best-effort cleanup
+        }
+      }
+    }, 1000);
   }
 }
 
@@ -279,6 +291,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
 
     // TODO [CLEANUP]: Remove debug store actions after verifying lockscreen session fix
     triggerUnsafeLockscreenCrash: (count?: number) => {
+      if (APP_CONFIG.isProduction) return;
       const { _player, currentUri, currentMetadata } = get();
       if (_player) {
         const sampleUrl =
@@ -291,6 +304,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     },
 
     triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
+      if (APP_CONFIG.isProduction) return;
       const { _player, currentMetadata } = get();
       const meta = metadata ?? currentMetadata;
       if (meta) {
