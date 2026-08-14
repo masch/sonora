@@ -4,6 +4,7 @@ import {
   type AudioMetadata,
   type AudioPlayer,
 } from 'expo-audio';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
@@ -293,14 +294,35 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     triggerUnsafeLockscreenCrash: (count?: number) => {
       if (APP_CONFIG.isProduction) return;
       const { _player, currentUri, currentMetadata } = get();
-      if (_player) {
-        const sampleUrl =
-          currentUri ||
-          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
-        _player.replace(sampleUrl);
+      if (!_player) return;
+
+      void (async () => {
+        let targetUri = currentUri;
+        if (!targetUri) {
+          const sampleRemoteUrl =
+            'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
+          if (FileSystem.documentDirectory) {
+            const localDir = `${FileSystem.documentDirectory}tracks/crash-test/`;
+            const localPath = `${localDir}audio.mp3`;
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(localPath);
+              if (!fileInfo.exists) {
+                await FileSystem.makeDirectoryAsync(localDir, { intermediates: true });
+                await FileSystem.downloadAsync(sampleRemoteUrl, localPath);
+              }
+              targetUri = localPath;
+            } catch {
+              targetUri = sampleRemoteUrl;
+            }
+          } else {
+            targetUri = sampleRemoteUrl;
+          }
+        }
+
+        _player.replace(targetUri);
         _player.play();
         enableLockScreenControlsUnsafe(_player, currentMetadata, count);
-      }
+      })();
     },
 
     triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
