@@ -100,29 +100,17 @@ export function enableLockScreenControlsUnsafe(
 ) {
   if (APP_CONFIG.isProduction) return;
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // 1. Activate on the current player
-    player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
-
-    // 2. Instantiate concurrent players and immediately activate lock screen on them.
-    // On native Android expo-audio, multiple MediaSession.Builder calls with identical default ID=""
-    // are dispatched concurrently, reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
-    const iterations = Math.max(1, count);
-    const extraPlayers: AudioPlayer[] = [];
+    // Fire rapid consecutive calls without debounce or deduplication on the SAME player.
+    // When the Android service is BOUND, this dispatches multiple concurrent MediaSession.Builder calls,
+    // reliably reproducing: java.lang.IllegalStateException: Session ID must be unique. ID=
+    const iterations = Math.max(2, count);
     for (let i = 1; i <= iterations; i++) {
-      const extraPlayer = createAudioPlayer(null);
-      extraPlayers.push(extraPlayer);
-      extraPlayer.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
+      player.setActiveForLockScreen(
+        true,
+        { ...(metadata ?? {}), title: `Burst Crash Track ${i} ${Date.now()}` },
+        LOCK_SCREEN_OPTIONS,
+      );
     }
-    // Clean up temporary extra players after triggering the race condition to prevent native memory leaks
-    setTimeout(() => {
-      for (const p of extraPlayers) {
-        try {
-          p.remove();
-        } catch {
-          // Best-effort cleanup
-        }
-      }
-    }, 1000);
   }
 }
 
@@ -293,8 +281,8 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     // TODO [CLEANUP]: Remove debug store actions after verifying lockscreen session fix
     triggerUnsafeLockscreenCrash: (count?: number) => {
       if (APP_CONFIG.isProduction) return;
-      const { _player, currentUri, currentMetadata } = get();
-      if (!_player) return;
+      let { _player } = get();
+      const { currentUri, currentMetadata } = get();
 
       void (async () => {
         let targetUri = currentUri;
@@ -319,24 +307,69 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
           }
         }
 
-        _player.replace(targetUri);
+        const isNewlyCreated = !_player;
+        if (!_player) {
+          _player = createAudioPlayer(targetUri);
+          set({ _player });
+        } else {
+          _player.replace(targetUri);
+        }
+
         _player.play();
-        enableLockScreenControlsUnsafe(_player, currentMetadata, count);
+
+        // If the player was just created, wait 400ms for Android ServiceConnection to transition to BOUND state
+        if (isNewlyCreated) {
+          setTimeout(() => {
+            if (_player) {
+              enableLockScreenControlsUnsafe(_player, currentMetadata, count);
+            }
+          }, 400);
+        } else {
+          enableLockScreenControlsUnsafe(_player, currentMetadata, count);
+        }
       })();
     },
 
     triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
       if (APP_CONFIG.isProduction) return;
-      const { _player, currentMetadata } = get();
-      const meta = metadata ?? currentMetadata;
-      if (meta) {
-        set({ currentMetadata: meta });
-        if (_player) {
-          enableLockScreenControlsSafe(_player, meta);
+      let { _player } = get();
+      const { currentUri, currentMetadata } = get();
+      const meta = metadata ?? currentMetadata ?? { title: 'Safe Lockscreen Test' };
+      set({ currentMetadata: meta });
+
+      void (async () => {
+        let targetUri = currentUri;
+        if (!targetUri) {
+          const sampleRemoteUrl =
+            'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
+          if (FileSystem.documentDirectory) {
+            const localDir = `${FileSystem.documentDirectory}tracks/crash-test/`;
+            const localPath = `${localDir}audio.mp3`;
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(localPath);
+              if (!fileInfo.exists) {
+                await FileSystem.makeDirectoryAsync(localDir, { intermediates: true });
+                await FileSystem.downloadAsync(sampleRemoteUrl, localPath);
+              }
+              targetUri = localPath;
+            } catch {
+              targetUri = sampleRemoteUrl;
+            }
+          } else {
+            targetUri = sampleRemoteUrl;
+          }
         }
-      } else if (_player) {
-        enableLockScreenControlsSafe(_player, null);
-      }
+
+        if (!_player) {
+          _player = createAudioPlayer(targetUri);
+          set({ _player });
+        } else {
+          _player.replace(targetUri);
+        }
+
+        _player.play();
+        enableLockScreenControlsSafe(_player, meta);
+      })();
     },
 
     _setPlayer: (player: AudioPlayer | null) => {

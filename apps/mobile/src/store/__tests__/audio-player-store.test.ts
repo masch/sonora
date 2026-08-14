@@ -188,9 +188,9 @@ describe('AudioPlayerStore', () => {
     const mockPlayer = createMockPlayer();
     useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
 
-    useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash();
+    useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash(5);
 
-    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(5);
   });
 
   it('triggerSafeLockscreenUpdate debounces/guards rapid lockscreen updates', () => {
