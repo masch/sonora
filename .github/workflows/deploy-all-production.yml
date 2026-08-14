@@ -18,6 +18,11 @@ on:
           - beta
           - production
         default: 'internal'
+      enable_play:
+        description: 'Enable distribution to Google Play Store'
+        required: false
+        type: boolean
+        default: true
       enable_firebase:
         description: 'Enable distribution to Firebase App Distribution'
         required: false
@@ -114,6 +119,7 @@ jobs:
       !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/deploy-mobile-android-production.yml
     with:
+      enable_play: ${{ inputs.enable_play == true || github.event.inputs.enable_play == true }}
       play_track: ${{ inputs.play_track || github.event.inputs.play_track || 'internal' }}
       enable_firebase: ${{ inputs.enable_firebase == true || github.event.inputs.enable_firebase == true }}
       firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'sonora-team' }}

@@ -58,5 +58,5 @@ export const SPLASH_COLORS = {
   staging: '#F59E0B',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const BottomTabInset = Platform.select({ ios: 50, android: 80, default: 54 }) ?? 54;
 export const TabBottomPadding = 16;

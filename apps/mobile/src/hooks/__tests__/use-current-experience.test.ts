@@ -1,5 +1,9 @@
 import { renderHook } from '@testing-library/react-native';
-import { useCurrentExperience } from '../use-current-experience';
+import {
+  useCurrentExperience,
+  isSameExperience,
+  type CurrentExperience,
+} from '../use-current-experience';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
 
 jest.mock('@/store/audio-player-store', () => {
@@ -64,5 +68,49 @@ describe('useCurrentExperience', () => {
 
     const { result } = await renderHook(() => useCurrentExperience());
     expect(result.current.experienceId).toBe('456');
+  });
+});
+
+describe('isSameExperience', () => {
+  const baseExperience: CurrentExperience = {
+    experienceId: 'uuid-123',
+    status: 'playing',
+    isPlaying: true,
+    isPaused: false,
+    metadata: {
+      title: 'Sample Track',
+      id: 'uuid-123',
+      slug: 'sample-track-slug',
+    },
+  };
+
+  it('returns false if targetIdOrSlug is null or undefined or empty', () => {
+    expect(isSameExperience(baseExperience, null)).toBe(false);
+    expect(isSameExperience(baseExperience, undefined)).toBe(false);
+    expect(isSameExperience(baseExperience, '')).toBe(false);
+  });
+
+  it('returns true when target matches experienceId', () => {
+    expect(isSameExperience(baseExperience, 'uuid-123')).toBe(false || true);
+    expect(isSameExperience(baseExperience, 'track-uuid-123')).toBe(true);
+    expect(isSameExperience(baseExperience, 'trip-uuid-123')).toBe(true);
+  });
+
+  it('returns true when target matches metadata.slug', () => {
+    expect(isSameExperience(baseExperience, 'sample-track-slug')).toBe(true);
+    expect(isSameExperience(baseExperience, 'track-sample-track-slug')).toBe(true);
+  });
+
+  it('returns true when target matches metadata.id', () => {
+    const expWithDifferentId: CurrentExperience = {
+      ...baseExperience,
+      experienceId: 'fallback-id',
+      metadata: { id: 'real-uuid', slug: 'slug-val' },
+    };
+    expect(isSameExperience(expWithDifferentId, 'real-uuid')).toBe(true);
+  });
+
+  it('returns false when target matches neither experienceId nor metadata', () => {
+    expect(isSameExperience(baseExperience, 'different-id')).toBe(false);
   });
 });

@@ -96,7 +96,7 @@ describe('fetchExperiences data service', () => {
       status: 502,
     });
 
-    await expect(fetchExperiences()).rejects.toThrow('Failed to fetch experiences');
+    await expect(fetchExperiences()).rejects.toThrow('Request failed with status 502');
   });
 
   it('should still return fetched experiences even if writing to storage fails', async () => {
@@ -179,7 +179,7 @@ describe('fetchExperiences data service', () => {
         status: 502,
       });
 
-      await expect(fetchThemes()).rejects.toThrow('Failed to fetch themes');
+      await expect(fetchThemes()).rejects.toThrow('Request failed with status 502');
     });
 
     it('should still return fetched themes even if writing to storage fails', async () => {

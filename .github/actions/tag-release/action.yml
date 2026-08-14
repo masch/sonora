@@ -88,8 +88,14 @@ runs:
       id: get-tag
       shell: bash
       run: |
+        if [ "${{ inputs.environment }}" = "production" ]; then
+          PREFIX="prod-v"
+        else
+          PREFIX="stg-v"
+        fi
+
         git fetch --tags --force
-        TAG_NAME=$(git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 || echo "")
+        TAG_NAME=$(git describe --tags --exact-match --match "$PREFIX*" 2>/dev/null || git describe --tags --abbrev=0 --match "$PREFIX*" 2>/dev/null || echo "")
         echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
     - name: Extract & Validate Version Name

@@ -89,6 +89,13 @@ jest.mock('expo-symbols', () => ({
   SymbolView: () => null,
 }));
 
+jest.mock('@/components/home-audio-player', () => ({
+  HomeAudioPlayer: () =>
+    jest
+      .requireActual('react')
+      .createElement('Text', { testID: 'home-audio-player' }, 'Instructions Player'),
+}));
+
 describe('ExperiencesScreen', () => {
   it('renders all layout elements correctly', async () => {
     const { getByText, getByPlaceholderText, getByTestId } = await render(<ExperiencesScreen />);
@@ -134,5 +141,38 @@ describe('ExperiencesScreen', () => {
 
     expect(queryByText('Tacuarita Azul')).toBeTruthy();
     expect(queryByText('El arroyo')).toBeNull();
+  });
+
+  it('does not render instructions audio player when format prop is locked to track', async () => {
+    const { getByPlaceholderText, queryByTestId } = await render(
+      <ExperiencesScreen format="track" />,
+    );
+
+    await waitFor(() => {
+      expect(getByPlaceholderText('Search tracks...')).toBeTruthy();
+    });
+
+    expect(queryByTestId('home-audio-player')).toBeNull();
+  });
+
+  it('renders instructions audio player when format is trip and hides it when switching back to track', async () => {
+    const { getByTestId, queryByTestId } = await render(<ExperiencesScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('type-chip-track')).toBeTruthy();
+    });
+
+    // 1. Initial state is track -> must not be present
+    expect(queryByTestId('home-audio-player')).toBeNull();
+
+    // 2. Switch to trip -> must be present
+    const tripChip = getByTestId('type-chip-trip');
+    await fireEvent.press(tripChip);
+    expect(getByTestId('home-audio-player')).toBeTruthy();
+
+    // 3. Switch back to track -> must disappear
+    const trackChip = getByTestId('type-chip-track');
+    await fireEvent.press(trackChip);
+    expect(queryByTestId('home-audio-player')).toBeNull();
   });
 });
