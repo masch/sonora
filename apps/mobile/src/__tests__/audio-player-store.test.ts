@@ -190,7 +190,7 @@ describe('AudioPlayerStore', () => {
 
     useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash();
 
-    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(5);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
   });
 
   it('triggerSafeLockscreenUpdate debounces/guards rapid lockscreen updates', () => {

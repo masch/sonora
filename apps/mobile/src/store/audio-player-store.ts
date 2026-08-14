@@ -1,4 +1,9 @@
-import { type AudioLockScreenOptions, type AudioMetadata, type AudioPlayer } from 'expo-audio';
+import {
+  createAudioPlayer,
+  type AudioLockScreenOptions,
+  type AudioMetadata,
+  type AudioPlayer,
+} from 'expo-audio';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
@@ -94,12 +99,16 @@ export function enableLockScreenControlsUnsafe(
 ) {
   if (APP_CONFIG.isProduction) return;
   if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // Fire rapid consecutive lockscreen calls without debounce or guards during playback start.
-    // On native Android expo-audio, multiple MediaSession.Builder calls with ID="" are dispatched,
-    // reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
+    // 1. Activate on the current player
+    player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
+
+    // 2. Instantiate concurrent players and immediately activate lock screen on them.
+    // On native Android expo-audio, multiple MediaSession.Builder calls with identical default ID=""
+    // are dispatched concurrently, reliably triggering: java.lang.IllegalStateException: Session ID must be unique. ID=
     const iterations = Math.max(1, count);
     for (let i = 1; i <= iterations; i++) {
-      player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
+      const extraPlayer = createAudioPlayer(null);
+      extraPlayer.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
     }
   }
 }
@@ -272,10 +281,11 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
     triggerUnsafeLockscreenCrash: (count?: number) => {
       const { _player, currentUri, currentMetadata } = get();
       if (_player) {
-        if (currentUri) {
-          _player.replace(currentUri);
-          _player.play();
-        }
+        const sampleUrl =
+          currentUri ||
+          'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
+        _player.replace(sampleUrl);
+        _player.play();
         enableLockScreenControlsUnsafe(_player, currentMetadata, count);
       }
     },
