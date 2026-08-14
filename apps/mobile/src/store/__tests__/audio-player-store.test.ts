@@ -1,4 +1,8 @@
-import { enableLockScreenControlsSafe, useAudioPlayerStore } from '@/store/audio-player-store';
+import {
+  _resetLockScreenStateForTests,
+  enableLockScreenControls,
+  useAudioPlayerStore,
+} from '@/store/audio-player-store';
 
 function createMockPlayer() {
   return {
@@ -13,6 +17,7 @@ function createMockPlayer() {
 
 describe('AudioPlayerStore', () => {
   beforeEach(() => {
+    _resetLockScreenStateForTests();
     useAudioPlayerStore.setState({
       status: 'idle',
       positionMs: 0,
@@ -183,12 +188,12 @@ describe('AudioPlayerStore', () => {
     expect(state.errorMsg).toBe('Playback failed');
   });
 
-  it('enableLockScreenControlsSafe debounces rapid lockscreen updates', () => {
+  it('enableLockScreenControls debounces rapid lockscreen updates', () => {
     jest.useFakeTimers();
     const mockPlayer = createMockPlayer();
 
-    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Test 1' });
-    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Test 2' });
+    enableLockScreenControls(mockPlayer as never, { title: 'Test 1' });
+    enableLockScreenControls(mockPlayer as never, { title: 'Test 2' });
 
     // Pending timer hasn't fired yet
     expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(0);
@@ -211,12 +216,12 @@ describe('AudioPlayerStore', () => {
     const mockPlayer = createMockPlayer();
 
     // Initial activation call
-    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Same Track' });
+    enableLockScreenControls(mockPlayer as never, { title: 'Same Track' });
     jest.advanceTimersByTime(150);
     expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
 
     // Second call with identical metadata after active
-    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Same Track' });
+    enableLockScreenControls(mockPlayer as never, { title: 'Same Track' });
     jest.advanceTimersByTime(150);
 
     // Should NOT call setActiveForLockScreen again
