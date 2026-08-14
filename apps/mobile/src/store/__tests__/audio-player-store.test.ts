@@ -1,4 +1,4 @@
-import { useAudioPlayerStore } from '@/store/audio-player-store';
+import { enableLockScreenControlsSafe, useAudioPlayerStore } from '@/store/audio-player-store';
 
 function createMockPlayer() {
   return {
@@ -183,23 +183,12 @@ describe('AudioPlayerStore', () => {
     expect(state.errorMsg).toBe('Playback failed');
   });
 
-  // TODO [CLEANUP]: Remove debug test cases after verifying lockscreen session fix
-  it('triggerUnsafeLockscreenCrash calls setActiveForLockScreen in rapid burst', () => {
-    const mockPlayer = createMockPlayer();
-    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
-
-    useAudioPlayerStore.getState().triggerUnsafeLockscreenCrash(5);
-
-    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(5);
-  });
-
-  it('triggerSafeLockscreenUpdate debounces/guards rapid lockscreen updates', () => {
+  it('enableLockScreenControlsSafe debounces rapid lockscreen updates', () => {
     jest.useFakeTimers();
     const mockPlayer = createMockPlayer();
-    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
 
-    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Test 1' });
-    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Test 2' });
+    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Test 1' });
+    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Test 2' });
 
     // Pending timer hasn't fired yet
     expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(0);
@@ -220,15 +209,14 @@ describe('AudioPlayerStore', () => {
   it('prevents redundant lockscreen updates when metadata is identical and active', () => {
     jest.useFakeTimers();
     const mockPlayer = createMockPlayer();
-    useAudioPlayerStore.getState()._setPlayer(mockPlayer as never);
 
     // Initial activation call
-    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Same Track' });
+    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Same Track' });
     jest.advanceTimersByTime(150);
     expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
 
     // Second call with identical metadata after active
-    useAudioPlayerStore.getState().triggerSafeLockscreenUpdate({ title: 'Same Track' });
+    enableLockScreenControlsSafe(mockPlayer as never, { title: 'Same Track' });
     jest.advanceTimersByTime(150);
 
     // Should NOT call setActiveForLockScreen again

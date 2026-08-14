@@ -22,13 +22,10 @@ import {
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { TwPressable, TwTextInput, TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-import { APP_CONFIG } from '@/config/app-config';
-import { useAudioPlayerStore } from '@/store/audio-player-store';
 
 import { SONORA_BANNER_BG, SONORA_LOGO, SONORA_MAIN_BG } from '@/constants/images';
 
@@ -97,7 +94,6 @@ export default function ExploreScreen() {
   const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [burstCount, setBurstCount] = useState('5');
   const isMountedRef = useRef(true);
 
   const loadExperience = useCallback(async () => {
@@ -244,59 +240,6 @@ export default function ExploreScreen() {
 
             {activeExperience && isPlayableExperience(activeExperience) && (
               <ActiveExperienceSection experience={activeExperience} />
-            )}
-
-            {/* TODO [CLEANUP]: Remove debug UI block after verifying lockscreen session fix */}
-            {!APP_CONFIG.isProduction && (
-              /* Session ID Lockscreen Debug Buttons */
-              <TwView className="card-container gap-3 self-stretch p-4 rounded-xl items-center">
-                <ThemedText className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider self-start mb-1">
-                  {t('index.playerDebug.title')}
-                </ThemedText>
-
-                {/* Burst Count Config Input */}
-                <TwView className="flex-row items-center justify-between w-full gap-2 px-1">
-                  <ThemedText className="text-xs font-medium text-zinc-500">
-                    {t('index.playerDebug.burstCalls')}
-                  </ThemedText>
-                  <TwTextInput
-                    value={burstCount}
-                    onChangeText={setBurstCount}
-                    keyboardType="numeric"
-                    className="w-20 px-3 py-1 text-center bg-zinc-100 dark:bg-zinc-800 rounded-lg text-sm font-bold text-zinc-800 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700"
-                    testID="lockscreen-burst-input"
-                    accessibilityLabel={t('index.playerDebug.burstCalls')}
-                  />
-                </TwView>
-
-                {/* Button 1: Unsafe / Crash */}
-                <TwPressable
-                  onPress={() =>
-                    useAudioPlayerStore
-                      .getState()
-                      .triggerUnsafeLockscreenCrash(parseInt(burstCount, 10) || 5)
-                  }
-                  className="w-full py-2.5 px-4 bg-red-600 active:bg-red-700 rounded-xl items-center justify-center"
-                  testID="trigger-lockscreen-crash-button"
-                  accessibilityLabel={t('index.playerDebug.btnTriggerCrash')}
-                >
-                  <ThemedText className="text-white font-semibold text-sm">
-                    {t('index.playerDebug.btnTriggerCrash')}
-                  </ThemedText>
-                </TwPressable>
-
-                {/* Button 2: Safe / Fix */}
-                <TwPressable
-                  onPress={() => useAudioPlayerStore.getState().triggerSafeLockscreenUpdate()}
-                  className="w-full py-2.5 px-4 bg-emerald-600 active:bg-emerald-700 rounded-xl items-center justify-center"
-                  testID="trigger-lockscreen-fix-button"
-                  accessibilityLabel={t('index.playerDebug.btnTriggerFix')}
-                >
-                  <ThemedText className="text-white font-semibold text-sm">
-                    {t('index.playerDebug.btnTriggerFix')}
-                  </ThemedText>
-                </TwPressable>
-              </TwView>
             )}
 
             {/* Development Hints */}

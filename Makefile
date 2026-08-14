@@ -82,11 +82,11 @@ verify-web: ## Build web bundle and execute it to verify CJS interop (catches ci
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run android-dev
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run android-dev
 
-.PHONY: dev-android-native
-dev-android-native: ## Launch Expo dev server for Android native build (Dev Client)
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start --dev-client --android -c
+.PHONY: dev-android-native-production
+dev-android-native-production: ## Launch Expo dev server for Android native build pointing to production API
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start --dev-client --android -c
 
 .PHONY: dev-android-native-staging
 dev-android-native-staging: ## Launch Expo dev server for Android native build pointing to remote staging API
@@ -94,13 +94,17 @@ dev-android-native-staging: ## Launch Expo dev server for Android native build p
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	cd apps/mobile && bun run ios
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run ios
 
 # ── Native ─────────────────────────────────────
 
-.PHONY: rebuild-android
-rebuild-android: ## Rebuild native Android project (after adding native modules like expo-audio)
-	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx expo run:android
+.PHONY: rebuild-android-production
+rebuild-android-production: ## Rebuild native Android project for production environment
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo run:android
+
+.PHONY: rebuild-android-staging
+rebuild-android-staging: ## Rebuild native Android project for staging environment
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo run:android
 
 .PHONY: rebuild-ios
 rebuild-ios: ## Rebuild native iOS project (after adding native modules)
@@ -112,7 +116,7 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	cd apps/mobile && bun run doctor --verbose --scope full -y --blocking warning
+	cd apps/mobile && CI=true bun run doctor --verbose --scope full -y --blocking warning
 
 # shellcheck disable=SC1073,SC1050,SC1072
 # If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
@@ -121,7 +125,7 @@ DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
+	cd apps/mobile && CI=true bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -831,7 +835,7 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 
 .PHONY: doctor-ci
 doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
-	cd apps/mobile && bun run doctor --scope changed -y --blocking warning --verbose
+	cd apps/mobile && CI=true bun run doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run

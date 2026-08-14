@@ -147,22 +147,6 @@ export const es = {
       btnDownload: 'Descargar',
       btnDelete: 'Borrar',
     },
-    playerDebug: {
-      title: 'Depuración del Reproductor de Audio',
-      status: 'Estado del Reproductor',
-      position: 'Posición',
-      duration: 'Duración',
-      btnPlay: 'Reproducir',
-      btnPause: 'Pausar',
-      btnStop: 'Detener',
-      // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
-      btnTriggerCrash: 'Generar error (Crash native)',
-      btnTriggerFix: 'Generar condición corregida',
-      burstCalls: 'Llamadas simultáneas:',
-      loading: 'Cargando...',
-      positionValue: '{{value}}s',
-      durationValue: '{{value}}s',
-    },
     waitingForDownload: 'Descargá el audio primero para reproducirlo',
   },
   audio: {

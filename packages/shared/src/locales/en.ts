@@ -147,22 +147,6 @@ export const en = {
       btnDownload: 'Download',
       btnDelete: 'Delete',
     },
-    playerDebug: {
-      title: 'Audio Player Debug',
-      status: 'Player Status',
-      position: 'Position',
-      duration: 'Duration',
-      btnPlay: 'Play',
-      btnPause: 'Pause',
-      btnStop: 'Stop',
-      // TODO [CLEANUP]: Remove debug translation keys after verifying lockscreen session fix
-      btnTriggerCrash: 'Trigger error (Crash native)',
-      btnTriggerFix: 'Trigger fixed condition',
-      burstCalls: 'Concurrent burst calls:',
-      loading: 'Loading...',
-      positionValue: '{{value}}s',
-      durationValue: '{{value}}s',
-    },
     waitingForDownload: 'Download audio first to play it',
   },
   audio: {

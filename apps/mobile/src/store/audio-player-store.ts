@@ -1,14 +1,7 @@
-import {
-  createAudioPlayer,
-  type AudioLockScreenOptions,
-  type AudioMetadata,
-  type AudioPlayer,
-} from 'expo-audio';
-import * as FileSystem from 'expo-file-system/legacy';
+import { type AudioLockScreenOptions, type AudioMetadata, type AudioPlayer } from 'expo-audio';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
-import { APP_CONFIG } from '@/config/app-config';
 import { AnalyticsService } from '@/services/analytics';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
@@ -42,9 +35,6 @@ export interface AudioPlayerActions {
   confirmInterrupt: () => void;
   cancelInterrupt: () => void;
   setNowPlayingMetadata: (metadata: ExperienceAudioMetadata) => void;
-  // TODO [CLEANUP]: Remove debug methods after verifying lockscreen session fix
-  triggerUnsafeLockscreenCrash: (count?: number) => void;
-  triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => void;
   _setPlayer: (player: AudioPlayer | null) => void;
   _syncStatus: (partial: {
     status?: PlayerStatus;
@@ -90,28 +80,6 @@ export function enableLockScreenControlsSafe(
       // Gracefully handle — lock screen controls are best-effort
     }
   }, 100);
-}
-
-// TODO [CLEANUP]: Remove debug helper after verifying lockscreen session fix
-export function enableLockScreenControlsUnsafe(
-  player: AudioPlayer,
-  metadata: ExperienceAudioMetadata | null,
-  count = 5,
-) {
-  if (APP_CONFIG.isProduction) return;
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // Fire rapid consecutive calls without debounce or deduplication on the SAME player.
-    // When the Android service is BOUND, this dispatches multiple concurrent MediaSession.Builder calls,
-    // reliably reproducing: java.lang.IllegalStateException: Session ID must be unique. ID=
-    const iterations = Math.max(2, count);
-    for (let i = 1; i <= iterations; i++) {
-      player.setActiveForLockScreen(
-        true,
-        { ...(metadata ?? {}), title: `Burst Crash Track ${i} ${Date.now()}` },
-        LOCK_SCREEN_OPTIONS,
-      );
-    }
-  }
 }
 
 function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
@@ -276,100 +244,6 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
       if (_player && status === 'playing') {
         enableLockScreenControls(_player, metadata);
       }
-    },
-
-    // TODO [CLEANUP]: Remove debug store actions after verifying lockscreen session fix
-    triggerUnsafeLockscreenCrash: (count?: number) => {
-      if (APP_CONFIG.isProduction) return;
-      let { _player } = get();
-      const { currentUri, currentMetadata } = get();
-
-      void (async () => {
-        let targetUri = currentUri;
-        if (!targetUri) {
-          const sampleRemoteUrl =
-            'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
-          if (FileSystem.documentDirectory) {
-            const localDir = `${FileSystem.documentDirectory}tracks/crash-test/`;
-            const localPath = `${localDir}audio.mp3`;
-            try {
-              const fileInfo = await FileSystem.getInfoAsync(localPath);
-              if (!fileInfo.exists) {
-                await FileSystem.makeDirectoryAsync(localDir, { intermediates: true });
-                await FileSystem.downloadAsync(sampleRemoteUrl, localPath);
-              }
-              targetUri = localPath;
-            } catch {
-              targetUri = sampleRemoteUrl;
-            }
-          } else {
-            targetUri = sampleRemoteUrl;
-          }
-        }
-
-        const isNewlyCreated = !_player;
-        if (!_player) {
-          _player = createAudioPlayer(targetUri);
-          set({ _player });
-        } else {
-          _player.replace(targetUri);
-        }
-
-        _player.play();
-
-        // If the player was just created, wait 400ms for Android ServiceConnection to transition to BOUND state
-        if (isNewlyCreated) {
-          setTimeout(() => {
-            if (_player) {
-              enableLockScreenControlsUnsafe(_player, currentMetadata, count);
-            }
-          }, 400);
-        } else {
-          enableLockScreenControlsUnsafe(_player, currentMetadata, count);
-        }
-      })();
-    },
-
-    triggerSafeLockscreenUpdate: (metadata?: ExperienceAudioMetadata) => {
-      if (APP_CONFIG.isProduction) return;
-      let { _player } = get();
-      const { currentUri, currentMetadata } = get();
-      const meta = metadata ?? currentMetadata ?? { title: 'Safe Lockscreen Test' };
-      set({ currentMetadata: meta });
-
-      void (async () => {
-        let targetUri = currentUri;
-        if (!targetUri) {
-          const sampleRemoteUrl =
-            'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3';
-          if (FileSystem.documentDirectory) {
-            const localDir = `${FileSystem.documentDirectory}tracks/crash-test/`;
-            const localPath = `${localDir}audio.mp3`;
-            try {
-              const fileInfo = await FileSystem.getInfoAsync(localPath);
-              if (!fileInfo.exists) {
-                await FileSystem.makeDirectoryAsync(localDir, { intermediates: true });
-                await FileSystem.downloadAsync(sampleRemoteUrl, localPath);
-              }
-              targetUri = localPath;
-            } catch {
-              targetUri = sampleRemoteUrl;
-            }
-          } else {
-            targetUri = sampleRemoteUrl;
-          }
-        }
-
-        if (!_player) {
-          _player = createAudioPlayer(targetUri);
-          set({ _player });
-        } else {
-          _player.replace(targetUri);
-        }
-
-        _player.play();
-        enableLockScreenControlsSafe(_player, meta);
-      })();
     },
 
     _setPlayer: (player: AudioPlayer | null) => {
