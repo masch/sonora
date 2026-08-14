@@ -53,6 +53,13 @@ export function getApiBaseUrl(): string {
   return 'http://localhost:3000'; // web, iOS simulator, etc.
 }
 
+/**
+ * Returns true if the application is running in React Native development mode (__DEV__).
+ */
+export function isDevMode(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__;
+}
+
 const isProduction = Constants.expoConfig?.extra?.isProduction === true;
 const appEnv: 'production' | 'staging' = isProduction ? 'production' : 'staging';
 
@@ -60,6 +67,7 @@ const appEnv: 'production' | 'staging' = isProduction ? 'production' : 'staging'
  * Sonora Global App Configuration
  */
 export const APP_CONFIG = {
+  isDevMode: isDevMode(),
   isProduction,
   appEnv,
   splashColor: SPLASH_COLORS[appEnv],

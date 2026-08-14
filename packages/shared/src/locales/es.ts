@@ -34,9 +34,11 @@ export const es = {
   },
   tabs: {
     index: 'Inicio',
-    experiences: 'Experiencias',
+    experiences: 'Derivas',
+    poetics: 'Pausa sonora',
     explore: 'Explorar',
     settings: 'Ajustes',
+    messages: 'Mensajes',
   },
   experiences: {
     title: 'Experiencias',
@@ -122,7 +124,7 @@ export const es = {
       freshStart: 'Empezar de cero',
       devtoolsWeb: 'usar las devtools del navegador',
       devtoolsDevice: 'sacudí el dispositivo o presioná <0>m</0> en la terminal',
-      devtoolsAndroid: 'presioná <0>cmd+m (or ctrl+m)</0>',
+      devtoolsAndroid: 'presioná <0>cmd+m (o ctrl+m)</0>',
       devtoolsIos: 'presioná <0>cmd+d</0>',
     },
     geofence: {
@@ -144,18 +146,6 @@ export const es = {
       localUri: 'URI Local',
       btnDownload: 'Descargar',
       btnDelete: 'Borrar',
-    },
-    playerDebug: {
-      title: 'Depuración del Reproductor de Audio',
-      status: 'Estado del Reproductor',
-      position: 'Posición',
-      duration: 'Duración',
-      btnPlay: 'Reproducir',
-      btnPause: 'Pausar',
-      btnStop: 'Detener',
-      loading: 'Cargando...',
-      positionValue: '{{value}}s',
-      durationValue: '{{value}}s',
     },
     waitingForDownload: 'Descargá el audio primero para reproducirlo',
   },
@@ -229,7 +219,7 @@ export const es = {
     sections: {
       fileRouting: {
         title: 'Ruteo por archivos',
-        desc: 'Esta app tiene dos pantallas: <0>src/app/index.tsx</0> and <0>src/app/explore.tsx</0>',
+        desc: 'Esta app tiene dos pantallas: <0>src/app/index.tsx</0> y <0>src/app/explore.tsx</0>',
         layout:
           'El archivo de layout en <0>src/app/_layout.tsx</0> configura el navegador de tabs.',
       },
@@ -276,7 +266,7 @@ export const es = {
       label: 'Español',
     },
     about: {
-      version: 'Version',
+      version: 'Versión',
       versionValue: '1.0.0',
       terms: 'Términos del servicio',
       privacy: 'Política de privacidad',

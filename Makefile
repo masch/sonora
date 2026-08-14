@@ -27,13 +27,20 @@ export EXPO_NO_DOCTOR = 1
 
 
 MOBILE_BUNDLE_ID = org.masch.sonora.app
+MOBILE_BUNDLE_ID_STAGING = org.masch.sonora.staging.app
 
 EAS_CLI_VERSION = 20.1.0
 
 ANDROID_HOME ?= $(HOME)/dev/android/sdk
 ANDROID_NDK_HOME ?= $(ANDROID_HOME)/ndk/27.1.12297006
 ANDROID_EMULATOR = $(ANDROID_HOME)/emulator/emulator
+ANDROID_AVDMANAGER = $(ANDROID_HOME)/cmdline-tools/latest/bin/avdmanager
 ANDROID_FIRST_AVD = $(shell $(ANDROID_EMULATOR) -list-avds | head -n 1)
+AVD_NAME ?= Pixel_API_34
+AVD_PACKAGE ?= system-images;android-34;google_apis;x86_64
+AVD_DEVICE ?= pixel_7
+API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev
+API_PRODUCTION_URL ?= https://sonora-api.sonora-api.workers.dev
 
 APP_VERSION_NAME ?= 99.99.99
 APP_VERSION_CODE ?= 0
@@ -58,7 +65,7 @@ start-wrangler-android: ## Launch Expo dev server pointing to local wrangler (po
 
 .PHONY: start-staging
 start-staging: ## Launch Expo dev server pointing to remote staging API
-	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web
 
 .PHONY: start-headless
 start-headless: ## Launch Expo dev server without interactive TTY
@@ -75,17 +82,29 @@ verify-web: ## Build web bundle and execute it to verify CJS interop (catches ci
 
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
-	cd apps/mobile && bun run android-dev
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run android-dev
+
+.PHONY: dev-android-native-production
+dev-android-native-production: ## Launch Expo dev server for Android native build pointing to production API
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start --dev-client --android -c
+
+.PHONY: dev-android-native-staging
+dev-android-native-staging: ## Launch Expo dev server for Android native build pointing to remote staging API
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start --dev-client --android -c
 
 .PHONY: dev-ios
 dev-ios: ## Launch Expo dev server for iOS
-	cd apps/mobile && bun run ios
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run ios
 
 # ── Native ─────────────────────────────────────
 
-.PHONY: rebuild-android
-rebuild-android: ## Rebuild native Android project (after adding native modules like expo-audio)
-	cd apps/mobile && bunx expo run:android
+.PHONY: rebuild-android-production
+rebuild-android-production: ## Rebuild native Android project for production environment
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo run:android
+
+.PHONY: rebuild-android-staging
+rebuild-android-staging: ## Rebuild native Android project for staging environment
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo run:android
 
 .PHONY: rebuild-ios
 rebuild-ios: ## Rebuild native iOS project (after adding native modules)
@@ -97,7 +116,7 @@ prebuild: ## Regenerate native project files without compiling
 
 .PHONY: doctor
 doctor: ## Run React Doctor audit (full verbose scan)
-	cd apps/mobile && bun run doctor --verbose --scope full -y --blocking warning
+	cd apps/mobile && CI=true bun run doctor --verbose --scope full -y --blocking warning
 
 # shellcheck disable=SC1073,SC1050,SC1072
 # If BASE is set (e.g. make doctor-diff BASE=main), compare against that ref
@@ -106,7 +125,7 @@ DOCTOR_BASE_ARGS = $(if $(BASE),--base $(BASE),)
 
 .PHONY: doctor-diff
 doctor-diff: ## Run React Doctor audit on staged diff (regression check)
-	cd apps/mobile && bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
+	cd apps/mobile && CI=true bun run doctor --verbose --scope changed $(DOCTOR_BASE_ARGS) --blocking warning
 
 .PHONY: expo-doctor
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
@@ -241,11 +260,11 @@ admin-dev: ## Launch Expo dev server for Admin Web
 
 .PHONY: admin-dev-staging
 admin-dev-staging: ## Launch Expo dev server for Admin Web pointing to staging API
-	cd apps/admin && EXPO_PUBLIC_API_URL="https://sonora-api-staging.sonora-api.workers.dev" bunx expo start --web
+	cd apps/admin && EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo start --web
 
 .PHONY: sync-translations-staging
 sync-translations-staging: ## Sync DB translations from staging back into .ts locale files (dry-run)
-	cd apps/api && API_URL="https://sonora-api-staging.sonora-api.workers.dev" bun run scripts/sync-translations.ts --dry-run; \
+	cd apps/api && API_URL="$(API_STAGING_URL)" bun run scripts/sync-translations.ts --dry-run; \
 	status=$$?; \
 	if [ $$status -eq 1 ]; then \
 		echo "ℹ️  Cambios detectados (exit 1 — esperado en dry-run, significa que hay diff)"; \
@@ -255,7 +274,7 @@ sync-translations-staging: ## Sync DB translations from staging back into .ts lo
 
 .PHONY: sync-translations-staging-apply
 sync-translations-staging-apply: ## Sync DB translations from staging: write changes to .ts files
-	cd apps/api && API_URL="https://sonora-api-staging.sonora-api.workers.dev" bun run scripts/sync-translations.ts; \
+	cd apps/api && API_URL="$(API_STAGING_URL)" bun run scripts/sync-translations.ts; \
 	status=$$?; \
 	if [ $$status -eq 1 ]; then \
 		echo "✅ Archivos actualizados. Revisá el diff con 'git diff' antes de commitear."; \
@@ -265,7 +284,7 @@ sync-translations-staging-apply: ## Sync DB translations from staging: write cha
 
 .PHONY: sync-translations-production
 sync-translations-production: ## Sync DB translations from production back into .ts locale files (dry-run)
-	cd apps/api && API_URL="https://sonora-api.sonora-api.workers.dev" bun run scripts/sync-translations.ts --dry-run; \
+	cd apps/api && API_URL="$(API_PRODUCTION_URL)" bun run scripts/sync-translations.ts --dry-run; \
 	status=$$?; \
 	if [ $$status -eq 1 ]; then \
 		echo "ℹ️  Cambios detectados (exit 1 — esperado en dry-run, significa que hay diff)"; \
@@ -529,9 +548,6 @@ api-deploy-production-log-toggle: ## Toggle API logging on production interactiv
 	cd $(API_DIR) && printf '%s' "$$ENABLED" | bunx wrangler secret put ENABLE_API_LOGGING
 
 # ── Backend API — Test deployed Workers ─────────────
-
-API_STAGING_URL ?= https://sonora-api-staging.sonora-api.workers.dev
-API_PRODUCTION_URL ?= https://sonora-api.sonora-api.workers.dev
 
 .PHONY: api-test-staging
 api-test-staging: ## Test staging Worker health (GET /health)
@@ -819,7 +835,7 @@ test-ci: ## Run all tests silently (for pre-commit/CI)
 
 .PHONY: doctor-ci
 doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on warnings)
-	cd apps/mobile && bun run doctor --scope changed -y --blocking warning --verbose
+	cd apps/mobile && CI=true bun run doctor --scope changed -y --blocking warning --verbose
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
@@ -1025,14 +1041,46 @@ firebase-distribute-prod-all: ## [production] Upload APK to dev-team + sonora-te
 # ── Emulator ───────────────────────────────
 
 .PHONY: android-stop
-android-stop: ## Stop the standalone app on the emulator
+android-stop: ## Stop the standalone production app on the emulator
 	@echo "🛑 Stopping app ($(MOBILE_BUNDLE_ID))..."
 	adb shell am force-stop $(MOBILE_BUNDLE_ID)
+
+.PHONY: android-stop-staging
+android-stop-staging: ## Stop the standalone staging app on the emulator
+	@echo "🛑 Stopping staging app ($(MOBILE_BUNDLE_ID_STAGING))..."
+	adb shell am force-stop $(MOBILE_BUNDLE_ID_STAGING)
 
 .PHONY: android-stop-go
 android-stop-go: ## Stop Expo Go on the emulator
 	@echo "🛑 Stopping Expo Go..."
 	adb shell am force-stop host.exp.exponent
+
+.PHONY: android-clear
+android-clear: ## Clear all data and cache of the production app on the emulator
+	@echo "🧹 Clearing app data and storage ($(MOBILE_BUNDLE_ID))..."
+	adb shell pm clear $(MOBILE_BUNDLE_ID)
+	-adb shell rm -rf /sdcard/Android/data/$(MOBILE_BUNDLE_ID) /sdcard/Android/media/$(MOBILE_BUNDLE_ID) 2>/dev/null || true
+
+.PHONY: android-clear-staging
+android-clear-staging: ## Clear all data and cache of the staging app on the emulator
+	@echo "🧹 Clearing staging app data and storage ($(MOBILE_BUNDLE_ID_STAGING))..."
+	adb shell pm clear $(MOBILE_BUNDLE_ID_STAGING)
+	-adb shell rm -rf /sdcard/Android/data/$(MOBILE_BUNDLE_ID_STAGING) /sdcard/Android/media/$(MOBILE_BUNDLE_ID_STAGING) 2>/dev/null || true
+
+.PHONY: android-clear-go
+android-clear-go: ## Clear all data and cache of Expo Go on the emulator
+	@echo "🧹 Clearing Expo Go data..."
+	adb shell pm clear host.exp.exponent
+
+.PHONY: android-logs-crash
+android-logs-crash: ## View the last Android native crash stack trace from logcat
+	@echo "📋 Fetching latest Android native crash logs..."
+	adb logcat -d -s AndroidRuntime:E
+
+.PHONY: android-logs-crash-follow
+android-logs-crash-follow: ## Clear logcat buffer and wait to capture the next native crash in real time
+	@echo "👀 Listening for Android native crashes (Ctrl+C to stop)..."
+	adb logcat -c && adb logcat -s AndroidRuntime:E
 
 .PHONY: android-trigger-bg-go
 android-trigger-bg-go: ## Trigger background fetch task in Expo Go on the emulator (replaces 999 with the job ID if needed)
@@ -1056,19 +1104,40 @@ android-trigger-bg: ## Trigger background fetch task for the standalone app on t
 		echo "No active background job found for $(MOBILE_BUNDLE_ID)."; \
 	fi
 
+.PHONY: android-trigger-bg-staging
+android-trigger-bg-staging: ## Trigger background fetch task for the staging app on the emulator
+	@echo "🔔 Triggering background fetch task for staging app..."
+	@JOB_ID=$$(adb shell dumpsys jobscheduler | grep "$(MOBILE_BUNDLE_ID_STAGING)" | grep -oE "JOB #[a-zA-Z0-9_/]+/[0-9]+" | head -n 1 | cut -d/ -f2); \
+	if [ -n "$$JOB_ID" ]; then \
+		echo "Found staging background job ID: $$JOB_ID"; \
+		adb shell cmd jobscheduler run --force $(MOBILE_BUNDLE_ID_STAGING) $$JOB_ID; \
+	else \
+		echo "No active background job found for $(MOBILE_BUNDLE_ID_STAGING)."; \
+	fi
+
+.PHONY: android-create-avd
+android-create-avd: ## Create default Android Virtual Device (AVD)
+	@echo "Creating AVD $(AVD_NAME)..."
+	@echo "no" | $(ANDROID_AVDMANAGER) create avd -n "$(AVD_NAME)" -k "$(AVD_PACKAGE)" -d "$(AVD_DEVICE)" --force
+
+.PHONY: android-start
+android-start: ## Launch Android emulator in background
+	@echo "📱 Starting the emulator: $(ANDROID_FIRST_AVD)..."
+	$(ANDROID_EMULATOR) @$(ANDROID_FIRST_AVD) &
+
 .PHONY: android-reset
-android-reset:
+android-reset: ## Reset the emulator with wipe data
 	@echo "🚀 Resetting the emulator: $(ANDROID_FIRST_AVD)..."
 	$(ANDROID_EMULATOR) @$(ANDROID_FIRST_AVD) -wipe-data &
 
 .PHONY: android-restart
-android-restart: android-stop
+android-restart: android-stop ## Restart the emulator
 	@echo "🔄 Restarting the emulator: $(ANDROID_FIRST_AVD)..."
 	@sleep 1
 	$(ANDROID_EMULATOR) @$(ANDROID_FIRST_AVD) &
 
 .PHONY: android-kill
-android-kill:
+android-kill: ## Kill the emulator (force)
 	@echo "💀 Killing the emulator (force): $(ANDROID_FIRST_AVD)..."
 	-pkill -9 emulator || true
 	-pkill -9 qemu-system || true
