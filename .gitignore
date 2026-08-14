@@ -75,7 +75,7 @@ dist/
 *.apk
 *.aab
 
-# Firebase service account key (local)
+# Firebase config and service account keys
 firebase-sa-key.json
 
 example

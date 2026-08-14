@@ -48,6 +48,38 @@ describe('APP_CONFIG and config helpers', () => {
     expect(APP_CONFIG.feedback.syncIntervalSec).toBeGreaterThan(0);
   });
 
+  describe('isDevMode', () => {
+    it('returns true when __DEV__ is true', () => {
+      const g = globalThis as unknown as { __DEV__: boolean };
+      const originalDev = g.__DEV__;
+      try {
+        g.__DEV__ = true;
+        jest.isolateModules(() => {
+          const { isDevMode, APP_CONFIG: isolatedConfig } = jest.requireActual('../app-config');
+          expect(isDevMode()).toBe(true);
+          expect(isolatedConfig.isDevMode).toBe(true);
+        });
+      } finally {
+        g.__DEV__ = originalDev;
+      }
+    });
+
+    it('returns false when __DEV__ is false', () => {
+      const g = globalThis as unknown as { __DEV__?: boolean };
+      const originalDev = g.__DEV__;
+      try {
+        g.__DEV__ = false;
+        jest.isolateModules(() => {
+          const { isDevMode, APP_CONFIG: isolatedConfig } = jest.requireActual('../app-config');
+          expect(isDevMode()).toBe(false);
+          expect(isolatedConfig.isDevMode).toBe(false);
+        });
+      } finally {
+        g.__DEV__ = originalDev;
+      }
+    });
+  });
+
   it('evaluates appEnv as production when Constants.expoConfig.extra.isProduction is true', () => {
     mockExtraDomain = 'example.com';
     jest.isolateModules(() => {

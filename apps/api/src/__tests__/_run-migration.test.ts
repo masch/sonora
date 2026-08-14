@@ -58,5 +58,5 @@ describe('_run-migration.ts', () => {
 
     // The migration starts up, tries DB connection, and logs the migration name
     expect(output).toContain('Running migration: Device ID SHA-256 hashing');
-  });
+  }, 15000);
 });

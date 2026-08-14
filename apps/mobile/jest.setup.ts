@@ -85,6 +85,7 @@ jest.mock('expo-audio', () => ({
     play: jest.fn(),
     pause: jest.fn(),
     stop: jest.fn(),
+    setActiveForLockScreen: jest.fn(),
     addListener: jest.fn(() => ({ remove: jest.fn() })),
   })),
   useAudioPlayerStatus: jest.fn(() => ({})),

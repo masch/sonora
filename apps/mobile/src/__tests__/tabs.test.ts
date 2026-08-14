@@ -50,4 +50,28 @@ describe('Tab definitions', () => {
     const names = TABS.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
+
+  it('shows explore tab when isProduction is false', () => {
+    let tabsModule: typeof import('@/constants/tabs');
+    jest.isolateModules(() => {
+      jest.mock('@/config/app-config', () => ({
+        APP_CONFIG: { isProduction: false },
+      }));
+      tabsModule = jest.requireActual<typeof import('@/constants/tabs')>('@/constants/tabs');
+    });
+    const exploreTab = tabsModule!.TABS.find((t: { name: string }) => t.name === 'explore');
+    expect(exploreTab?.hidden).toBe(false);
+  });
+
+  it('hides explore tab when isProduction is true', () => {
+    let tabsModule: typeof import('@/constants/tabs');
+    jest.isolateModules(() => {
+      jest.mock('@/config/app-config', () => ({
+        APP_CONFIG: { isProduction: true },
+      }));
+      tabsModule = jest.requireActual<typeof import('@/constants/tabs')>('@/constants/tabs');
+    });
+    const exploreTab = tabsModule!.TABS.find((t: { name: string }) => t.name === 'explore');
+    expect(exploreTab?.hidden).toBe(true);
+  });
 });
