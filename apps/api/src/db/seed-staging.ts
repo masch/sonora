@@ -7,6 +7,7 @@ import {
   defaultThemes,
   seedExperiences,
 } from './seed-data';
+import { stagingOnlyExperiences, stagingOnlyWaypoints } from './seed-staging-data';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -15,12 +16,11 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-// Fail closed: refuses when SEED_ENV is present and not 'production'.
-// Absent SEED_ENV (local dev) is permitted. Zero writes on refusal.
-assertSeedEnv('base', process.env.SEED_ENV);
+// Fail closed: refuses (exit 1, zero writes) unless SEED_ENV === 'staging'.
+assertSeedEnv('staging', process.env.SEED_ENV);
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('Seeding staging database (base + staging-only data)...');
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 1,
@@ -31,13 +31,13 @@ async function main() {
   try {
     await seedExperiences(db, {
       themes: defaultThemes,
-      experiences: baseExperiences,
-      waypoints: baseWaypoints,
+      experiences: [...baseExperiences, ...stagingOnlyExperiences],
+      waypoints: [...baseWaypoints, ...stagingOnlyWaypoints],
     });
 
-    console.log('Seeding completed successfully! 🌱');
+    console.log('Staging seeding completed successfully! 🌱');
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('Error seeding staging database:', error);
     process.exit(1);
   } finally {
     await pool.end();
