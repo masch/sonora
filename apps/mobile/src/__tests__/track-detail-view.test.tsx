@@ -138,8 +138,12 @@ jest.mock('react-native-webview', () => ({
   WebView: 'WebView',
 }));
 
+const mockTrackDetailMapProps: unknown[] = [];
 jest.mock('@/components/track-detail-map', () => {
-  const MockTrackDetailMap = () => null;
+  const MockTrackDetailMap = (props: unknown) => {
+    mockTrackDetailMapProps.push(props);
+    return null;
+  };
   return { __esModule: true, default: MockTrackDetailMap };
 });
 
@@ -180,6 +184,7 @@ beforeEach(() => {
   mockExperience.geoMode = 'unrestricted';
   mockExperience.radiusMeters = null;
   geofenceCallArgs.length = 0;
+  mockTrackDetailMapProps.length = 0;
 });
 
 describe('TrackDetailView (via TrackDetail screen)', () => {
@@ -287,5 +292,23 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
       expect(getByTestId('track-detail-map')).toBeTruthy();
       expect(getByTestId('feedback-manual-button')).toBeTruthy();
     });
+  });
+
+  it('passes userCoordinates from geofence to TrackDetailMap', async () => {
+    mockGeoffences.userCoordinates = { latitude: -32.21, longitude: -64.73 };
+    await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(mockTrackDetailMapProps.length).toBeGreaterThan(0);
+    });
+    const lastProps = mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1] as {
+      latitude: number;
+      longitude: number;
+      userLatitude?: number;
+      userLongitude?: number;
+    };
+    expect(lastProps.latitude).toBe(-32.211913);
+    expect(lastProps.longitude).toBe(-64.73809);
+    expect(lastProps.userLatitude).toBe(-32.21);
+    expect(lastProps.userLongitude).toBe(-64.73);
   });
 });

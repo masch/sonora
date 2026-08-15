@@ -1,8 +1,8 @@
-import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import type { RemoteConfigPayload } from '@sonora/shared';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import { ApiClient } from '../../services/api-client';
 import { getCachedConfig, setCachedConfig } from '../../storage/config-cache';
-import { useRemoteConfigStore, computeVersionStatus } from '../remote-config-store';
+import { computeVersionStatus, useRemoteConfigStore } from '../remote-config-store';
 
 // Mock Constants so installedVersion is stable for versionStatus tests
 jest.mock('expo-constants', () => ({
@@ -33,7 +33,7 @@ const mockSetCachedConfig = setCachedConfig as jest.Mock;
 const DEFAULT_CONFIG = {
   geofence: {
     trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
-    track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 45, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
   },
   audio: { rewindOffsetMs: 10000 },
@@ -262,7 +262,7 @@ describe('RemoteConfigStore', () => {
 
     const state = useRemoteConfigStore.getState();
     expect(state.config.geofence.trip.radiusMeters).toBe(999);
-    expect(state.config.geofence.track.radiusMeters).toBe(50);
+    expect(state.config.geofence.track.radiusMeters).toBe(45);
     expect(state.config.geofence.bypassGeofence).toBe(false);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
     expect(state.config.feedback.syncIntervalSec).toBe(30);

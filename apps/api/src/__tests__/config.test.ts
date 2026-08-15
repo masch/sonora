@@ -84,7 +84,7 @@ describe('GET /config', () => {
 
     expect(body.geofence.trip.radiusMeters).toBe(50);
     expect(body.geofence.trip.defaultMode).toBe('formatDefaultRadius');
-    expect(body.geofence.track.radiusMeters).toBe(50);
+    expect(body.geofence.track.radiusMeters).toBe(45);
     expect(body.geofence.track.defaultMode).toBe('formatDefaultRadius');
     expect(body.geofence.bypassGeofence).toBe(false);
     expect(body.audio.rewindOffsetMs).toBe(10000);

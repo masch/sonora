@@ -34,7 +34,7 @@ export type RemoteConfigPayload = z.infer<typeof RemoteConfigPayloadSchema>;
 export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
   geofence: {
     trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
-    track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 45, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
   },
   audio: { rewindOffsetMs: 10000 },

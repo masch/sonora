@@ -1,13 +1,18 @@
+import { TRACK_IMAGE_KEYS } from '@sonora/shared';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { TRACK_IMAGE_KEYS } from '@sonora/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assertSeedEnv, collectExperienceIds, seedExperiences } from '../seed-data';
-import { baseExperiences, baseWaypoints } from '../seed-data';
 import {
+  assertSeedEnv,
+  baseExperiences,
+  baseWaypoints,
+  collectExperienceIds,
+  seedExperiences,
+} from '../seed-data';
+import {
+  STAGING_AUDIO_KEY,
   stagingOnlyExperiences,
   stagingOnlyWaypoints,
-  STAGING_AUDIO_KEY,
 } from '../seed-staging-data';
 
 /**
@@ -57,21 +62,21 @@ describe('assertSeedEnv — environment guard', () => {
 });
 
 describe('stagingOnlyExperiences — staging data contract', () => {
-  it('contains exactly 3 explicit experiences and 2 waypoints', () => {
-    expect(stagingOnlyExperiences).toHaveLength(3);
+  it('contains exactly 4 explicit experiences and 2 waypoints', () => {
+    expect(stagingOnlyExperiences).toHaveLength(4);
     expect(stagingOnlyWaypoints).toHaveLength(2);
   });
 
-  it('is an explicit set: one track, one trip, and one general-feedback', () => {
+  it('is an explicit set: two tracks, one trip, and one general-feedback', () => {
     const formats = stagingOnlyExperiences.map((e) => e.format).sort();
-    expect(formats).toEqual(['general-feedback', 'track', 'trip']);
+    expect(formats).toEqual(['general-feedback', 'track', 'track', 'trip']);
   });
 
   it('uses unique ids and unique slugs', () => {
     const ids = stagingOnlyExperiences.map((e) => e.id);
     const slugs = stagingOnlyExperiences.map((e) => e.slug);
-    expect(new Set(ids).size).toBe(3);
-    expect(new Set(slugs).size).toBe(3);
+    expect(new Set(ids).size).toBe(4);
+    expect(new Set(slugs).size).toBe(4);
   });
 
   it('prefixes every title with [PRUEBA] and does not collide with base slugs', () => {

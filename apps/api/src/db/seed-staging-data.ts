@@ -18,24 +18,44 @@ import type { NewExperience, NewWaypoint } from './schema';
 // in the staging private bucket, so no binary upload is needed.
 export const STAGING_AUDIO_KEY = 'experiences/tracks-pajaros-chiricotes.mp3';
 
-const stagingTrack: NewExperience = {
-  id: 'd4a1e6b2-8c3f-5a7e-9b0c-1d2e3f4a5b6c',
-  slug: 'prueba-track-audio',
-  title: '[PRUEBA] Track de prueba',
-  description: 'Track de prueba para staging',
-  format: 'track',
-  themeKey: 'community',
-  audioUrl: STAGING_AUDIO_KEY,
-  durationSeconds: 180,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: true,
-  imageKey: TRACK_IMAGE_KEYS[1],
-  geofenceBypassable: false,
-  geoMode: 'formatDefaultRadius',
-  radiusMeters: null,
-  published: true,
-};
+const stagingTracks: NewExperience[] = [
+  {
+    id: 'd4a1e6b2-8c3f-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'prueba-track-audio-hugo-bosque',
+    title: '[PRUEBA] Bosque de Hugo',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.21139923856439,
+    longitude: -64.73921167552203,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'd4a1e6b2-1234-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'prueba-track-audio-hugo-camino',
+    title: '[PRUEBA] Camino de Hugo',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.210959146698336,
+    longitude: -64.7396157534579,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+];
 
 const stagingTrip: NewExperience = {
   id: 'e5b2f7c3-9d40-5b8f-ac1d-2e3f4a5b6c7d',
@@ -78,7 +98,7 @@ const stagingFeedback: NewExperience = {
 };
 
 export const stagingOnlyExperiences: readonly NewExperience[] = [
-  stagingTrack,
+  ...stagingTracks,
   stagingTrip,
   stagingFeedback,
 ];

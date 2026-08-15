@@ -210,7 +210,12 @@ export default function TrackDetailView({
               className="mt-3 -mx-3 relative rounded-xl overflow-hidden"
               testID="track-detail-map"
             >
-              <TrackDetailMap latitude={track.latitude} longitude={track.longitude} />
+              <TrackDetailMap
+                latitude={track.latitude}
+                longitude={track.longitude}
+                userLatitude={geofence.userCoordinates?.latitude}
+                userLongitude={geofence.userCoordinates?.longitude}
+              />
             </TwView>
           )}
 
