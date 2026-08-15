@@ -57,18 +57,21 @@ describe('assertSeedEnv — environment guard', () => {
 });
 
 describe('stagingOnlyExperiences — staging data contract', () => {
-  type Row = (typeof stagingOnlyExperiences)[number];
+  it('contains exactly 3 explicit experiences and 2 waypoints', () => {
+    expect(stagingOnlyExperiences).toHaveLength(3);
+    expect(stagingOnlyWaypoints).toHaveLength(2);
+  });
 
-  it('contains exactly 28 experiences and 24 waypoints', () => {
-    expect(stagingOnlyExperiences).toHaveLength(28);
-    expect(stagingOnlyWaypoints).toHaveLength(24);
+  it('is an explicit set: one track, one trip, and one general-feedback', () => {
+    const formats = stagingOnlyExperiences.map((e) => e.format).sort();
+    expect(formats).toEqual(['general-feedback', 'track', 'trip']);
   });
 
   it('uses unique ids and unique slugs', () => {
     const ids = stagingOnlyExperiences.map((e) => e.id);
     const slugs = stagingOnlyExperiences.map((e) => e.slug);
-    expect(new Set(ids).size).toBe(28);
-    expect(new Set(slugs).size).toBe(28);
+    expect(new Set(ids).size).toBe(3);
+    expect(new Set(slugs).size).toBe(3);
   });
 
   it('prefixes every title with [PRUEBA] and does not collide with base slugs', () => {
@@ -79,52 +82,19 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     }
   });
 
-  it('covers every schema matrix combination exactly once', () => {
-    const signature = (e: Row): string =>
-      `${e.format}|${e.free}|${e.audioUrl == null ? 'noaudio' : 'audio'}|${e.geofenceBypassable}|${e.published}`;
-
-    const counts = new Map<string, number>();
-    for (const e of stagingOnlyExperiences) {
-      const key = signature(e);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-
-    const formats: Array<'track' | 'trip' | 'general-feedback'> = ['track', 'trip'];
-    // track & trip: free+audio, free+noaudio, paid × geofence × published
-    for (const format of formats) {
-      for (const free of [true, false]) {
-        const audio = free ? ['audio', 'noaudio'] : ['audio']; // paid always has audio
-        for (const a of audio) {
-          for (const geo of [false, true]) {
-            for (const pub of [false, true]) {
-              expect(counts.get(`${format}|${free}|${a}|${geo}|${pub}`)).toBe(1);
-            }
-          }
-        }
-      }
-    }
-    // general-feedback: free + noaudio × geofence × published
-    for (const geo of [false, true]) {
-      for (const pub of [false, true]) {
-        expect(counts.get(`general-feedback|true|noaudio|${geo}|${pub}`)).toBe(1);
-      }
-    }
-  });
-
   it('uses a valid TRACK_IMAGE_KEYS value for every row', () => {
     for (const e of stagingOnlyExperiences) {
       expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
     }
   });
 
-  it('uses integer minor-unit prices: track 150000, trip 350000 ARS; free rows have no price', () => {
+  it('uses integer minor-unit prices: paid trip 350000 ARS; free rows have no price', () => {
     for (const e of stagingOnlyExperiences) {
       if (e.free) {
         expect(e.price).toBeUndefined();
         continue;
       }
-      const expected = e.format === 'track' ? 150000 : 350000;
-      expect(e.price).toBe(expected);
+      expect(e.price).toBe(350000);
       expect(e.currency).toBe('ARS');
     }
   });
@@ -139,9 +109,9 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     }
   });
 
-  it('provides exactly 2 waypoints for each of the 12 trip ids', () => {
+  it('provides exactly 2 waypoints for the single trip id', () => {
     const trips = stagingOnlyExperiences.filter((e) => e.format === 'trip');
-    expect(trips).toHaveLength(12);
+    expect(trips).toHaveLength(1);
     const tripIds = trips.map((e) => e.id!);
     const wpByTrip = new Map<string, number>();
     for (const wp of stagingOnlyWaypoints) {
@@ -150,7 +120,7 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     for (const id of tripIds) {
       expect(wpByTrip.get(id)).toBe(2);
     }
-    expect(wpByTrip.size).toBe(12);
+    expect(wpByTrip.size).toBe(1);
   });
 });
 

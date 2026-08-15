@@ -43,19 +43,19 @@ The system MUST provide three seed modules: `seed-data.ts` (base themes/experien
 
 ### Requirement: Staging Test Data Contract
 
-Staging-only experiences MUST have `[PRUEBA]`-prefixed titles, stable hardcoded UUIDs (never `defaultRandom`), and unique slugs not colliding with base slugs. The set MUST be a stable fixed list (changed only via PR). Variant matrix MUST cover every schema-supported combination (format × free/audio/paid × geofence × published):
+Staging-only experiences MUST be a stable fixed set of three explicit experiences — one track, one trip, and one general-feedback — written by hand with no combinatorial generation (no loops or builders). Each MUST have a `[PRUEBA]`-prefixed title, a stable hardcoded UUID (never `defaultRandom`), and a unique slug not colliding with base slugs. The set MUST be stable across re-runs (changed only via PR):
 
-| format           | free/audio/paid                       | geofence   | published  |
-| ---------------- | ------------------------------------- | ---------- | ---------- |
-| track            | free+audio / free+noaudio / paid(ARS) | true,false | true,false |
-| trip             | free+audio / free+noaudio / paid(ARS) | true,false | true,false |
-| general-feedback | free, no audio                        | true,false | true,false |
+| format           | free/paid       | audioUrl              |
+| ---------------- | --------------- | --------------------- |
+| track            | free            | shared staging R2 key |
+| trip             | paid 350000 ARS | shared staging R2 key |
+| general-feedback | free            | null                  |
 
-#### Scenario: Matrix coverage
+#### Scenario: Explicit set coverage
 
 - GIVEN a seeded staging DB
 - WHEN querying experiences by title prefix `[PRUEBA]`
-- THEN every matrix combination has exactly one row
+- THEN exactly one track, one trip, and one general-feedback exist
 
 #### Scenario: Stable identity across re-runs
 
@@ -76,7 +76,7 @@ The staging entry MUST delete+reinsert waypoints for the union of base + staging
 
 ### Requirement: Staging Media Keys
 
-Staging experiences with `published: true` and a non-null `audioUrl` MUST reference audio keys present in the staging R2 private bucket (`sonora-staging-private-audio`). Audio binaries for those keys MUST be uploaded to the staging bucket as part of this change. Free no-audio variants MUST omit `audioUrl`. `imageKey` MUST reuse an existing `TRACK_IMAGE_KEYS` value (client fallback covers unknown keys, but keys MUST remain valid).
+Staging experiences with a non-null `audioUrl` MUST reference the shared staging R2 audio key (`experiences/tracks-pajaros-chiricotes.mp3`), an object already present in the staging private bucket (`sonora-staging-private-audio`). No new audio upload is required by this change. The free no-audio general-feedback MUST have `audioUrl` null. `imageKey` MUST reuse an existing `TRACK_IMAGE_KEYS` value (client fallback covers unknown keys, but keys MUST remain valid).
 
 #### Scenario: Published audio resolves
 
