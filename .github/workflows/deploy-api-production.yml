@@ -36,6 +36,7 @@ jobs:
         run: make api-db-seed-ci
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEED_ENV: production
       - name: Deploy to production Worker
         run: make api-deploy-production
         env:

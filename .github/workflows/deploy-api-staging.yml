@@ -44,10 +44,11 @@ jobs:
         run: make api-db-migrate-ci
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: Seed default data (idempotent — upserts only)
-        run: make api-db-seed-ci
+      - name: Seed default + staging data (idempotent — upserts only)
+        run: make api-db-seed-ci-staging
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEED_ENV: staging
       - name: Deploy to staging Worker
         run: make api-deploy-staging
         env:

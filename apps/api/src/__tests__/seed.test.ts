@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultExperiences } from '../db/seed';
+import { baseExperiences } from '../db/seed-data';
 import { type GeoMode } from '@sonora/shared';
 
 /**
@@ -15,7 +15,7 @@ import { type GeoMode } from '@sonora/shared';
  * inclusive boundary, defaultMode fallback, no-fix) is covered in the shared proximity unit tests with
  * test-only data. This suite only asserts integrity of the REAL seed rows.
  */
-const walkable = defaultExperiences.filter((e) => e.format === 'trip' || e.format === 'track');
+const walkable = baseExperiences.filter((e) => e.format === 'trip' || e.format === 'track');
 
 // Widen the const-literal seed rows to a comparable shape (avoids `as const` literal narrowing).
 interface SeedExperience {
