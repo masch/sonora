@@ -628,16 +628,20 @@ api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for 
 	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bun run db:migrate
 
 .PHONY: api-db-seed-ci
-api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI)
-	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bun src/db/seed.ts
+api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI); forwards SEED_ENV guard
+	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" SEED_ENV="$${SEED_ENV}" bun src/db/seed.ts
+
+.PHONY: api-db-seed-ci-staging
+api-db-seed-ci-staging: ## Seed staging DB via staging entry using DATABASE_URL from env (for CI); forwards SEED_ENV guard
+	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" SEED_ENV="$${SEED_ENV}" bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-staging
-api-db-seed-staging: ## Seed staging Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun src/db/seed.ts
+api-db-seed-staging: ## Seed staging Neon DB with staging-only data
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' SEED_ENV=staging bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-production
-api-db-seed-production: ## Seed production Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun src/db/seed.ts
+api-db-seed-production: ## Seed production Neon DB with base data
+	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' SEED_ENV=production bun src/db/seed.ts
 
 .PHONY: api-deploy-staging-full
 api-deploy-staging-full: api-deploy-staging api-db-seed-staging ## Deploy staging Worker + seed Neon DB
