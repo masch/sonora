@@ -29,7 +29,7 @@ Chain strategy: pending
 - [x] 1.1 RED: Write `apps/api/src/db/__tests__/seed-data.test.ts` — `assertSeedEnv` 4 branches (staging: unset/'production' → exit 1; base: 'staging' → exit 1, unset/'production' → OK) with mocked `process.exit`. Verify: `make api-test` (expect fail).
 - [x] 1.2 GREEN: Create `apps/api/src/db/seed-data.ts` — move base themes/experiences/waypoints verbatim from `seed.ts`; add `assertSeedEnv(entry, seedEnv)` + `seedExperiences(db, {themes, experiences, waypoints})` (upsert themes→experiences; delete waypoints `inArray` seeded IDs; reinsert). Verify: `make api-test`.
 - [x] 1.3 Refactor `apps/api/src/db/seed.ts` — strip data, import base from `seed-data.ts`, `assertSeedEnv('base', process.env.SEED_ENV)` before pool, call `seedExperiences`. Verify: `make api-test && make api-typecheck && make api-db-seed`.
-- [x] 1.4 Add `src/db/seed-data.ts` to no-console override in `apps/api/eslint.config.js`. Verify: `make lint`.
+- [x] 1.4 Add `src/db/seed-data.ts` to no-console override in `apps/api/eslint.config.js`. Verify: `make lint`. — REVISED (logger round): seed files now use the shared `logger` from `@sonora/shared`; all `src/db/seed*` override entries removed; lint passes without them.
 
 ## Phase 2: Staging data + entry (TDD)
 
@@ -37,7 +37,7 @@ Chain strategy: pending
 - [x] 2.2 GREEN: Create `apps/api/src/db/seed-staging-data.ts` — export `stagingOnlyExperiences` (3 explicit rows: `prueba-track-audio`, `prueba-trip-audio`, `prueba-feedback`) + `stagingOnlyWaypoints` (2, trip only); literal prod-style rows, hardcoded UUIDs/slugs, shared chiricotes audio key (`STAGING_AUDIO_KEY`). No combinatorial generation. Verify: 2.1 passes.
 - [x] 2.3 RED: Integration — `seedExperiences` with mock db deletes waypoints only for union(base+staging) IDs; others untouched. Verify: `make api-test` (expect fail).
 - [x] 2.4 GREEN: Create `apps/api/src/db/seed-staging.ts` — `assertSeedEnv('staging', SEED_ENV)` before pool; seed base ∪ staging arrays. Verify: 2.3 passes.
-- [x] 2.5 Add `db:seed:staging` script (`bun src/db/seed-staging.ts`) to `apps/api/package.json`; add `seed-staging.ts` + `seed-staging-data.ts` to eslint override. Verify: `make lint && make api-typecheck`.
+- [x] 2.5 Add `db:seed:staging` script (`bun src/db/seed-staging.ts`) to `apps/api/package.json`; add `seed-staging.ts` + `seed-staging-data.ts` to eslint override. Verify: `make lint && make api-typecheck`. — REVISED (logger round): `src/db/seed*` override entries removed after switching to shared `logger`; lint + typecheck pass without them.
 
 ## Phase 3: Makefile + CI wiring
 

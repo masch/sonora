@@ -45,15 +45,7 @@ module.exports = tseslint.config(
     },
   },
   {
-    files: [
-      'src/scripts/**',
-      'scripts/**',
-      'src/db/seed.ts',
-      'src/db/seed-data.ts',
-      'src/db/seed-staging.ts',
-      'src/db/seed-staging-data.ts',
-      'src/server.local.ts',
-    ],
+    files: ['src/scripts/**', 'scripts/**', 'src/server.local.ts'],
     rules: {
       'no-console': 'off',
     },

@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { logger } from '@sonora/shared';
 import { createDbClient } from './index';
 import {
   assertSeedEnv,
@@ -12,7 +13,7 @@ import { stagingOnlyExperiences, stagingOnlyWaypoints } from './seed-staging-dat
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('DATABASE_URL environment variable is required');
+  logger.error('DATABASE_URL environment variable is required');
   process.exit(1);
 }
 
@@ -20,7 +21,7 @@ if (!databaseUrl) {
 assertSeedEnv('staging', process.env.SEED_ENV);
 
 async function main() {
-  console.log('Seeding staging database (base + staging-only data)...');
+  logger.info('Seeding staging database (base + staging-only data)...');
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 1,
@@ -35,9 +36,9 @@ async function main() {
       waypoints: [...baseWaypoints, ...stagingOnlyWaypoints],
     });
 
-    console.log('Staging seeding completed successfully! 🌱');
+    logger.info('Staging seeding completed successfully! 🌱');
   } catch (error) {
-    console.error('Error seeding staging database:', error);
+    logger.error('Error seeding staging database:', error);
     process.exit(1);
   } finally {
     await pool.end();
@@ -45,6 +46,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  logger.error(err);
   process.exit(1);
 });

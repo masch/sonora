@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { logger } from '@sonora/shared';
 import { createDbClient } from './index';
 import {
   assertSeedEnv,
@@ -11,7 +12,7 @@ import {
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('DATABASE_URL environment variable is required');
+  logger.error('DATABASE_URL environment variable is required');
   process.exit(1);
 }
 
@@ -20,7 +21,7 @@ if (!databaseUrl) {
 assertSeedEnv('base', process.env.SEED_ENV);
 
 async function main() {
-  console.log('Seeding database...');
+  logger.info('Seeding database...');
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 1,
@@ -35,9 +36,9 @@ async function main() {
       waypoints: baseWaypoints,
     });
 
-    console.log('Seeding completed successfully! 🌱');
+    logger.info('Seeding completed successfully! 🌱');
   } catch (error) {
-    console.error('Error seeding database:', error);
+    logger.error('Error seeding database:', error);
     process.exit(1);
   } finally {
     await pool.end();
@@ -45,6 +46,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  logger.error(err);
   process.exit(1);
 });

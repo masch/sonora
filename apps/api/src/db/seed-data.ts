@@ -1,4 +1,4 @@
-import { GENERAL_FEEDBACK_EXPERIENCE_ID } from '@sonora/shared';
+import { GENERAL_FEEDBACK_EXPERIENCE_ID, logger } from '@sonora/shared';
 import { inArray } from 'drizzle-orm';
 import type { DbClient } from './index';
 import {
@@ -18,13 +18,13 @@ import type { NewExperience, NewTheme, NewWaypoint } from './schema';
  */
 export function assertSeedEnv(entry: 'base' | 'staging', seedEnv: string | undefined): void {
   if (entry === 'staging' && seedEnv !== 'staging') {
-    console.error(
+    logger.error(
       `seed-staging.ts requires SEED_ENV=staging (got ${seedEnv ?? 'unset'}). Refusing to seed.`,
     );
     process.exit(1);
   }
   if (entry === 'base' && seedEnv !== undefined && seedEnv !== 'production') {
-    console.error(`seed.ts refuses SEED_ENV=${seedEnv} (expected 'production' or unset).`);
+    logger.error(`seed.ts refuses SEED_ENV=${seedEnv} (expected 'production' or unset).`);
     process.exit(1);
   }
 }
@@ -50,7 +50,7 @@ export async function seedExperiences(db: DbClient, data: SeedData): Promise<voi
   const { themes, experiences, waypoints } = data;
 
   // 1. Upsert Themes (update if exists, insert if not)
-  console.log('Seeding themes...');
+  logger.info('Seeding themes...');
   for (const theme of themes) {
     await db
       .insert(themesTable)
@@ -61,7 +61,7 @@ export async function seedExperiences(db: DbClient, data: SeedData): Promise<voi
   const seededExperienceIds = collectExperienceIds(experiences);
 
   // 2. Upsert Experiences (update if exists, insert if not)
-  console.log('Seeding experiences...');
+  logger.info('Seeding experiences...');
   for (const exp of experiences) {
     await db
       .insert(experiencesTable)
@@ -71,7 +71,7 @@ export async function seedExperiences(db: DbClient, data: SeedData): Promise<voi
 
   // 3. Replace waypoints only for seeded experiences (leave others untouched)
   if (seededExperienceIds.length > 0) {
-    console.log('Seeding waypoints...');
+    logger.info('Seeding waypoints...');
     await db
       .delete(waypointsTable)
       .where(inArray(waypointsTable.experienceId, seededExperienceIds as [string, ...string[]]));
