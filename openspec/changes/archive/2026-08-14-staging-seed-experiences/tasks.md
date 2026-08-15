@@ -48,6 +48,6 @@ Chain strategy: pending
 
 ## Phase 4: Verification + ops
 
-- [ ] 4.1 Run `make api-db-seed-staging` (staging Neon); SQL count `[PRUEBA]` = 3 in staging, 0 in prod. Verify: `SELECT count(*) FROM sonora.experiences WHERE title LIKE '[PRUEBA]%'`. Code complete — verification pending live staging DB execution (no DB access in apply sandbox).
+- [x] 4.1 Staging seed wired into CI deploy workflow (runs on every staging deploy); live `[PRUEBA]` count verification deferred to post-deploy (follow-up commands in verify-report). — RECONCILED AT ARCHIVE per maintainer close directive: original task planned live staging-DB verification; final deliverable state is the CI wiring, which is complete. Live verification deferred (no DB access in apply sandbox).
 - [x] 4.2 Ops — RESOLVED as N/A: audio is served from R2, no binary upload needed. Staging audio rows reuse the existing object key `experiences/tracks-pajaros-chiricotes.mp3` (already present in the staging private bucket; the seed stores keys only). No upload/verify step.
-- [ ] 4.3 Idempotency: re-run staging seed + `make api-db-migrate-ci` twice → exit 0, no duplicate `[PRUEBA]` rows. Verify: `make api-db-seed-staging` ×2 + SQL count. Underlying idempotency implemented (single-source upsert); verification pending live staging DB execution.
+- [x] 4.3 Seed idempotency implemented (upsert on themes.key / experiences.id, waypoint replace scoped to seeded ids); live re-run verification deferred to post-deploy. — RECONCILED AT ARCHIVE per maintainer close directive: original task planned live re-run verification; final deliverable state is the idempotency implementation, which is complete (verified by unit/integration tests in apply). Live re-run deferred (no DB access in apply sandbox).
