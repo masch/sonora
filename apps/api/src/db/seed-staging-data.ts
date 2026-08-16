@@ -21,8 +21,8 @@ export const STAGING_AUDIO_KEY = 'experiences/tracks-pajaros-chiricotes.mp3';
 const stagingTracks: readonly NewExperience[] = [
   {
     id: 'd4a1e6b2-0000-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-free-hugo-forest',
-    title: '[Test] Free - Bosque de Hugo',
+    slug: 'test-track-00-free-hugo-forest',
+    title: '[Test-T00] Free - Bosque de Hugo',
     description: 'Track de prueba para staging',
     format: 'track',
     themeKey: 'community',
@@ -39,8 +39,8 @@ const stagingTracks: readonly NewExperience[] = [
   },
   {
     id: 'd4a1e6b2-0001-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-geomode-default-format-hugo-path',
-    title: '[Test] Free - Camino de Hugo con restricción alcance formato',
+    slug: 'test-track-01-geomode-default-format-hugo-path',
+    title: '[Test-T01] Free - Camino de Hugo con restricción alcance formato',
     description: 'Track de prueba para staging',
     format: 'track',
     themeKey: 'community',
@@ -57,8 +57,8 @@ const stagingTracks: readonly NewExperience[] = [
   },
   {
     id: 'd4a1e6b2-0002-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-geomode-entity-radius-within-hugo-path',
-    title: '[Test] Free - Camino de Hugo mayor alcance',
+    slug: 'test-track-02-geomode-entity-radius-within-hugo-path',
+    title: '[Test-T02] Free - Camino de Hugo mayor alcance',
     description: 'Track de prueba para staging',
     format: 'track',
     themeKey: 'community',
@@ -75,8 +75,8 @@ const stagingTracks: readonly NewExperience[] = [
   },
   {
     id: 'd4a1e6b2-0003-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-geomode-unrestricted-hugo-path',
-    title: '[Test] Free - Camino de Hugo sin restricción alcance',
+    slug: 'test-track-03-geomode-unrestricted-hugo-path',
+    title: '[Test-T03] Free - Camino de Hugo sin restricción alcance',
     description: 'Track de prueba para staging',
     format: 'track',
     themeKey: 'community',
@@ -98,8 +98,8 @@ const stagingTripTest2Id = 'e5b2f7c3-0001-5b8f-ac1d-2e3f4a5b6c7d';
 const stagingTrips: readonly NewExperience[] = [
   {
     id: stagingTripTest1Id,
-    slug: 'test-trip-geofence-default-format-hugo-path',
-    title: '[Test] Recorrido de prueba',
+    slug: 'test-trip-00-geofence-default-format-hugo-path',
+    title: '[Test-R00] Deriva de prueba',
     description: 'Recorrido de prueba para staging',
     format: 'trip',
     themeKey: 'landscapes',
@@ -118,8 +118,8 @@ const stagingTrips: readonly NewExperience[] = [
   },
   {
     id: stagingTripTest2Id,
-    slug: 'test-trip-geofence-entity-radius-hugo-path',
-    title: '[Test] Deriva de prueba con geofence entidad',
+    slug: 'test-trip-01geofence-entity-radius-hugo-path',
+    title: '[Test-R01] Deriva de prueba con geofence entidad',
     description: 'Deriva de prueba para staging',
     format: 'trip',
     themeKey: 'landscapes',

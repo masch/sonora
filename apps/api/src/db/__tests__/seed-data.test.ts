@@ -79,10 +79,10 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     expect(new Set(slugs).size).toBe(6);
   });
 
-  it('prefixes every title with [PRUEBA] or [Test] and does not collide with base slugs', () => {
+  it('prefixes every title with [PRUEBA] or [Test and does not collide with base slugs', () => {
     const baseSlugs = new Set(baseExperiences.map((e) => e.slug));
     for (const e of stagingOnlyExperiences) {
-      expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test]')).toBe(true);
+      expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test')).toBe(true);
       expect(baseSlugs.has(e.slug)).toBe(false);
     }
   });
