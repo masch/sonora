@@ -18,11 +18,11 @@ unset _f
 
 # 1. Check code formatting
 printf "  ✓ format-check... "
-if make format-check > /dev/null 2>&1; then
+if make format-check-staged > /dev/null 2>&1; then
   printf "ok\n"
 else
   printf "fixed\n"
-  make format > /dev/null 2>&1
+  make format-staged > /dev/null 2>&1
   git add -u
 fi
 

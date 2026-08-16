@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { resolveProximity, type GeoMode, type UserExperienceFormat } from '@sonora/shared';
-import { logger } from '@/utils/logger';
 import { useLocationStore } from '@/store/location-store';
+import { logger } from '@/utils/logger';
+import { resolveProximity, type GeoMode, type UserExperienceFormat } from '@sonora/shared';
+import { useEffect, useState } from 'react';
 import { useRemoteConfig } from './use-remote-config';
 
 export interface GeofenceState {
@@ -88,14 +88,17 @@ export function useOfflineGeofence(
 
   // Best-effort online seam — authoritative if it succeeds, otherwise the
   // offline/local decision above stands (fail open).
+  const { proximityClient, experienceId } = options;
+
   useEffect(() => {
-    if (!options.proximityClient || !targetCoords || !coords) {
+    if (!proximityClient || !targetCoords || !coords) {
       return;
     }
     let cancelled = false;
-    options.proximityClient
+
+    proximityClient
       .check({
-        experienceId: options.experienceId,
+        experienceId,
         latitude: coords.latitude,
         longitude: coords.longitude,
       })
@@ -104,7 +107,7 @@ export function useOfflineGeofence(
           setOnlineDecision(resultValue);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // fail open: keep the offline/local result, but surface the online failure
         logger.error(
           'useOfflineGeofence: online proximity check failed, falling back to offline result',
@@ -115,7 +118,7 @@ export function useOfflineGeofence(
     return () => {
       cancelled = true;
     };
-  }, [options.proximityClient, options.experienceId, targetCoords, coords]);
+  }, [proximityClient, experienceId, targetCoords, coords]);
 
   if (onlineDecision && onlineDecision.ok) {
     isNearStart = onlineDecision.canListen ?? false;

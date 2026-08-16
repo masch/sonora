@@ -244,9 +244,23 @@ lint: ## Run linters across workspaces
 format: ## Run prettier to format code
 	bunx prettier --write .
 
+.PHONY: format-staged
+format-staged: ## Run prettier on staged files only
+	@files=$$(git diff --cached --name-only --diff-filter=d 2>/dev/null); \
+	if [ -n "$$files" ]; then \
+		echo "$$files" | xargs bunx prettier --write --ignore-unknown; \
+	fi
+
 .PHONY: format-check
 format-check: ## Check code formatting using prettier
 	bunx prettier --check .
+
+.PHONY: format-check-staged
+format-check-staged: ## Check code formatting on staged files using prettier
+	@files=$$(git diff --cached --name-only --diff-filter=d 2>/dev/null); \
+	if [ -n "$$files" ]; then \
+		echo "$$files" | xargs bunx prettier --check --ignore-unknown; \
+	fi
 
 .PHONY: typecheck
 typecheck: ## Run TypeScript type checks across workspaces
@@ -866,7 +880,7 @@ precommit-logs-watch: ## Follow logs from last pre-commit run in real-time
 # ── CI ────────────────────────────────────────
 
 .PHONY: validate
-validate: format lint typecheck api-typecheck scripts-typecheck doctor-ci test gga ## Run full development gate (tests + lint + typecheck + gga + react-doctor diff scan)
+validate: format-staged lint typecheck api-typecheck scripts-typecheck doctor-ci test gga ## Run full development gate (tests + lint + typecheck + gga + react-doctor diff scan)
 
 .PHONY: api-validate
 api-validate: api-test api-typecheck ## Run API tests + typecheck

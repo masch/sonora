@@ -39,8 +39,8 @@ const stagingTracks: readonly NewExperience[] = [
   },
   {
     id: 'd4a1e6b2-0001-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-free-hugo-path',
-    title: '[Test] Free - Camino de Hugo',
+    slug: 'test-track-geomode-default-format-hugo-path',
+    title: '[Test] Free - Camino de Hugo con restricción alcance formato',
     description: 'Track de prueba para staging',
     format: 'track',
     themeKey: 'community',
@@ -57,7 +57,7 @@ const stagingTracks: readonly NewExperience[] = [
   },
   {
     id: 'd4a1e6b2-0002-5a7e-9b0c-1d2e3f4a5b6c',
-    slug: 'test-track-geofence-entity-radius-hugo-path',
+    slug: 'test-track-geomode-entity-radius-within-hugo-path',
     title: '[Test] Free - Camino de Hugo mayor alcance',
     description: 'Track de prueba para staging',
     format: 'track',
@@ -73,6 +73,24 @@ const stagingTracks: readonly NewExperience[] = [
     radiusMeters: 70,
     published: true,
   },
+  {
+    id: 'd4a1e6b2-0003-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'test-track-geomode-unrestricted-hugo-path',
+    title: '[Test] Free - Camino de Hugo sin restricción alcance',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.210959146698336,
+    longitude: -64.7396157534579,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'unrestricted',
+    radiusMeters: null,
+    published: true,
+  },
 ];
 
 const stagingTripTest1Id = 'e5b2f7c3-0000-5b8f-ac1d-2e3f4a5b6c7d';
@@ -80,7 +98,7 @@ const stagingTripTest2Id = 'e5b2f7c3-0001-5b8f-ac1d-2e3f4a5b6c7d';
 const stagingTrips: readonly NewExperience[] = [
   {
     id: stagingTripTest1Id,
-    slug: 'test-trip-audio-geofence-format-radius-hugo-path',
+    slug: 'test-trip-geofence-default-format-hugo-path',
     title: '[Test] Recorrido de prueba',
     description: 'Recorrido de prueba para staging',
     format: 'trip',
@@ -122,9 +140,9 @@ const stagingTrips: readonly NewExperience[] = [
 
 export const stagingOnlyExperiences: readonly NewExperience[] = [...stagingTracks, ...stagingTrips];
 
-export type waypointInput = Omit<NewWaypoint, 'experienceId'>;
+export type WaypointInput = Omit<NewWaypoint, 'experienceId'>;
 
-export const stagingHugoPathWaypoints: readonly waypointInput[] = [
+export const stagingHugoPathWaypoints: readonly WaypointInput[] = [
   {
     order: 1,
     latitude: -32.212488,
@@ -139,19 +157,19 @@ export const stagingHugoPathWaypoints: readonly waypointInput[] = [
   },
 ];
 
-export const stagingTripTest1HugoPathyWaypoints: readonly NewWaypoint[] =
+export const stagingTripTest1HugoPathWaypoints: readonly NewWaypoint[] =
   stagingHugoPathWaypoints.map((newWayPoint) => ({
     ...newWayPoint,
     experienceId: stagingTripTest1Id,
   }));
 
-export const stagingTripTest2HugoPathyWaypoints: readonly NewWaypoint[] =
+export const stagingTripTest2HugoPathWaypoints: readonly NewWaypoint[] =
   stagingHugoPathWaypoints.map((newWayPoint) => ({
     ...newWayPoint,
     experienceId: stagingTripTest2Id,
   }));
 
 export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
-  ...stagingTripTest1HugoPathyWaypoints,
-  ...stagingTripTest2HugoPathyWaypoints,
+  ...stagingTripTest1HugoPathWaypoints,
+  ...stagingTripTest2HugoPathWaypoints,
 ];

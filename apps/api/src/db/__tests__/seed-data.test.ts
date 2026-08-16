@@ -62,21 +62,21 @@ describe('assertSeedEnv — environment guard', () => {
 });
 
 describe('stagingOnlyExperiences — staging data contract', () => {
-  it('contains exactly 5 explicit experiences and 4 waypoints', () => {
-    expect(stagingOnlyExperiences).toHaveLength(5);
+  it('contains exactly 6 explicit experiences and 4 waypoints', () => {
+    expect(stagingOnlyExperiences).toHaveLength(6);
     expect(stagingOnlyWaypoints).toHaveLength(4);
   });
 
-  it('is an explicit set: three tracks and two trips', () => {
+  it('is an explicit set: four tracks and two trips', () => {
     const formats = stagingOnlyExperiences.map((e) => e.format).sort();
-    expect(formats).toEqual(['track', 'track', 'track', 'trip', 'trip']);
+    expect(formats).toEqual(['track', 'track', 'track', 'track', 'trip', 'trip']);
   });
 
   it('uses unique ids and unique slugs', () => {
     const ids = stagingOnlyExperiences.map((e) => e.id);
     const slugs = stagingOnlyExperiences.map((e) => e.slug);
-    expect(new Set(ids).size).toBe(5);
-    expect(new Set(slugs).size).toBe(5);
+    expect(new Set(ids).size).toBe(6);
+    expect(new Set(slugs).size).toBe(6);
   });
 
   it('prefixes every title with [PRUEBA] or [Test] and does not collide with base slugs', () => {
