@@ -11,14 +11,14 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  SUPPORTED_LANGUAGES,
-  PAYMENT_PROVIDERS,
-  CURRENCIES,
   ACCESS_SOURCES,
-  PURCHASE_STATUSES,
-  PLATFORMS,
+  CURRENCIES,
   EXPERIENCE_FORMATS,
   GEO_MODES,
+  PAYMENT_PROVIDERS,
+  PLATFORMS,
+  PURCHASE_STATUSES,
+  SUPPORTED_LANGUAGES,
 } from '@sonora/shared';
 
 export const sonoraSchema = pgSchema('sonora');

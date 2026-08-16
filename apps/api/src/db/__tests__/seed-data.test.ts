@@ -62,27 +62,27 @@ describe('assertSeedEnv — environment guard', () => {
 });
 
 describe('stagingOnlyExperiences — staging data contract', () => {
-  it('contains exactly 4 explicit experiences and 2 waypoints', () => {
-    expect(stagingOnlyExperiences).toHaveLength(4);
-    expect(stagingOnlyWaypoints).toHaveLength(2);
+  it('contains exactly 5 explicit experiences and 4 waypoints', () => {
+    expect(stagingOnlyExperiences).toHaveLength(5);
+    expect(stagingOnlyWaypoints).toHaveLength(4);
   });
 
-  it('is an explicit set: two tracks, one trip, and one general-feedback', () => {
+  it('is an explicit set: three tracks and two trips', () => {
     const formats = stagingOnlyExperiences.map((e) => e.format).sort();
-    expect(formats).toEqual(['general-feedback', 'track', 'track', 'trip']);
+    expect(formats).toEqual(['track', 'track', 'track', 'trip', 'trip']);
   });
 
   it('uses unique ids and unique slugs', () => {
     const ids = stagingOnlyExperiences.map((e) => e.id);
     const slugs = stagingOnlyExperiences.map((e) => e.slug);
-    expect(new Set(ids).size).toBe(4);
-    expect(new Set(slugs).size).toBe(4);
+    expect(new Set(ids).size).toBe(5);
+    expect(new Set(slugs).size).toBe(5);
   });
 
-  it('prefixes every title with [PRUEBA] and does not collide with base slugs', () => {
+  it('prefixes every title with [PRUEBA] or [Test] and does not collide with base slugs', () => {
     const baseSlugs = new Set(baseExperiences.map((e) => e.slug));
     for (const e of stagingOnlyExperiences) {
-      expect(e.title.startsWith('[PRUEBA]')).toBe(true);
+      expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test]')).toBe(true);
       expect(baseSlugs.has(e.slug)).toBe(false);
     }
   });
@@ -114,9 +114,9 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     }
   });
 
-  it('provides exactly 2 waypoints for the single trip id', () => {
+  it('provides exactly 2 waypoints for each of the trip ids', () => {
     const trips = stagingOnlyExperiences.filter((e) => e.format === 'trip');
-    expect(trips).toHaveLength(1);
+    expect(trips).toHaveLength(2);
     const tripIds = trips.map((e) => e.id!);
     const wpByTrip = new Map<string, number>();
     for (const wp of stagingOnlyWaypoints) {
@@ -125,7 +125,7 @@ describe('stagingOnlyExperiences — staging data contract', () => {
     for (const id of tripIds) {
       expect(wpByTrip.get(id)).toBe(2);
     }
-    expect(wpByTrip.size).toBe(1);
+    expect(wpByTrip.size).toBe(2);
   });
 });
 
