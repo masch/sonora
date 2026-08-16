@@ -223,7 +223,7 @@ radiusMeters: track.radiusMeters }` to `useOfflineGeofence` (default `'type'` pr
       fixture). <!-- sdd-owner: implementation -->
 - [x] Run typecheck `apps/mobile` (`tsc --noEmit`) and lint `apps/mobile` (`expo lint`; no errors in
       changed files). <!-- sdd-owner: implementation -->
-- [ ] Start or reuse bounded PR review of the slabs (shared module, schema, route, hook, views)
+- [x] Start or reuse bounded PR review of the slabs (shared module, schema, route, hook, views)
       for offenses and correctness. <!-- sdd-owner: parent -->
 
 ---
