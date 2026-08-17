@@ -59,6 +59,26 @@ jobs:
             const SEVERITY_ORDER = ['low', 'moderate', 'high', 'critical'];
             const minIndex = SEVERITY_ORDER.indexOf(threshold);
 
+            // Explicitly allowlisted advisories:
+            // - GHSA-w3rx-r6r6-pgpr (ICNS parser infinite loop DoS)
+            // - GHSA-5p2g-fcmc-qvqq (JXL/HEIF parser infinite loop DoS)
+            //
+            // Rationale & Threat Model Assessment:
+            // 1. Upstream Status: The 'image-size' repository was archived by its maintainers.
+            //    No official patched version >=2.0.3 was ever released to the npm registry.
+            // 2. Transitive Usage: 'image-size' is brought in exclusively as a build-time dependency
+            //    by Expo CLI, Metro bundler, and React Native toolchains.
+            // 3. Attack Vector Ineffective: The vulnerability requires feeding a maliciously crafted
+            //    ICNS/HEIF buffer to trigger an event loop DoS. In Sonora, image-size is only invoked
+            //    during local/CI asset bundling on trusted local source files, never on untrusted
+            //    user uploads or runtime API endpoints. The effective blast radius in production is 0.
+            // 4. Supply Chain Safety: Maintaining an allowlist here avoids depending on unverified
+            //    third-party community forks in the core React Native build pipeline.
+            const IGNORED_ADVISORIES = [
+              'https://github.com/advisories/GHSA-w3rx-r6r6-pgpr',
+              'https://github.com/advisories/GHSA-5p2g-fcmc-qvqq',
+            ];
+
             let findings = [];
 
             try {
@@ -67,6 +87,12 @@ jobs:
 
               for (const [pkg, advisories] of Object.entries(data)) {
                 for (const adv of advisories) {
+                  if (IGNORED_ADVISORIES.includes(adv.url)) {
+                    console.log(
+                      `Ignoring allowlisted advisory for ${pkg}: ${adv.url}`
+                    );
+                    continue;
+                  }
                   const sevIdx = SEVERITY_ORDER.indexOf(adv.severity);
                   if (sevIdx >= minIndex && sevIdx !== -1) {
                     findings.push({
