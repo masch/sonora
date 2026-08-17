@@ -1,24 +1,25 @@
-import { useEffect, useState } from 'react';
-import { DeviceEventEmitter } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
-import { ThemedText } from '@/components/themed-text';
+import FeedbackForm from '@/components/feedback-form';
 import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
-import { TwView, TwPressable } from '@/tw';
+import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { ThemedText } from '@/components/themed-text';
 import { SONORA_MESSAGES_BG } from '@/constants/images';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useLocationStore, type LocationStore } from '@/store/location-store';
+import { type Experience } from '@/data/experiences';
+import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
 import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
-import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
-import FeedbackForm from '@/components/feedback-form';
-import { GENERAL_FEEDBACK_EXPERIENCE_ID, haversineDistance } from '@sonora/shared';
-import { type Experience } from '@/data/experiences';
-import { getExperienceIcon } from '@/utils/icons';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { useLocationStore, type LocationStore } from '@/store/location-store';
+import { TwPressable, TwView } from '@/tw';
 import { TwAnimatedView } from '@/tw/animated';
+import { formatDistance } from '@/utils/format-distance';
+import { getExperienceIcon } from '@/utils/icons';
+import { haversineDistance, INSTRUCTIONS_EXPERIENCE_ID } from '@sonora/shared';
+import { useFocusEffect } from 'expo-router';
+import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
+import { useEffect, useState } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { FadeInUp } from 'react-native-reanimated';
 
 interface FeedbackServerEntry {
@@ -119,7 +120,6 @@ function ProximityFilter({ activeTab, onSelect }: ProximityFilterProps) {
           tintColor={activeTab === 'todos' ? colors.background : colors.text}
           testID="tab-todos"
           accessibilityLabel={t('messages.filterTodos')}
-          colors={colors}
         />
         <FilterChip
           selected={activeTab === 'cercanos'}
@@ -128,7 +128,6 @@ function ProximityFilter({ activeTab, onSelect }: ProximityFilterProps) {
           tintColor={activeTab === 'cercanos' ? colors.background : colors.text}
           testID="tab-cercanos"
           accessibilityLabel={t('messages.filterCercanos')}
-          colors={colors}
         />
       </TwView>
     </TwView>
@@ -170,7 +169,6 @@ function TypeFilter({ selectedType, onSelect }: TypeFilterProps) {
             tintColor={selectedType === t.key ? colors.background : colors.text}
             testID={`type-filter-${t.key}`}
             accessibilityLabel={t.label}
-            colors={colors}
           />
         ))}
       </TwView>
@@ -187,7 +185,6 @@ interface FilterChipProps {
   tintColor: string;
   testID: string;
   accessibilityLabel: string;
-  colors: ReturnType<typeof useThemeColors>;
 }
 
 function FilterChip({
@@ -266,10 +263,8 @@ function MessageCard({ item, experiences, location, index }: MessageCardProps) {
     );
     if (dist <= 50) {
       distanceBadgeText = t('messages.veryNear');
-    } else if (dist <= 500) {
-      distanceBadgeText = `${Math.round(dist)}m`;
     } else {
-      distanceBadgeText = `${(dist / 1000).toFixed(1)}km`;
+      distanceBadgeText = formatDistance(dist, t);
     }
   }
 
@@ -364,7 +359,7 @@ export default function MessagesScreen() {
   }, [refetch]);
 
   const handleSubmit = (message: string) => {
-    feedback.submitFeedback(GENERAL_FEEDBACK_EXPERIENCE_ID, message).then(() => {
+    feedback.submitFeedback(INSTRUCTIONS_EXPERIENCE_ID, message).then(() => {
       refetch();
     });
   };

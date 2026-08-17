@@ -32,8 +32,8 @@ const mockSetCachedConfig = setCachedConfig as jest.Mock;
 // USER DECISION C (matches DEFAULT_REMOTE_CONFIG; both walkable formats use the format default).
 const DEFAULT_CONFIG = {
   geofence: {
-    trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
-    track: { radiusMeters: 45, defaultMode: 'formatDefaultRadius' },
+    trip: { radiusMeters: 30, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 100000, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
   },
   audio: { rewindOffsetMs: 10000 },
@@ -236,7 +236,7 @@ describe('RemoteConfigStore', () => {
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config.geofence.trip.radiusMeters).toBe(50);
+    expect(state.config.geofence.trip.radiusMeters).toBe(30);
   });
 
   it('falls back to defaults when API request is aborted (timeout)', async () => {
@@ -262,7 +262,7 @@ describe('RemoteConfigStore', () => {
 
     const state = useRemoteConfigStore.getState();
     expect(state.config.geofence.trip.radiusMeters).toBe(999);
-    expect(state.config.geofence.track.radiusMeters).toBe(45);
+    expect(state.config.geofence.track.radiusMeters).toBe(100000);
     expect(state.config.geofence.bypassGeofence).toBe(false);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
     expect(state.config.feedback.syncIntervalSec).toBe(30);

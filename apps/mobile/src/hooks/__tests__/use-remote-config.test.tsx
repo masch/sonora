@@ -92,6 +92,6 @@ describe('useRemoteConfig', () => {
 
     await render(<Consumer />);
 
-    expect(screen.getByTestId('vals')).toHaveTextContent('50|false|10000|30');
+    expect(screen.getByTestId('vals')).toHaveTextContent('30|false|10000|30');
   });
 });

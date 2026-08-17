@@ -1,16 +1,16 @@
 import { Icon } from '@/components/icon';
 import { TAB_BAR_INSET } from '@/components/screen-wrapper';
+import { ROUTES } from '@/constants/routes';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useCurrentExperience, isSameExperience } from '@/hooks/use-current-experience';
+import { isSameExperience, useCurrentExperience } from '@/hooks/use-current-experience';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
 import { TwPressable, TwText, TwView } from '@/tw';
+import { INSTRUCTIONS_EXPERIENCE_ID, INSTRUCTIONS_EXPERIENCES_SLUG } from '@sonora/shared';
 import { usePathname, useRouter, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ROUTES } from '@/constants/routes';
-import { INSTRUCTIONS_SLUG, GENERAL_FEEDBACK_EXPERIENCE_ID } from '@/data/experiences';
 
 export function GlobalAudioPlayer() {
   const { t } = useAppTranslation();
@@ -61,7 +61,7 @@ export function GlobalAudioPlayer() {
 
   const handleTitlePress = () => {
     const targetId = experienceId || currentMetadata?.slug || currentMetadata?.id;
-    if (targetId === INSTRUCTIONS_SLUG || targetId === GENERAL_FEEDBACK_EXPERIENCE_ID) {
+    if (targetId === INSTRUCTIONS_EXPERIENCES_SLUG || targetId === INSTRUCTIONS_EXPERIENCE_ID) {
       router.push(ROUTES.PATH.DERIVAS);
     } else if (targetId) {
       router.push(ROUTES.PATH.POETICS_DETAIL(targetId, currentMetadata?.title));
