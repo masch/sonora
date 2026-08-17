@@ -1,4 +1,4 @@
-import { GENERAL_FEEDBACK_EXPERIENCE_ID, logger } from '@sonora/shared';
+import { logger } from '@sonora/shared';
 import { inArray } from 'drizzle-orm';
 import type { DbClient } from './index';
 import type { NewExperience, NewTheme, NewWaypoint } from './schema';
@@ -141,8 +141,8 @@ const tracks: readonly NewExperience[] = [
     themeKey: 'community',
     audioUrl: 'experiences/tracks-texto-maga.mp3',
     durationSeconds: 193,
-    latitude: -32.211015,
-    longitude: -64.73809012343702,
+    latitude: -32.191576848045585,
+    longitude: -64.75240243117017,
     free: true,
     imageKey: 'tracks-texto-maga-cover',
     geofenceBypassable: false,
@@ -170,25 +170,7 @@ const tracks: readonly NewExperience[] = [
   },
 ];
 
-const generalFeedback: NewExperience = {
-  id: GENERAL_FEEDBACK_EXPERIENCE_ID,
-  slug: 'general-feedback',
-  title: 'Comunidad',
-  description: 'Comunidad y Feedback General',
-  format: 'general-feedback',
-  themeKey: 'community',
-  durationSeconds: 0,
-  latitude: 0,
-  longitude: 0,
-  free: true,
-  imageKey: 'bonus-track',
-  geofenceBypassable: false,
-  geoMode: 'unrestricted',
-  radiusMeters: null,
-  published: true,
-};
-
-export const baseExperiences: readonly NewExperience[] = [...trips, ...tracks, generalFeedback];
+export const baseExperiences: readonly NewExperience[] = [...trips, ...tracks];
 
 export const baseWaypoints: readonly NewWaypoint[] = [
   {

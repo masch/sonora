@@ -1,27 +1,26 @@
-import { type Theme, type Experience, USER_EXPERIENCE_FORMATS } from '@sonora/shared';
 import { ApiClient } from '@/services/api-client';
+import { type Experience, type Theme, USER_EXPERIENCE_FORMATS } from '@sonora/shared';
 
 export {
   EXPERIENCE_FORMATS,
-  TRACK_IMAGE_KEYS,
-  INSTRUCTIONS_SLUG,
   INSTRUCTIONS_AUDIO_KEY,
-  INSTRUCTIONS_IMAGE_KEY,
   INSTRUCTIONS_FALLBACK_TRACK_ID,
-  GENERAL_FEEDBACK_EXPERIENCE_ID,
+  INSTRUCTIONS_IMAGE_KEY,
+  INSTRUCTIONS_EXPERIENCES_SLUG as INSTRUCTIONS_SLUG,
+  isPlayableExperience,
+  TRACK_IMAGE_KEYS,
+  USER_EXPERIENCE_FORMATS,
 } from '@sonora/shared';
-export { USER_EXPERIENCE_FORMATS, isPlayableExperience } from '@sonora/shared';
 export type {
-  Theme,
   Experience,
-  TrackExperience,
-  TripExperience,
-  GeneralFeedbackExperience,
-  PlayableExperience,
-  Waypoint,
   ExperienceFormat,
+  PlayableExperience,
+  Theme,
+  TrackExperience,
   TrackImageKey,
+  TripExperience,
   UserExperienceFormat,
+  Waypoint,
 } from '@sonora/shared';
 
 export type FeedbackTriggerMode = 'audio_end' | 'geofence' | 'manual';
