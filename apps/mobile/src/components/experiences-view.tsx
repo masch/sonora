@@ -15,12 +15,11 @@ import { fetchExperiences, fetchThemes, USER_EXPERIENCE_FORMATS } from '@/data/e
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import type { TranslationKeys } from '@/i18n/types';
-import { TwPressable, TwTextInput, TwView } from '@/tw';
+import { TwPressable, TwScrollView, TwTextInput, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList } from 'react-native';
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -261,37 +260,38 @@ function ExperiencesContent({
         </TwView>
       </TwView>
 
-      <TwView className="mb-6 -mx-6">
-        <FlatList
-          data={themeOptions}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="px-6 gap-2"
-          keyExtractor={(item) => item.key}
-          renderItem={({ item: theme }) => {
-            const isSelected = selectedTheme === theme.key;
-            return (
-              <TwPressable
-                onPress={() => setSelectedTheme(theme.key)}
-                className={`px-4 py-2 rounded-full border ${
-                  isSelected
-                    ? 'bg-text border-text'
-                    : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-                } active:opacity-75`}
-                accessibilityLabel={t(theme.labelKey)}
-                testID={`category-chip-${theme.key}`}
+      <TwScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="-mx-6 mb-6 shrink-0"
+        style={{ flexGrow: 0 }}
+        contentContainerClassName="px-6 gap-2 flex-row items-center py-1"
+        contentContainerStyle={{ paddingHorizontal: 24 }}
+      >
+        {themeOptions.map((theme) => {
+          const isSelected = selectedTheme === theme.key;
+          return (
+            <TwPressable
+              key={theme.key}
+              onPress={() => setSelectedTheme(theme.key)}
+              className={`px-4 py-2 rounded-full border ${
+                isSelected
+                  ? 'bg-text border-text'
+                  : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
+              } active:opacity-75`}
+              accessibilityLabel={t(theme.labelKey)}
+              testID={`category-chip-${theme.key}`}
+            >
+              <ThemedText
+                themeColor={isSelected ? 'background' : 'text'}
+                className="text-xs font-semibold"
               >
-                <ThemedText
-                  themeColor={isSelected ? 'background' : 'text'}
-                  className="text-xs font-semibold"
-                >
-                  {t(theme.labelKey)}
-                </ThemedText>
-              </TwPressable>
-            );
-          }}
-        />
-      </TwView>
+                {t(theme.labelKey)}
+              </ThemedText>
+            </TwPressable>
+          );
+        })}
+      </TwScrollView>
 
       {/* Instructions Audio Player */}
       {selectedFormat === 'trip' && <HomeAudioPlayer />}
