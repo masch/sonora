@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GEO_MODES } from '../geo/proximity';
 
 export const RemoteConfigAppVersionSchema = z.object({
   minimumVersion: z.string().min(1),
@@ -9,7 +10,14 @@ export const RemoteConfigAppVersionSchema = z.object({
 
 export const RemoteConfigPayloadSchema = z.object({
   geofence: z.object({
-    radiusMeters: z.number().positive(),
+    trip: z.object({
+      radiusMeters: z.number().positive(),
+      defaultMode: z.enum(GEO_MODES),
+    }),
+    track: z.object({
+      radiusMeters: z.number().positive(),
+      defaultMode: z.enum(GEO_MODES),
+    }),
     bypassGeofence: z.boolean(),
   }),
   audio: z.object({
@@ -24,7 +32,11 @@ export const RemoteConfigPayloadSchema = z.object({
 export type RemoteConfigPayload = z.infer<typeof RemoteConfigPayloadSchema>;
 
 export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
-  geofence: { radiusMeters: 50, bypassGeofence: false },
+  geofence: {
+    trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 45, defaultMode: 'formatDefaultRadius' },
+    bypassGeofence: false,
+  },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
   appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },

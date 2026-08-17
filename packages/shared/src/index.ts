@@ -1,7 +1,9 @@
 export { z } from 'zod';
 export * from './feedback';
 export * from './experiences';
+export * from './geo/proximity';
 export * from './schemas/config';
+export * from './schemas/proximity';
 export * from './schemas/translations';
 export * from './schemas/payments';
 export * from './schemas/audio';

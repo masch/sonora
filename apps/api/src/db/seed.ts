@@ -1,5 +1,5 @@
-import { Pool } from 'pg';
 import { logger } from '@sonora/shared';
+import { Pool } from 'pg';
 import { createDbClient } from './index';
 import {
   assertSeedEnv,
@@ -9,18 +9,16 @@ import {
   seedExperiences,
 } from './seed-data';
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  logger.error('DATABASE_URL environment variable is required');
-  process.exit(1);
-}
-
 // Fail closed: refuses when SEED_ENV is present and not 'production'.
 // Absent SEED_ENV (local dev) is permitted. Zero writes on refusal.
 assertSeedEnv('base', process.env.SEED_ENV);
 
 async function main() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    logger.error('DATABASE_URL environment variable is required');
+    throw new Error('DATABASE_URL environment variable is required');
+  }
   logger.info('Seeding database...');
   const pool = new Pool({
     connectionString: databaseUrl,

@@ -15,9 +15,8 @@ import { useFeedbackQueue } from '@/hooks/use-feedback-queue';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useFeedbackFeed } from '@/hooks/use-feedback-feed';
 import FeedbackForm from '@/components/feedback-form';
-import { getHaversineDistance } from '@/utils/haversine';
+import { GENERAL_FEEDBACK_EXPERIENCE_ID, haversineDistance } from '@sonora/shared';
 import { type Experience } from '@/data/experiences';
-import { GENERAL_FEEDBACK_EXPERIENCE_ID } from '@sonora/shared';
 import { getExperienceIcon } from '@/utils/icons';
 import { TwAnimatedView } from '@/tw/animated';
 import { FadeInUp } from 'react-native-reanimated';
@@ -259,7 +258,7 @@ function MessageCard({ item, experiences, location, index }: MessageCardProps) {
 
   let distanceBadgeText = '';
   if (location.coords && item.latitude && item.longitude) {
-    const dist = getHaversineDistance(
+    const dist = haversineDistance(
       location.coords.latitude,
       location.coords.longitude,
       item.latitude,
@@ -386,7 +385,7 @@ export default function MessagesScreen() {
   const displayedFeed = mergedFeed.filter((entry) => {
     if (activeTab === 'cercanos') {
       if (!location.coords || !entry.latitude || !entry.longitude) return false;
-      const dist = getHaversineDistance(
+      const dist = haversineDistance(
         location.coords.latitude,
         location.coords.longitude,
         entry.latitude,

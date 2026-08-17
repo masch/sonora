@@ -1,12 +1,12 @@
 import { GENERAL_FEEDBACK_EXPERIENCE_ID, logger } from '@sonora/shared';
 import { inArray } from 'drizzle-orm';
 import type { DbClient } from './index';
+import type { NewExperience, NewTheme, NewWaypoint } from './schema';
 import {
   experiences as experiencesTable,
   themes as themesTable,
   waypoints as waypointsTable,
 } from './schema';
-import type { NewExperience, NewTheme, NewWaypoint } from './schema';
 
 /**
  * Fail-closed SEED_ENV guard. Pure and unit-testable (no DB / no process
@@ -125,6 +125,8 @@ const trips: readonly NewExperience[] = [
     currency: 'ARS',
     imageKey: 'trips-deriva-centro-cover',
     geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
     published: true,
   },
 ];
@@ -144,6 +146,8 @@ const tracks: readonly NewExperience[] = [
     free: true,
     imageKey: 'tracks-texto-maga-cover',
     geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
     published: true,
   },
   {
@@ -160,6 +164,8 @@ const tracks: readonly NewExperience[] = [
     free: true,
     imageKey: 'tracks-pajaros-chiricotes-cover',
     geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
     published: false,
   },
 ];
@@ -177,6 +183,8 @@ const generalFeedback: NewExperience = {
   free: true,
   imageKey: 'bonus-track',
   geofenceBypassable: false,
+  geoMode: 'unrestricted',
+  radiusMeters: null,
   published: true,
 };
 

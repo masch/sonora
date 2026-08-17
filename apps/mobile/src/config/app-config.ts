@@ -86,10 +86,11 @@ export const APP_CONFIG = {
   },
   geofence: {
     /**
-     * Radius in meters the user must be within to start playback.
-     * Default sourced from @sonora/shared — overrideable via GET /api/config.
+     * Per-format type-level (fallback) radii in meters the user must be within
+     * to start playback. Defaults sourced from @sonora/shared — overrideable via GET /api/config.
      */
-    radiusMeters: DEFAULT_REMOTE_CONFIG.geofence.radiusMeters,
+    trip: DEFAULT_REMOTE_CONFIG.geofence.trip,
+    track: DEFAULT_REMOTE_CONFIG.geofence.track,
     /**
      * Build-time env override to bypass geofence restriction entirely.
      * Default sourced from @sonora/shared — overrideable via GET /api/config.

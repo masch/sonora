@@ -24,6 +24,7 @@ export const RATE_LIMIT_DEFAULTS = {
   PAYMENTS_CREATE: { limit: 10, windowSeconds: 60, keyPrefix: 'payments:create' },
   EXPERIENCES_ACCESS: { limit: 20, windowSeconds: 60, keyPrefix: 'experiences:access' },
   EXPERIENCES_LIST: { limit: 30, windowSeconds: 60, keyPrefix: 'experiences:list' },
+  PROXIMITY_CHECK: { limit: 30, windowSeconds: 60, keyPrefix: 'experiences:proximity' },
 } as const;
 
 // ── Internal helpers ─────────────────────────────────────────

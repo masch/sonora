@@ -18,78 +18,158 @@ import type { NewExperience, NewWaypoint } from './schema';
 // in the staging private bucket, so no binary upload is needed.
 export const STAGING_AUDIO_KEY = 'experiences/tracks-pajaros-chiricotes.mp3';
 
-const stagingTrack: NewExperience = {
-  id: 'd4a1e6b2-8c3f-5a7e-9b0c-1d2e3f4a5b6c',
-  slug: 'prueba-track-audio',
-  title: '[PRUEBA] Track de prueba',
-  description: 'Track de prueba para staging',
-  format: 'track',
-  themeKey: 'community',
-  audioUrl: STAGING_AUDIO_KEY,
-  durationSeconds: 180,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: true,
-  imageKey: TRACK_IMAGE_KEYS[1],
-  geofenceBypassable: false,
-  published: true,
-};
-
-const stagingTrip: NewExperience = {
-  id: 'e5b2f7c3-9d40-5b8f-ac1d-2e3f4a5b6c7d',
-  slug: 'prueba-trip-audio',
-  title: '[PRUEBA] Recorrido de prueba',
-  description: 'Recorrido de prueba para staging',
-  format: 'trip',
-  themeKey: 'landscapes',
-  audioUrl: STAGING_AUDIO_KEY,
-  durationSeconds: 1800,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: false,
-  price: 350000,
-  currency: 'ARS',
-  imageKey: TRACK_IMAGE_KEYS[0],
-  geofenceBypassable: false,
-  published: true,
-};
-
-const stagingFeedback: NewExperience = {
-  id: 'f6c308d4-ae51-5c90-bd2e-3f4a5b6c7d8e',
-  slug: 'prueba-feedback',
-  title: '[PRUEBA] Feedback de prueba',
-  description: 'Feedback general de prueba para staging',
-  format: 'general-feedback',
-  themeKey: 'community',
-  audioUrl: null,
-  durationSeconds: 0,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: true,
-  imageKey: TRACK_IMAGE_KEYS[2],
-  geofenceBypassable: false,
-  published: true,
-};
-
-export const stagingOnlyExperiences: readonly NewExperience[] = [
-  stagingTrack,
-  stagingTrip,
-  stagingFeedback,
+const stagingTracks: readonly NewExperience[] = [
+  {
+    id: 'd4a1e6b2-0000-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'test-track-00-free-hugo-forest',
+    title: '[Test-T00] Free - Bosque de Hugo',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.21139923856439,
+    longitude: -64.73921167552203,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'd4a1e6b2-0001-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'test-track-01-geomode-default-format-hugo-path',
+    title: '[Test-T01] Free - Camino de Hugo con restricción alcance formato',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.210959146698336,
+    longitude: -64.7396157534579,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'd4a1e6b2-0002-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'test-track-02-geomode-entity-radius-within-hugo-path',
+    title: '[Test-T02] Free - Camino de Hugo mayor alcance',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.210959146698336,
+    longitude: -64.7396157534579,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'entityRadius',
+    radiusMeters: 70,
+    published: true,
+  },
+  {
+    id: 'd4a1e6b2-0003-5a7e-9b0c-1d2e3f4a5b6c',
+    slug: 'test-track-03-geomode-unrestricted-hugo-path',
+    title: '[Test-T03] Free - Camino de Hugo sin restricción alcance',
+    description: 'Track de prueba para staging',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.210959146698336,
+    longitude: -64.7396157534579,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'unrestricted',
+    radiusMeters: null,
+    published: true,
+  },
 ];
 
-export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
+const stagingTripTest1Id = 'e5b2f7c3-0000-5b8f-ac1d-2e3f4a5b6c7d';
+const stagingTripTest2Id = 'e5b2f7c3-0001-5b8f-ac1d-2e3f4a5b6c7d';
+const stagingTrips: readonly NewExperience[] = [
   {
-    experienceId: stagingTrip.id!,
+    id: stagingTripTest1Id,
+    slug: 'test-trip-00-geofence-default-format-hugo-path',
+    title: '[Test-R00] Deriva de prueba',
+    description: 'Recorrido de prueba para staging',
+    format: 'trip',
+    themeKey: 'landscapes',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 1800,
+    latitude: -32.211913,
+    longitude: -64.73809012343702,
+    free: false,
+    price: 350000,
+    currency: 'ARS',
+    imageKey: TRACK_IMAGE_KEYS[0],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: stagingTripTest2Id,
+    slug: 'test-trip-01geofence-entity-radius-hugo-path',
+    title: '[Test-R01] Deriva de prueba con geofence entidad',
+    description: 'Deriva de prueba para staging',
+    format: 'trip',
+    themeKey: 'landscapes',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 1800,
+    latitude: -32.211913,
+    longitude: -64.73809012343702,
+    free: false,
+    price: 350000,
+    currency: 'ARS',
+    imageKey: TRACK_IMAGE_KEYS[0],
+    geofenceBypassable: false,
+    geoMode: 'entityRadius',
+    radiusMeters: 10,
+    published: true,
+  },
+];
+
+export const stagingOnlyExperiences: readonly NewExperience[] = [...stagingTracks, ...stagingTrips];
+
+export type WaypointInput = Omit<NewWaypoint, 'experienceId'>;
+
+export const stagingHugoPathWaypoints: readonly WaypointInput[] = [
+  {
     order: 1,
     latitude: -32.212488,
     longitude: -64.736874,
     radiusMeters: 50,
   },
   {
-    experienceId: stagingTrip.id!,
     order: 2,
     latitude: -32.21333,
     longitude: -64.736273,
     radiusMeters: 50,
   },
+];
+
+export const stagingTripTest1HugoPathWaypoints: readonly NewWaypoint[] =
+  stagingHugoPathWaypoints.map((newWayPoint) => ({
+    ...newWayPoint,
+    experienceId: stagingTripTest1Id,
+  }));
+
+export const stagingTripTest2HugoPathWaypoints: readonly NewWaypoint[] =
+  stagingHugoPathWaypoints.map((newWayPoint) => ({
+    ...newWayPoint,
+    experienceId: stagingTripTest2Id,
+  }));
+
+export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
+  ...stagingTripTest1HugoPathWaypoints,
+  ...stagingTripTest2HugoPathWaypoints,
 ];

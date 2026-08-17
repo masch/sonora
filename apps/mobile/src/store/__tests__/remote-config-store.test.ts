@@ -1,8 +1,8 @@
-import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import type { RemoteConfigPayload } from '@sonora/shared';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import { ApiClient } from '../../services/api-client';
 import { getCachedConfig, setCachedConfig } from '../../storage/config-cache';
-import { useRemoteConfigStore, computeVersionStatus } from '../remote-config-store';
+import { computeVersionStatus, useRemoteConfigStore } from '../remote-config-store';
 
 // Mock Constants so installedVersion is stable for versionStatus tests
 jest.mock('expo-constants', () => ({
@@ -28,8 +28,14 @@ const mockApiGet = ApiClient.get as jest.Mock;
 const mockGetCachedConfig = getCachedConfig as jest.Mock;
 const mockSetCachedConfig = setCachedConfig as jest.Mock;
 
+// Per-format geofence shape (GEOF.1). Note: track.defaultMode is 'formatDefaultRadius' per
+// USER DECISION C (matches DEFAULT_REMOTE_CONFIG; both walkable formats use the format default).
 const DEFAULT_CONFIG = {
-  geofence: { radiusMeters: 50, bypassGeofence: false },
+  geofence: {
+    trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+    track: { radiusMeters: 45, defaultMode: 'formatDefaultRadius' },
+    bypassGeofence: false,
+  },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
 };
@@ -135,19 +141,29 @@ describe('RemoteConfigStore', () => {
 
   it('fetch API and merge remote config on init', async () => {
     mockApiGet.mockResolvedValue({
-      geofence: { radiusMeters: 200, bypassGeofence: true },
+      geofence: {
+        trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: true,
+      },
     });
 
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
     expect(state.isLoading).toBe(false);
-    expect(state.config.geofence.radiusMeters).toBe(200);
+    expect(state.config.geofence.trip.radiusMeters).toBe(200);
     expect(state.config.geofence.bypassGeofence).toBe(true);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
     expect(state.config.feedback.syncIntervalSec).toBe(30);
     expect(mockSetCachedConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ geofence: { radiusMeters: 200, bypassGeofence: true } }),
+      expect.objectContaining({
+        geofence: expect.objectContaining({
+          trip: { radiusMeters: 200, defaultMode: 'formatDefaultRadius' },
+          track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+          bypassGeofence: true,
+        }),
+      }),
     );
   });
 
@@ -163,7 +179,11 @@ describe('RemoteConfigStore', () => {
 
   it('uses cached config when API fails and cache exists', async () => {
     const cachedConfig: RemoteConfigPayload = {
-      geofence: { radiusMeters: 300, bypassGeofence: true },
+      geofence: {
+        trip: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: true,
+      },
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
@@ -189,25 +209,34 @@ describe('RemoteConfigStore', () => {
   });
 
   it('handles partial response — received fields override, missing keep defaults', async () => {
-    mockApiGet.mockResolvedValue({ geofence: { radiusMeters: 50, bypassGeofence: true } });
-
-    await useRemoteConfigStore.getState().init();
-
-    const state = useRemoteConfigStore.getState();
-    expect(state.config.geofence.bypassGeofence).toBe(true);
-    expect(state.config.geofence.radiusMeters).toBe(50);
-    expect(state.config.audio.rewindOffsetMs).toBe(10000);
-  });
-
-  it('handles type mismatch — discards invalid field, keeps default', async () => {
     mockApiGet.mockResolvedValue({
-      geofence: { radiusMeters: 'not-a-number' },
+      geofence: {
+        trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: true,
+      },
     });
 
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config.geofence.radiusMeters).toBe(50);
+    expect(state.config.geofence.bypassGeofence).toBe(true);
+    expect(state.config.geofence.trip.radiusMeters).toBe(50);
+    expect(state.config.geofence.track.radiusMeters).toBe(50);
+    expect(state.config.audio.rewindOffsetMs).toBe(10000);
+  });
+
+  it('handles type mismatch — discards invalid field, keeps default', async () => {
+    mockApiGet.mockResolvedValue({
+      geofence: {
+        trip: { radiusMeters: 'not-a-number', defaultMode: 'formatDefaultRadius' },
+      },
+    });
+
+    await useRemoteConfigStore.getState().init();
+
+    const state = useRemoteConfigStore.getState();
+    expect(state.config.geofence.trip.radiusMeters).toBe(50);
   });
 
   it('falls back to defaults when API request is aborted (timeout)', async () => {
@@ -223,14 +252,17 @@ describe('RemoteConfigStore', () => {
   });
 
   it('fills missing cache fields with defaults', async () => {
-    const partialCache = { geofence: { radiusMeters: 999 } } as RemoteConfigPayload;
+    const partialCache = {
+      geofence: { trip: { radiusMeters: 999 } },
+    } as unknown as RemoteConfigPayload;
     mockGetCachedConfig.mockResolvedValue(partialCache);
     mockApiGet.mockRejectedValue(new Error('Offline'));
 
     await useRemoteConfigStore.getState().init();
 
     const state = useRemoteConfigStore.getState();
-    expect(state.config.geofence.radiusMeters).toBe(999);
+    expect(state.config.geofence.trip.radiusMeters).toBe(999);
+    expect(state.config.geofence.track.radiusMeters).toBe(45);
     expect(state.config.geofence.bypassGeofence).toBe(false);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
     expect(state.config.feedback.syncIntervalSec).toBe(30);
@@ -314,18 +346,30 @@ describe('RemoteConfigStore', () => {
   });
 
   it('refetch triggers a new API call and updates config', async () => {
-    mockApiGet.mockResolvedValueOnce({ geofence: { radiusMeters: 100, bypassGeofence: false } });
+    mockApiGet.mockResolvedValueOnce({
+      geofence: {
+        trip: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: false,
+      },
+    });
 
     await useRemoteConfigStore.getState().init();
 
-    expect(useRemoteConfigStore.getState().config.geofence.radiusMeters).toBe(100);
+    expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(100);
 
-    mockApiGet.mockResolvedValueOnce({ geofence: { radiusMeters: 500, bypassGeofence: false } });
+    mockApiGet.mockResolvedValueOnce({
+      geofence: {
+        trip: { radiusMeters: 500, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters: 500, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: false,
+      },
+    });
 
     useRemoteConfigStore.getState().refetch();
 
     await waitFor(() => {
-      expect(useRemoteConfigStore.getState().config.geofence.radiusMeters).toBe(500);
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(500);
     });
 
     expect(useRemoteConfigStore.getState().config.geofence.bypassGeofence).toBe(false);

@@ -44,6 +44,8 @@ async function run() {
           description: 'A paid experience created for testing the Mercado Pago integration.',
           format: 'trip',
           themeKey: 'landscapes',
+          geoMode: 'formatDefaultRadius',
+          radiusMeters: null,
           price: 15000,
           free: false,
           audioUrl: 'https://example.com/audio.mp3',

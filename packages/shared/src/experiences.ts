@@ -1,3 +1,5 @@
+import type { GeoMode } from './geo/proximity';
+
 export const USER_EXPERIENCE_FORMATS = ['track', 'trip'] as const;
 export type UserExperienceFormat = (typeof USER_EXPERIENCE_FORMATS)[number];
 
@@ -51,6 +53,8 @@ export interface BaseExperience {
   currency?: string;
   imageKey: TrackImageKey;
   geofenceBypassable?: boolean;
+  geoMode: GeoMode;
+  radiusMeters: number | null;
 }
 
 export interface TrackExperience extends BaseExperience {
