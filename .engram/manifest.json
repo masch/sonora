@@ -8,6 +8,38 @@
       "sessions": 104,
       "memories": 69,
       "prompts": 412
+    },
+    {
+      "id": "46fa5fdb",
+      "created_by": "masch",
+      "created_at": "2026-08-17T12:25:55Z",
+      "sessions": 222,
+      "memories": 157,
+      "prompts": 684
+    },
+    {
+      "id": "a58be1fc",
+      "created_by": "masch",
+      "created_at": "2026-08-17T12:28:48Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "231b6277",
+      "created_by": "masch",
+      "created_at": "2026-08-17T12:32:02Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
+    },
+    {
+      "id": "a0eb0670",
+      "created_by": "masch",
+      "created_at": "2026-08-17T12:37:00Z",
+      "sessions": 0,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }

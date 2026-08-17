@@ -1,4 +1,8 @@
-import { useAudioPlayerStore } from '@/store/audio-player-store';
+import {
+  _resetLockScreenStateForTests,
+  enableLockScreenControls,
+  useAudioPlayerStore,
+} from '@/store/audio-player-store';
 
 function createMockPlayer() {
   return {
@@ -7,11 +11,13 @@ function createMockPlayer() {
     seekTo: jest.fn().mockResolvedValue(undefined),
     replace: jest.fn(),
     remove: jest.fn(),
+    setActiveForLockScreen: jest.fn(),
   };
 }
 
 describe('AudioPlayerStore', () => {
   beforeEach(() => {
+    _resetLockScreenStateForTests();
     useAudioPlayerStore.setState({
       status: 'idle',
       positionMs: 0,
@@ -180,5 +186,47 @@ describe('AudioPlayerStore', () => {
     const state = useAudioPlayerStore.getState();
     expect(state.status).toBe('error');
     expect(state.errorMsg).toBe('Playback failed');
+  });
+
+  it('enableLockScreenControls debounces rapid lockscreen updates', () => {
+    jest.useFakeTimers();
+    const mockPlayer = createMockPlayer();
+
+    enableLockScreenControls(mockPlayer as never, { title: 'Test 1' });
+    enableLockScreenControls(mockPlayer as never, { title: 'Test 2' });
+
+    // Pending timer hasn't fired yet
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(150);
+
+    // Only 1 debounced call with latest metadata executed
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledWith(
+      true,
+      { title: 'Test 2' },
+      expect.any(Object),
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('prevents redundant lockscreen updates when metadata is identical and active', () => {
+    jest.useFakeTimers();
+    const mockPlayer = createMockPlayer();
+
+    // Initial activation call
+    enableLockScreenControls(mockPlayer as never, { title: 'Same Track' });
+    jest.advanceTimersByTime(150);
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+    // Second call with identical metadata after active
+    enableLockScreenControls(mockPlayer as never, { title: 'Same Track' });
+    jest.advanceTimersByTime(150);
+
+    // Should NOT call setActiveForLockScreen again
+    expect(mockPlayer.setActiveForLockScreen).toHaveBeenCalledTimes(1);
+
+    jest.useRealTimers();
   });
 });

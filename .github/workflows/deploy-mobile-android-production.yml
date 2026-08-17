@@ -13,6 +13,11 @@ on:
           - beta
           - production
         default: 'internal'
+      enable_play:
+        description: 'Enable distribution to Google Play Store'
+        required: false
+        type: boolean
+        default: true
       enable_firebase:
         description: 'Enable distribution to Firebase App Distribution'
         required: false
@@ -25,6 +30,11 @@ on:
         default: 'sonora-team'
   workflow_call:
     inputs:
+      enable_play:
+        description: 'Enable distribution to Google Play Store'
+        required: false
+        type: boolean
+        default: true
       play_track:
         description: 'Google Play Track (internal, alpha, beta, production)'
         required: false
@@ -257,6 +267,7 @@ jobs:
           gh release upload "$TAG_NAME" "$APK_PATH" --clobber
 
   deploy-play-store:
+    if: ${{ inputs.enable_play == true }}
     runs-on: ubuntu-latest
     needs: [sign-android, build-android]
     environment: production

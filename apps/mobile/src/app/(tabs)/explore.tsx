@@ -8,32 +8,32 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
+import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { ScrollScreenWrapper, TAB_BAR_INSET } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
 import { WebBadge } from '@/components/web-badge';
-import { Icon } from '@/components/icon';
+import {
+  fetchExperiences,
+  isPlayableExperience,
+  type Experience,
+  type PlayableExperience,
+} from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import {
-  fetchExperiences,
-  type Experience,
-  type PlayableExperience,
-  isPlayableExperience,
-} from '@/data/experiences';
-import { TwView, TwPressable } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { useState, useEffect } from 'react';
 import { logger } from '@/utils/logger';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { SONORA_LOGO, SONORA_BANNER_BG, SONORA_MAIN_BG } from '@/constants/images';
+import { SONORA_BANNER_BG, SONORA_LOGO, SONORA_MAIN_BG } from '@/constants/images';
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pb-6';
 
 // Technical constants (paths & commands) excluded from translation lists
-const HINT_FILE_PATH = 'src/app/explore.tsx';
+const HINT_FILE_PATH = 'src/app/(tabs)/explore.tsx';
 const RESET_PROJECT_COMMAND = 'npm run reset-project';
 
 /** Sub-component that only mounts when an active experience is selected.
@@ -94,37 +94,41 @@ export default function ExploreScreen() {
   const [activeExperience, setActiveExperience] = useState<Experience | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const isMountedRef = useRef(true);
 
-  const loadExperience = async () => {
+  const loadExperience = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
       const exps = await fetchExperiences();
+      if (!isMountedRef.current) return;
       if (exps.length > 0) {
         setActiveExperience(exps[0]);
       }
       setError(false);
     } catch (e) {
+      if (!isMountedRef.current) return;
       logger.error(e);
       setError(true);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
-
-  // Initial fetch — no setState in the effect body itself, only in async callbacks
-  useEffect(() => {
-    fetchExperiences()
-      .then((exps) => {
-        if (exps.length > 0) setActiveExperience(exps[0]);
-        setError(false);
-      })
-      .catch((e) => {
-        logger.error(e);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    void Promise.resolve().then(() => {
+      if (isMountedRef.current) {
+        void loadExperience();
+      }
+    });
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadExperience]);
 
   if (loading) {
     return (

@@ -8,6 +8,7 @@ export {
   INSTRUCTIONS_AUDIO_KEY,
   INSTRUCTIONS_IMAGE_KEY,
   INSTRUCTIONS_FALLBACK_TRACK_ID,
+  GENERAL_FEEDBACK_EXPERIENCE_ID,
 } from '@sonora/shared';
 export { USER_EXPERIENCE_FORMATS, isPlayableExperience } from '@sonora/shared';
 export type {
@@ -46,7 +47,6 @@ export async function fetchThemes(signal?: AbortSignal): Promise<Theme[]> {
   return ApiClient.get<Theme[]>('/themes', {
     signal,
     cacheKey: THEMES_CACHE_KEY,
-    customErrorMessage: 'Failed to fetch themes',
   });
 }
 
@@ -54,7 +54,6 @@ export async function fetchExperiences(signal?: AbortSignal): Promise<Experience
   return ApiClient.get<Experience[]>('/experiences', {
     signal,
     cacheKey: EXPERIENCES_CACHE_KEY,
-    customErrorMessage: 'Failed to fetch experiences',
     transform: (data: Experience[]) =>
       data.filter((exp) => (USER_EXPERIENCE_FORMATS as readonly string[]).includes(exp.format)),
   });

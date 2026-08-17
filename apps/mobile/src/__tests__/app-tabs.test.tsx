@@ -10,25 +10,25 @@ jest.mock('@/constants/tabs', () => ({
   TABS: [
     {
       name: 'index',
-      label: 'Home',
+      labelKey: 'tabs.index',
       symbolViewName: { ios: 'house', android: 'home', web: 'home' },
       hidden: false,
     },
     {
       name: 'experiences',
-      label: 'Experiences',
+      labelKey: 'tabs.experiences',
       symbolViewName: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
       hidden: false,
     },
     {
       name: 'explore',
-      label: 'Explore',
+      labelKey: 'tabs.explore',
       symbolViewName: { ios: 'compass.drawing', android: 'explore', web: 'explore' },
       hidden: true,
     },
     {
       name: 'settings',
-      label: 'Settings',
+      labelKey: 'tabs.settings',
       symbolViewName: { ios: 'gear', android: 'settings', web: 'settings' },
       hidden: true,
     },

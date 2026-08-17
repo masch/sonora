@@ -19,7 +19,11 @@ describe('config-cache', () => {
     it('stores config as JSON string under the cache key', async () => {
       const { setCachedConfig } = importModule();
       const config = {
-        geofence: { radiusMeters: 100, bypassGeofence: true },
+        geofence: {
+          trip: { radiusMeters: 100, defaultMode: 'formatDefaultRadius' as const },
+          track: { radiusMeters: 100, defaultMode: 'entityRadius' as const },
+          bypassGeofence: true,
+        },
         audio: { rewindOffsetMs: 15000 },
         feedback: { syncIntervalSec: 60 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
@@ -34,7 +38,11 @@ describe('config-cache', () => {
   describe('getCachedConfig', () => {
     it('returns parsed config when cache exists', async () => {
       const config = {
-        geofence: { radiusMeters: 75, bypassGeofence: false },
+        geofence: {
+          trip: { radiusMeters: 75, defaultMode: 'formatDefaultRadius' as const },
+          track: { radiusMeters: 75, defaultMode: 'entityRadius' as const },
+          bypassGeofence: false,
+        },
         audio: { rewindOffsetMs: 5000 },
         feedback: { syncIntervalSec: 120 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },

@@ -1,12 +1,21 @@
 import { and, eq, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
+import { zValidator } from '@hono/zod-validator';
+import {
+  DEFAULT_REMOTE_CONFIG,
+  ProximityBodySchema,
+  type ProximityBody,
+  resolveProximity,
+  type UserExperienceFormat,
+} from '@sonora/shared';
 import { experienceAccesses, experiences, purchases, waypoints } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
-import { success } from '../middleware/problem-details';
+import { ERRORS, problem, success } from '../middleware/problem-details';
 import { urlGuard } from '../middleware/url-guard';
+import { validationHook } from '../middleware/validation-error';
 
 import { jwtGuard } from '../middleware/jwt-guard';
 import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
@@ -110,6 +119,49 @@ experiencesRouter.get(
       });
     }
     return success(c, result);
+  },
+);
+
+experiencesRouter.post(
+  '/:id/proximity',
+  dbGuard(),
+  deviceIdGuard(),
+  rateLimit(RATE_LIMIT_DEFAULTS.PROXIMITY_CHECK),
+  zValidator('json', ProximityBodySchema, validationHook),
+  async (c) => {
+    const db = c.var.db;
+    const id = c.req.param('id');
+    const exp = await db.query.experiences.findFirst({
+      where: (experiences, { and, eq }) =>
+        and(eq(experiences.id, id), eq(experiences.published, true)),
+      columns: {
+        format: true,
+        latitude: true,
+        longitude: true,
+        geoMode: true,
+        radiusMeters: true,
+      },
+    });
+    if (!exp) {
+      return problem(c, ERRORS.NOT_FOUND, 'Experience not found');
+    }
+    const { latitude, longitude } = c.req.valid('json') as ProximityBody;
+
+    const geo = resolveProximity({
+      user: { latitude, longitude },
+      origin: { latitude: exp.latitude, longitude: exp.longitude },
+      format: exp.format as UserExperienceFormat,
+      geoMode: exp.geoMode,
+      radiusMeters: exp.radiusMeters,
+      bypassGeofence: DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
+      geofence: DEFAULT_REMOTE_CONFIG.geofence,
+    });
+
+    return success(c, {
+      canListen: geo.canListen,
+      distanceMeters: geo.distanceMeters,
+      effectiveRadiusMeters: geo.effectiveRadiusMeters,
+    });
   },
 );
 

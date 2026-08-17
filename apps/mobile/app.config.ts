@@ -13,6 +13,7 @@ const ENV_CONFIG = {
     icon: './assets/images/sonora/logo_staging.png',
     adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
     splashColor: '#F59E0B',
+    splashIcon: './assets/images/sonora/logo_staging.png',
   },
   production: {
     name: 'Sonora',
@@ -22,6 +23,7 @@ const ENV_CONFIG = {
     icon: './assets/images/icon.png',
     adaptiveIconForeground: './assets/images/android-icon-foreground.png',
     splashColor: '#208AEF',
+    splashIcon: './assets/images/splash-icon.png',
   },
 };
 
@@ -34,6 +36,10 @@ if (!appVersionName) {
       'Set it via CI (extracted from git tag) or pass it manually for local builds.',
   );
 }
+
+const appVersionCode = process.env.APP_VERSION_CODE
+  ? parseInt(process.env.APP_VERSION_CODE, 10)
+  : 6;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   return {
@@ -63,7 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       predictiveBackGestureEnabled: false,
       package: activeEnv.appId,
       googleServicesFile: './google-services.json',
-      versionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 6,
+      versionCode: appVersionCode,
       intentFilters: [
         {
           action: 'VIEW',
@@ -99,7 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           backgroundColor: activeEnv.splashColor,
           android: {
-            image: './assets/images/splash-icon.png',
+            image: activeEnv.splashIcon,
             imageWidth: 76,
           },
         },
@@ -131,7 +137,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appVersionName: appVersionName,
-      appVersionCode: process.env.APP_VERSION_CODE ? parseInt(process.env.APP_VERSION_CODE, 10) : 0,
+      appVersionCode: appVersionCode,
       router: {},
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',

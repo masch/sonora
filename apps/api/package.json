@@ -9,6 +9,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "bun src/db/seed.ts",
+    "db:seed:staging": "bun src/db/seed-staging.ts",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -20,14 +21,14 @@
     "@neondatabase/serverless": "1.1.0",
     "@sonora/shared": "workspace:*",
     "drizzle-orm": "0.45.2",
-    "hono": "4.12.32",
+    "hono": "4.12.34",
     "mercadopago": "3.2.0",
-    "pg": "8.22.0"
+    "pg": "8.23.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260624.1",
     "@types/node": "26.0.1",
-    "@types/pg": "8.20.0",
+    "@types/pg": "8.21.0",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
     "tsx": "4.22.4",

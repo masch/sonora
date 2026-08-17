@@ -7,9 +7,14 @@ import { ExperienceAudioMetadata } from '@/store/audio-player-store';
 let mockSegments = ['(tabs)', 'index'];
 let mockPathname = '/(tabs)/index';
 
+const mockPush = jest.fn();
+
 jest.mock('expo-router', () => ({
   useSegments: () => mockSegments,
   usePathname: () => mockPathname,
+  useRouter: () => ({
+    push: mockPush,
+  }),
   useFocusEffect: jest.fn(),
 }));
 
@@ -145,7 +150,7 @@ describe('GlobalAudioPlayer', () => {
     ['/(tabs)', ['(tabs)']],
     ['/(tabs)/index', ['(tabs)', 'index']],
   ])(
-    'hides when playing instructions on the Home screen with pathname "%s"',
+    'shows when playing instructions on the Home screen with pathname "%s"',
     async (pathname, segments) => {
       mockSegments = segments;
       mockPathname = pathname;
@@ -153,11 +158,11 @@ describe('GlobalAudioPlayer', () => {
       mockState.currentUri = 'file://instructions.mp3';
 
       const { queryByTestId } = await render(<GlobalAudioPlayer />);
-      expect(queryByTestId('global-audio-player')).toBeNull();
+      expect(queryByTestId('global-audio-player')).not.toBeNull();
     },
   );
 
-  it('hides when playing instructions on the Home tab screen with a blob URI but metadata id instructions', async () => {
+  it('shows when playing instructions on the Home tab screen with a blob URI and metadata id instructions', async () => {
     mockSegments = ['(tabs)', 'index'];
     mockPathname = '/(tabs)/index';
     mockState.status = 'playing';
@@ -168,7 +173,7 @@ describe('GlobalAudioPlayer', () => {
     };
 
     const { queryByTestId } = await render(<GlobalAudioPlayer />);
-    expect(queryByTestId('global-audio-player')).toBeNull();
+    expect(queryByTestId('global-audio-player')).not.toBeNull();
   });
 
   it('hides when on track detail screen and the playing track matches', async () => {
@@ -190,5 +195,38 @@ describe('GlobalAudioPlayer', () => {
 
     const { queryByTestId } = await render(<GlobalAudioPlayer />);
     expect(queryByTestId('global-audio-player')).not.toBeNull();
+  });
+
+  it('navigates to experience detail screen when title is pressed', async () => {
+    mockState.status = 'playing';
+    mockState.currentUri =
+      'file:///var/mobile/tracks/5a9463ce-daba-4756-892e-4dd4cb862309/audio.mp3';
+    mockState.currentMetadata = {
+      id: '5a9463ce-daba-4756-892e-4dd4cb862309',
+      title: 'Poesia del Rio',
+    };
+
+    const { getByTestId } = await render(<GlobalAudioPlayer />);
+    const titleBtn = getByTestId('global-player-title-button');
+    await fireEvent.press(titleBtn);
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/poetics/5a9463ce-daba-4756-892e-4dd4cb862309?title=Poesia%20del%20Rio',
+    );
+  });
+
+  it('navigates to derivas tab screen when title is pressed for instructions audio', async () => {
+    mockState.status = 'playing';
+    mockState.currentUri = 'file://instructions.mp3';
+    mockState.currentMetadata = {
+      id: 'instructions',
+      title: 'Instructions',
+    };
+
+    const { getByTestId } = await render(<GlobalAudioPlayer />);
+    const titleBtn = getByTestId('global-player-title-button');
+    await fireEvent.press(titleBtn);
+
+    expect(mockPush).toHaveBeenCalledWith('/derivas');
   });
 });

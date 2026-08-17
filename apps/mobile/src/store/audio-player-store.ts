@@ -1,8 +1,9 @@
+import { type AudioLockScreenOptions, type AudioMetadata, type AudioPlayer } from 'expo-audio';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
-import type { AudioPlayer, AudioMetadata, AudioLockScreenOptions } from 'expo-audio';
 
 import { AnalyticsService } from '@/services/analytics';
+import { logger } from '@/utils/logger';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error';
 
@@ -51,23 +52,68 @@ const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   showSeekForward: false,
 };
 
-function enableLockScreenControls(player: AudioPlayer, metadata: ExperienceAudioMetadata | null) {
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+let lastLockScreenMetadataStr = '';
+let isLockScreenActive = false;
+let lockScreenUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function _resetLockScreenStateForTests() {
+  if (lockScreenUpdateTimer) {
+    clearTimeout(lockScreenUpdateTimer);
+    lockScreenUpdateTimer = null;
+  }
+  lastLockScreenMetadataStr = '';
+  isLockScreenActive = false;
+}
+
+/**
+ * Activates or updates lock screen media playback controls safely.
+ *
+ * Why debouncing & deduplication are required:
+ * On native Android (`expo-audio` -> `AudioControlsService.kt`), calls to `setActiveForLockScreen(true, ...)`
+ * invoke `MediaSession.Builder(context, sessionPlayer).build()` with a default empty session ID ("").
+ * If multiple calls are dispatched concurrently or in rapid succession (e.g. during track transitions,
+ * rapid re-renders, or playback state events), Android Media3 throws a fatal crash:
+ * `java.lang.IllegalStateException: Session ID must be unique. ID=`.
+ *
+ * To prevent this:
+ * 1. Metadata changes are deduplicated via serialized JSON comparison when already active.
+ * 2. Rapid consecutive updates are debounced by 100ms, collapsing in-flight bursts into a single native invocation.
+ */
+export function enableLockScreenControls(
+  player: AudioPlayer,
+  metadata: ExperienceAudioMetadata | null,
+) {
+  if (Platform.OS === 'web') return;
+
+  const serialized = JSON.stringify(metadata ?? {});
+  if (serialized === lastLockScreenMetadataStr && isLockScreenActive) {
+    return;
+  }
+
+  if (lockScreenUpdateTimer) {
+    clearTimeout(lockScreenUpdateTimer);
+  }
+
+  lockScreenUpdateTimer = setTimeout(() => {
+    lockScreenUpdateTimer = null;
     try {
       player.setActiveForLockScreen(true, metadata ?? undefined, LOCK_SCREEN_OPTIONS);
-    } catch {
-      // Gracefully handle — lock screen controls are best-effort
+      lastLockScreenMetadataStr = serialized;
+      isLockScreenActive = true;
+    } catch (error) {
+      logger.warn('[AudioPlayerStore] Failed to activate lock screen controls', error);
     }
-  }
+  }, 100);
 }
 
 function disableLockScreenControls(player: AudioPlayer) {
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    try {
-      player.setActiveForLockScreen(false);
-    } catch {
-      // Best-effort cleanup
-    }
+  if (Platform.OS === 'web') return;
+
+  _resetLockScreenStateForTests();
+  try {
+    player.setActiveForLockScreen(false);
+  } catch (error) {
+    logger.warn('[AudioPlayerStore] Failed to disable lock screen controls', error);
   }
 }
 
@@ -199,7 +245,7 @@ export const useAudioPlayerStore = create<AudioPlayerStore & { _player: AudioPla
         track_id: getTrackIdFromUri(uri),
         uri,
         title: currentMetadata?.title ?? 'unknown',
-        resume: false,
+        resume: !!pendingPlayRequest.resume,
       });
     },
 

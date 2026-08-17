@@ -24,8 +24,14 @@ describe('GET /config', () => {
 
     const geofence = body.geofence as Record<string, unknown>;
     expect(geofence).toHaveProperty('bypassGeofence');
-    expect(typeof geofence.radiusMeters).toBe('number');
     expect(typeof geofence.bypassGeofence).toBe('boolean');
+
+    const tripGeo = (geofence.trip as Record<string, unknown>) ?? {};
+    const trackGeo = (geofence.track as Record<string, unknown>) ?? {};
+    expect(typeof tripGeo.radiusMeters).toBe('number');
+    expect(typeof tripGeo.defaultMode).toBe('string');
+    expect(typeof trackGeo.radiusMeters).toBe('number');
+    expect(typeof trackGeo.defaultMode).toBe('string');
 
     const audio = body.audio as Record<string, unknown>;
     expect(typeof audio.rewindOffsetMs).toBe('number');
@@ -63,7 +69,11 @@ describe('GET /config', () => {
   it('returns DEFAULT_REMOTE_CONFIG values', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as {
-      geofence: { radiusMeters: number; bypassGeofence: boolean };
+      geofence: {
+        trip: { radiusMeters: number; defaultMode: string };
+        track: { radiusMeters: number; defaultMode: string };
+        bypassGeofence: boolean;
+      };
       audio: { rewindOffsetMs: number };
       feedback: { syncIntervalSec: number };
       appVersion: {
@@ -72,12 +82,14 @@ describe('GET /config', () => {
       };
     };
 
-    expect(body.geofence.radiusMeters).toBe(50);
+    expect(body.geofence.trip.radiusMeters).toBe(50);
+    expect(body.geofence.trip.defaultMode).toBe('formatDefaultRadius');
+    expect(body.geofence.track.radiusMeters).toBe(45);
+    expect(body.geofence.track.defaultMode).toBe('formatDefaultRadius');
     expect(body.geofence.bypassGeofence).toBe(false);
     expect(body.audio.rewindOffsetMs).toBe(10000);
     expect(body.feedback.syncIntervalSec).toBe(30);
     expect(body.appVersion.minimumVersion).toBe('0.0.0');
-    expect(body.appVersion.blockOlderVersions).toBe(false);
     expect(body.appVersion.blockOlderVersions).toBe(false);
   });
 
