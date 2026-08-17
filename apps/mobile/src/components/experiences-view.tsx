@@ -19,9 +19,7 @@ import { TwPressable, TwScrollView, TwTextInput, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-
-const FETCH_TIMEOUT_MS = 10_000;
+import { useEffect, useRef, useState } from 'react';
 
 const CARD_BG_COLOR_KEYS: Record<
   ExperienceFormat,
@@ -31,6 +29,11 @@ const CARD_BG_COLOR_KEYS: Record<
   track: 'homeExploreTracksBg',
   'general-feedback': 'homeLocalMessagesBg',
 };
+
+async function fetchDynamicData() {
+  const [fetchedThemes, fetchedExps] = await Promise.all([fetchThemes(), fetchExperiences()]);
+  return { themes: fetchedThemes, experiences: fetchedExps };
+}
 
 export default function ExperiencesScreen({ format }: { format?: ExperienceFormat }) {
   const params = useLocalSearchParams<{ format?: string }>();
@@ -49,80 +52,70 @@ export default function ExperiencesScreen({ format }: { format?: ExperienceForma
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const isMountedRef = useRef(true);
 
-  const loadData = async () => {
-    try {
-      const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
-      const [fetchedThemes, fetchedExps] = await Promise.all([
-        fetchThemes(signal),
-        fetchExperiences(signal),
-      ]);
-      setThemesList(fetchedThemes);
-      setExperiences(fetchedExps);
-      setError(false);
-    } catch (err) {
-      logger.error('Failed to load dynamic data:', err);
-      setError(true);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    const abort = new AbortController();
-
-    const timeoutId = setTimeout(() => {
-      abort.abort();
-      logger.error('Failed to load dynamic data: Request timed out');
-      setError(true);
-      setLoading(false);
-    }, FETCH_TIMEOUT_MS);
-
-    Promise.all([fetchThemes(abort.signal), fetchExperiences(abort.signal)])
-      .then(([fetchedThemes, fetchedExps]) => {
-        clearTimeout(timeoutId);
-        if (abort.signal.aborted) return;
-        setThemesList(fetchedThemes);
-        setExperiences(fetchedExps);
+  const loadData = () => {
+    setLoading(true);
+    setError(false);
+    fetchDynamicData()
+      .then((data) => {
+        if (!isMountedRef.current) return;
+        setThemesList(data.themes);
+        setExperiences(data.experiences);
         setError(false);
         setLoading(false);
       })
       .catch((err) => {
-        clearTimeout(timeoutId);
-        if (abort.signal.aborted) return;
+        if (!isMountedRef.current) return;
         logger.error('Failed to load dynamic data:', err);
         setError(true);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    void Promise.resolve().then(() => {
+      if (isMountedRef.current) {
+        loadData();
+      }
+    });
 
     return () => {
-      clearTimeout(timeoutId);
-      abort.abort();
+      isMountedRef.current = false;
     };
   }, []);
 
-  if (error) {
+  if (loading) {
     return (
-      <TwView className="flex-grow items-center justify-center p-6 bg-background">
-        <ThemedText className="text-base font-bold text-text mb-4 text-center">
-          {t('experiences.errorLoading')}
-        </ThemedText>
-
-        <TwPressable
-          onPress={loadData}
-          className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
-          testID="experiences-retry-button"
-          accessibilityLabel={t('experiences.retry')}
-        >
-          <ThemedText themeColor="background" className="font-semibold">
-            {t('experiences.retry')}
-          </ThemedText>
-        </TwPressable>
-      </TwView>
+      <ScrollScreenWrapper disableBottomPadding>
+        <LoadingView message={t('experiences.loading')} />
+      </ScrollScreenWrapper>
     );
   }
 
-  if (loading) {
-    return <LoadingView message={t('experiences.loading')} />;
+  if (error) {
+    return (
+      <ScrollScreenWrapper disableBottomPadding contentContainerClassName="grow">
+        <TwView className="flex-grow items-center justify-center p-6">
+          <ThemedText className="text-base font-bold text-text mb-4 text-center">
+            {t('experiences.errorLoading')}
+          </ThemedText>
+
+          <TwPressable
+            onPress={() => loadData()}
+            className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
+            testID="experiences-retry-button"
+            accessibilityLabel={t('experiences.retry')}
+          >
+            <ThemedText themeColor="background" className="font-semibold">
+              {t('experiences.retry')}
+            </ThemedText>
+          </TwPressable>
+        </TwView>
+      </ScrollScreenWrapper>
+    );
   }
 
   return (
@@ -197,106 +190,107 @@ function ExperiencesContent({
     <ScrollScreenWrapper
       disableBottomPadding
       backgroundImage={backgroundImg || undefined}
-      contentContainerClassName="grow pb-8 px-6 pt-4"
+      contentContainerClassName="grow pb-8 pt-4"
     >
-      <TwView className="items-center py-4">
-        <ThemedText className="text-xl font-bold tracking-widest text-text uppercase">
-          {t(`experiences.types.${selectedFormat}` as TranslationKeys)}
-        </ThemedText>
+      <TwView className="px-1">
+        <TwView className="items-center py-4">
+          <ThemedText className="text-xl font-bold tracking-widest text-text uppercase">
+            {t(`experiences.types.${selectedFormat}` as TranslationKeys)}
+          </ThemedText>
+        </TwView>
+
+        {!isFormatLocked && (
+          <TwView className="flex-row gap-2 mb-4 justify-center">
+            {USER_EXPERIENCE_FORMATS.map((format) => {
+              const isSelected = selectedFormat === format;
+              const translationKey = `experiences.types.${format}` as TranslationKeys;
+              return (
+                <TwPressable
+                  key={format}
+                  onPress={() => {
+                    setSelectedFormat(format);
+                    setSelectedTheme('all');
+                  }}
+                  className={`px-4 py-1.5 rounded-lg border ${
+                    isSelected
+                      ? 'bg-text border-text'
+                      : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
+                  } active:opacity-75`}
+                  testID={`type-chip-${format}`}
+                  accessibilityLabel={t(translationKey)}
+                >
+                  <ThemedText
+                    themeColor={isSelected ? 'background' : 'text'}
+                    className="text-xs font-bold capitalize"
+                  >
+                    {t(translationKey)}
+                  </ThemedText>
+                </TwPressable>
+              );
+            })}
+          </TwView>
+        )}
+
+        <TwView className="flex-row items-center gap-2 mb-4">
+          <TwView className="flex-1 flex-row items-center bg-zinc-200/50 dark:bg-zinc-800/40 border border-zinc-300/30 dark:border-zinc-700/30 rounded-xl px-3.5 py-2.5">
+            <Icon
+              ios="magnifyingglass"
+              android="search"
+              web="search"
+              size={18}
+              tintColor={colors.textSecondary}
+            />
+            <TwTextInput
+              placeholder={t(`experiences.searchPlaceholder.${selectedFormat}` as TranslationKeys)}
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              className="flex-1 text-sm font-medium text-text ml-2 pb-0"
+              accessibilityLabel={t(
+                `experiences.searchPlaceholder.${selectedFormat}` as TranslationKeys,
+              )}
+              testID="tracks-search-input"
+            />
+          </TwView>
+        </TwView>
       </TwView>
 
-      {!isFormatLocked && (
-        <TwView className="flex-row gap-2 mb-4 justify-center">
-          {USER_EXPERIENCE_FORMATS.map((format) => {
-            const isSelected = selectedFormat === format;
-            const translationKey = `experiences.types.${format}` as TranslationKeys;
+      <TwView className="mb-5">
+        <TwScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="px-6 gap-2.5 flex-row items-center py-1"
+        >
+          {themeOptions.map((theme) => {
+            const isSelected = selectedTheme === theme.key;
             return (
               <TwPressable
-                key={format}
-                onPress={() => {
-                  setSelectedFormat(format);
-                  setSelectedTheme('all');
-                }}
-                className={`px-4 py-1.5 rounded-lg border ${
+                key={theme.key}
+                onPress={() => setSelectedTheme(theme.key)}
+                className={`px-4 py-2 rounded-full border ${
                   isSelected
                     ? 'bg-text border-text'
                     : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
                 } active:opacity-75`}
-                testID={`type-chip-${format}`}
-                accessibilityLabel={t(translationKey)}
+                accessibilityLabel={t(theme.labelKey)}
+                testID={`category-chip-${theme.key}`}
               >
                 <ThemedText
                   themeColor={isSelected ? 'background' : 'text'}
-                  className="text-xs font-bold capitalize"
+                  className="text-xs font-semibold"
                 >
-                  {t(translationKey)}
+                  {t(theme.labelKey)}
                 </ThemedText>
               </TwPressable>
             );
           })}
-        </TwView>
-      )}
-
-      <TwView className="flex-row items-center gap-2 mb-4">
-        <TwView className="flex-1 flex-row items-center bg-zinc-200/50 dark:bg-zinc-800/40 border border-zinc-300/30 dark:border-zinc-700/30 rounded-xl px-3 py-2.5">
-          <Icon
-            ios="magnifyingglass"
-            android="search"
-            web="search"
-            size={18}
-            tintColor={colors.textSecondary}
-          />
-          <TwTextInput
-            placeholder={t(`experiences.searchPlaceholder.${selectedFormat}` as TranslationKeys)}
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="flex-1 text-sm font-medium text-text ml-2 pb-0"
-            accessibilityLabel={t(
-              `experiences.searchPlaceholder.${selectedFormat}` as TranslationKeys,
-            )}
-            testID="tracks-search-input"
-          />
-        </TwView>
+        </TwScrollView>
       </TwView>
 
-      <TwScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="-mx-6 mb-6 shrink-0"
-        style={{ flexGrow: 0 }}
-        contentContainerClassName="px-6 gap-2 flex-row items-center py-1"
-        contentContainerStyle={{ paddingHorizontal: 24 }}
-      >
-        {themeOptions.map((theme) => {
-          const isSelected = selectedTheme === theme.key;
-          return (
-            <TwPressable
-              key={theme.key}
-              onPress={() => setSelectedTheme(theme.key)}
-              className={`px-4 py-2 rounded-full border ${
-                isSelected
-                  ? 'bg-text border-text'
-                  : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-              } active:opacity-75`}
-              accessibilityLabel={t(theme.labelKey)}
-              testID={`category-chip-${theme.key}`}
-            >
-              <ThemedText
-                themeColor={isSelected ? 'background' : 'text'}
-                className="text-xs font-semibold"
-              >
-                {t(theme.labelKey)}
-              </ThemedText>
-            </TwPressable>
-          );
-        })}
-      </TwScrollView>
+      <TwView className="px-1 gap-5">
+        {/* Instructions Audio Player */}
+        {selectedFormat === 'trip' && <HomeAudioPlayer />}
 
-      {/* Instructions Audio Player */}
-      {selectedFormat === 'trip' && <HomeAudioPlayer />}
-
-      <TwView className="gap-5">
         {filteredExperiences.length === 0 ? (
           <TwView className="items-center py-12" testID="tracks-empty-state">
             <ThemedText
@@ -350,20 +344,6 @@ function ExperiencesContent({
                   {Math.round(exp.durationSeconds / 60)} {t('experiences.minAbbr')}
                 </ThemedText>
               </TwView>
-
-              <TwPressable
-                className="p-2 active:opacity-70"
-                accessibilityLabel={t('experiences.actionsMenu')}
-                testID={`track-actions-${exp.slug}`}
-              >
-                <Icon
-                  ios="ellipsis"
-                  android="more_vert"
-                  web="more_vert"
-                  size={20}
-                  tintColor={colors.homeCardText}
-                />
-              </TwPressable>
             </TwPressable>
           ))
         )}

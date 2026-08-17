@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { useTrackDownload } from '@/hooks/use-track-download';
-import { useImmersionPlayer } from '@/hooks/use-immersion-player';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { formatTime } from '@/utils/time';
-import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
-import { TwPressable, TwView } from '@/tw';
 import { Icon, type GenericIconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
+import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useTrackDownload } from '@/hooks/use-track-download';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { TwPressable, TwView } from '@/tw';
+import { formatTime } from '@/utils/time';
+import { useEffect, useRef } from 'react';
 
 export function HomeAudioPlayer() {
   const { t } = useAppTranslation();
@@ -90,35 +90,40 @@ export function HomeAudioPlayer() {
   }
 
   return (
-    <TwView
-      className="mb-3 rounded-[24px] p-5"
-      style={{ backgroundColor: colors.homeInstructionsBg }}
-    >
+    <TwView className="rounded-[24px] p-5" style={{ backgroundColor: colors.homeInstructionsBg }}>
       <ThemedText className="text-sm font-bold mb-3" style={{ color: colors.homeCardSubtext }}>
         {t('home.instructionsTitle')}
       </ThemedText>
 
-      <TwPressable
-        testID="home-audio-player"
-        onPress={handlePlayPress}
-        disabled={isDownloading}
-        accessibilityLabel={
-          isPlaying
-            ? t('components.mediaControls.btnPause')
-            : download.status === 'completed'
-              ? t('components.mediaControls.btnPlay')
-              : t('components.mediaControls.btnPlayDownload')
-        }
-        className="flex-row items-start gap-4 active:opacity-75"
-      >
-        {/* Play / Pause / Download Icon (Visual indicator inside the pressable card) */}
-        <TwView className="pt-1" testID="home-player-play-button">
-          <Icon name={actionIconName} size={28} tintColor={colors.homeCardText} />
-        </TwView>
+      <TwView className="flex-row items-start gap-4">
+        {/* Play / Pause / Download Icon Button */}
+        <TwPressable
+          testID="home-audio-player"
+          onPress={handlePlayPress}
+          disabled={isDownloading}
+          accessibilityLabel={
+            isPlaying
+              ? t('components.mediaControls.btnPause')
+              : download.status === 'completed'
+                ? t('components.mediaControls.btnPlay')
+                : t('components.mediaControls.btnPlayDownload')
+          }
+          className="pt-1 active:opacity-75"
+        >
+          <TwView testID="home-player-play-button">
+            <Icon name={actionIconName} size={28} tintColor={colors.homeCardText} />
+          </TwView>
+        </TwPressable>
 
         <TwView className="flex-1">
           <TwView className="flex-row justify-between items-start">
-            <TwView className="flex-1 mr-2">
+            <TwPressable
+              testID="home-player-title-button"
+              onPress={handlePlayPress}
+              disabled={isDownloading}
+              className="flex-1 mr-2 active:opacity-75"
+              accessibilityLabel={t('home.instructionsName')}
+            >
               <ThemedText
                 className="text-lg font-extrabold leading-tight"
                 style={{ color: colors.homeCardText }}
@@ -131,17 +136,14 @@ export function HomeAudioPlayer() {
               >
                 {statusText}
               </ThemedText>
-            </TwView>
+            </TwPressable>
 
             {/* Compact Mini Controls (Only shown when downloaded) */}
             {download.status === 'completed' && (
               <TwView className="flex-row items-center gap-1 pt-1">
                 {/* Reset button */}
                 <TwPressable
-                  onPress={(e) => {
-                    e?.stopPropagation?.();
-                    handleReset();
-                  }}
+                  onPress={handleReset}
                   accessibilityLabel={t('components.mediaControls.btnReset')}
                   testID="home-player-reset-button"
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -152,10 +154,7 @@ export function HomeAudioPlayer() {
 
                 {/* Rewind 10s button */}
                 <TwPressable
-                  onPress={(e) => {
-                    e?.stopPropagation?.();
-                    handleRewind();
-                  }}
+                  onPress={handleRewind}
                   accessibilityLabel={t('components.mediaControls.btnRewind')}
                   testID="home-player-rewind-button"
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -186,7 +185,7 @@ export function HomeAudioPlayer() {
             </ThemedText>
           )}
         </TwView>
-      </TwPressable>
+      </TwView>
     </TwView>
   );
 }
