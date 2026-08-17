@@ -84,6 +84,10 @@ verify-web: ## Build web bundle and execute it to verify CJS interop (catches ci
 dev-android: ## Launch Expo dev server for Android (Expo Go)
 	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run android-dev
 
+.PHONY: dev-android-staging
+dev-android-staging: ## Launch Expo dev server for Android (Expo Go) pointing to staging API
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run android-dev
+
 .PHONY: dev-android-native-production
 dev-android-native-production: ## Launch Expo dev server for Android native build pointing to production API
 	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" EXPO_PUBLIC_BYPASS_GEOFENCE=true bunx expo start --dev-client --android -c
