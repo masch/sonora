@@ -117,7 +117,7 @@ const trips: readonly NewExperience[] = [
     format: 'trip',
     themeKey: 'landscapes',
     audioUrl: 'experiences/trips-deriva-centro.mp3',
-    durationSeconds: 2104,
+    durationSeconds: 2539,
     latitude: -32.211913,
     longitude: -64.73809012343702,
     free: false,
