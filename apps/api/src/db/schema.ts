@@ -124,6 +124,17 @@ export const feedback = sonoraSchema.table('feedbacks', {
   longitude: doublePrecision('longitude'),
 });
 
+export const freeDownloads = sonoraSchema.table('free_downloads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  experienceId: uuid('experience_id')
+    .notNull()
+    .references(() => experiences.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  deviceId: text('device_id').notNull(),
+  platform: platformEnum('platform'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const translations = sonoraSchema.table(
   'translations',
   {
@@ -147,6 +158,8 @@ export type Purchase = typeof purchases.$inferSelect;
 export type NewPurchase = typeof purchases.$inferInsert;
 export type ExperienceAccess = typeof experienceAccesses.$inferSelect;
 export type NewExperienceAccess = typeof experienceAccesses.$inferInsert;
+export type FreeDownload = typeof freeDownloads.$inferSelect;
+export type NewFreeDownload = typeof freeDownloads.$inferInsert;
 export type Feedback = typeof feedback.$inferSelect;
 export type NewFeedback = typeof feedback.$inferInsert;
 export type Translation = typeof translations.$inferSelect;

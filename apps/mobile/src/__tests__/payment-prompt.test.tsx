@@ -4,12 +4,20 @@ import React from 'react';
 // Mock Tw* components as native RN primitives
 jest.mock('@/tw', () => {
   const React = jest.requireActual('react');
-  const { Pressable, View } = jest.requireActual('react-native');
+  const { Pressable, TextInput, View } = jest.requireActual('react-native');
   return {
     TwView: ({ children }: Record<string, unknown>) => React.createElement(View, null, children),
     TwPressable: (props: Record<string, unknown>) =>
       React.createElement(
         Pressable,
+        {
+          ...props,
+        },
+        props.children,
+      ),
+    TwTextInput: (props: Record<string, unknown>) =>
+      React.createElement(
+        TextInput,
         {
           ...props,
         },

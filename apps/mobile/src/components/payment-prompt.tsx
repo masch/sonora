@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, TextInput } from 'react-native';
-import { TwView, TwPressable } from '@/tw';
+import { ActivityIndicator, Platform } from 'react-native';
+import { TwView, TwPressable, TwTextInput } from '@/tw';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -107,15 +107,19 @@ export function PaymentPrompt({
             {t('payments.restore.description')}
           </ThemedText>
 
-          <TextInput
+          <TwTextInput
             value={email}
             onChangeText={setEmail}
             placeholder={t('payments.restore.emailPlaceholder')}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            className="border border-zinc-300 dark:border-zinc-600 rounded-xl px-4 py-3 text-base font-semibold text-zinc-800 dark:text-zinc-100 bg-white dark:bg-zinc-800"
+            className={`border border-zinc-300 dark:border-zinc-600 rounded-xl px-4 py-3 text-base font-semibold text-text bg-white dark:bg-zinc-800 ${
+              Platform.OS === 'web' ? 'outline-none' : ''
+            }`}
+            style={{ color: colors.text }}
             placeholderTextColor={colors.textSecondary}
+            accessibilityLabel={t('payments.restore.emailPlaceholder')}
             testID="restore-email-input"
           />
 

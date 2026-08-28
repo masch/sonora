@@ -85,7 +85,12 @@ describe('RFC 7807 error responses', () => {
     {
       name: 'GET /payments/experiences/:id/purchased — missing email (422)',
       request: async () =>
-        await app.request('/payments/experiences/550e8400-e29b-41d4-a716-446655440000/purchased'),
+        await app.request('/payments/experiences/550e8400-e29b-41d4-a716-446655440000/purchased', {
+          headers: {
+            'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+            'X-Device-Platform': 'ios',
+          },
+        }),
       expectedStatus: 422,
       expectedType: 'VALIDATION_ERROR',
     },

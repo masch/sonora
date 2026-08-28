@@ -264,6 +264,7 @@ describe('GET /experiences', () => {
     const waypointsMock: any[] = [];
     const accessesMock: any[] = [];
     const purchasesMock: any[] = [];
+    const freeDownloadsMock: any[] = [];
 
     let queryCallCount = 0;
     mockDb.then = vi.fn().mockImplementation((resolve) => {
@@ -271,6 +272,7 @@ describe('GET /experiences', () => {
       if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
       if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
       if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
       return Promise.resolve(waypointsMock).then(resolve);
     });
 
@@ -299,6 +301,7 @@ describe('GET /experiences', () => {
     ];
     const accessesMock = [{ experienceId: 'exp-paid' }];
     const purchasesMock: any[] = [];
+    const freeDownloadsMock: any[] = [];
 
     let queryCallCount = 0;
     mockDb.then = vi.fn().mockImplementation((resolve) => {
@@ -306,6 +309,7 @@ describe('GET /experiences', () => {
       if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
       if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
       if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
       return Promise.resolve([]).then(resolve);
     });
 
@@ -330,6 +334,7 @@ describe('GET /experiences', () => {
     ];
     const accessesMock: any[] = [];
     const purchasesMock = [{ experienceId: 'exp-paid' }];
+    const freeDownloadsMock: any[] = [];
 
     let queryCallCount = 0;
     mockDb.then = vi.fn().mockImplementation((resolve) => {
@@ -337,6 +342,7 @@ describe('GET /experiences', () => {
       if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
       if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
       if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
       return Promise.resolve([]).then(resolve);
     });
 
@@ -361,6 +367,7 @@ describe('GET /experiences', () => {
     ];
     const accessesMock: any[] = [];
     const purchasesMock = [{ experienceId: 'exp-paid' }];
+    const freeDownloadsMock: any[] = [];
 
     let queryCallCount = 0;
     mockDb.then = vi.fn().mockImplementation((resolve) => {
@@ -368,6 +375,7 @@ describe('GET /experiences', () => {
       if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
       if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
       if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
       return Promise.resolve([]).then(resolve);
     });
 
@@ -386,12 +394,13 @@ describe('GET /experiences', () => {
     expect(body[0].audioUrl).toContain('/audio/stream?key=paid-audio.mp3');
   });
 
-  it('denies access if purchase status is pending or rejected', async () => {
+  it('grants access if email matches registered free_downloads record', async () => {
     const expMock = [
       { id: 'exp-paid', title: 'Paid Trip', free: false, audioUrl: 'paid-audio.mp3' },
     ];
     const accessesMock: any[] = [];
     const purchasesMock: any[] = [];
+    const freeDownloadsMock = [{ experienceId: 'exp-paid' }];
 
     let queryCallCount = 0;
     mockDb.then = vi.fn().mockImplementation((resolve) => {
@@ -399,6 +408,40 @@ describe('GET /experiences', () => {
       if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
       if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
       if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
+      return Promise.resolve([]).then(resolve);
+    });
+
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/experiences?email=freedownload@example.com',
+      {
+        headers: { 'X-Device-Id': '770e8400-e29b-4a4a-a716-446655440002' },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body[0].audioUrl).toContain('/audio/stream?key=paid-audio.mp3');
+  });
+
+  it('denies access if purchase status is pending or rejected and not in free_downloads', async () => {
+    const expMock = [
+      { id: 'exp-paid', title: 'Paid Trip', free: false, audioUrl: 'paid-audio.mp3' },
+    ];
+    const accessesMock: any[] = [];
+    const purchasesMock: any[] = [];
+    const freeDownloadsMock: any[] = [];
+
+    let queryCallCount = 0;
+    mockDb.then = vi.fn().mockImplementation((resolve) => {
+      queryCallCount++;
+      if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
+      if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
+      if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      if (queryCallCount === 4) return Promise.resolve(freeDownloadsMock).then(resolve);
       return Promise.resolve([]).then(resolve);
     });
 
