@@ -362,6 +362,7 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
       innerJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn(),
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
     };
   });
 
@@ -369,7 +370,13 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
 
   it('captures 400 when email query missing', async () => {
     setDbClient(mockDb);
-    const res = await app.request(`/payments/experiences/${VALID_UUID}/purchased`, {}, {});
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased`,
+      {
+        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
+      },
+      {},
+    );
     expect(res.status).toBe(422);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
@@ -379,18 +386,24 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     expect(errors[0]).toHaveProperty('path', 'email');
   });
 
-  it('captures 200 with email (no purchase)', async () => {
+  it('captures 200 with email (no purchase) and registers free download', async () => {
     mockDb.limit
       .mockResolvedValueOnce([{ published: true }]) // experience lookup
       .mockResolvedValueOnce([]); // purchases
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
-      {},
+      {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+      },
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ purchased: false });
+    expect(await res.json()).toEqual({ purchased: true, freeGrant: true });
+    expect(mockDb.insert).toHaveBeenCalled();
   });
 
   it('captures 200 with purchased true when published experience was bought', async () => {
@@ -409,7 +422,9 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
-      {},
+      {
+        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
+      },
       {},
     );
     expect(res.status).toBe(200);
@@ -423,7 +438,9 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
-      {},
+      {
+        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
+      },
       {},
     );
     expect(res.status).toBe(404);

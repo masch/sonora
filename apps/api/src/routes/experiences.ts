@@ -9,7 +9,7 @@ import {
   resolveProximity,
   type UserExperienceFormat,
 } from '@sonora/shared';
-import { experienceAccesses, experiences, purchases, waypoints } from '../db/schema';
+import { experienceAccesses, experiences, freeDownloads, purchases, waypoints } from '../db/schema';
 import { type Env, type Variables } from '../index';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
@@ -60,9 +60,19 @@ experiencesRouter.get(
       .from(purchases)
       .where(and(...purchaseConditions));
 
+    const freeDownloadConditions = [eq(freeDownloads.deviceId, deviceId)];
+    if (email) {
+      freeDownloadConditions.push(eq(freeDownloads.email, email));
+    }
+    const freeDownloadAccesses = await db
+      .select({ experienceId: freeDownloads.experienceId })
+      .from(freeDownloads)
+      .where(or(...freeDownloadConditions));
+
     const allowedExperienceIds = new Set([
       ...accesses.map((a) => a.experienceId),
       ...approvedPurchases.map((p) => p.experienceId),
+      ...freeDownloadAccesses.map((f) => f.experienceId),
     ]);
 
     for (const exp of list) {

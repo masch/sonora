@@ -11,7 +11,7 @@ import {
 } from '@sonora/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { experienceAccesses, experiences, purchases } from '../db/schema';
+import { experienceAccesses, experiences, freeDownloads, purchases } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { sanitizeUrl } from '../lib/log-redaction';
 import { dbGuard } from '../middleware/db-guard';
@@ -479,6 +479,7 @@ paymentsRouter.get(
 paymentsRouter.get(
   '/experiences/:id/purchased',
   dbGuard(),
+  deviceIdGuard(),
   zValidator('param', IdParamSchema, validationHook),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {
@@ -518,7 +519,20 @@ paymentsRouter.get(
       .limit(1);
 
     if (!purchase) {
-      return success(c, { purchased: false });
+      const deviceId = c.var.deviceId;
+      const platform = c.var.devicePlatform;
+
+      await db.insert(freeDownloads).values({
+        experienceId: id,
+        email,
+        deviceId,
+        platform,
+      });
+
+      return success(c, {
+        purchased: true,
+        freeGrant: true,
+      });
     }
 
     return success(c, {
