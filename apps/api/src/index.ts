@@ -8,6 +8,7 @@ import { injectDeviceId } from './middleware/device-id';
 import { customLogger } from './middleware/logger';
 import { ERRORS, problem } from './middleware/problem-details';
 import { associationRouter } from './routes/association';
+import { appRedirectRouter } from './routes/app-redirect';
 import { audioRouter } from './routes/audio';
 import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
@@ -90,6 +91,7 @@ app.route('/config', configRouter);
 app.route('/api/translations', translationsRouter);
 app.route(PAYMENT_ROUTES.PREFIX, paymentsRouter);
 app.route('/.well-known', associationRouter);
+app.route('/app', appRedirectRouter);
 
 // Global Error Handler
 app.onError((err, c) => {
