@@ -20,7 +20,7 @@ Universal Expo app targeting iOS, Android, and Web.
     <img src="./docs/assets/sonora-app-qr.svg" width="180" height="180" alt="Sonora App QR Code" />
   </a>
   <br />
-  <sub>Escaneá para abrir Sonora (Google Play en Android / Web en otros dispositivos)</sub>
+  <sub>Scan to open Sonora (Google Play on Android / Web on other devices)</sub>
 </p>
 
 ### 🟡 Staging (Preview builds)
