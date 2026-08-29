@@ -12,6 +12,8 @@ Universal Expo app targeting iOS, Android, and Web.
 
 - **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora.expo.app/](https://sonoraderivapoeticas-team-sonora.expo.app/)
 - **Admin Portal:** [https://sonora-admin.expo.app/](https://sonora-admin.expo.app/)
+- **Smart App Link (Android / Web):** [https://sonora-api.sonora-api.workers.dev/app](https://sonora-api.sonora-api.workers.dev/app)
+- **App QR Code:** [https://sonora-api.sonora-api.workers.dev/app/qr](https://sonora-api.sonora-api.workers.dev/app/qr)
 
 ### 🟡 Staging (Preview builds)
 
