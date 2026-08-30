@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useOfflineGeofence, type ProximityClient } from '../use-offline-geofence';
 import { useLocationStore } from '@/store/location-store';
 import { useRemoteConfig } from '../use-remote-config';
+import { isIosBrowser } from '@/utils/platform';
 
 // Mock the Zustand store hook
 jest.mock('@/store/location-store', () => ({
@@ -13,6 +14,10 @@ jest.mock('../use-remote-config', () => ({
   useRemoteConfig: jest.fn(),
 }));
 
+jest.mock('@/utils/platform', () => ({
+  isIosBrowser: jest.fn(),
+}));
+
 describe('useOfflineGeofence hook', () => {
   const targetCoords = { latitude: -31.979, longitude: -64.635 };
 
@@ -22,6 +27,7 @@ describe('useOfflineGeofence hook', () => {
       trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
       track: { radiusMeters: 50, defaultMode: 'entityRadius' },
       bypassGeofence: false,
+      bypassIosBrowser: true,
     },
     audio: { rewindOffsetMs: 10000 },
     feedback: { syncIntervalSec: 30 },
@@ -29,6 +35,7 @@ describe('useOfflineGeofence hook', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (isIosBrowser as unknown as jest.Mock).mockReturnValue(false);
     (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
       config: defaultConfig,
       isLoading: false,
@@ -51,6 +58,21 @@ describe('useOfflineGeofence hook', () => {
     expect(result.current.isNearStart).toBe(false);
     expect(result.current.userCoordinates).toBeNull();
     // Default override: trip + type -> 50 m trip fallback radius.
+    expect(result.current.requiredRadiusMeters).toBe(50);
+  });
+
+  it('should handle null targetCoords gracefully', async () => {
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() => useOfflineGeofence(null));
+
+    expect(result.current.isNearStart).toBe(false);
+    expect(result.current.distanceMeters).toBeNull();
     expect(result.current.requiredRadiusMeters).toBe(50);
   });
 
@@ -401,5 +423,104 @@ describe('useOfflineGeofence hook', () => {
     await waitFor(() => expect(result.current.requiredRadiusMeters).toBe(30));
     expect(result.current.isNearStart).toBe(false);
     expect(result.current.distanceMeters).toBe(120);
+  });
+
+  it('handles authoritative online result with undefined optional fields', async () => {
+    const proximityClient: ProximityClient = {
+      check: jest.fn().mockResolvedValue({
+        ok: true,
+      }),
+    };
+    (useLocationStore as unknown as jest.Mock).mockReturnValue({
+      coords: { latitude: -31.979, longitude: -64.635 },
+      accuracy: 5,
+      status: 'ready',
+      errorMsg: null,
+    });
+
+    const { result } = await renderHook(() =>
+      useOfflineGeofence(targetCoords, undefined, { proximityClient }),
+    );
+
+    await waitFor(() => expect(result.current.requiredRadiusMeters).toBe(0));
+    expect(result.current.isNearStart).toBe(false);
+    expect(result.current.distanceMeters).toBeNull();
+  });
+
+  describe('iOS browser geofence bypass', () => {
+    it('bypasses proximity check when running on iOS browser and bypassIosBrowser is true', async () => {
+      (isIosBrowser as unknown as jest.Mock).mockReturnValue(true);
+      (useLocationStore as unknown as jest.Mock).mockReturnValue({
+        coords: { latitude: 0, longitude: 0 },
+        accuracy: 5,
+        status: 'ready',
+        errorMsg: null,
+      });
+
+      const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
+      expect(result.current.isNearStart).toBe(true);
+      expect(result.current.distanceMeters).toBeGreaterThan(10000);
+    });
+
+    it('bypasses proximity check on iOS browser even when there is no GPS fix', async () => {
+      (isIosBrowser as unknown as jest.Mock).mockReturnValue(true);
+      (useLocationStore as unknown as jest.Mock).mockReturnValue({
+        coords: null,
+        accuracy: null,
+        status: 'initializing',
+        errorMsg: null,
+      });
+
+      const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
+      expect(result.current.isNearStart).toBe(true);
+      expect(result.current.distanceMeters).toBeNull();
+    });
+
+    it('enforces proximity check on iOS browser when bypassIosBrowser is set to false', async () => {
+      (isIosBrowser as unknown as jest.Mock).mockReturnValue(true);
+      (useRemoteConfig as unknown as jest.Mock).mockReturnValue({
+        config: {
+          ...defaultConfig,
+          geofence: { ...defaultConfig.geofence, bypassIosBrowser: false },
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      (useLocationStore as unknown as jest.Mock).mockReturnValue({
+        coords: { latitude: 0, longitude: 0 },
+        accuracy: 5,
+        status: 'ready',
+        errorMsg: null,
+      });
+
+      const { result } = await renderHook(() => useOfflineGeofence(targetCoords));
+      expect(result.current.isNearStart).toBe(false);
+    });
+
+    it('overrides online proximity block when running on iOS browser with bypass active', async () => {
+      (isIosBrowser as unknown as jest.Mock).mockReturnValue(true);
+      const proximityClient: ProximityClient = {
+        check: jest.fn().mockResolvedValue({
+          ok: true,
+          canListen: false,
+          distanceMeters: 500,
+          effectiveRadiusMeters: 30,
+        }),
+      };
+      (useLocationStore as unknown as jest.Mock).mockReturnValue({
+        coords: { latitude: 0, longitude: 0 },
+        accuracy: 5,
+        status: 'ready',
+        errorMsg: null,
+      });
+
+      const { result } = await renderHook(() =>
+        useOfflineGeofence(targetCoords, undefined, { proximityClient }),
+      );
+
+      await waitFor(() => expect(proximityClient.check).toHaveBeenCalledTimes(1));
+      expect(result.current.isNearStart).toBe(true);
+    });
   });
 });

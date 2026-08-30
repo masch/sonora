@@ -15,7 +15,7 @@
 #   PROVIDER="lmstudio:qwen2.5-coder-7b-instruct"
 #   PROVIDER="github:gpt-4o"
 #   PROVIDER="github:deepseek-r1"
-PROVIDER="opencode"
+PROVIDER="opencode:opencode/nemotron-3.5-lightning-free"
 
 # File patterns to include in review (comma-separated)
 # Default: * (all files)

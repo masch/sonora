@@ -11,6 +11,7 @@ const fullPayload: RemoteConfigPayload = {
     trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
     track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
+    bypassIosBrowser: true,
   },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
@@ -30,6 +31,7 @@ describe('RemoteConfigPayloadSchema', () => {
       expect(DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters).toBeGreaterThan(0);
       expect(DEFAULT_REMOTE_CONFIG.geofence.track.defaultMode).toBe('formatDefaultRadius');
       expect(DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence).toBe(false);
+      expect(DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser).toBe(true);
     });
 
     it('preserves all fields on parse', () => {
@@ -105,6 +107,7 @@ describe('RemoteConfigPayloadSchema', () => {
           trip: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
           track: { radiusMeters: 50, defaultMode: 'formatDefaultRadius' },
           bypassGeofence: false,
+          bypassIosBrowser: true,
         },
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
@@ -116,6 +119,11 @@ describe('RemoteConfigPayloadSchema', () => {
         expect(result.data.appVersion.gracePeriodStart).toBeUndefined();
         expect(result.data.appVersion.gracePeriodEnd).toBeUndefined();
       }
+    });
+
+    it('rejects non-boolean bypassIosBrowser', () => {
+      const schema = RemoteConfigPayloadSchema.shape.geofence.shape.bypassIosBrowser;
+      expect(schema.safeParse('yes').success).toBe(false);
     });
 
     it('rejects non-string gracePeriodStart', () => {

@@ -98,6 +98,13 @@ export const APP_CONFIG = {
     bypassGeofence:
       process.env.EXPO_PUBLIC_BYPASS_GEOFENCE === 'true' ||
       DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
+    /**
+     * Build-time env override to bypass geofence restriction specifically on iOS web browsers.
+     * Default sourced from @sonora/shared — overrideable via GET /api/config.
+     */
+    bypassIosBrowser:
+      process.env.EXPO_PUBLIC_BYPASS_GEOFENCE_IOS_BROWSER === 'true' ||
+      DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
   },
   feedback: {
     /**
