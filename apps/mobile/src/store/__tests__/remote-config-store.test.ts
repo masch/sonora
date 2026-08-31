@@ -183,6 +183,7 @@ describe('RemoteConfigStore', () => {
         trip: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
         track: { radiusMeters: 300, defaultMode: 'formatDefaultRadius' },
         bypassGeofence: true,
+        bypassIosBrowser: true,
       },
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },

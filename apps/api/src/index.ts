@@ -38,6 +38,7 @@ export interface Env {
   BLOCK_OLDER_VERSIONS: string;
   GRACE_PERIOD_START?: string;
   GRACE_PERIOD_END?: string;
+  BYPASS_GEOFENCE_IOS_BROWSER?: string;
   MP_ACCESS_TOKEN?: string;
   MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
@@ -61,6 +62,7 @@ export interface Variables {
     blockOlderVersions: boolean;
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
+    bypassIosBrowser: boolean;
   };
   environment: string;
   feedbackStore?: KVNamespace;

@@ -19,6 +19,7 @@ export const RemoteConfigPayloadSchema = z.object({
       defaultMode: z.enum(GEO_MODES),
     }),
     bypassGeofence: z.boolean(),
+    bypassIosBrowser: z.boolean().default(true),
   }),
   audio: z.object({
     rewindOffsetMs: z.number().positive(),
@@ -36,6 +37,7 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
     trip: { radiusMeters: 30, defaultMode: 'formatDefaultRadius' },
     track: { radiusMeters: 100000, defaultMode: 'formatDefaultRadius' },
     bypassGeofence: false,
+    bypassIosBrowser: true,
   },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },

@@ -1,5 +1,6 @@
 import { useLocationStore } from '@/store/location-store';
 import { logger } from '@/utils/logger';
+import { isIosBrowser } from '@/utils/platform';
 import { resolveProximity, type GeoMode, type UserExperienceFormat } from '@sonora/shared';
 import { useEffect, useState } from 'react';
 import { useRemoteConfig } from './use-remote-config';
@@ -124,6 +125,12 @@ export function useOfflineGeofence(
     isNearStart = onlineDecision.canListen ?? false;
     distanceMeters = onlineDecision.distanceMeters ?? null;
     requiredRadiusMeters = onlineDecision.effectiveRadiusMeters ?? 0;
+  }
+
+  // Bypass proximity gating on iOS web browsers if configured (default: true)
+  const isIosWeb = isIosBrowser();
+  if (isIosWeb && config.geofence.bypassIosBrowser) {
+    isNearStart = true;
   }
 
   return {

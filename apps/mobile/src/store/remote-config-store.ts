@@ -14,6 +14,7 @@ const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
   geofence: {
     ...DEFAULT_REMOTE_CONFIG.geofence,
     bypassGeofence: APP_CONFIG.geofence.bypassGeofence,
+    bypassIosBrowser: APP_CONFIG.geofence.bypassIosBrowser,
   },
 };
 

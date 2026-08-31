@@ -25,6 +25,8 @@ describe('GET /config', () => {
     const geofence = body.geofence as Record<string, unknown>;
     expect(geofence).toHaveProperty('bypassGeofence');
     expect(typeof geofence.bypassGeofence).toBe('boolean');
+    expect(geofence).toHaveProperty('bypassIosBrowser');
+    expect(typeof geofence.bypassIosBrowser).toBe('boolean');
 
     const tripGeo = (geofence.trip as Record<string, unknown>) ?? {};
     const trackGeo = (geofence.track as Record<string, unknown>) ?? {};
@@ -42,7 +44,24 @@ describe('GET /config', () => {
     const appVersion = body.appVersion as Record<string, unknown>;
     expect(typeof appVersion.minimumVersion).toBe('string');
     expect(typeof appVersion.blockOlderVersions).toBe('boolean');
-    expect(typeof appVersion.blockOlderVersions).toBe('boolean');
+  });
+
+  it('honors BYPASS_GEOFENCE_IOS_BROWSER env override', async () => {
+    const resOff = await app.request(
+      '/config',
+      {},
+      { ...BINDINGS, BYPASS_GEOFENCE_IOS_BROWSER: 'false' },
+    );
+    const bodyOff = (await resOff.json()) as { geofence: { bypassIosBrowser: boolean } };
+    expect(bodyOff.geofence.bypassIosBrowser).toBe(false);
+
+    const resOn = await app.request(
+      '/config',
+      {},
+      { ...BINDINGS, BYPASS_GEOFENCE_IOS_BROWSER: 'true' },
+    );
+    const bodyOn = (await resOn.json()) as { geofence: { bypassIosBrowser: boolean } };
+    expect(bodyOn.geofence.bypassIosBrowser).toBe(true);
   });
 
   it('does not include grace period fields when env vars are absent', async () => {
@@ -73,6 +92,7 @@ describe('GET /config', () => {
         trip: { radiusMeters: number; defaultMode: string };
         track: { radiusMeters: number; defaultMode: string };
         bypassGeofence: boolean;
+        bypassIosBrowser: boolean;
       };
       audio: { rewindOffsetMs: number };
       feedback: { syncIntervalSec: number };
@@ -87,6 +107,7 @@ describe('GET /config', () => {
     expect(body.geofence.track.radiusMeters).toBe(100000);
     expect(body.geofence.track.defaultMode).toBe('formatDefaultRadius');
     expect(body.geofence.bypassGeofence).toBe(false);
+    expect(body.geofence.bypassIosBrowser).toBe(true);
     expect(body.audio.rewindOffsetMs).toBe(10000);
     expect(body.feedback.syncIntervalSec).toBe(30);
     expect(body.appVersion.minimumVersion).toBe('0.0.0');
