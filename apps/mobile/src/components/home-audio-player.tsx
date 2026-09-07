@@ -91,10 +91,6 @@ export function HomeAudioPlayer() {
 
   return (
     <TwView className="rounded-[24px] p-5" style={{ backgroundColor: colors.homeInstructionsBg }}>
-      <ThemedText className="text-sm font-bold mb-3" style={{ color: colors.homeCardSubtext }}>
-        {t('home.instructionsTitle')}
-      </ThemedText>
-
       <TwView className="flex-row items-start gap-4">
         {/* Play / Pause / Download Icon Button */}
         <TwPressable

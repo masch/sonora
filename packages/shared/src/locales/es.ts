@@ -20,7 +20,6 @@ export const es = {
     overlayTitle:
       'SONORA ES UNA EXPERIENCIA\nGUIADA POR AURICULARES\nASISTIDA POR UN MAPA\nTE INVITAMOS A DESCUBRIR\nLO QUE TE RODEA',
     instructionDuration: '5 min',
-    instructionsTitle: 'INSTRUCCIONES',
     instructionsSub: '(cómo usar la app de Sonora)',
     tracksTitle: 'DERIVAS',
     trackCardMeta: '{{duration}} min · {{sections}}{{type}}{{distance}}',
@@ -35,7 +34,7 @@ export const es = {
   tabs: {
     index: 'Inicio',
     experiences: 'Derivas',
-    poetics: 'Pausa sonora',
+    poetics: 'Relatos breves',
     explore: 'Explorar',
     settings: 'Ajustes',
     messages: 'Mensajes',
@@ -68,7 +67,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Pausa sonora',
+      track: 'Relatos breves',
       trip: 'Derivas',
     },
     errors: {
@@ -103,13 +102,12 @@ export const es = {
     riverPath: 'Camino del río',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Senderos y estaciones',
-    exploreTracks: 'Pausa sonora',
+    exploreTracks: 'Relatos breves',
     exploreTracksSub: 'Biblioteca sonora',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',
-    instructionsTitle: 'Instrucciones',
-    instructionsName: 'Cómo usar Sonora',
-    instructionsSubtitle: 'Cargá las instrucciones para escuchar',
+    instructionsName: 'Antes de empezar',
+    instructionsSubtitle: 'Instrucciones para mejorar experiencia',
   },
   index: {
     loading: 'Cargando…',
