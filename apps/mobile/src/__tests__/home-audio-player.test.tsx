@@ -83,7 +83,6 @@ describe('HomeAudioPlayer', () => {
     const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
 
     expect(getByTestId('home-audio-player')).toBeTruthy();
-    expect(getByText('home.instructionsTitle')).toBeTruthy();
     expect(getByText('home.instructionsName')).toBeTruthy();
     expect(getByText('home.instructionsSubtitle')).toBeTruthy();
 

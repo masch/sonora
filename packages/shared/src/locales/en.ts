@@ -20,7 +20,6 @@ export const en = {
     overlayTitle:
       'SONORA ES UNA EXPERIENCIA\nGUIDED THROUGH HEADPHONES\nASSISTED WITH A MAP\nWE INVITE YOU TO DISCOVER\nWHAT IS AROUND YOU',
     instructionDuration: '5 min',
-    instructionsTitle: 'INSTRUCTIONS',
     instructionsSub: '(how to use Sonora App)',
     tracksTitle: 'RECORRIDOS',
     trackCardMeta: '{{duration}} min · {{sections}}{{type}}{{distance}}',
@@ -35,7 +34,7 @@ export const en = {
   tabs: {
     index: 'Home',
     experiences: 'Derivas',
-    poetics: 'Sonora pause',
+    poetics: 'Short Stories',
     explore: 'Explore',
     settings: 'Settings',
     messages: 'Messages',
@@ -68,7 +67,7 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Sonora pause',
+      track: 'Short Stories',
       trip: 'Derivas',
     },
     errors: {
@@ -103,13 +102,12 @@ export const en = {
     riverPath: 'River path',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
-    exploreTracks: 'Sonora pause',
+    exploreTracks: 'Short Stories',
     exploreTracksSub: 'Sound library',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
-    instructionsTitle: 'Instructions',
-    instructionsName: 'How to use Sonora',
-    instructionsSubtitle: 'Load instructions to listen',
+    instructionsName: 'Before you begin',
+    instructionsSubtitle: 'Instructions to improve your experience',
   },
   index: {
     loading: 'Loading…',
