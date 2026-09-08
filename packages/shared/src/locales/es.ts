@@ -34,7 +34,7 @@ export const es = {
   tabs: {
     index: 'Inicio',
     experiences: 'Derivas',
-    poetics: 'Relatos breves',
+    poetics: 'Pausa sonora',
     explore: 'Explorar',
     settings: 'Ajustes',
     messages: 'Mensajes',
@@ -67,7 +67,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Relatos breves',
+      track: 'Pausa sonora',
       trip: 'Derivas',
     },
     errors: {
@@ -102,8 +102,8 @@ export const es = {
     riverPath: 'Camino del río',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Senderos y estaciones',
-    exploreTracks: 'Relatos breves',
-    exploreTracksSub: 'Biblioteca sonora',
+    exploreTracks: 'Pausa sonora',
+    exploreTracksSub: 'Relatos breves',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',
     instructionsName: 'Antes de empezar',

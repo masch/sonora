@@ -34,7 +34,7 @@ export const en = {
   tabs: {
     index: 'Home',
     experiences: 'Derivas',
-    poetics: 'Short Stories',
+    poetics: 'Sonora pause',
     explore: 'Explore',
     settings: 'Settings',
     messages: 'Messages',
@@ -67,7 +67,7 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Short Stories',
+      track: 'Sonora pause',
       trip: 'Derivas',
     },
     errors: {
@@ -102,8 +102,8 @@ export const en = {
     riverPath: 'River path',
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
-    exploreTracks: 'Short Stories',
-    exploreTracksSub: 'Sound library',
+    exploreTracks: 'Sonora pause',
+    exploreTracksSub: 'Relatos breves',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsName: 'Before you begin',
