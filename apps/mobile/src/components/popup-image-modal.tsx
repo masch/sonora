@@ -1,4 +1,5 @@
-import { TwImage, TwPressable } from '@/tw';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { TwButton, TwImage, TwPressable } from '@/tw';
 import type { ImageProps as ExpoImageProps } from 'expo-image';
 import { useState } from 'react';
 import { ModalPrimitive } from './ui/modal-primitive';
@@ -8,7 +9,7 @@ import { ModalPrimitive } from './ui/modal-primitive';
  * Automatically adapts its height to match the image's native aspect ratio with rounded corners.
  */
 
-// Infiere la prop source exacta que acepta TwImage
+// Infers the exact source prop type accepted by TwImage
 export interface PopupImageModalProps {
   source: ExpoImageProps['source'];
   alt?: string;
@@ -24,6 +25,7 @@ export function PopupImageModal({
 }: PopupImageModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<number | undefined>(undefined);
+  const { t } = useAppTranslation();
 
   return (
     <>
@@ -56,12 +58,13 @@ export function PopupImageModal({
         animationType="fade"
         onDismiss={() => setIsVisible(false)}
       >
-        <TwPressable
+        <TwButton
           className="flex-1 w-full h-full bg-black items-center justify-center"
           onPress={() => setIsVisible(false)}
+          accessibilityLabel={t('common.dismiss')}
         >
           <TwImage source={source} className="w-full h-full" contentFit="contain" alt={alt} />
-        </TwPressable>
+        </TwButton>
       </ModalPrimitive>
     </>
   );
