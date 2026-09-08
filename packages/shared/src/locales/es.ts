@@ -34,7 +34,7 @@ export const es = {
   tabs: {
     index: 'Inicio',
     experiences: 'Derivas',
-    poetics: 'Pausa sonora',
+    poetics: 'Relatos breves',
     explore: 'Explorar',
     settings: 'Ajustes',
     messages: 'Mensajes',
@@ -67,7 +67,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Pausa sonora',
+      track: 'Relatos breves',
       trip: 'Derivas',
     },
     errors: {
