@@ -18,7 +18,7 @@ const mockTrip: Experience = {
   latitude: -32.211913,
   longitude: -64.73809012343702,
   free: true,
-  imageKey: 'trip-instructions-cover',
+  imageKey: 'tracks-pajaros-chiricotes-cover',
   geofenceBypassable: false,
 } as Experience;
 
@@ -60,12 +60,12 @@ jest.mock('@/config/app-config', () => ({
 describe('useInstructionsAudio', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(fetchExperiences).mockReturnValue(new Promise<never>(() => {}));
+    jest.mocked(fetchExperiences).mockReturnValue(new Promise<never>(() => { }));
   });
 
   it('returns loading state on mount with fallback values', async () => {
     jest.mocked(fetchExperiences).mockImplementationOnce(
-      () => new Promise<never>(() => {}), // never resolves
+      () => new Promise<never>(() => { }), // never resolves
     );
 
     const { result } = await renderHook(() => useInstructionsAudio());

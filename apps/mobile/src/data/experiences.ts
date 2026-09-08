@@ -5,11 +5,10 @@ export {
   EXPERIENCE_FORMATS,
   INSTRUCTIONS_AUDIO_KEY,
   INSTRUCTIONS_FALLBACK_TRACK_ID,
-  INSTRUCTIONS_IMAGE_KEY,
   INSTRUCTIONS_EXPERIENCES_SLUG as INSTRUCTIONS_SLUG,
   isPlayableExperience,
   TRACK_IMAGE_KEYS,
-  USER_EXPERIENCE_FORMATS,
+  USER_EXPERIENCE_FORMATS
 } from '@sonora/shared';
 export type {
   Experience,
@@ -20,7 +19,7 @@ export type {
   TrackImageKey,
   TripExperience,
   UserExperienceFormat,
-  Waypoint,
+  Waypoint
 } from '@sonora/shared';
 
 export type FeedbackTriggerMode = 'audio_end' | 'geofence' | 'manual';

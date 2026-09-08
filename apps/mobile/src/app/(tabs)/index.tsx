@@ -1,15 +1,15 @@
+import { AppLogo } from '@/components/app-logo';
 import { Icon } from '@/components/icon';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
+import { ROUTES } from '@/constants/routes';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwPressable, TwView } from '@/tw';
+import { TwImage, TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
-import { AppLogo } from '@/components/app-logo';
-import { ROUTES } from '@/constants/routes';
 
-import { SONORA_HOME_BG } from '@/constants/images';
+import { SONORA_HOME_BG, SONORA_HOME_MAP } from '@/constants/images';
 
 export const SHOW_LOCAL_MESSAGES = false;
 
@@ -41,7 +41,15 @@ export default function HomeScreen() {
       <TwView className="px-8 pt-6">
         {/* Navigation List Menu */}
         <TwView className="gap-3">
-          {/* Explorar Recorridos */}
+          {/* General Map */}
+          <TwImage
+            source={SONORA_HOME_MAP}
+            className={'w-full h-full'}
+            contentFit="contain"
+            alt={t('home.bannerAlt')}
+          />
+
+          {/* Explore trips */}
           <TwPressable
             onPress={() => router.push(ROUTES.PATH.DERIVAS)}
             accessibilityLabel={t('home.exploreRoutes')}
@@ -75,7 +83,7 @@ export default function HomeScreen() {
             />
           </TwPressable>
 
-          {/* Explorar Tracks */}
+          {/* Explore Tracks */}
           <TwPressable
             onPress={() => router.push(ROUTES.PATH.POETICS)}
             accessibilityLabel={t('home.exploreTracks')}
@@ -109,7 +117,7 @@ export default function HomeScreen() {
             />
           </TwPressable>
 
-          {/* Mensajes del Lugar */}
+          {/* Messages */}
           {SHOW_LOCAL_MESSAGES && (
             <TwPressable
               onPress={() => router.push(ROUTES.PATH.MESSAGES)}
