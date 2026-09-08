@@ -104,7 +104,7 @@ export const en = {
     exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
     exploreTracks: 'Sonora pause',
-    exploreTracksSub: 'Relatos breves',
+    exploreTracksSub: 'Short stories',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsName: 'Before you begin',
