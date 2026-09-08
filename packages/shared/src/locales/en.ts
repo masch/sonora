@@ -108,9 +108,7 @@ export const en = {
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',
     instructionsName: 'Before you begin',
-    instructionsSubtitle: 'Instructions to improve your experience',
-    instructionsName: 'Before you begin',
-    instructionsSubtitle: 'Instructions to improve your experience',
+    instructionsSubtitle: 'Instructions to improve your experience'
   },
   index: {
     loading: 'Loading…',
