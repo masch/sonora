@@ -96,6 +96,7 @@ export const en = {
   home: {
     title: 'SONORA',
     bannerAlt: 'SONORA poetic drift',
+    mapAlt: 'SONORA dreamland',
     poetic: 'poetic drift',
     continueListening: 'Continue listening',
     remainingTime: '{{time}} remaining',

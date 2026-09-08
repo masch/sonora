@@ -96,6 +96,7 @@ export const es = {
   home: {
     title: 'SONORA',
     bannerAlt: 'SONORA deriva poética',
+    mapAlt: 'SONORA tierra encantada',
     poetic: 'deriva poética',
     continueListening: 'Seguir escuchando',
     remainingTime: 'quedan {{time}}',

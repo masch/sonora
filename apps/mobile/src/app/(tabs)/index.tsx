@@ -5,10 +5,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ROUTES } from '@/constants/routes';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwImage, TwPressable, TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
 
+import { PopupImageModal } from '@/components/popup-image-modal';
 import { SONORA_HOME_BG, SONORA_HOME_MAP } from '@/constants/images';
 
 export const SHOW_LOCAL_MESSAGES = false;
@@ -41,13 +42,8 @@ export default function HomeScreen() {
       <TwView className="px-8 pt-6">
         {/* Navigation List Menu */}
         <TwView className="gap-3">
-          {/* General Map */}
-          <TwImage
-            source={SONORA_HOME_MAP}
-            className={'w-full h-full'}
-            contentFit="contain"
-            alt={t('home.bannerAlt')}
-          />
+          {/* Sonora map */}
+          <PopupImageModal source={SONORA_HOME_MAP} alt={t('home.mapAlt')} />
 
           {/* Explore trips */}
           <TwPressable
