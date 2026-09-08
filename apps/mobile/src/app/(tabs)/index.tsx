@@ -39,7 +39,7 @@ export default function HomeScreen() {
       </TwView>
 
       {/* Main Content Area */}
-      <TwView className="px-8 pt-6">
+      <TwView className="px-2 pt-6">
         {/* Navigation List Menu */}
         <TwView className="gap-3">
           {/* Sonora map */}
