@@ -17,6 +17,12 @@ export interface PopupImageModalProps {
   className?: string;
 }
 
+/**
+ * Displays a responsive image preview that opens in a full-screen modal when pressed.
+ *
+ * @param source - The image source to display in the preview and modal.
+ * @param alt - Accessible text describing the image.
+ */
 export function PopupImageModal({
   source,
   alt,

@@ -14,6 +14,11 @@ import { SONORA_HOME_BG, SONORA_HOME_MAP } from '@/constants/images';
 
 export const SHOW_LOCAL_MESSAGES = false;
 
+/**
+ * Renders the application home screen with navigation options and a Sonora map.
+ *
+ * @returns The rendered home screen.
+ */
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useAppTranslation();

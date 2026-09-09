@@ -5,6 +5,11 @@ import { TwTextBase, TwPressable } from './factory';
 
 export { TwView, TwScrollView, TwPressable, TwTextInput } from './factory';
 
+/**
+ * Renders text with the default sans-serif font styling.
+ *
+ * @param props - Text properties with an optional `className` for additional styling.
+ */
 export function TwText(props: React.ComponentProps<typeof RNText> & { className?: string }) {
   const { className = '', style, ...rest } = props;
 
@@ -13,12 +18,9 @@ export function TwText(props: React.ComponentProps<typeof RNText> & { className?
 export { TwImage } from './image';
 
 /**
- * Semantic button wrapper. Identical to TwPressable but defaults
- * `accessibilityRole` to "button" so screen readers always identify
- * interactive button elements correctly without per-call boilerplate.
+ * Renders a pressable element with button accessibility semantics by default.
  *
- * Use this for any element that acts as a button.
- * Keep TwPressable for non-button interactive elements (links, list rows, etc.).
+ * @param props - Pressable properties and optional link attributes.
  */
 export function TwButton(
   props: React.ComponentProps<typeof RNPressable> & {
