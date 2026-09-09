@@ -67,6 +67,7 @@ export function PopupImageModal({
         <TwButton
           className="flex-1 w-full h-full bg-black items-center justify-center"
           onPress={() => setIsVisible(false)}
+          testID="popup-image-modal-dismiss-button"
           accessibilityLabel={t('common.dismiss')}
         >
           <TwImage source={source} className="w-full h-full" contentFit="contain" alt={alt} />
