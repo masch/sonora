@@ -12,7 +12,7 @@ import { ModalPrimitive } from './ui/modal-primitive';
 // Infers the exact source prop type accepted by TwImage
 export interface PopupImageModalProps {
   source: ExpoImageProps['source'];
-  alt?: string;
+  alt: string;
   testID?: string;
   className?: string;
 }

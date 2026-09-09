@@ -44,7 +44,12 @@ export const TwScrollView = cssComponent<
 );
 
 export const TwPressable = cssComponent<
-  React.ComponentProps<typeof RNPressable> & { href?: string; target?: string; rel?: string }
+  React.ComponentProps<typeof RNPressable> & {
+    className?: string;
+    href?: string;
+    target?: string;
+    rel?: string;
+  }
 >(RNPressable, { className: 'style' }, 'TwPressable');
 
 export const TwTextInput = cssComponent<React.ComponentProps<typeof RNTextInput>>(
