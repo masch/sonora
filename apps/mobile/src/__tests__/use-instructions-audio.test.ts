@@ -18,7 +18,7 @@ const mockTrip: Experience = {
   latitude: -32.211913,
   longitude: -64.73809012343702,
   free: true,
-  imageKey: 'trip-instructions-cover',
+  imageKey: 'tracks-pajaros-chiricotes-cover',
   geofenceBypassable: false,
 } as Experience;
 
