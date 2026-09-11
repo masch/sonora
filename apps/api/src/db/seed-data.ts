@@ -121,7 +121,7 @@ const trips: readonly NewExperience[] = [
     latitude: -32.211913,
     longitude: -64.73809012343702,
     free: false,
-    price: 1000000,
+    price: 2200000,
     currency: 'ARS',
     imageKey: 'trips-deriva-centro-cover',
     geofenceBypassable: false,
