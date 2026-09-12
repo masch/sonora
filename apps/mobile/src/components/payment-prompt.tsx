@@ -36,8 +36,6 @@ export function PaymentPrompt({
 
   const handleRestore = async () => {
     const trimmedEmail = email.trim();
-    if (!trimmedEmail) return;
-
     if (!EmailQuerySchema.safeParse({ email: trimmedEmail }).success) {
       setRestoreError(t('payments.restore.invalidEmail'));
       return;
@@ -165,7 +163,7 @@ export function PaymentPrompt({
             testID="restore-button"
             className="bg-emerald-500 rounded-xl py-4 items-center justify-center active:opacity-70"
             onPress={handleRestore}
-            disabled={restoring || !email.trim()}
+            disabled={restoring}
           >
             {restoring ? (
               <ActivityIndicator color="#ffffff" />

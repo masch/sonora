@@ -161,6 +161,18 @@ describe('PaymentPrompt', () => {
     expect(queryByText('payments.restore.invalidEmail')).toBeNull();
   });
 
+  it('shows invalidEmail error when submitting with empty email', async () => {
+    const { getByTestId, getByText } = await render(<PaymentPrompt {...defaultProps} />);
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    await fireEvent.press(getByTestId('restore-button'));
+
+    await waitFor(() => {
+      expect(getByText('payments.restore.invalidEmail')).toBeTruthy();
+      expect(defaultProps.onRestore).not.toHaveBeenCalled();
+    });
+  });
+
   it('shows notFound error when restore returns false', async () => {
     defaultProps.onRestore.mockResolvedValue(false);
 

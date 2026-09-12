@@ -42,8 +42,8 @@ describe('useBackgroundSync', () => {
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
     expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK, {
       minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
-      stopOnTerminate: false,
-      startOnBoot: true,
+      stopOnTerminate: true,
+      startOnBoot: false,
     });
   });
 
