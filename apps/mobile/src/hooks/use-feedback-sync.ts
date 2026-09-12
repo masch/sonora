@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { DeviceEventEmitter } from 'react-native';
+import { AppState, DeviceEventEmitter } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { getItem, setItem, QUEUE_KEY } from '@/storage/feedback-storage';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
@@ -48,6 +48,24 @@ export function useFeedbackSync(): void {
 
     return () => clearInterval(interval);
   }, [syncIntervalSec]);
+
+  // AppState effect: flush queue whenever app transitions to background or foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if ((nextAppState === 'active' || nextAppState === 'background') && !flushingRef.current) {
+        const state = await NetInfo.fetch();
+        const isOnline = state.isConnected ?? false;
+        if (isOnline && !flushingRef.current) {
+          flushingRef.current = true;
+          flushQueue().finally(() => {
+            flushingRef.current = false;
+          });
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 }
 
 export async function flushQueue(): Promise<void> {

@@ -20,6 +20,7 @@ interface ScrollScreenWrapperProps extends ScreenWrapperProps {
   contentContainerClassName?: ScrollViewProps['contentContainerClassName'];
   disableBottomPadding?: boolean;
   backgroundImage?: ImageSourcePropType;
+  fullWidth?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ interface ScrollScreenWrapperProps extends ScreenWrapperProps {
  *
  * Includes SafeAreaView + bottom tab bar inset automatically if withTabBar is true.
  * Renders a `TwScrollView` with `flex-1 bg-background` pre-applied.
+ * Automatically constrains and centers content on desktop web up to max-w-[800px].
  */
 export function ScrollScreenWrapper({
   children,
@@ -36,6 +38,7 @@ export function ScrollScreenWrapper({
   withTabBar = true,
   disableBottomPadding = false,
   backgroundImage,
+  fullWidth = false,
 }: ScrollScreenWrapperProps) {
   const status = useAudioPlayerStore((s) => s.status);
   const currentUri = useAudioPlayerStore((s) => s.currentUri);
@@ -81,7 +84,15 @@ export function ScrollScreenWrapper({
           ]}
           contentContainerClassName={finalContentClassName}
         >
-          {children}
+          <TwView
+            className={
+              fullWidth || Platform.OS !== 'web'
+                ? 'w-full grow'
+                : 'w-full max-w-[800px] self-center grow'
+            }
+          >
+            {children}
+          </TwView>
         </TwScrollView>
       </SafeAreaView>
     </TwView>

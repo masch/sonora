@@ -31,5 +31,7 @@ export function useBackgroundSync() {
   const syncIntervalSec = useRemoteConfigStore((s) => s.config.feedback.syncIntervalSec);
   useRegisterBackgroundTask(BACKGROUND_SYNC_TASK, {
     minimumInterval: syncIntervalSec,
+    stopOnTerminate: true,
+    startOnBoot: false,
   });
 }
