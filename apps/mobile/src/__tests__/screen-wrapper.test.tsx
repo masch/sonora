@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { Platform, Text, View, ScrollView } from 'react-native';
+import { Platform, Text } from 'react-native';
 
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 
