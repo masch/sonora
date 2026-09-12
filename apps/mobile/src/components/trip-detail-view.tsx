@@ -194,7 +194,7 @@ export default function TripDetailView({
         {/* Main Details Card */}
         <TwView
           style={{ backgroundColor: cardBg, borderColor: colors.border }}
-          className="w-full max-w-[800px] self-center border px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
+          className="w-full border px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
         >
           {/* Track header */}
           <TwView className="items-center gap-2 p-2 w-full">

@@ -49,7 +49,7 @@ export default function SettingsScreen() {
           <TwImage source={SONORA_MAIN_BG} className="absolute inset-0" contentFit="cover" alt="" />
 
           {/* Header Card */}
-          <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-2 z-10">
+          <TwView className="w-full card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-2 z-10">
             <ThemedText className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 tracking-wider">
               {t('settings.title')}
             </ThemedText>
@@ -59,7 +59,7 @@ export default function SettingsScreen() {
           </TwView>
 
           {/* Profile Section */}
-          <TwView className="w-full max-w-[800px] self-center card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
+          <TwView className="w-full card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
             <TwView className="flex-row items-center gap-4">
               <TwView className="size-16 rounded-full bg-emerald-500 items-center justify-center shadow-sm">
                 <ThemedText className="text-xl font-black text-white">
@@ -78,7 +78,7 @@ export default function SettingsScreen() {
           </TwView>
 
           {/* Preferences Section */}
-          <TwView className="w-full max-w-[800px] self-center card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
+          <TwView className="w-full card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
             <ThemedText className="text-[11px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-4">
               {t('settings.section.preferences')}
             </ThemedText>
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
           </TwView>
 
           {/* About Section */}
-          <TwView className="w-full max-w-[800px] self-center card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
+          <TwView className="w-full card-container-solid p-4 rounded-[24px] shadow-md backdrop-blur-md z-10">
             <ThemedText className="text-[11px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-4">
               {t('settings.section.about')}
             </ThemedText>

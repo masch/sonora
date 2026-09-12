@@ -219,7 +219,7 @@ export default function ExploreScreen() {
           <TwImage source={SONORA_MAIN_BG} className="absolute inset-0" contentFit="cover" alt="" />
 
           {/* Main Card */}
-          <TwView className="w-full max-w-[800px] self-center card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
+          <TwView className="w-full card-container-solid p-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10">
             <TwView className="items-center justify-center gap-4 py-4">
               <AnimatedIcon />
               <ThemedText className="text-2xl font-black text-center text-zinc-800 dark:text-zinc-100 tracking-wider">
