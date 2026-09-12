@@ -3,18 +3,11 @@ import { Icon } from '@/components/icon';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwText, TwView } from '@/tw';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { formatDistance } from '@/utils/format-distance';
 
 interface GeofenceBlockedBannerProps {
   distanceMeters: number | null;
   requiredRadiusMeters: number;
-}
-
-function formatDistance(distanceMeters: number | null, fallbackText: string): string {
-  if (distanceMeters === null) return fallbackText;
-  if (distanceMeters >= 1000) {
-    return `${(distanceMeters / 1000).toFixed(1)} km`;
-  }
-  return `${Math.round(distanceMeters)} m`;
 }
 
 export default function GeofenceBlockedBanner({
@@ -59,7 +52,11 @@ export default function GeofenceBlockedBanner({
       <TwView className="bg-rose-50 dark:bg-rose-950/30 rounded-xl px-4 py-3">
         <TwText className="text-rose-800 dark:text-rose-200 text-xs font-bold">
           {t('experiences.geofenceBlocked.bannerDistance', {
-            distance: formatDistance(distanceMeters, t('experiences.geofenceBlocked.notAvailable')),
+            distance: formatDistance(
+              distanceMeters,
+              t,
+              t('experiences.geofenceBlocked.notAvailable'),
+            ),
           })}
         </TwText>
       </TwView>

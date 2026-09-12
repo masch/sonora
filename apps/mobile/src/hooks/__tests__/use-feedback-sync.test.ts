@@ -1,4 +1,5 @@
 import { renderHook, act } from '@testing-library/react-native';
+import { AppState, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 import Storage from 'expo-sqlite/kv-store';
 import NetInfo from '@react-native-community/netinfo';
 import { useFeedbackSync } from '../use-feedback-sync';
@@ -205,5 +206,34 @@ describe('useFeedbackSync', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     jest.useRealTimers();
+  });
+
+  it('should flush pending entries on AppState change to background or active', async () => {
+    seedQueue([{ id: 'key-1', experienceId: 'track-1', message: 'AppState test' }]);
+    const mockFetch = jest.fn().mockResolvedValue({ status: 201, json: () => ({ status: 'ok' }) });
+    globalThis.fetch = mockFetch;
+    (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true });
+
+    let appStateCallback: ((state: AppStateStatus) => void) | null = null;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((event, cb) => {
+      if (event === 'change') {
+        appStateCallback = cb;
+      }
+      return { remove: jest.fn() } as unknown as NativeEventSubscription;
+    });
+
+    await renderHook(() => useFeedbackSync());
+
+    await tick();
+    if (appStateCallback) {
+      await act(async () => {
+        appStateCallback!('background');
+      });
+    }
+
+    await tick();
+    await tick();
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

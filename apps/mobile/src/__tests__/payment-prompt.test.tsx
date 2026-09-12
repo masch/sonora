@@ -31,9 +31,17 @@ jest.mock('@/components/ui/bottom-modal', () => {
   const React = jest.requireActual('react');
   const { View } = jest.requireActual('react-native');
   return {
-    BottomModal: ({ visible, children }: { visible: boolean; children: React.ReactNode }) => {
+    BottomModal: ({
+      visible,
+      onDismiss,
+      children,
+    }: {
+      visible: boolean;
+      onDismiss?: () => void;
+      children: React.ReactNode;
+    }) => {
       if (!visible) return null;
-      return React.createElement(View, { testID: 'restore-modal' }, children);
+      return React.createElement(View, { testID: 'restore-modal', onDismiss }, children);
     },
   };
 });
@@ -131,6 +139,40 @@ describe('PaymentPrompt', () => {
     });
   });
 
+  it('shows invalidEmail error when email format is invalid and does not call onRestore', async () => {
+    defaultProps.onRestore.mockClear();
+
+    const { getByTestId, getByText, queryByText } = await render(
+      <PaymentPrompt {...defaultProps} />,
+    );
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    const input = getByTestId('restore-email-input');
+    await fireEvent.changeText(input, 'not-an-email');
+    await fireEvent.press(getByTestId('restore-button'));
+
+    await waitFor(() => {
+      expect(getByText('payments.restore.invalidEmail')).toBeTruthy();
+      expect(defaultProps.onRestore).not.toHaveBeenCalled();
+    });
+
+    // Auto-clears error when user types again
+    await fireEvent.changeText(input, 'not-an-email@');
+    expect(queryByText('payments.restore.invalidEmail')).toBeNull();
+  });
+
+  it('shows invalidEmail error when submitting with empty email', async () => {
+    const { getByTestId, getByText } = await render(<PaymentPrompt {...defaultProps} />);
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    await fireEvent.press(getByTestId('restore-button'));
+
+    await waitFor(() => {
+      expect(getByText('payments.restore.invalidEmail')).toBeTruthy();
+      expect(defaultProps.onRestore).not.toHaveBeenCalled();
+    });
+  });
+
   it('shows notFound error when restore returns false', async () => {
     defaultProps.onRestore.mockResolvedValue(false);
 
@@ -146,6 +188,21 @@ describe('PaymentPrompt', () => {
     });
   });
 
+  it('shows restore error when onRestore throws', async () => {
+    defaultProps.onRestore.mockRejectedValue(new Error('Network error'));
+
+    const { getByTestId, getByText } = await render(<PaymentPrompt {...defaultProps} />);
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    const input = getByTestId('restore-email-input');
+    await fireEvent.changeText(input, 'error@example.com');
+    await fireEvent.press(getByTestId('restore-button'));
+
+    await waitFor(() => {
+      expect(getByText('payments.error.restore')).toBeTruthy();
+    });
+  });
+
   it('closes modal on cancel', async () => {
     const { getByTestId, queryByTestId } = await render(<PaymentPrompt {...defaultProps} />);
     await fireEvent.press(getByTestId('restore-link-button'));
@@ -155,5 +212,28 @@ describe('PaymentPrompt', () => {
     await fireEvent.press(getByTestId('restore-cancel-button'));
 
     expect(queryByTestId('restore-modal')).toBeNull();
+  });
+
+  it('closes modal and clears error on onDismiss callback', async () => {
+    const { getByTestId, queryByTestId, queryByText } = await render(
+      <PaymentPrompt {...defaultProps} />,
+    );
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    expect(getByTestId('restore-modal')).toBeTruthy();
+
+    // Trigger an invalid email error
+    await fireEvent.changeText(getByTestId('restore-email-input'), 'invalid-email');
+    await fireEvent.press(getByTestId('restore-button'));
+    expect(queryByText('payments.restore.invalidEmail')).toBeTruthy();
+
+    // Dismiss via onDismiss callback
+    await fireEvent(getByTestId('restore-modal'), 'dismiss');
+    expect(queryByTestId('restore-modal')).toBeNull();
+
+    // Reopen modal and confirm error is cleared
+    await fireEvent.press(getByTestId('restore-link-button'));
+    expect(getByTestId('restore-modal')).toBeTruthy();
+    expect(queryByText('payments.restore.invalidEmail')).toBeNull();
   });
 });
