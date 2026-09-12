@@ -19,7 +19,7 @@ export function formatDistance(
   t: (key: TranslationKeys, params?: Record<string, unknown>) => string,
   fallbackText?: string,
 ): string {
-  if (meters === null || isNaN(meters)) return fallbackText ?? '';
+  if (meters === null || !Number.isFinite(meters)) return fallbackText ?? '';
   if (meters < 1000) {
     return t('map.distanceMeters', { value: Math.round(meters) });
   }

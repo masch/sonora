@@ -1,13 +1,13 @@
+import { Icon } from '@/components/icon';
+import { ThemedText } from '@/components/themed-text';
+import { BottomModal } from '@/components/ui/bottom-modal';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { TwPressable, TwTextInput, TwView } from '@/tw';
+import { EmailQuerySchema, formatPrice } from '@sonora/shared';
 import { useState } from 'react';
 import { ActivityIndicator, Platform } from 'react-native';
-import { TwView, TwPressable, TwTextInput } from '@/tw';
-import { ThemedText } from '@/components/themed-text';
-import { Icon } from '@/components/icon';
-import { BottomModal } from '@/components/ui/bottom-modal';
-import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { formatPrice, EmailQuerySchema } from '@sonora/shared';
 
 interface PaymentPromptProps {
   price: number;
@@ -107,13 +107,23 @@ export function PaymentPrompt({
             <ThemedText className="text-xs font-bold text-center text-emerald-600 dark:text-emerald-400">
               {t('payments.restore.linkAction')}
             </ThemedText>
-            <Icon name="chevronRight" size={12} tintColor={isDark ? '#34d399' : '#059669'} />
+            <Icon
+              name="chevronRight"
+              size={20}
+              weight="bold"
+              tintColor={isDark ? '#34d399' : '#059669'}
+            />
           </TwView>
         </TwPressable>
       </TwView>
 
-      {/* Restore bottom modal */}
-      <BottomModal visible={showRestore} onDismiss={() => setShowRestore(false)}>
+      <BottomModal
+        visible={showRestore}
+        onDismiss={() => {
+          setShowRestore(false);
+          setRestoreError(null);
+        }}
+      >
         <TwView className="p-6 gap-5">
           <ThemedText className="text-xl font-black text-center text-zinc-800 dark:text-zinc-100">
             {t('payments.restore.title')}

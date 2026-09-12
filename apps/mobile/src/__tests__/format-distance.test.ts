@@ -56,13 +56,17 @@ describe('formatDistance', () => {
     expect(formatDistance(10600, mockT)).toBe('11 km');
   });
 
-  it('returns fallback text for null or NaN meters', () => {
+  it('returns fallback text for null, NaN, or non-finite meters', () => {
     expect(formatDistance(null, mockT, 'N/A')).toBe('N/A');
     expect(formatDistance(NaN, mockT, 'N/A')).toBe('N/A');
+    expect(formatDistance(Infinity, mockT, 'N/A')).toBe('N/A');
+    expect(formatDistance(-Infinity, mockT, 'N/A')).toBe('N/A');
   });
 
-  it('returns empty string for null or NaN meters without fallback', () => {
+  it('returns empty string for null, NaN, or non-finite meters without fallback', () => {
     expect(formatDistance(null, mockT)).toBe('');
     expect(formatDistance(NaN, mockT)).toBe('');
+    expect(formatDistance(Infinity, mockT)).toBe('');
+    expect(formatDistance(-Infinity, mockT)).toBe('');
   });
 });

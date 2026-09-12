@@ -84,7 +84,13 @@ export function ScrollScreenWrapper({
           ]}
           contentContainerClassName={finalContentClassName}
         >
-          <TwView className={fullWidth ? 'w-full grow' : 'w-full max-w-[800px] self-center grow'}>
+          <TwView
+            className={
+              fullWidth || Platform.OS !== 'web'
+                ? 'w-full grow'
+                : 'w-full max-w-[800px] self-center grow'
+            }
+          >
             {children}
           </TwView>
         </TwScrollView>

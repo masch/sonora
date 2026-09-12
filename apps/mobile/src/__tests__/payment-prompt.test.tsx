@@ -202,14 +202,26 @@ describe('PaymentPrompt', () => {
     expect(queryByTestId('restore-modal')).toBeNull();
   });
 
-  it('closes modal on onDismiss callback', async () => {
-    const { getByTestId, queryByTestId } = await render(<PaymentPrompt {...defaultProps} />);
+  it('closes modal and clears error on onDismiss callback', async () => {
+    const { getByTestId, queryByTestId, queryByText } = await render(
+      <PaymentPrompt {...defaultProps} />,
+    );
     await fireEvent.press(getByTestId('restore-link-button'));
 
     expect(getByTestId('restore-modal')).toBeTruthy();
 
-    await fireEvent(getByTestId('restore-modal'), 'dismiss');
+    // Trigger an invalid email error
+    await fireEvent.changeText(getByTestId('restore-email-input'), 'invalid-email');
+    await fireEvent.press(getByTestId('restore-button'));
+    expect(queryByText('payments.restore.invalidEmail')).toBeTruthy();
 
+    // Dismiss via onDismiss callback
+    await fireEvent(getByTestId('restore-modal'), 'dismiss');
     expect(queryByTestId('restore-modal')).toBeNull();
+
+    // Reopen modal and confirm error is cleared
+    await fireEvent.press(getByTestId('restore-link-button'));
+    expect(getByTestId('restore-modal')).toBeTruthy();
+    expect(queryByText('payments.restore.invalidEmail')).toBeNull();
   });
 });
