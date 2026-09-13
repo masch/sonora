@@ -160,11 +160,11 @@ const mockMap: Record<string, string> = {
   'experiences.duration': '{{minutes}} min walk',
   'map.loadingMap': 'Loading map…',
   'experiences.geofenceBlocked.bannerTitle': "You're too far",
-  'experiences.geofenceBlocked.bannerDescription': 'You need to be within {{radius}} meters',
+  'experiences.geofenceBlocked.bannerDescription': 'You need to be within {{radius}}',
   'experiences.geofenceBlocked.bannerDistance': 'Current distance: {{distance}}',
   'experiences.geofenceBlocked.blockedAlertTitle': "Can't play",
   'experiences.geofenceBlocked.blockedAlertMessage':
-    'You need to be within {{radius}} meters. Current distance: {{distance}}.',
+    'You need to be within {{radius}}. Current distance: {{distance}}.',
   'experiences.geofenceBlocked.blockedAlertOk': 'Got it',
   'experiences.geofenceBlocked.notAvailable': 'not available',
   'experiences.categories.birds': 'Birds',

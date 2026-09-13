@@ -76,12 +76,12 @@ export const en = {
     geofenceBlocked: {
       bannerTitle: "You're too far from the starting point",
       bannerDescription:
-        'You need to be within {{radius}} meters of the starting point to listen to this deriva.',
+        'You need to be within {{radius}} of the starting point to listen to this deriva.',
       bannerDistance: 'Current distance: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: "Can't play",
       blockedAlertMessage:
-        'You need to be within {{radius}} meters of the starting point to listen to this deriva. Current distance: {{distance}}.',
+        'You need to be within {{radius}} of the starting point to listen to this deriva. Current distance: {{distance}}.',
       blockedAlertOk: 'Got it',
       preparingAudio: 'Preparing audio…',
     },
