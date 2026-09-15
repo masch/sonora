@@ -7,6 +7,13 @@ describe('resolveLanguage', () => {
     expect(resolveLanguage('es')).toBe('es');
   });
 
+  it('resolves case-insensitively', () => {
+    expect(resolveLanguage('EN')).toBe('en');
+    expect(resolveLanguage('ES')).toBe('es');
+    expect(resolveLanguage('EN-us')).toBe('en');
+    expect(resolveLanguage('ES-ar')).toBe('es');
+  });
+
   it('resolves locale tags with regions or scripts to base language', () => {
     expect(resolveLanguage('en-US')).toBe('en');
     expect(resolveLanguage('en_GB')).toBe('en');
@@ -22,6 +29,8 @@ describe('resolveLanguage', () => {
     expect(resolveLanguage('')).toBe('es');
     expect(resolveLanguage(null)).toBe('es');
     expect(resolveLanguage(undefined)).toBe('es');
+    expect(resolveLanguage('123')).toBe('es');
+    expect(resolveLanguage('---')).toBe('es');
   });
 });
 

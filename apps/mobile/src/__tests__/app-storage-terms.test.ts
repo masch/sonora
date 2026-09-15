@@ -36,9 +36,9 @@ describe('app-storage (terms and conditions)', () => {
       expect(mockKv.setItem).toHaveBeenCalledWith('terms_accepted_version', '2026.09.2');
     });
 
-    it('handles storage write errors without throwing', async () => {
+    it('rethrows storage write errors when persistence fails', async () => {
       mockKv.setItem.mockRejectedValue(new Error('Disk full'));
-      await expect(setAcceptedTermsVersion('2026.09.2')).resolves.toBeUndefined();
+      await expect(setAcceptedTermsVersion('2026.09.2')).rejects.toThrow('Disk full');
     });
   });
 });

@@ -162,6 +162,28 @@ describe('useTermsCheck', () => {
     expect(result.current.error).toBe('terms.errorDescription');
   });
 
+  it('returns false and sets error when persisting accepted version fails', async () => {
+    mockStorage.getAcceptedTermsVersion.mockResolvedValue(null);
+    mockApiClient.get.mockResolvedValue(remoteTerms);
+    mockApiClient.post.mockResolvedValue({ success: true });
+    mockStorage.setAcceptedTermsVersion.mockRejectedValue(new Error('Disk failure'));
+
+    const { result } = await renderHook(() => useTermsCheck());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('needs_acceptance');
+    });
+
+    let success = true;
+    await act(async () => {
+      success = await result.current.acceptTerms();
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.error).toBe('terms.errorDescription');
+    expect(result.current.status).toBe('needs_acceptance');
+  });
+
   it('returns false from acceptTerms if terms is null', async () => {
     mockStorage.getAcceptedTermsVersion.mockResolvedValue(null);
     mockApiClient.get.mockRejectedValue(new Error('Network error'));

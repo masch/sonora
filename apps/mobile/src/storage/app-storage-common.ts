@@ -61,8 +61,9 @@ export function createStorageFunctions(
   const setAcceptedTermsVersion = async (version: string): Promise<void> => {
     try {
       await storage.setItem(TERMS_ACCEPTED_VERSION_KEY, version);
-    } catch {
+    } catch (err) {
       logger.warn('[AppStorage] Failed to save accepted terms version');
+      throw err;
     }
   };
 
