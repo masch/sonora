@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   ACCESS_SOURCES,
   CURRENCIES,
+  DEFAULT_LANGUAGE,
   PAYMENT_PROVIDERS,
   PAYMENT_ROUTES,
   PLATFORMS,
   PURCHASE_STATUSES,
+  resolveLanguage,
   SUPPORTED_LANGUAGES,
 } from '../enums';
 
@@ -62,6 +64,24 @@ describe('enums & PAYMENT_ROUTES', () => {
     });
   });
 
+  describe('PAYMENT_ROUTES dynamic helpers with all PURCHASE_STATUSES combinations', () => {
+    it.each(PURCHASE_STATUSES)('generates returnStatus for purchase status %s', (status) => {
+      expect(PAYMENT_ROUTES.returnStatus(status, 'p-456')).toBe(`/payments/return/${status}/p-456`);
+    });
+
+    it.each(PURCHASE_STATUSES)(
+      'generates nativeRedirect for purchase status %s across production and staging schemes',
+      (status) => {
+        expect(PAYMENT_ROUTES.nativeRedirect(status, 'p-456', 'sonora')).toBe(
+          `sonora://payments/${status}/p-456`,
+        );
+        expect(PAYMENT_ROUTES.nativeRedirect(status, 'p-456', 'sonora-staging')).toBe(
+          `sonora-staging://payments/${status}/p-456`,
+        );
+      },
+    );
+  });
+
   describe('domain enum constants', () => {
     it('contains expected enum values', () => {
       expect(PURCHASE_STATUSES).toEqual(['pending', 'approved', 'rejected', 'refunded']);
@@ -70,6 +90,42 @@ describe('enums & PAYMENT_ROUTES', () => {
       expect(CURRENCIES).toEqual(['ARS']);
       expect(PAYMENT_PROVIDERS).toEqual(['mercadopago', 'stripe', 'paypal']);
       expect(SUPPORTED_LANGUAGES).toEqual(['en', 'es']);
+      expect(DEFAULT_LANGUAGE).toBe('es');
+    });
+  });
+
+  describe('resolveLanguage', () => {
+    it('resolves exact match supported languages', () => {
+      expect(resolveLanguage('en')).toBe('en');
+      expect(resolveLanguage('es')).toBe('es');
+    });
+
+    it('resolves case-insensitively', () => {
+      expect(resolveLanguage('EN')).toBe('en');
+      expect(resolveLanguage('ES')).toBe('es');
+      expect(resolveLanguage('En')).toBe('en');
+      expect(resolveLanguage('Es')).toBe('es');
+      expect(resolveLanguage('EN-us')).toBe('en');
+      expect(resolveLanguage('ES-ar')).toBe('es');
+    });
+
+    it('resolves language tags with regions or scripts to base language', () => {
+      expect(resolveLanguage('en-US')).toBe('en');
+      expect(resolveLanguage('en_GB')).toBe('en');
+      expect(resolveLanguage('es-AR')).toBe('es');
+      expect(resolveLanguage('es-ES')).toBe('es');
+      expect(resolveLanguage('es_419')).toBe('es');
+    });
+
+    it('falls back to DEFAULT_LANGUAGE (es) for unsupported or empty values', () => {
+      expect(resolveLanguage('fr')).toBe('es');
+      expect(resolveLanguage('de-DE')).toBe('es');
+      expect(resolveLanguage('pt-BR')).toBe('es');
+      expect(resolveLanguage('')).toBe('es');
+      expect(resolveLanguage(null)).toBe('es');
+      expect(resolveLanguage(undefined)).toBe('es');
+      expect(resolveLanguage('123')).toBe('es');
+      expect(resolveLanguage('---')).toBe('es');
     });
   });
 });

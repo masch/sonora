@@ -23,7 +23,22 @@ export const appStorage: KeyValueStorage & {
   },
 };
 
-const { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId } =
-  createStorageFunctions(appStorage, DeviceService.getPlatformDeviceId);
+const {
+  getPurchasedIds,
+  addPurchasedId,
+  getUserEmail,
+  setUserEmail,
+  getDeviceId,
+  getAcceptedTermsVersion,
+  setAcceptedTermsVersion,
+} = createStorageFunctions(appStorage, DeviceService.getPlatformDeviceId);
 
-export { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId };
+export {
+  getPurchasedIds,
+  addPurchasedId,
+  getUserEmail,
+  setUserEmail,
+  getDeviceId,
+  getAcceptedTermsVersion,
+  setAcceptedTermsVersion,
+};
