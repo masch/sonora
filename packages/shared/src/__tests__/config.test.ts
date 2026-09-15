@@ -25,8 +25,8 @@ const fullPayload: RemoteConfigPayload = {
 
 describe('RemoteConfigPayloadSchema', () => {
   describe('per-format geofence shape (GEOF.1)', () => {
-    it('defaults: trip radiusMeters 30 / defaultMode type, track present & positive', () => {
-      expect(DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters).toBe(30);
+    it('defaults: trip radiusMeters 100 / defaultMode type, track present & positive', () => {
+      expect(DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters).toBe(100);
       expect(DEFAULT_REMOTE_CONFIG.geofence.trip.defaultMode).toBe('formatDefaultRadius');
       expect(DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters).toBeGreaterThan(0);
       expect(DEFAULT_REMOTE_CONFIG.geofence.track.defaultMode).toBe('formatDefaultRadius');

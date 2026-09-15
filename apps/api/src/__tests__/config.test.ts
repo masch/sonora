@@ -102,9 +102,9 @@ describe('GET /config', () => {
       };
     };
 
-    expect(body.geofence.trip.radiusMeters).toBe(30);
+    expect(body.geofence.trip.radiusMeters).toBe(100);
     expect(body.geofence.trip.defaultMode).toBe('formatDefaultRadius');
-    expect(body.geofence.track.radiusMeters).toBe(100000);
+    expect(body.geofence.track.radiusMeters).toBe(300);
     expect(body.geofence.track.defaultMode).toBe('formatDefaultRadius');
     expect(body.geofence.bypassGeofence).toBe(false);
     expect(body.geofence.bypassIosBrowser).toBe(true);

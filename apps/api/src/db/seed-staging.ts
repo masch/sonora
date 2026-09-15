@@ -4,9 +4,11 @@ import { createDbClient } from './index';
 import {
   assertSeedEnv,
   baseExperiences,
+  baseTerms,
   baseWaypoints,
   defaultThemes,
   seedExperiences,
+  seedTerms,
 } from './seed-data';
 import { stagingOnlyExperiences, stagingOnlyWaypoints } from './seed-staging-data';
 
@@ -35,6 +37,8 @@ async function main() {
       experiences: [...baseExperiences, ...stagingOnlyExperiences],
       waypoints: [...baseWaypoints, ...stagingOnlyWaypoints],
     });
+
+    await seedTerms(db, baseTerms);
 
     logger.info('Staging seeding completed successfully! 🌱');
   } catch (error) {
