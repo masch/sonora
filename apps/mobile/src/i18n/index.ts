@@ -2,14 +2,14 @@ import { getLocales } from 'expo-localization';
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { en, es } from '@sonora/shared';
+import { DEFAULT_LANGUAGE, en, es, resolveLanguage } from '@sonora/shared';
 
 const detectLanguage = (): string => {
   try {
     const locales = getLocales();
-    return locales?.[0]?.languageCode ?? 'en';
+    return resolveLanguage(locales?.[0]?.languageCode);
   } catch {
-    return 'en';
+    return DEFAULT_LANGUAGE;
   }
 };
 
@@ -19,7 +19,7 @@ const instance = i18next;
 instance.use(initReactI18next).init({
   resources: { en: { translation: en }, es: { translation: es } },
   lng: detectLanguage(),
-  fallbackLng: 'en',
+  fallbackLng: DEFAULT_LANGUAGE,
   interpolation: {
     escapeValue: false,
   },

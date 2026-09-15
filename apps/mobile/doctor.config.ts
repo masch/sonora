@@ -103,7 +103,9 @@ export default {
           'no-event-handler',
           'react-doctor/no-event-handler',
         ],
-        // Custom background ETag fetching and audio player synchronization with external subscriptions.
+        // Lifecycle-critical hooks executing controlled network requests or subscriptions on mount:
+        // - use-track-download.ts: background ETag verification to detect stale downloaded tracks.
+        // - use-immersion-player.ts: audio player synchronization with external playback event subscriptions.
       },
       {
         files: ['src/hooks/use-purchase.ts'],

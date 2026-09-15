@@ -16,6 +16,7 @@ import { feedbackRouter } from './routes/feedback';
 import { healthRouter } from './routes/health';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
+import { termsRouter } from './routes/terms';
 import { translationsRouter } from './routes/translations';
 
 export interface Env {
@@ -90,6 +91,9 @@ app.route('/themes', themesRouter);
 app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
+app.route('/terms', termsRouter);
+app.route('/translations', translationsRouter);
+// Backward compatibility alias for existing mobile apps
 app.route('/api/translations', translationsRouter);
 app.route(PAYMENT_ROUTES.PREFIX, paymentsRouter);
 app.route('/.well-known', associationRouter);

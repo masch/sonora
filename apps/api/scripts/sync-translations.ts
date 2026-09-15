@@ -52,7 +52,7 @@ async function readLocale(lang: string): Promise<Record<string, unknown>> {
 // ── Fetch DB overrides from API ─────────────────────────────
 
 async function fetchOverrides(lang: string): Promise<Record<string, string>> {
-  const url = `${API_URL}/api/translations/${lang}`;
+  const url = `${API_URL}/translations/${lang}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);

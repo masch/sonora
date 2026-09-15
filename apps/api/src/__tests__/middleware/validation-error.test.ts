@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
+import { EmailQuerySchema, z } from '@sonora/shared';
 import { zValidator } from '@hono/zod-validator';
-import { EmailQuerySchema } from '@sonora/shared';
-import { validationHook } from '../../middleware/validation-error';
+import { validationHook, validateJson } from '../../middleware/validation-error';
 import type { ProblemDetails } from '../../middleware/problem-details';
 
 describe('validationHook integration with zValidator', () => {
@@ -146,5 +146,45 @@ describe('ProblemDetails interface', () => {
       errors: [],
     };
     expect(details.errors).toEqual([]);
+  });
+});
+
+describe('validateJson middleware', () => {
+  const TestSchema = z.object({
+    name: z.string().min(2),
+    age: z.number().int().positive(),
+  });
+
+  function createApp() {
+    const app = new Hono();
+    app.post('/test', validateJson(TestSchema), (c) => {
+      const data = c.req.valid('json');
+      return c.json(data, 200);
+    });
+    return app;
+  }
+
+  it('passes valid json data and preserves type inference', async () => {
+    const app = createApp();
+    const res = await app.request('/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Alice', age: 30 }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ name: 'Alice', age: 30 });
+  });
+
+  it('returns 422 with ProblemDetails when validation fails', async () => {
+    const app = createApp();
+    const res = await app.request('/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'A', age: -5 }),
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as ProblemDetails;
+    expect(body.code).toBe('VALIDATION_ERROR');
+    expect(body.errors).toHaveLength(2);
   });
 });

@@ -57,7 +57,7 @@ describe('AdminApiClient', () => {
     const result = await AdminApiClient.getTranslations('en');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations/en'),
+      expect.stringContaining('/translations/en'),
       expect.objectContaining({
         credentials: 'include',
       }),
@@ -72,7 +72,7 @@ describe('AdminApiClient', () => {
     const result = await AdminApiClient.setTranslations(payload);
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations'),
+      expect.stringContaining('/translations'),
       expect.objectContaining({
         method: 'PUT',
         credentials: 'include',
@@ -89,7 +89,7 @@ describe('AdminApiClient', () => {
     const result = await AdminApiClient.loginSession('valid-key');
     expect(result).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations/session'),
+      expect.stringContaining('/translations/session'),
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
@@ -103,7 +103,7 @@ describe('AdminApiClient', () => {
     const result = await AdminApiClient.logoutSession();
     expect(result).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations/session'),
+      expect.stringContaining('/translations/session'),
       expect.objectContaining({
         method: 'DELETE',
         credentials: 'include',
@@ -141,12 +141,12 @@ describe('AdminApiClient', () => {
     expect(result).toBe(true);
   });
 
-  it('checkSession returns true when GET /api/translations/session responds { valid: true }', async () => {
+  it('checkSession returns true when GET /translations/session responds { valid: true }', async () => {
     mockFetchOk({ valid: true });
     const result = await AdminApiClient.checkSession();
     expect(result).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/translations/session'),
+      expect.stringContaining('/translations/session'),
       expect.objectContaining({
         method: 'GET',
         credentials: 'include',
@@ -154,13 +154,13 @@ describe('AdminApiClient', () => {
     );
   });
 
-  it('checkSession returns false when GET /api/translations/session responds { valid: false }', async () => {
+  it('checkSession returns false when GET /translations/session responds { valid: false }', async () => {
     mockFetchOk({ valid: false });
     const result = await AdminApiClient.checkSession();
     expect(result).toBe(false);
   });
 
-  it('checkSession returns false when GET /api/translations/session fails with 401 or network error', async () => {
+  it('checkSession returns false when GET /translations/session fails with 401 or network error', async () => {
     mockFetchFail(401);
     const result = await AdminApiClient.checkSession();
     expect(result).toBe(false);

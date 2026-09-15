@@ -1,3 +1,5 @@
+import { zValidator } from '@hono/zod-validator';
+import type { z } from '@sonora/shared';
 import type { Context } from 'hono';
 import { ERRORS } from './problem-details';
 import type { ProblemDetails } from './problem-details';
@@ -25,3 +27,17 @@ export function validationHook<T>(
     );
   }
 }
+
+/**
+ * Validates incoming JSON request body against a Zod schema using the canonical
+ * problem details validation hook. Inferred types flow automatically to `c.req.valid('json')`.
+ */
+export const validateJson = <T extends z.ZodSchema>(schema: T) =>
+  zValidator('json', schema, validationHook);
+
+/**
+ * Validates incoming query parameters against a Zod schema using the canonical
+ * problem details validation hook. Inferred types flow automatically to `c.req.valid('query')`.
+ */
+export const validateQuery = <T extends z.ZodSchema>(schema: T) =>
+  zValidator('query', schema, validationHook);
