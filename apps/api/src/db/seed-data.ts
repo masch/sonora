@@ -1,9 +1,10 @@
-import { logger } from '@sonora/shared';
+import { logger, sha256 } from '@sonora/shared';
 import { inArray } from 'drizzle-orm';
 import type { DbClient } from './index';
-import type { NewExperience, NewTheme, NewWaypoint } from './schema';
+import type { NewExperience, NewTermsVersion, NewTheme, NewWaypoint } from './schema';
 import {
   experiences as experiencesTable,
+  termsVersions as termsVersionsTable,
   themes as themesTable,
   waypoints as waypointsTable,
 } from './schema';
@@ -188,3 +189,33 @@ export const baseWaypoints: readonly NewWaypoint[] = [
     radiusMeters: 50,
   },
 ];
+
+export const termsContentV2026_09_1 = `# Términos y Condiciones de Uso — Sonora
+
+Bienvenido a Sonora. Al utilizar nuestra aplicación, aceptas las siguientes condiciones de uso:
+
+1. **Uso de la Aplicación**: Sonora ofrece experiencias sonoras geolocalizadas destinadas a la exploración cultural y artística.
+2. **Geolocalización y Privacidad**: La aplicación utiliza tu ubicación únicamente para activar los puntos sonoros en el territorio. No almacenamos tu historial de ubicación de forma identificable.
+3. **Propiedad Intelectual**: Todas las pistas de audio, textos e imágenes son propiedad de sus respectivos autores y de Sonora. Queda prohibida su reproducción sin autorización.
+4. **Modificaciones**: Sonora se reserva el derecho de actualizar estos términos en cualquier momento. El uso continuado de la app tras una actualización implica la aceptación de los nuevos términos.
+`;
+
+export const baseTerms: readonly NewTermsVersion[] = [
+  {
+    version: '2026.09.1',
+    title: 'Términos y Condiciones de Uso',
+    content: termsContentV2026_09_1,
+    contentHash: await sha256(termsContentV2026_09_1),
+    publishedAt: new Date('2026-09-14T00:00:00.000Z'),
+  },
+];
+
+export async function seedTerms(db: DbClient, terms: readonly NewTermsVersion[]): Promise<void> {
+  logger.info('Seeding terms versions...');
+  for (const term of terms) {
+    await db
+      .insert(termsVersionsTable)
+      .values(term)
+      .onConflictDoNothing({ target: termsVersionsTable.version });
+  }
+}

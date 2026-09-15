@@ -51,7 +51,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
     let merged: Record<string, string> = { ...(cached ?? {}) };
 
     try {
-      const raw = await ApiClient.get<Record<string, string>>(`/api/translations/${lang}`, {
+      const raw = await ApiClient.get<Record<string, string>>(`/translations/${lang}`, {
         signal: controller.signal,
       });
 

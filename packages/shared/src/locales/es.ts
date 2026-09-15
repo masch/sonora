@@ -329,4 +329,18 @@ export const es = {
       restore: 'No se pudieron restaurar las compras. Reintentá.',
     },
   },
+  terms: {
+    title: 'Términos y Condiciones',
+    version: 'Versión {{version}}',
+    accept: 'Aceptar y Continuar',
+    accepting: 'Guardando...',
+    offlineTitle: 'Conexión Requerida',
+    offlineDescription:
+      'Se requiere conexión a internet para revisar y aceptar los términos y condiciones la primera vez.',
+    retry: 'Reintentar',
+    errorTitle: 'Error',
+    errorDescription: 'No se pudo registrar la aceptación. Por favor intentá nuevamente.',
+    networkError:
+      'No se pudieron cargar los términos. Verificá tu conexión a internet e intentá nuevamente.',
+  },
 };

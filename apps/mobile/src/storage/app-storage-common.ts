@@ -3,6 +3,7 @@ import { logger } from '@/utils/logger';
 
 const PURCHASED_EXPERIENCES_KEY = 'purchased_experiences';
 const USER_EMAIL_KEY = 'user_email';
+const TERMS_ACCEPTED_VERSION_KEY = 'terms_accepted_version';
 
 export function createStorageFunctions(
   storage: KeyValueStorage & {
@@ -48,11 +49,36 @@ export function createStorageFunctions(
     }
   };
 
+  const getAcceptedTermsVersion = async (): Promise<string | null> => {
+    try {
+      return await storage.getItem(TERMS_ACCEPTED_VERSION_KEY);
+    } catch {
+      logger.warn('[AppStorage] Failed to read accepted terms version');
+      return null;
+    }
+  };
+
+  const setAcceptedTermsVersion = async (version: string): Promise<void> => {
+    try {
+      await storage.setItem(TERMS_ACCEPTED_VERSION_KEY, version);
+    } catch {
+      logger.warn('[AppStorage] Failed to save accepted terms version');
+    }
+  };
+
   const getDeviceId = async (): Promise<string> => {
     return getPlatformDeviceId();
   };
 
-  return { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail, getDeviceId };
+  return {
+    getPurchasedIds,
+    addPurchasedId,
+    getUserEmail,
+    setUserEmail,
+    getDeviceId,
+    getAcceptedTermsVersion,
+    setAcceptedTermsVersion,
+  };
 }
 
 export type AppStorageFunctions = ReturnType<typeof createStorageFunctions>;

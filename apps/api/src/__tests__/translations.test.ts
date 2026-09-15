@@ -21,6 +21,13 @@ describe('Translations API', () => {
       expect(res.status).toBe(500);
     });
 
+    it('works on both /translations and backwards-compatible /api/translations', async () => {
+      const resCanonical = await app.request('/translations/eng', {}, BINDINGS);
+      expect(resCanonical.status).toBe(422);
+      const resCompat = await app.request('/api/translations/eng', {}, BINDINGS);
+      expect(resCompat.status).toBe(422);
+    });
+
     it('returns 422 for invalid language code (3 letters)', async () => {
       const res = await app.request('/api/translations/eng', {}, BINDINGS);
       expect(res.status).toBe(422);

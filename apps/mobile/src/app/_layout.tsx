@@ -26,6 +26,8 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
+import { useTermsCheck } from '@/hooks/use-terms-check';
+import { TermsModal } from '@/components/terms-modal';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
@@ -77,6 +79,9 @@ export default function RootLayout() {
   // Subscribe to version status
   const versionStatus = useRemoteConfigStore((s) => s.versionStatus);
 
+  // Check Terms and Conditions acceptance
+  const termsCheck = useTermsCheck();
+
   // Track app open event
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
@@ -123,6 +128,16 @@ export default function RootLayout() {
       <GlobalAudioPlayer />
       <InterruptConfirmationModal />
       {versionStatus === 'block' && <UpdateRequiredModal />}
+      <TermsModal
+        visible={
+          termsCheck.status === 'needs_acceptance' || termsCheck.status === 'offline_blocked'
+        }
+        status={termsCheck.status}
+        terms={termsCheck.terms}
+        error={termsCheck.error}
+        onAccept={termsCheck.acceptTerms}
+        onRetry={termsCheck.retry}
+      />
     </ThemeProvider>
   );
 }

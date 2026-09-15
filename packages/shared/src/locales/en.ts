@@ -326,4 +326,17 @@ export const en = {
       restore: 'Could not restore purchases. Please try again.',
     },
   },
+  terms: {
+    title: 'Terms & Conditions',
+    version: 'Version {{version}}',
+    accept: 'Accept and Continue',
+    accepting: 'Saving...',
+    offlineTitle: 'Connection Required',
+    offlineDescription:
+      'An internet connection is required to review and accept the terms and conditions on initial setup.',
+    retry: 'Retry',
+    errorTitle: 'Error',
+    errorDescription: 'Could not register acceptance. Please try again.',
+    networkError: 'Could not load terms. Please check your internet connection and try again.',
+  },
 };
