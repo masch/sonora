@@ -75,6 +75,28 @@ describe('UpdateService', () => {
         'https://play.google.com/store/apps/details?id=test',
       );
     });
+
+    it('propagates error when both primary and fallback URLs reject', async () => {
+      jest.spyOn(storeUrlModule, 'getStoreUrls').mockReturnValue({
+        primary: 'market://details?id=test',
+        fallback: 'https://play.google.com/store/apps/details?id=test',
+      });
+      (Linking.canOpenURL as jest.Mock).mockResolvedValue(true);
+      (Linking.openURL as jest.Mock).mockRejectedValue(new Error('Store app unavailable'));
+
+      const provider = new DeepLinkUpdateProvider();
+      await expect(provider.triggerUpdate()).rejects.toThrow('Store app unavailable');
+    });
+
+    it('throws error when primary fails and no fallback exists', async () => {
+      jest.spyOn(storeUrlModule, 'getStoreUrls').mockReturnValue({
+        primary: 'market://details?id=test',
+      });
+      (Linking.canOpenURL as jest.Mock).mockResolvedValue(false);
+
+      const provider = new DeepLinkUpdateProvider();
+      await expect(provider.triggerUpdate()).rejects.toThrow('Unable to open store update URL');
+    });
   });
 
   describe('Graceful Degradation / Fallback in UpdateService', () => {
