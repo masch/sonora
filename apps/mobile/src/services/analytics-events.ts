@@ -53,6 +53,13 @@ export interface PaymentEvents {
   payment_failed: { experience_id: string; purchase_id: string | null; error_msg?: string };
 }
 
+export interface TermsEvents {
+  terms_accepted: {
+    version: string;
+    lang: string;
+  };
+}
+
 export interface AnalyticsEventMap
   extends
     AppLifecycleEvents,
@@ -61,4 +68,5 @@ export interface AnalyticsEventMap
     GpsLocationEvents,
     SystemEvents,
     TestEvents,
-    PaymentEvents {}
+    PaymentEvents,
+    TermsEvents {}

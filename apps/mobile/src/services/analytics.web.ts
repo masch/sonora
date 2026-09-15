@@ -14,6 +14,7 @@ export type {
   SystemEvents,
   TestEvents,
   PaymentEvents,
+  TermsEvents,
 } from './analytics-events';
 
 export type { AnalyticsEventMap };
