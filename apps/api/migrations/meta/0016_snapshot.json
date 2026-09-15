@@ -1,5 +1,5 @@
 {
-  "id": "38173352-5d92-4835-bab8-0c6bd396f486",
+  "id": "001b9044-2796-4db1-98fd-9d0fe584e58d",
   "prevId": "1256c5fb-cdb4-45a5-8c60-63048addea41",
   "version": "7",
   "dialect": "postgresql",
@@ -508,6 +508,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "lang": {
+          "name": "lang",
+          "type": "language",
+          "typeSchema": "sonora",
+          "primaryKey": false,
+          "notNull": true
+        },
         "content_hash": {
           "name": "content_hash",
           "type": "text",
@@ -565,6 +572,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "lang": {
+          "name": "lang",
+          "type": "language",
+          "typeSchema": "sonora",
+          "primaryKey": false,
+          "notNull": true
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -594,10 +608,10 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "terms_versions_version_unique": {
-          "name": "terms_versions_version_unique",
+        "terms_versions_version_lang_unique": {
+          "name": "terms_versions_version_lang_unique",
           "nullsNotDistinct": false,
-          "columns": ["version"]
+          "columns": ["version", "lang"]
         }
       },
       "policies": {},

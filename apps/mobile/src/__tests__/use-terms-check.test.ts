@@ -18,8 +18,9 @@ const mockApiClient = ApiClient as unknown as { get: jest.Mock; post: jest.Mock 
 describe('useTermsCheck', () => {
   const remoteTerms = {
     version: '2026.09.1',
-    title: 'Términos y Condiciones',
-    content: 'Contenido legal...',
+    lang: 'en' as const,
+    title: 'Terms and Conditions',
+    content: 'Legal content...',
     contentHash: 'a'.repeat(64),
     publishedAt: '2026-09-14T00:00:00Z',
   };
@@ -41,7 +42,7 @@ describe('useTermsCheck', () => {
       expect(result.current.status).toBe('needs_acceptance');
     });
     expect(result.current.terms).toEqual(remoteTerms);
-    expect(mockApiClient.get).toHaveBeenCalledWith('/terms', { skipCache: true });
+    expect(mockApiClient.get).toHaveBeenCalledWith('/terms?lang=en', { skipCache: true });
   });
 
   it('sets status to accepted when stored version matches remote version', async () => {
@@ -111,9 +112,11 @@ describe('useTermsCheck', () => {
     expect(mockApiClient.post).toHaveBeenCalledWith('/terms/accept', {
       deviceId: 'device-123-uuid',
       version: '2026.09.1',
+      lang: 'en',
       contentHash: 'a'.repeat(64),
       platform: expect.any(String),
     });
+
     expect(mockStorage.setAcceptedTermsVersion).toHaveBeenCalledWith('2026.09.1');
     expect(result.current.status).toBe('accepted');
   });

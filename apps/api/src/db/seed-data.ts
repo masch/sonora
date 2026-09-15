@@ -190,7 +190,7 @@ export const baseWaypoints: readonly NewWaypoint[] = [
   },
 ];
 
-export const termsContentV2026_09_1 = `# Términos y Condiciones de Uso — Sonora
+export const termsContentV2026_09_1_ES = `# Términos y Condiciones de Uso — Sonora
 
 Bienvenido a Sonora. Al utilizar nuestra aplicación, aceptas las siguientes condiciones de uso:
 
@@ -200,13 +200,34 @@ Bienvenido a Sonora. Al utilizar nuestra aplicación, aceptas las siguientes con
 4. **Modificaciones**: Sonora se reserva el derecho de actualizar estos términos en cualquier momento. El uso continuado de la app tras una actualización implica la aceptación de los nuevos términos.
 `;
 
+export const termsContentV2026_09_1_EN = `# Terms and Conditions of Use — Sonora
+
+Welcome to Sonora. By using our application, you agree to the following terms and conditions:
+
+1. **Use of Application**: Sonora provides geolocated sound experiences designed for cultural and artistic exploration.
+2. **Geolocation and Privacy**: The application accesses your location solely to trigger sound points on site. We do not store identifiable location history.
+3. **Intellectual Property**: All audio tracks, texts, and images are property of their respective creators and Sonora. Unauthorized reproduction is prohibited.
+4. **Modifications**: Sonora reserves the right to update these terms at any time. Continued use of the app after an update constitutes acceptance of the updated terms.
+`;
+
+export const termsContentV2026_09_1 = termsContentV2026_09_1_ES;
+
 export const baseTerms: readonly NewTermsVersion[] = [
   {
     version: '2026.09.1',
+    lang: 'es',
     title: 'Términos y Condiciones de Uso',
-    content: termsContentV2026_09_1,
-    contentHash: await sha256(termsContentV2026_09_1),
-    publishedAt: new Date('2026-09-14T00:00:00.000Z'),
+    content: termsContentV2026_09_1_ES,
+    contentHash: await sha256(termsContentV2026_09_1_ES),
+    publishedAt: new Date('2026-09-13T00:00:00.000Z'),
+  },
+  {
+    version: '2026.09.1',
+    lang: 'en',
+    title: 'Terms and Conditions of Use',
+    content: termsContentV2026_09_1_EN,
+    contentHash: await sha256(termsContentV2026_09_1_EN),
+    publishedAt: new Date('2026-09-13T00:00:00.000Z'),
   },
 ];
 
@@ -216,6 +237,8 @@ export async function seedTerms(db: DbClient, terms: readonly NewTermsVersion[])
     await db
       .insert(termsVersionsTable)
       .values(term)
-      .onConflictDoNothing({ target: termsVersionsTable.version });
+      .onConflictDoNothing({
+        target: [termsVersionsTable.version, termsVersionsTable.lang],
+      });
   }
 }

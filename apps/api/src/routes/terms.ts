@@ -1,24 +1,27 @@
-import { AcceptTermsRequestSchema, type TermsResponse } from '@sonora/shared';
-import { desc } from 'drizzle-orm';
+import { AcceptTermsRequestSchema, TermsQuerySchema, type TermsResponse } from '@sonora/shared';
+import { desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { termsAcceptances, termsVersions } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { dbGuard } from '../middleware/db-guard';
 import { envGuard } from '../middleware/env-guard';
 import { created, ERRORS, problem, success } from '../middleware/problem-details';
-import { validateJson } from '../middleware/validation-error';
+import { validateJson, validateQuery } from '../middleware/validation-error';
 import { getClientMetadata } from '../utils/client-metadata';
 
 const termsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 termsRouter.use('*', envGuard());
 
-// GET /terms — returns latest active terms
-termsRouter.get('/', dbGuard(), async (c) => {
+// GET /terms?lang=en|es — returns latest active terms for requested language
+termsRouter.get('/', validateQuery(TermsQuerySchema), dbGuard(), async (c) => {
+  const { lang } = c.req.valid('query');
   const db = c.var.db;
+
   const rows = await db
     .select()
     .from(termsVersions)
+    .where(eq(termsVersions.lang, lang))
     .orderBy(desc(termsVersions.publishedAt))
     .limit(1);
 
@@ -29,13 +32,11 @@ termsRouter.get('/', dbGuard(), async (c) => {
   const active = rows[0];
   const response: TermsResponse = {
     version: active.version,
+    lang: active.lang,
     title: active.title,
     content: active.content,
     contentHash: active.contentHash,
-    publishedAt:
-      active.publishedAt instanceof Date
-        ? active.publishedAt.toISOString()
-        : String(active.publishedAt),
+    publishedAt: active.publishedAt.toISOString(),
   };
 
   return success(c, response);
@@ -43,12 +44,13 @@ termsRouter.get('/', dbGuard(), async (c) => {
 
 // POST /terms/accept — records legal consent audit trail
 termsRouter.post('/accept', validateJson(AcceptTermsRequestSchema), dbGuard(), async (c) => {
-  const { deviceId, version, contentHash, platform } = c.req.valid('json');
+  const { deviceId, version, lang, contentHash, platform } = c.req.valid('json');
   const db = c.var.db;
 
   const rows = await db
     .select()
     .from(termsVersions)
+    .where(eq(termsVersions.lang, lang))
     .orderBy(desc(termsVersions.publishedAt))
     .limit(1);
 
@@ -66,6 +68,7 @@ termsRouter.post('/accept', validateJson(AcceptTermsRequestSchema), dbGuard(), a
   await db.insert(termsAcceptances).values({
     deviceId,
     version,
+    lang,
     contentHash,
     platform,
     ipAddress,

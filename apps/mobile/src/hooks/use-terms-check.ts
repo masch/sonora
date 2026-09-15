@@ -27,11 +27,13 @@ interface TermsCheckOutcome {
   networkError?: boolean;
 }
 
-async function resolveTermsCheck(): Promise<TermsCheckOutcome> {
+async function resolveTermsCheck(lang: 'en' | 'es'): Promise<TermsCheckOutcome> {
   const localVersion = await getAcceptedTermsVersion();
 
   try {
-    const remoteData = await ApiClient.get<TermsResponse>('/terms', { skipCache: true });
+    const remoteData = await ApiClient.get<TermsResponse>(`/terms?lang=${lang}`, {
+      skipCache: true,
+    });
     if (!localVersion || localVersion !== remoteData.version) {
       return { status: 'needs_acceptance', terms: remoteData };
     }
@@ -47,7 +49,7 @@ async function resolveTermsCheck(): Promise<TermsCheckOutcome> {
 }
 
 export function useTermsCheck(): UseTermsCheckResult {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const [status, setStatus] = useState<TermsStatus>('checking');
   const [terms, setTerms] = useState<TermsResponse | null>(null);
   const [errorKey, setErrorKey] = useState<'networkError' | 'errorDescription' | null>(null);
@@ -56,7 +58,7 @@ export function useTermsCheck(): UseTermsCheckResult {
     let cancelled = false;
 
     async function init() {
-      const outcome = await resolveTermsCheck();
+      const outcome = await resolveTermsCheck(language);
       if (cancelled) return;
 
       setTerms(outcome.terms);
@@ -71,12 +73,12 @@ export function useTermsCheck(): UseTermsCheckResult {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [language]);
 
   const retry = async () => {
     setStatus('checking');
     setErrorKey(null);
-    const outcome = await resolveTermsCheck();
+    const outcome = await resolveTermsCheck(language);
     setTerms(outcome.terms);
     setStatus(outcome.status);
     if (outcome.networkError) {
@@ -94,6 +96,7 @@ export function useTermsCheck(): UseTermsCheckResult {
       await ApiClient.post('/terms/accept', {
         deviceId,
         version: terms.version,
+        lang: terms.lang,
         contentHash: terms.contentHash,
         platform,
       });

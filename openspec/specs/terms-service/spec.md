@@ -8,14 +8,14 @@ Provide backend endpoints and data persistence for serving the active legal term
 
 ### Requirement: Serve Active Terms Version
 
-The system MUST serve the currently active terms version ordered by `published_at DESC LIMIT 1`.
+The system MUST serve the currently active terms version for the requested language ordered by `published_at DESC LIMIT 1`, defaulting to Spanish (`es`) when unspecified or unsupported.
 
 #### Scenario: Active terms queried successfully
 
-- GIVEN the database has at least one published record in `terms_versions`
-- WHEN a client sends a `GET` request to `/terms`
-- THEN the system returns HTTP 200 with `version`, `title`, `content`, `contentHash`, and `publishedAt`
-- AND the returned version matches the most recent `published_at` record
+- GIVEN the database has at least one published record in `terms_versions` for language `L`
+- WHEN a client sends a `GET` request to `/terms?lang=L`
+- THEN the system returns HTTP 200 with `version`, `lang = L`, `title`, `content`, `contentHash`, and `publishedAt`
+- AND the returned version matches the most recent `published_at` record for that language
 
 #### Scenario: No terms records available
 
@@ -25,13 +25,13 @@ The system MUST serve the currently active terms version ordered by `published_a
 
 ### Requirement: Record Legal Acceptance
 
-The system MUST record an immutable audit entry in `terms_acceptances` ONLY when a client submits valid consent matching the single currently active terms version and content hash. Submissions for outdated, non-existent, or mismatched versions/hashes MUST be rejected.
+The system MUST record an immutable audit entry in `terms_acceptances` ONLY when a client submits valid consent matching the single currently active terms version, language, and content hash. Submissions for outdated, non-existent, or mismatched versions/hashes MUST be rejected.
 
 #### Scenario: Valid acceptance submitted
 
-- GIVEN an active terms record exists in `terms_versions` with version `V` and contentHash `H`
-- WHEN a client sends a `POST` request to `/terms/accept` with matching `deviceId`, `version = V`, `contentHash = H`, and `platform`
-- THEN the system inserts a record into `terms_acceptances` with the client's IP, User-Agent, and current timestamp
+- GIVEN an active terms record exists in `terms_versions` with version `V`, language `L`, and contentHash `H`
+- WHEN a client sends a `POST` request to `/terms/accept` with matching `deviceId`, `version = V`, `lang = L`, `contentHash = H`, and `platform`
+- THEN the system inserts a record into `terms_acceptances` with the client's IP, User-Agent, language, and current timestamp
 - AND returns HTTP 201 with `{ success: true }`
 
 #### Scenario: Outdated or mismatched version rejected

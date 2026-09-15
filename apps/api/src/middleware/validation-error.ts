@@ -34,3 +34,10 @@ export function validationHook<T>(
  */
 export const validateJson = <T extends z.ZodSchema>(schema: T) =>
   zValidator('json', schema, validationHook);
+
+/**
+ * Validates incoming query parameters against a Zod schema using the canonical
+ * problem details validation hook. Inferred types flow automatically to `c.req.valid('query')`.
+ */
+export const validateQuery = <T extends z.ZodSchema>(schema: T) =>
+  zValidator('query', schema, validationHook);

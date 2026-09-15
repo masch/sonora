@@ -5,6 +5,7 @@ import type { TermsResponse } from '@sonora/shared';
 
 const mockTerms: TermsResponse = {
   version: '2026.09.1',
+  lang: 'es',
   title: 'Términos y Condiciones de Sonora',
   content: 'Este es el texto legal completo que el usuario debe leer y aceptar.',
   contentHash: 'a'.repeat(64),

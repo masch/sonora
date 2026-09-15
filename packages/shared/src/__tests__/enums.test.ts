@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   ACCESS_SOURCES,
   CURRENCIES,
+  DEFAULT_LANGUAGE,
   PAYMENT_PROVIDERS,
   PAYMENT_ROUTES,
   PLATFORMS,
   PURCHASE_STATUSES,
+  resolveLanguage,
   SUPPORTED_LANGUAGES,
 } from '../enums';
 
@@ -70,6 +72,31 @@ describe('enums & PAYMENT_ROUTES', () => {
       expect(CURRENCIES).toEqual(['ARS']);
       expect(PAYMENT_PROVIDERS).toEqual(['mercadopago', 'stripe', 'paypal']);
       expect(SUPPORTED_LANGUAGES).toEqual(['en', 'es']);
+      expect(DEFAULT_LANGUAGE).toBe('es');
+    });
+  });
+
+  describe('resolveLanguage', () => {
+    it('resolves exact match supported languages', () => {
+      expect(resolveLanguage('en')).toBe('en');
+      expect(resolveLanguage('es')).toBe('es');
+    });
+
+    it('resolves language tags with regions or scripts to base language', () => {
+      expect(resolveLanguage('en-US')).toBe('en');
+      expect(resolveLanguage('en_GB')).toBe('en');
+      expect(resolveLanguage('es-AR')).toBe('es');
+      expect(resolveLanguage('es-ES')).toBe('es');
+      expect(resolveLanguage('es_419')).toBe('es');
+    });
+
+    it('falls back to DEFAULT_LANGUAGE (es) for unsupported or empty values', () => {
+      expect(resolveLanguage('fr')).toBe('es');
+      expect(resolveLanguage('de-DE')).toBe('es');
+      expect(resolveLanguage('pt-BR')).toBe('es');
+      expect(resolveLanguage('')).toBe('es');
+      expect(resolveLanguage(null)).toBe('es');
+      expect(resolveLanguage(undefined)).toBe('es');
     });
   });
 });
