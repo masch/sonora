@@ -6,19 +6,26 @@ import { ThemedText } from '@/components/themed-text';
 import { ModalPrimitive } from '@/components/ui/modal-primitive';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import type { TermsStatus } from '@/hooks/use-terms-check';
+import type { TermsBlockingError } from '@/hooks/use-terms-check';
 import { TwPressable, TwView } from '@/tw';
 
 export interface TermsModalProps {
   visible: boolean;
-  status: TermsStatus;
   terms: TermsResponse | null;
   error?: string | null;
+  blockingError?: TermsBlockingError | null;
   onAccept: () => Promise<boolean> | boolean;
   onRetry: () => Promise<void> | void;
 }
 
-export function TermsModal({ visible, status, terms, error, onAccept, onRetry }: TermsModalProps) {
+export function TermsModal({
+  visible,
+  terms,
+  error,
+  blockingError,
+  onAccept,
+  onRetry,
+}: TermsModalProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +40,7 @@ export function TermsModal({ visible, status, terms, error, onAccept, onRetry }:
     }
   };
 
-  if (!visible || status === 'accepted') {
+  if (!visible) {
     return null;
   }
 
@@ -41,13 +48,13 @@ export function TermsModal({ visible, status, terms, error, onAccept, onRetry }:
     <ModalPrimitive visible transparent={false} animationType="fade" dismissable={false}>
       <TwView testID="terms-modal" className="flex-1 bg-background">
         <SafeAreaView style={{ flex: 1 }}>
-          {status === 'offline_blocked' ? (
+          {blockingError ? (
             <TwView testID="terms-offline-view" className="flex-1 justify-center items-center px-6">
               <ThemedText className="text-2xl font-bold text-center mb-3">
-                {t('terms.offlineTitle')}
+                {blockingError.title}
               </ThemedText>
               <ThemedText className="text-base text-center text-textSecondary mb-8 max-w-sm">
-                {t('terms.offlineDescription')}
+                {blockingError.description}
               </ThemedText>
               <TwView className="w-full max-w-xs">
                 <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">

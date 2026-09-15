@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { ApiError } from '@sonora/shared';
 import { useTermsCheck } from '@/hooks/use-terms-check';
 import * as storage from '@/storage/app-storage';
 import { ApiClient } from '@/services/api-client';
@@ -77,6 +78,11 @@ describe('useTermsCheck', () => {
     await waitFor(() => {
       expect(result.current.status).toBe('offline_blocked');
     });
+    expect(result.current.isBlocking).toBe(true);
+    expect(result.current.blockingError).toEqual({
+      title: 'terms.offlineTitle',
+      description: 'terms.networkError',
+    });
     expect(result.current.terms).toBeNull();
     expect(result.current.error).toBe('terms.networkError');
   });
@@ -90,6 +96,41 @@ describe('useTermsCheck', () => {
     await waitFor(() => {
       expect(result.current.status).toBe('accepted');
     });
+    expect(result.current.isBlocking).toBe(false);
+    expect(result.current.blockingError).toBeNull();
+  });
+
+  it('sets status to error and does not bypass offline when ApiClient.get throws ApiError', async () => {
+    mockStorage.getAcceptedTermsVersion.mockResolvedValue('2026.09.1');
+    mockApiClient.get.mockRejectedValue(new ApiError(404, 'Not Found', 'No active terms'));
+
+    const { result } = await renderHook(() => useTermsCheck());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+    expect(result.current.isBlocking).toBe(true);
+    expect(result.current.blockingError).toEqual({
+      title: 'terms.errorTitle',
+      description: 'terms.errorDescription',
+    });
+    expect(result.current.terms).toBeNull();
+    expect(result.current.error).toBe('terms.errorDescription');
+  });
+
+  it('sets status to error when ApiClient.get throws ApiError on first launch', async () => {
+    mockStorage.getAcceptedTermsVersion.mockResolvedValue(null);
+    mockApiClient.get.mockRejectedValue(
+      new ApiError(500, 'Internal Server Error', 'Server failure'),
+    );
+
+    const { result } = await renderHook(() => useTermsCheck());
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+    expect(result.current.terms).toBeNull();
+    expect(result.current.error).toBe('terms.errorDescription');
   });
 
   it('submits acceptance, persists version, and updates status to accepted', async () => {

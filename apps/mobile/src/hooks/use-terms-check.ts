@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import { type TermsResponse } from '@sonora/shared';
+import { ApiError, type SupportedLanguage, type TermsResponse } from '@sonora/shared';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { ApiClient } from '@/services/api-client';
 import {
@@ -13,10 +13,17 @@ import { logger } from '@/utils/logger';
 export type TermsStatus =
   'checking' | 'needs_acceptance' | 'accepted' | 'offline_blocked' | 'error';
 
+export interface TermsBlockingError {
+  title: string;
+  description: string;
+}
+
 export interface UseTermsCheckResult {
   status: TermsStatus;
+  isBlocking: boolean;
   terms: TermsResponse | null;
   error: string | null;
+  blockingError: TermsBlockingError | null;
   acceptTerms: () => Promise<boolean>;
   retry: () => Promise<void>;
 }
@@ -27,7 +34,7 @@ interface TermsCheckOutcome {
   networkError?: boolean;
 }
 
-async function resolveTermsCheck(lang: 'en' | 'es'): Promise<TermsCheckOutcome> {
+async function resolveTermsCheck(lang: SupportedLanguage): Promise<TermsCheckOutcome> {
   const localVersion = await getAcceptedTermsVersion();
 
   try {
@@ -40,10 +47,15 @@ async function resolveTermsCheck(lang: 'en' | 'es'): Promise<TermsCheckOutcome> 
     return { status: 'accepted', terms: remoteData };
   } catch (err) {
     logger.warn('[useTermsCheck] Failed to fetch remote terms:', err);
+
+    if (err instanceof ApiError || (err instanceof Error && err.name === 'ApiError')) {
+      return { status: 'error', terms: null };
+    }
+
     if (!localVersion) {
       return { status: 'offline_blocked', terms: null, networkError: true };
     }
-    // Previously accepted; allow app usage offline
+    // Previously accepted; allow app usage offline only on connectivity failures
     return { status: 'accepted', terms: null };
   }
 }
@@ -65,6 +77,8 @@ export function useTermsCheck(): UseTermsCheckResult {
       setStatus(outcome.status);
       if (outcome.networkError) {
         setErrorKey('networkError');
+      } else if (outcome.status === 'error') {
+        setErrorKey('errorDescription');
       }
     }
 
@@ -83,6 +97,8 @@ export function useTermsCheck(): UseTermsCheckResult {
     setStatus(outcome.status);
     if (outcome.networkError) {
       setErrorKey('networkError');
+    } else if (outcome.status === 'error') {
+      setErrorKey('errorDescription');
     }
   };
 
@@ -117,10 +133,31 @@ export function useTermsCheck(): UseTermsCheckResult {
       : t('terms.errorDescription')
     : null;
 
+  const isBlocking =
+    status === 'needs_acceptance' || status === 'offline_blocked' || status === 'error';
+
+  const blockingError: TermsBlockingError | null = (() => {
+    if (status === 'offline_blocked') {
+      return {
+        title: t('terms.offlineTitle'),
+        description: error ?? t('terms.offlineDescription'),
+      };
+    }
+    if (status === 'error') {
+      return {
+        title: t('terms.errorTitle'),
+        description: error ?? t('terms.errorDescription'),
+      };
+    }
+    return null;
+  })();
+
   return {
     status,
+    isBlocking,
     terms,
     error,
+    blockingError,
     acceptTerms,
     retry,
   };

@@ -119,13 +119,13 @@ describe('Terms API', () => {
   });
 
   describe('POST /terms/accept', () => {
-    it('returns 400 or 422 for invalid request body or missing lang', async () => {
+    it('returns 422 for invalid request body or missing lang', async () => {
       const res = await app.request('/terms/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ version: '' }),
       });
-      expect([400, 422]).toContain(res.status);
+      expect(res.status).toBe(422);
 
       const resMissingLang = await app.request('/terms/accept', {
         method: 'POST',
@@ -137,7 +137,7 @@ describe('Terms API', () => {
           platform: 'ios',
         }),
       });
-      expect([400, 422]).toContain(resMissingLang.status);
+      expect(resMissingLang.status).toBe(422);
     });
 
     it('returns 404 when no terms are published to accept', async () => {

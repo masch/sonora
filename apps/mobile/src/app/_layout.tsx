@@ -129,11 +129,9 @@ export default function RootLayout() {
       <InterruptConfirmationModal />
       {versionStatus === 'block' && <UpdateRequiredModal />}
       <TermsModal
-        visible={
-          termsCheck.status === 'needs_acceptance' || termsCheck.status === 'offline_blocked'
-        }
-        status={termsCheck.status}
+        visible={termsCheck.isBlocking}
         terms={termsCheck.terms}
+        blockingError={termsCheck.blockingError}
         error={termsCheck.error}
         onAccept={termsCheck.acceptTerms}
         onRetry={termsCheck.retry}
