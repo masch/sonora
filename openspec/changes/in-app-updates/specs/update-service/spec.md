@@ -69,3 +69,15 @@ The system MUST allow users to initiate updates directly from both mandatory and
 - GIVEN the app version status is `'warn'` and `UpdateWarningBanner` is visible
 - WHEN the user presses the update action button
 - THEN the system calls `triggerUpdate({ mode: 'flexible' })`
+
+### Requirement: Android Web Gate
+
+The system MUST detect when the web application is accessed from an Android browser and present a mandatory non-dismissable gate requiring the user to open Google Play Store to install or open the native application.
+
+#### Scenario: User visits web application on Android device
+
+- GIVEN the application is running in a web browser environment (`Platform.OS === 'web'`)
+- AND the browser User-Agent contains `Android`
+- WHEN the layout mounts
+- THEN the system renders a non-dismissable AndroidWebGate blocking web interaction
+- AND provides an action button that opens the Google Play Store URL

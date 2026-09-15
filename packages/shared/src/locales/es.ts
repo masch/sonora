@@ -282,6 +282,12 @@ export const es = {
     bannerDismiss: 'Descartar',
     bannerUpdate: 'Actualizar',
   },
+  webGate: {
+    title: 'Viví Sonora en Android',
+    message:
+      'Sonora requiere la app nativa en Android para brindarte audio geolocalizado, funcionamiento sin conexión y derivas completas.',
+    button: 'Descargar en Google Play',
+  },
   messages: {
     title: 'Mensajes',
     loading: 'Cargando mensajes...',

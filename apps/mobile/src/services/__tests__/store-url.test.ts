@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { getStoreUrls } from '../store-url';
+import { getStoreUrls, getPlayStoreUrl } from '../store-url';
 
 jest.mock('expo-application', () => ({
   applicationId: 'org.sonoraderivapoeticas.app',
@@ -65,6 +65,20 @@ describe('store-url', () => {
       const urls = getStoreUrls();
       expect(urls.primary).toContain('https://');
       expect(urls.fallback).toBeUndefined();
+    });
+  });
+
+  describe('getPlayStoreUrl', () => {
+    it('returns direct Google Play Store web URL with default package', () => {
+      expect(getPlayStoreUrl()).toBe(
+        'https://play.google.com/store/apps/details?id=org.sonoraderivapoeticas.app',
+      );
+    });
+
+    it('supports custom package override', () => {
+      expect(getPlayStoreUrl('com.other.app')).toBe(
+        'https://play.google.com/store/apps/details?id=com.other.app',
+      );
     });
   });
 });

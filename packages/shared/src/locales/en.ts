@@ -279,6 +279,12 @@ export const en = {
     bannerDismiss: 'Dismiss',
     bannerUpdate: 'Update',
   },
+  webGate: {
+    title: 'Experience Sonora on Android',
+    message:
+      'Sonora requires the native Android app for geolocated soundscapes, offline audio, and full guided explorations.',
+    button: 'Download on Google Play',
+  },
   messages: {
     title: 'Messages',
     loading: 'Loading messages...',

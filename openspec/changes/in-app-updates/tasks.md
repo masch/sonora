@@ -39,3 +39,11 @@ Chain strategy: single-pr
 - [x] 4.1 Run mobile test suite: `bun --filter @sonora/mobile test`
 - [x] 4.2 Run monorepo typecheck: `make typecheck`
 - [x] 4.3 Run linter: `make lint`
+
+## Phase 5: Android Web Gate (`apps/mobile` & `@sonora/shared`)
+
+- [x] 5.1 Add `getPlayStoreUrl()` helper and unit tests in `apps/mobile/src/services/store-url.ts` and `apps/mobile/src/services/__tests__/store-url.test.ts` (RED → GREEN)
+- [x] 5.2 Add `webGate.*` localization strings in `packages/shared/src/locales/en.ts` and `es.ts`
+- [x] 5.3 Write unit tests for `AndroidWebGate` in `apps/mobile/src/components/__tests__/android-web-gate.test.tsx` (RED)
+- [x] 5.4 Implement `AndroidWebGate` in `apps/mobile/src/components/android-web-gate.tsx` and integrate in `apps/mobile/src/app/_layout.tsx` (GREEN)
+- [x] 5.5 Validate test suite, typecheck, and lint

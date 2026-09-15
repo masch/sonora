@@ -34,3 +34,11 @@ export function getStoreUrls(appIdOverride?: string): StoreUrls {
     primary: DEFAULT_WEB_URL,
   };
 }
+
+/**
+ * Returns direct Google Play Store web URL for Android redirection.
+ */
+export function getPlayStoreUrl(appIdOverride?: string): string {
+  const appId = appIdOverride || Application.applicationId || DEFAULT_ANDROID_PACKAGE;
+  return `https://play.google.com/store/apps/details?id=${appId}`;
+}
