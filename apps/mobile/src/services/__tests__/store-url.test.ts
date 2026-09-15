@@ -46,7 +46,13 @@ describe('store-url', () => {
       });
     });
 
-    it('returns itms-apps as primary and apps.apple.com as fallback', () => {
+    it('returns configured default numeric App Store ID when no override provided', () => {
+      const urls = getStoreUrls();
+      expect(urls.primary).toBe('itms-apps://apps.apple.com/app/id0000000000');
+      expect(urls.fallback).toBe('https://apps.apple.com/app/id0000000000');
+    });
+
+    it('returns itms-apps as primary and apps.apple.com as fallback with custom appId override', () => {
       const urls = getStoreUrls('123456789');
       expect(urls.primary).toBe('itms-apps://apps.apple.com/app/id123456789');
       expect(urls.fallback).toBe('https://apps.apple.com/app/id123456789');

@@ -7,6 +7,7 @@ export interface StoreUrls {
 }
 
 const DEFAULT_ANDROID_PACKAGE = 'org.sonoraderivapoeticas.app';
+const DEFAULT_IOS_APP_STORE_ID = process.env.EXPO_PUBLIC_APP_STORE_ID || '0000000000';
 const DEFAULT_WEB_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
 
 /**
@@ -14,9 +15,8 @@ const DEFAULT_WEB_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
  * Supports custom appId override (e.g. for testing or explicit store IDs).
  */
 export function getStoreUrls(appIdOverride?: string): StoreUrls {
-  const appId = appIdOverride || Application.applicationId || DEFAULT_ANDROID_PACKAGE;
-
   if (Platform.OS === 'android') {
+    const appId = appIdOverride || Application.applicationId || DEFAULT_ANDROID_PACKAGE;
     return {
       primary: `market://details?id=${appId}`,
       fallback: `https://play.google.com/store/apps/details?id=${appId}`,
@@ -24,6 +24,7 @@ export function getStoreUrls(appIdOverride?: string): StoreUrls {
   }
 
   if (Platform.OS === 'ios') {
+    const appId = appIdOverride || DEFAULT_IOS_APP_STORE_ID;
     return {
       primary: `itms-apps://apps.apple.com/app/id${appId}`,
       fallback: `https://apps.apple.com/app/id${appId}`,

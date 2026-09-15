@@ -35,10 +35,11 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
     }
 
     if (urls.fallback) {
-      await Linking.openURL(urls.fallback).catch(() => {
-        // Silently ignore best-effort fallback
-      });
+      await Linking.openURL(urls.fallback);
+      return;
     }
+
+    throw new Error('Unable to open store update URL');
   }
 }
 
