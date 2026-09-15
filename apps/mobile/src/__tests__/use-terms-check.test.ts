@@ -4,6 +4,7 @@ import { ApiError } from '@sonora/shared';
 import { useTermsCheck } from '@/hooks/use-terms-check';
 import * as storage from '@/storage/app-storage';
 import { ApiClient } from '@/services/api-client';
+import { AnalyticsService } from '@/services/analytics';
 
 jest.mock('@/storage/app-storage');
 const mockStorage = storage as jest.Mocked<typeof storage>;
@@ -15,6 +16,12 @@ jest.mock('@/services/api-client', () => ({
   },
 }));
 const mockApiClient = ApiClient as unknown as { get: jest.Mock; post: jest.Mock };
+
+jest.mock('@/services/analytics', () => ({
+  AnalyticsService: {
+    trackEvent: jest.fn(),
+  },
+}));
 
 describe('useTermsCheck', () => {
   const remoteTerms = {
@@ -159,6 +166,10 @@ describe('useTermsCheck', () => {
     });
 
     expect(mockStorage.setAcceptedTermsVersion).toHaveBeenCalledWith('2026.09.1');
+    expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('terms_accepted', {
+      version: '2026.09.1',
+      lang: 'en',
+    });
     expect(result.current.status).toBe('accepted');
   });
 
