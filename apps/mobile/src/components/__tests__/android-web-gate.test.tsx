@@ -94,5 +94,35 @@ describe('AndroidWebGate', () => {
         'https://play.google.com/store/apps/details?id=org.sonoraderivapoeticas.app',
       );
     });
+
+    it('falls back to window.location.href when Linking.openURL rejects', async () => {
+      const targetUrl =
+        'https://play.google.com/store/apps/details?id=org.sonoraderivapoeticas.app';
+      jest.spyOn(storeUrlModule, 'getPlayStoreUrl').mockReturnValue(targetUrl);
+      jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('Popup blocked'));
+
+      const originalWindow = globalThis.window;
+      const mockLocation = { href: '' };
+      Object.defineProperty(globalThis, 'window', {
+        value: { location: mockLocation },
+        configurable: true,
+      });
+
+      try {
+        await render(<AndroidWebGate />);
+        const button = screen.getByTestId('android-web-gate-button');
+        await fireEvent.press(button);
+
+        // Allow microtask queue to process the catch block
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(mockLocation.href).toBe(targetUrl);
+      } finally {
+        Object.defineProperty(globalThis, 'window', {
+          value: originalWindow,
+          configurable: true,
+        });
+      }
+    });
   });
 });

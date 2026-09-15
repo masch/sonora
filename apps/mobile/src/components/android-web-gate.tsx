@@ -11,7 +11,9 @@ import { TwPressable, TwView } from '@/tw';
 function handleOpenPlayStore() {
   const url = getPlayStoreUrl();
   Linking.openURL(url).catch(() => {
-    // Best-effort fallback
+    if (typeof window !== 'undefined') {
+      window.location.href = url;
+    }
   });
 }
 
