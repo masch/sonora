@@ -1,20 +1,13 @@
 import React from 'react';
-import { Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ModalPrimitive } from '@/components/ui/modal-primitive';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { updateService } from '@/services/update-service';
 import { TwPressable, TwView } from '@/tw';
-
-// TODO: Replace with platform-specific store URL when published:
-//   iOS: https://apps.apple.com/app/id<APP_STORE_ID>
-//   Android: market://details?id=<BUNDLE_ID>
-const HANDLE_UPDATE_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
 
 /** Module-scoped — no local state dependencies. */
 function handleUpdatePress() {
-  Linking.openURL(HANDLE_UPDATE_URL).catch(() => {
-    // Silently ignore — the web URL is a best-effort fallback.
-  });
+  updateService.triggerUpdate({ mode: 'immediate' });
 }
 
 /**

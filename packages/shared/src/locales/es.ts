@@ -280,6 +280,7 @@ export const es = {
     bannerMessage:
       'Hay una nueva versión de Sonora disponible. Actualizá para tener la mejor experiencia.',
     bannerDismiss: 'Descartar',
+    bannerUpdate: 'Actualizar',
   },
   messages: {
     title: 'Mensajes',

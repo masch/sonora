@@ -1,8 +1,19 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import { UpdateRequiredModal } from '../update-required-modal';
+import { updateService } from '@/services/update-service';
+
+jest.mock('@/services/update-service', () => ({
+  updateService: {
+    triggerUpdate: jest.fn(),
+  },
+}));
 
 describe('UpdateRequiredModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders the modal with i18n title', async () => {
     await render(<UpdateRequiredModal />);
     expect(screen.getByText('versionCheck.modalTitle')).toBeTruthy();
@@ -34,5 +45,12 @@ describe('UpdateRequiredModal', () => {
     await render(<UpdateRequiredModal />);
     expect(screen.getByTestId('update-required-modal')).toBeTruthy();
     expect(screen.getByTestId('update-download-button')).toBeTruthy();
+  });
+
+  it('triggers immediate update on button press', async () => {
+    await render(<UpdateRequiredModal />);
+    const button = screen.getByTestId('update-download-button');
+    await fireEvent.press(button);
+    expect(updateService.triggerUpdate).toHaveBeenCalledWith({ mode: 'immediate' });
   });
 });

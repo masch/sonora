@@ -277,6 +277,7 @@ export const en = {
     bannerTitle: 'Update Available',
     bannerMessage: 'A new version of Sonora is available. Please update for the best experience.',
     bannerDismiss: 'Dismiss',
+    bannerUpdate: 'Update',
   },
   messages: {
     title: 'Messages',
