@@ -1,12 +1,14 @@
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 
+import { APP_IDENTIFIERS } from '@sonora/shared';
+
 export interface StoreUrls {
   primary: string;
   fallback?: string;
 }
 
-const DEFAULT_ANDROID_PACKAGE = 'org.sonoraderivapoeticas.app';
+const DEFAULT_ANDROID_PACKAGE = APP_IDENTIFIERS.production.appId;
 const DEFAULT_IOS_APP_STORE_ID = process.env.EXPO_PUBLIC_APP_STORE_ID || '0000000000';
 const DEFAULT_WEB_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
 

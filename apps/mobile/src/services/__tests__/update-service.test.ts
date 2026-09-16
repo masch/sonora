@@ -1,4 +1,4 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { UpdateService, DeepLinkUpdateProvider, type UpdateProvider } from '../update-service';
 import * as storeUrlModule from '../store-url';
 
@@ -114,7 +114,6 @@ describe('UpdateService', () => {
         configurable: true,
       });
 
-      const { Platform } = require('react-native');
       const originalPlatformOS = Platform.OS;
       Platform.OS = 'web';
 
