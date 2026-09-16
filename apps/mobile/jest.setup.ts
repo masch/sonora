@@ -133,3 +133,19 @@ jest.mock('firebase/analytics', () => ({
   getAnalytics: jest.fn().mockReturnValue({}),
   logEvent: jest.fn(),
 }));
+
+// Mock sp-react-native-in-app-updates globally to prevent NativeEventEmitter crash in test environments
+jest.mock('sp-react-native-in-app-updates', () => {
+  const MockSpInAppUpdates = jest.fn().mockImplementation(() => ({
+    startUpdate: jest.fn().mockResolvedValue(undefined),
+    checkNeedsUpdate: jest.fn().mockResolvedValue({ shouldUpdate: false }),
+  }));
+  return {
+    __esModule: true,
+    default: MockSpInAppUpdates,
+    IAUUpdateKind: {
+      FLEXIBLE: 0,
+      IMMEDIATE: 1,
+    },
+  };
+});
