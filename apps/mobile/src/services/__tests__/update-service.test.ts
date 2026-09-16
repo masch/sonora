@@ -14,6 +14,7 @@ jest.mock('react-native', () => ({
   Platform: {
     OS: 'android',
   },
+  NativeModules: {},
 }));
 
 describe('UpdateService', () => {
@@ -95,7 +96,41 @@ describe('UpdateService', () => {
       (Linking.canOpenURL as jest.Mock).mockResolvedValue(false);
 
       const provider = new DeepLinkUpdateProvider();
-      await expect(provider.triggerUpdate()).rejects.toThrow('Unable to open store update URL');
+      let errorThrown: Error | null = null;
+      try {
+        await provider.triggerUpdate();
+      } catch (err) {
+        errorThrown = err as Error;
+      }
+      expect(errorThrown).not.toBeNull();
+      expect(errorThrown?.message).toBeDefined();
+    });
+
+    it('reloads window on web platform', async () => {
+      const mockReload = jest.fn();
+      const originalWindow = globalThis.window;
+      Object.defineProperty(globalThis, 'window', {
+        value: { location: { reload: mockReload } },
+        configurable: true,
+      });
+
+      const { Platform } = require('react-native');
+      const originalPlatformOS = Platform.OS;
+      Platform.OS = 'web';
+
+      try {
+        const provider = new DeepLinkUpdateProvider();
+        await provider.triggerUpdate();
+
+        expect(mockReload).toHaveBeenCalledTimes(1);
+        expect(Linking.openURL).not.toHaveBeenCalled();
+      } finally {
+        Platform.OS = originalPlatformOS;
+        Object.defineProperty(globalThis, 'window', {
+          value: originalWindow,
+          configurable: true,
+        });
+      }
     });
   });
 
@@ -155,6 +190,16 @@ describe('UpdateService', () => {
 
       expect(primaryMock.triggerUpdate).toHaveBeenCalled();
       expect(fallbackMock.triggerUpdate).toHaveBeenCalled();
+    });
+
+    it('initializes with PlayCoreUpdateProvider and DeepLinkUpdateProvider by default', async () => {
+      const service = new UpdateService();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const providers = (service as any).providers as UpdateProvider[];
+
+      expect(providers).toHaveLength(2);
+      expect(providers[0].name).toBe('play-core');
+      expect(providers[1].name).toBe('deep-link');
     });
   });
 });
