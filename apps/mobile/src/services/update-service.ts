@@ -1,5 +1,5 @@
 import { Linking, Platform } from 'react-native';
-import i18next from 'i18next';
+import { t } from 'i18next';
 import { getStoreUrls } from './store-url';
 import { PlayCoreUpdateProvider } from './play-core-provider';
 
@@ -46,7 +46,7 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
       return;
     }
 
-    throw new Error(i18next.t('versionCheck.updateError'));
+    throw new Error(t('versionCheck.updateError'));
   }
 }
 
