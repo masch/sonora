@@ -12,6 +12,7 @@ export type {
   TestEvents,
   PaymentEvents,
   TermsEvents,
+  InAppUpdateEvents,
 } from './analytics-events';
 
 export type { AnalyticsEventMap };

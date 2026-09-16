@@ -1,24 +1,42 @@
 import { Platform, NativeModules } from 'react-native';
 import { PlayCoreUpdateProvider } from '../play-core-provider';
+import { AnalyticsService } from '../analytics';
 
-// Mock sp-react-native-in-app-updates
+// Stable references for mocked methods
 const mockStartUpdate = jest.fn();
 const mockCheckNeedsUpdate = jest.fn();
+const mockInstallUpdate = jest.fn();
+const mockAddStatusUpdateListener = jest.fn();
+const mockRemoveStatusUpdateListener = jest.fn();
 
 jest.mock('sp-react-native-in-app-updates', () => {
   const MockSpInAppUpdates = jest.fn().mockImplementation(() => ({
     startUpdate: mockStartUpdate,
     checkNeedsUpdate: mockCheckNeedsUpdate,
+    installUpdate: mockInstallUpdate,
+    addStatusUpdateListener: mockAddStatusUpdateListener,
+    removeStatusUpdateListener: mockRemoveStatusUpdateListener,
   }));
   return {
     __esModule: true,
     default: MockSpInAppUpdates,
-    IAUUpdateKind: {
-      FLEXIBLE: 0,
-      IMMEDIATE: 1,
+    IAUUpdateKind: { FLEXIBLE: 0, IMMEDIATE: 1 },
+    IAUInstallStatus: {
+      UNKNOWN: 0,
+      PENDING: 1,
+      DOWNLOADING: 2,
+      INSTALLING: 3,
+      INSTALLED: 4,
+      FAILED: 5,
+      CANCELED: 6,
+      DOWNLOADED: 11,
     },
   };
 });
+
+jest.mock('../analytics', () => ({
+  AnalyticsService: { trackEvent: jest.fn() },
+}));
 
 describe('PlayCoreUpdateProvider', () => {
   const originalOS = Platform.OS;
@@ -67,6 +85,20 @@ describe('PlayCoreUpdateProvider', () => {
     });
   });
 
+  describe('checkForUpdate()', () => {
+    it('returns true when an update is available', async () => {
+      mockCheckNeedsUpdate.mockResolvedValueOnce({ shouldUpdate: true });
+      const provider = new PlayCoreUpdateProvider();
+      await expect(provider.checkForUpdate()).resolves.toBe(true);
+    });
+
+    it('returns false when no update is available', async () => {
+      mockCheckNeedsUpdate.mockResolvedValueOnce({ shouldUpdate: false });
+      const provider = new PlayCoreUpdateProvider();
+      await expect(provider.checkForUpdate()).resolves.toBe(false);
+    });
+  });
+
   describe('triggerUpdate()', () => {
     it('triggers IMMEDIATE update when mode is immediate', async () => {
       mockStartUpdate.mockResolvedValueOnce(undefined);
@@ -77,24 +109,6 @@ describe('PlayCoreUpdateProvider', () => {
       expect(mockStartUpdate).toHaveBeenCalledWith({ updateType: 1 });
     });
 
-    it('triggers FLEXIBLE update when mode is flexible', async () => {
-      mockStartUpdate.mockResolvedValueOnce(undefined);
-      const provider = new PlayCoreUpdateProvider();
-
-      await provider.triggerUpdate({ mode: 'flexible' });
-
-      expect(mockStartUpdate).toHaveBeenCalledWith({ updateType: 0 });
-    });
-
-    it('defaults to FLEXIBLE update when mode is not specified', async () => {
-      mockStartUpdate.mockResolvedValueOnce(undefined);
-      const provider = new PlayCoreUpdateProvider();
-
-      await provider.triggerUpdate();
-
-      expect(mockStartUpdate).toHaveBeenCalledWith({ updateType: 0 });
-    });
-
     it('propagates error when startUpdate rejects so fallback can take over', async () => {
       mockStartUpdate.mockRejectedValueOnce(new Error('Play Core API failure'));
       const provider = new PlayCoreUpdateProvider();
@@ -102,6 +116,62 @@ describe('PlayCoreUpdateProvider', () => {
       await expect(provider.triggerUpdate({ mode: 'immediate' })).rejects.toThrow(
         'Play Core API failure',
       );
+    });
+
+    it('resolves after DOWNLOADED status and calls installUpdate for FLEXIBLE mode', async () => {
+      mockStartUpdate.mockResolvedValueOnce(undefined);
+      // Simulate the listener being called with DOWNLOADED status
+      mockAddStatusUpdateListener.mockImplementation((cb: (e: { status: number }) => void) => {
+        setImmediate(() => cb({ status: 11 /* DOWNLOADED */ }));
+      });
+
+      const provider = new PlayCoreUpdateProvider();
+      await provider.triggerUpdate({ mode: 'flexible' });
+
+      expect(mockInstallUpdate).toHaveBeenCalled();
+      expect(mockRemoveStatusUpdateListener).toHaveBeenCalled();
+    });
+
+    it('defaults to FLEXIBLE update when mode is not specified', async () => {
+      mockStartUpdate.mockResolvedValueOnce(undefined);
+      mockAddStatusUpdateListener.mockImplementation((cb: (e: { status: number }) => void) => {
+        setImmediate(() => cb({ status: 11 /* DOWNLOADED */ }));
+      });
+
+      const provider = new PlayCoreUpdateProvider();
+      await provider.triggerUpdate();
+
+      expect(mockStartUpdate).toHaveBeenCalledWith({ updateType: 0 });
+    });
+
+    it('rejects and fires update_download_failed when FLEXIBLE status is FAILED', async () => {
+      mockStartUpdate.mockResolvedValueOnce(undefined);
+      mockAddStatusUpdateListener.mockImplementation((cb: (e: { status: number }) => void) => {
+        setImmediate(() => cb({ status: 5 /* FAILED */ }));
+      });
+
+      const provider = new PlayCoreUpdateProvider();
+      await expect(provider.triggerUpdate({ mode: 'flexible' })).rejects.toThrow(
+        'Flexible update ended with status: 5',
+      );
+      expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_download_failed', {
+        error_code: 5,
+      });
+    });
+
+    it('rejects and fires update_download_canceled when FLEXIBLE status is CANCELED', async () => {
+      mockStartUpdate.mockResolvedValueOnce(undefined);
+      mockAddStatusUpdateListener.mockImplementation((cb: (e: { status: number }) => void) => {
+        setImmediate(() => cb({ status: 6 /* CANCELED */ }));
+      });
+
+      const provider = new PlayCoreUpdateProvider();
+      await expect(provider.triggerUpdate({ mode: 'flexible' })).rejects.toThrow(
+        'Flexible update ended with status: 6',
+      );
+      expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_download_canceled', {
+        error_code: 6,
+      });
     });
   });
 });

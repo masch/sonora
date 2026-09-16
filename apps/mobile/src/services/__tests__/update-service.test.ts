@@ -200,5 +200,28 @@ describe('UpdateService', () => {
       expect(providers[0].name).toBe('play-core');
       expect(providers[1].name).toBe('deep-link');
     });
+
+    it('falls back to DeepLinkUpdateProvider when PlayCoreUpdateProvider.triggerUpdate throws', async () => {
+      // Build the real default service (PlayCore → DeepLink)
+      const service = new UpdateService();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const providers = (service as any).providers as UpdateProvider[];
+
+      // PlayCore is not available (NativeModules.SpInAppUpdates is undefined in test env),
+      // so make isAvailable return true to force triggerUpdate to run and throw.
+      jest.spyOn(providers[0], 'isAvailable').mockResolvedValue(true);
+      jest
+        .spyOn(providers[0], 'triggerUpdate')
+        .mockRejectedValue(new Error('Play Core unavailable'));
+
+      // DeepLink should open the store URL as fallback
+      (Linking.canOpenURL as jest.Mock).mockResolvedValue(true);
+      (Linking.openURL as jest.Mock).mockResolvedValue(undefined);
+
+      await service.triggerUpdate();
+
+      expect(providers[0].triggerUpdate).toHaveBeenCalled();
+      expect(Linking.openURL).toHaveBeenCalled();
+    });
   });
 });

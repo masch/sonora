@@ -2,6 +2,7 @@ import { Linking, Platform } from 'react-native';
 import { t } from 'i18next';
 import { getStoreUrls } from './store-url';
 import { PlayCoreUpdateProvider } from './play-core-provider';
+import { AnalyticsService } from './analytics';
 
 export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
@@ -26,6 +27,10 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
 
   async triggerUpdate(): Promise<void> {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      AnalyticsService.trackEvent('update_store_redirect', {
+        platform: 'web',
+        url: 'window.location.reload',
+      });
       window.location.reload();
       return;
     }
@@ -35,6 +40,10 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
       const canOpen = await Linking.canOpenURL(urls.primary);
       if (canOpen) {
         await Linking.openURL(urls.primary);
+        AnalyticsService.trackEvent('update_store_redirect', {
+          platform: Platform.OS,
+          url: urls.primary,
+        });
         return;
       }
     } catch {
@@ -43,6 +52,10 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
 
     if (urls.fallback) {
       await Linking.openURL(urls.fallback);
+      AnalyticsService.trackEvent('update_store_redirect', {
+        platform: Platform.OS,
+        url: urls.fallback,
+      });
       return;
     }
 

@@ -11,6 +11,10 @@ export class PlayCoreUpdateProvider implements UpdateProvider {
     return false;
   }
 
+  async checkForUpdate(): Promise<boolean> {
+    return false;
+  }
+
   async triggerUpdate(_options?: UpdateOptions): Promise<void> {
     // No-op / not available on web
   }
