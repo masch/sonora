@@ -278,6 +278,7 @@ export const en = {
     bannerMessage: 'A new version of Sonora is available. Please update for the best experience.',
     bannerDismiss: 'Dismiss',
     bannerUpdate: 'Update',
+    updateError: 'Unable to open store update URL',
   },
   webGate: {
     title: 'Experience Sonora on Android',

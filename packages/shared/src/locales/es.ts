@@ -281,6 +281,7 @@ export const es = {
       'Hay una nueva versión de Sonora disponible. Actualizá para tener la mejor experiencia.',
     bannerDismiss: 'Descartar',
     bannerUpdate: 'Actualizar',
+    updateError: 'No se pudo abrir el enlace de actualización de la tienda',
   },
   webGate: {
     title: 'Viví Sonora en Android',

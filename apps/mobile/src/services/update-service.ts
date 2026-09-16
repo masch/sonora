@@ -1,5 +1,7 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import i18next from 'i18next';
 import { getStoreUrls } from './store-url';
+import { PlayCoreUpdateProvider } from './play-core-provider';
 
 export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
@@ -23,6 +25,11 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
   }
 
   async triggerUpdate(): Promise<void> {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.reload();
+      return;
+    }
+
     const urls = getStoreUrls();
     try {
       const canOpen = await Linking.canOpenURL(urls.primary);
@@ -39,7 +46,7 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
       return;
     }
 
-    throw new Error('Unable to open store update URL');
+    throw new Error(i18next.t('versionCheck.updateError'));
   }
 }
 
@@ -52,7 +59,9 @@ export class UpdateService {
   private providers: UpdateProvider[] = [];
 
   constructor(providers?: UpdateProvider[]) {
-    this.providers = providers ? [...providers] : [new DeepLinkUpdateProvider()];
+    this.providers = providers
+      ? [...providers]
+      : [new PlayCoreUpdateProvider(), new DeepLinkUpdateProvider()];
   }
 
   registerProvider(provider: UpdateProvider, prepend = true): void {
