@@ -9,6 +9,7 @@ import {
   getDeviceId,
 } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
+import { AnalyticsService } from '@/services/analytics';
 
 export type TermsStatus =
   'checking' | 'needs_acceptance' | 'accepted' | 'offline_blocked' | 'error';
@@ -118,6 +119,10 @@ export function useTermsCheck(): UseTermsCheckResult {
       });
 
       await setAcceptedTermsVersion(terms.version);
+      AnalyticsService.trackEvent('terms_accepted', {
+        version: terms.version,
+        lang: terms.lang,
+      });
       setStatus('accepted');
       return true;
     } catch (err) {

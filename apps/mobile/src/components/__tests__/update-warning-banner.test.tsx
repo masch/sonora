@@ -1,8 +1,19 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { UpdateWarningBanner } from '../update-warning-banner';
+import { updateService } from '@/services/update-service';
+
+jest.mock('@/services/update-service', () => ({
+  updateService: {
+    triggerUpdate: jest.fn(),
+  },
+}));
 
 describe('UpdateWarningBanner', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders the banner with i18n title', async () => {
     await render(<UpdateWarningBanner />);
     expect(screen.getByText('versionCheck.bannerTitle')).toBeTruthy();
@@ -13,8 +24,9 @@ describe('UpdateWarningBanner', () => {
     expect(screen.getByText('versionCheck.bannerMessage')).toBeTruthy();
   });
 
-  it('renders a dismiss button', async () => {
+  it('renders update and dismiss buttons', async () => {
     await render(<UpdateWarningBanner />);
+    expect(screen.getByText('versionCheck.bannerUpdate')).toBeTruthy();
     expect(screen.getByText('versionCheck.bannerDismiss')).toBeTruthy();
   });
 
@@ -35,11 +47,20 @@ describe('UpdateWarningBanner', () => {
     expect(screen.queryByTestId('update-warning-banner')).toBeNull();
   });
 
-  it('has accessible dismiss button with accessibility label', async () => {
+  it('has accessible buttons with accessibility labels', async () => {
     await render(<UpdateWarningBanner />);
+    const updateButton = screen.getByTestId('update-banner-update-button');
     const dismissButton = screen.getByTestId('update-banner-dismiss-button');
+    expect(updateButton).toBeTruthy();
     expect(dismissButton).toBeTruthy();
-    // Accessibility label should match the dismiss text
+    expect(updateButton.props.accessibilityLabel).toBeDefined();
     expect(dismissButton.props.accessibilityLabel).toBeDefined();
+  });
+
+  it('triggers flexible update when update button is pressed', async () => {
+    await render(<UpdateWarningBanner />);
+    const updateButton = screen.getByTestId('update-banner-update-button');
+    await fireEvent.press(updateButton);
+    expect(updateService.triggerUpdate).toHaveBeenCalledWith({ mode: 'flexible' });
   });
 });

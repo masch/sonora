@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { isIosBrowser } from '../platform';
+import { isIosBrowser, isAndroidBrowser } from '../platform';
 
 describe('isIosBrowser', () => {
   const originalPlatformOS = Platform.OS;
@@ -139,5 +139,87 @@ describe('isIosBrowser', () => {
   it('handles missing userAgent gracefully', () => {
     mockBrowserEnvironment('');
     expect(isIosBrowser()).toBe(false);
+  });
+});
+
+describe('isAndroidBrowser', () => {
+  const originalPlatformOS = Platform.OS;
+  const originalNavigator = globalThis.navigator;
+  const originalWindow = globalThis.window;
+
+  afterEach(() => {
+    Platform.OS = originalPlatformOS;
+    Object.defineProperty(globalThis, 'navigator', {
+      value: originalNavigator,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'window', {
+      value: originalWindow,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  const mockBrowserEnvironment = (userAgent: string) => {
+    Platform.OS = 'web';
+    Object.defineProperty(globalThis, 'window', {
+      value: {},
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        userAgent,
+      },
+      configurable: true,
+      writable: true,
+    });
+  };
+
+  it('returns false when Platform.OS is native android', () => {
+    Platform.OS = 'android';
+    expect(isAndroidBrowser()).toBe(false);
+  });
+
+  it('returns false when Platform.OS is native ios', () => {
+    Platform.OS = 'ios';
+    expect(isAndroidBrowser()).toBe(false);
+  });
+
+  it('returns true on Android Chrome web', () => {
+    mockBrowserEnvironment(
+      'Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+    );
+    expect(isAndroidBrowser()).toBe(true);
+  });
+
+  it('returns false on iOS Safari web', () => {
+    mockBrowserEnvironment(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    );
+    expect(isAndroidBrowser()).toBe(false);
+  });
+
+  it('returns false on Desktop Mac Chrome web', () => {
+    mockBrowserEnvironment(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+    );
+    expect(isAndroidBrowser()).toBe(false);
+  });
+
+  it('returns false when navigator is undefined', () => {
+    Platform.OS = 'web';
+    Object.defineProperty(globalThis, 'window', {
+      value: {},
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    expect(isAndroidBrowser()).toBe(false);
   });
 });

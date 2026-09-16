@@ -277,6 +277,13 @@ export const en = {
     bannerTitle: 'Update Available',
     bannerMessage: 'A new version of Sonora is available. Please update for the best experience.',
     bannerDismiss: 'Dismiss',
+    bannerUpdate: 'Update',
+  },
+  webGate: {
+    title: 'Experience Sonora on Android',
+    message:
+      'Sonora requires the native Android app for geolocated soundscapes, offline audio, and full guided explorations.',
+    button: 'Download on Google Play',
   },
   messages: {
     title: 'Messages',

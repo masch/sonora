@@ -17,3 +17,18 @@ export function isIosBrowser(): boolean {
   const isIpadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
   return isIosDevice || isIpadOs;
 }
+
+/**
+ * Returns true if the app is running inside an Android web browser.
+ * Returns false on native Android/iOS, iOS Web, and Desktop Web.
+ */
+export function isAndroidBrowser(): boolean {
+  if (Platform.OS !== 'web') {
+    return false;
+  }
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  const ua = navigator.userAgent || '';
+  return /android/i.test(ua);
+}
