@@ -6,7 +6,7 @@
 
 - `PlayCoreUpdateProvider.isAvailable()` MUST return `false` on any non-Android platform (`Platform.OS !== 'android'`).
 - `PlayCoreUpdateProvider.isAvailable()` MUST return `false` if `NativeModules.SpInAppUpdates` is undefined or null (e.g. Expo Go, web, or builds without native link).
-- `PlayCoreUpdateProvider.isAvailable()` MUST return `true` on Android when the native module is present.
+- `PlayCoreUpdateProvider.isAvailable()` MUST return `true` on Android when both the native module and dynamic class resolution are present.
 
 ### REQ-2: Mode Mapping & Execution
 

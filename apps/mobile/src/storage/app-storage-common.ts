@@ -4,6 +4,7 @@ import { logger } from '@/utils/logger';
 const PURCHASED_EXPERIENCES_KEY = 'purchased_experiences';
 const USER_EMAIL_KEY = 'user_email';
 const TERMS_ACCEPTED_VERSION_KEY = 'terms_accepted_version';
+const LAST_INSTALLED_VERSION_KEY = 'last_installed_version';
 
 export function createStorageFunctions(
   storage: KeyValueStorage & {
@@ -67,6 +68,24 @@ export function createStorageFunctions(
     }
   };
 
+  const getLastInstalledVersion = async (): Promise<string | null> => {
+    try {
+      return await storage.getItem(LAST_INSTALLED_VERSION_KEY);
+    } catch {
+      logger.warn('[AppStorage] Failed to read last installed version');
+      return null;
+    }
+  };
+
+  const setLastInstalledVersion = async (version: string): Promise<void> => {
+    try {
+      await storage.setItem(LAST_INSTALLED_VERSION_KEY, version);
+    } catch (err) {
+      logger.warn('[AppStorage] Failed to save last installed version');
+      throw err;
+    }
+  };
+
   const getDeviceId = async (): Promise<string> => {
     return getPlatformDeviceId();
   };
@@ -79,6 +98,8 @@ export function createStorageFunctions(
     getDeviceId,
     getAcceptedTermsVersion,
     setAcceptedTermsVersion,
+    getLastInstalledVersion,
+    setLastInstalledVersion,
   };
 }
 

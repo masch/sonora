@@ -98,7 +98,7 @@ export class PlayCoreUpdateProvider implements UpdateProvider {
       const onStatusUpdate = (event: StatusUpdateEvent) => {
         if (event.status === IAUInstallStatusEnum.DOWNLOADED) {
           client.removeStatusUpdateListener(onStatusUpdate);
-          AnalyticsService.trackEvent('update_installed', {
+          AnalyticsService.trackEvent('update_downloaded', {
             status: String(event.status),
           });
           client.installUpdate();

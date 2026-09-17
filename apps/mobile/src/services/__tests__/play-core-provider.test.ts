@@ -137,6 +137,9 @@ describe('PlayCoreUpdateProvider', () => {
 
       expect(mockInstallUpdate).toHaveBeenCalled();
       expect(mockRemoveStatusUpdateListener).toHaveBeenCalled();
+      expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_downloaded', {
+        status: '11',
+      });
     });
 
     it('defaults to FLEXIBLE update when mode is not specified', async () => {

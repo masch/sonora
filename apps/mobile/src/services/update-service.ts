@@ -3,6 +3,8 @@ import { t } from 'i18next';
 import { getStoreUrls } from './store-url';
 import { PlayCoreUpdateProvider } from './play-core-provider';
 import { AnalyticsService } from './analytics';
+import { getAppVersion } from '@/utils/app-version';
+import { getLastInstalledVersion, setLastInstalledVersion } from '@/storage/app-storage';
 
 export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
@@ -97,6 +99,38 @@ export class UpdateService {
         // Graceful degradation: continue to next provider
       }
     }
+  }
+
+  /**
+   * Checks whether the app was updated since the last launch.
+   * Emits 'update_installed' analytics event if the current version differs from the stored version.
+   * On fresh install (no prior version stored), it records the current version without emitting.
+   */
+  async checkForInstalledUpdate(
+    storage: {
+      getLastInstalledVersion: () => Promise<string | null>;
+      setLastInstalledVersion: (version: string) => Promise<void>;
+    } = { getLastInstalledVersion, setLastInstalledVersion },
+    versionProvider: () => string = () => getAppVersion().versionName,
+  ): Promise<boolean> {
+    const currentVersion = versionProvider();
+    const lastVersion = await storage.getLastInstalledVersion();
+
+    if (lastVersion && lastVersion !== currentVersion) {
+      AnalyticsService.trackEvent('update_installed', {
+        status: 'installed',
+        previous_version: lastVersion,
+        current_version: currentVersion,
+      });
+      await storage.setLastInstalledVersion(currentVersion);
+      return true;
+    }
+
+    if (!lastVersion) {
+      await storage.setLastInstalledVersion(currentVersion);
+    }
+
+    return false;
   }
 }
 

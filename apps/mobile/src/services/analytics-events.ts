@@ -67,8 +67,14 @@ export interface InAppUpdateEvents {
   update_check_completed: { update_available: boolean };
   /** Fired when an update flow is triggered (user or automatic). */
   update_triggered: { mode: 'flexible' | 'immediate'; provider: string };
-  /** Fired when a flexible update finishes downloading and installUpdate() is called. */
-  update_installed: { status: string };
+  /** Fired when a flexible update finishes downloading and installUpdate() is triggered. */
+  update_downloaded: { status: string };
+  /** Fired when an update is confirmed installed (e.g. detected on next launch). */
+  update_installed: {
+    status: string;
+    previous_version?: string;
+    current_version?: string;
+  };
   /** Fired when the flexible download fails before completing. */
   update_download_failed: { error_code: number };
   /** Fired when the user cancels a flexible update download. */

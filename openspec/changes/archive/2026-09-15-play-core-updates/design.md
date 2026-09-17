@@ -28,5 +28,5 @@
 
 ## Resilience
 
-1. **Lazy instantiation / Dynamic Access**: Native modules in React Native are accessed dynamically at runtime. If `NativeModules.SpInAppUpdates` is absent (Expo Go, unit test runner, Web), `isAvailable()` cleanly returns `false` without crasing the bundle.
+1. **Lazy instantiation / Dynamic Access**: Native modules in React Native are accessed dynamically at runtime. If `NativeModules.SpInAppUpdates` is absent or dynamic class resolution fails (`getSpInAppUpdatesClass()`) (Expo Go, unit test runner, Web), `isAvailable()` cleanly returns `false` without crashing the bundle.
 2. **Graceful Fallback**: Any rejection in `startUpdate` bubbles up to `UpdateService`, which catches it and proceeds to the next provider (`DeepLinkUpdateProvider`).

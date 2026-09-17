@@ -1,6 +1,7 @@
 import { Linking, Platform } from 'react-native';
 import { UpdateService, DeepLinkUpdateProvider, type UpdateProvider } from '../update-service';
 import * as storeUrlModule from '../store-url';
+import { AnalyticsService } from '../analytics';
 
 jest.mock('expo-application', () => ({
   applicationId: 'org.sonoraderivapoeticas.app',
@@ -222,6 +223,57 @@ describe('UpdateService', () => {
 
       expect(providers[0].triggerUpdate).toHaveBeenCalled();
       expect(Linking.openURL).toHaveBeenCalled();
+    });
+  });
+
+  describe('checkForInstalledUpdate', () => {
+    it('records current version without emitting event on fresh install', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue(null),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.0.0');
+
+      expect(updated).toBe(false);
+      expect(mockStorage.setLastInstalledVersion).toHaveBeenCalledWith('1.0.0');
+      expect(trackEventSpy).not.toHaveBeenCalledWith('update_installed', expect.anything());
+    });
+
+    it('emits update_installed event and updates storage when version changes', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue('1.0.0'),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.1.0');
+
+      expect(updated).toBe(true);
+      expect(trackEventSpy).toHaveBeenCalledWith('update_installed', {
+        status: 'installed',
+        previous_version: '1.0.0',
+        current_version: '1.1.0',
+      });
+      expect(mockStorage.setLastInstalledVersion).toHaveBeenCalledWith('1.1.0');
+    });
+
+    it('does not emit event or update storage when version is unchanged', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue('1.1.0'),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.1.0');
+
+      expect(updated).toBe(false);
+      expect(trackEventSpy).not.toHaveBeenCalledWith('update_installed', expect.anything());
+      expect(mockStorage.setLastInstalledVersion).not.toHaveBeenCalled();
     });
   });
 });
