@@ -1,0 +1,66 @@
+name: CodeRabbit Review Trigger
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+      review_type:
+        description: 'Review type'
+        required: true
+        default: 'full review'
+        type: choice
+        options:
+          - 'full review'
+          - 'review'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  trigger-review:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && (github.event.label.name == 'coderabbit' || github.event.label.name == 'review:coderabbit'))
+    steps:
+      - name: Trigger CodeRabbit Review
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request
+              ? context.payload.pull_request.number
+              : context.payload.inputs.pr_number;
+
+            const reviewType = (context.payload.inputs && context.payload.inputs.review_type) || 'full review';
+            const body = `@coderabbitai ${reviewType}`;
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body,
+            });
+
+            console.log(`Posted comment "${body}" to PR #${prNumber}`);
+
+            if (context.eventName === 'pull_request' && context.payload.label) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: prNumber,
+                  name: context.payload.label.name,
+                });
+                console.log(`Removed label "${context.payload.label.name}" from PR #${prNumber}`);
+              } catch (err) {
+                console.warn(`Could not remove label: ${err.message}`);
+              }
+            }
