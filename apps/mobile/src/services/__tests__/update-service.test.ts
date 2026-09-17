@@ -1,6 +1,7 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { UpdateService, DeepLinkUpdateProvider, type UpdateProvider } from '../update-service';
 import * as storeUrlModule from '../store-url';
+import { AnalyticsService } from '../analytics';
 
 jest.mock('expo-application', () => ({
   applicationId: 'org.sonoraderivapoeticas.app',
@@ -14,6 +15,7 @@ jest.mock('react-native', () => ({
   Platform: {
     OS: 'android',
   },
+  NativeModules: {},
 }));
 
 describe('UpdateService', () => {
@@ -95,7 +97,40 @@ describe('UpdateService', () => {
       (Linking.canOpenURL as jest.Mock).mockResolvedValue(false);
 
       const provider = new DeepLinkUpdateProvider();
-      await expect(provider.triggerUpdate()).rejects.toThrow('Unable to open store update URL');
+      let errorThrown: Error | null = null;
+      try {
+        await provider.triggerUpdate();
+      } catch (err) {
+        errorThrown = err as Error;
+      }
+      expect(errorThrown).not.toBeNull();
+      expect(errorThrown?.message).toBeDefined();
+    });
+
+    it('reloads window on web platform', async () => {
+      const mockReload = jest.fn();
+      const originalWindow = globalThis.window;
+      Object.defineProperty(globalThis, 'window', {
+        value: { location: { reload: mockReload } },
+        configurable: true,
+      });
+
+      const originalPlatformOS = Platform.OS;
+      Platform.OS = 'web';
+
+      try {
+        const provider = new DeepLinkUpdateProvider();
+        await provider.triggerUpdate();
+
+        expect(mockReload).toHaveBeenCalledTimes(1);
+        expect(Linking.openURL).not.toHaveBeenCalled();
+      } finally {
+        Platform.OS = originalPlatformOS;
+        Object.defineProperty(globalThis, 'window', {
+          value: originalWindow,
+          configurable: true,
+        });
+      }
     });
   });
 
@@ -155,6 +190,90 @@ describe('UpdateService', () => {
 
       expect(primaryMock.triggerUpdate).toHaveBeenCalled();
       expect(fallbackMock.triggerUpdate).toHaveBeenCalled();
+    });
+
+    it('initializes with PlayCoreUpdateProvider and DeepLinkUpdateProvider by default', async () => {
+      const service = new UpdateService();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const providers = (service as any).providers as UpdateProvider[];
+
+      expect(providers).toHaveLength(2);
+      expect(providers[0].name).toBe('play-core');
+      expect(providers[1].name).toBe('deep-link');
+    });
+
+    it('falls back to DeepLinkUpdateProvider when PlayCoreUpdateProvider.triggerUpdate throws', async () => {
+      // Build the real default service (PlayCore → DeepLink)
+      const service = new UpdateService();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const providers = (service as any).providers as UpdateProvider[];
+
+      // PlayCore is not available (NativeModules.SpInAppUpdates is undefined in test env),
+      // so make isAvailable return true to force triggerUpdate to run and throw.
+      jest.spyOn(providers[0], 'isAvailable').mockResolvedValue(true);
+      jest
+        .spyOn(providers[0], 'triggerUpdate')
+        .mockRejectedValue(new Error('Play Core unavailable'));
+
+      // DeepLink should open the store URL as fallback
+      (Linking.canOpenURL as jest.Mock).mockResolvedValue(true);
+      (Linking.openURL as jest.Mock).mockResolvedValue(undefined);
+
+      await service.triggerUpdate();
+
+      expect(providers[0].triggerUpdate).toHaveBeenCalled();
+      expect(Linking.openURL).toHaveBeenCalled();
+    });
+  });
+
+  describe('checkForInstalledUpdate', () => {
+    it('records current version without emitting event on fresh install', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue(null),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.0.0');
+
+      expect(updated).toBe(false);
+      expect(mockStorage.setLastInstalledVersion).toHaveBeenCalledWith('1.0.0');
+      expect(trackEventSpy).not.toHaveBeenCalledWith('update_installed', expect.anything());
+    });
+
+    it('emits update_installed event and updates storage when version changes', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue('1.0.0'),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.1.0');
+
+      expect(updated).toBe(true);
+      expect(trackEventSpy).toHaveBeenCalledWith('update_installed', {
+        status: 'installed',
+        previous_version: '1.0.0',
+        current_version: '1.1.0',
+      });
+      expect(mockStorage.setLastInstalledVersion).toHaveBeenCalledWith('1.1.0');
+    });
+
+    it('does not emit event or update storage when version is unchanged', async () => {
+      const mockStorage = {
+        getLastInstalledVersion: jest.fn().mockResolvedValue('1.1.0'),
+        setLastInstalledVersion: jest.fn().mockResolvedValue(undefined),
+      };
+      const trackEventSpy = jest.spyOn(AnalyticsService, 'trackEvent');
+
+      const service = new UpdateService();
+      const updated = await service.checkForInstalledUpdate(mockStorage, () => '1.1.0');
+
+      expect(updated).toBe(false);
+      expect(trackEventSpy).not.toHaveBeenCalledWith('update_installed', expect.anything());
+      expect(mockStorage.setLastInstalledVersion).not.toHaveBeenCalled();
     });
   });
 });

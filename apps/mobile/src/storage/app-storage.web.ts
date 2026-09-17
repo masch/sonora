@@ -31,6 +31,8 @@ const {
   getDeviceId,
   getAcceptedTermsVersion,
   setAcceptedTermsVersion,
+  getLastInstalledVersion,
+  setLastInstalledVersion,
 } = createStorageFunctions(appStorage, DeviceService.getPlatformDeviceId);
 
 export {
@@ -41,4 +43,6 @@ export {
   getDeviceId,
   getAcceptedTermsVersion,
   setAcceptedTermsVersion,
+  getLastInstalledVersion,
+  setLastInstalledVersion,
 };

@@ -912,6 +912,16 @@ gga-full: ## Run GGA review on ALL matching source files (stages, reviews, unsta
 	git checkout -- $$FILES; \
 	exit $$EXIT_CODE
 
+GH ?= $(shell which gh 2>/dev/null || echo $(HOME)/dev/linux/dotfiles/bin/gh)
+
+.PHONY: pr-review
+pr-review: ## Trigger CodeRabbit full review on current branch PR
+	$(GH) pr comment --body "@coderabbitai full review"
+
+.PHONY: pr-review-inc
+pr-review-inc: ## Trigger CodeRabbit incremental review on current branch PR
+	$(GH) pr comment --body "@coderabbitai review"
+
 # ── EAS Deploy ───────────────────────────────
 
 EAS_CLI_VERSION ?=

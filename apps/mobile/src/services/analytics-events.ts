@@ -60,6 +60,32 @@ export interface TermsEvents {
   };
 }
 
+export interface InAppUpdateEvents {
+  /** Fired when the update availability check is initiated. */
+  update_check_started: Record<string, never> | undefined;
+  /** Fired after the check resolves, reporting whether an update is available. */
+  update_check_completed: { update_available: boolean };
+  /** Fired when an update flow is triggered (user or automatic). */
+  update_triggered: { mode: 'flexible' | 'immediate'; provider: string };
+  /** Fired when a flexible update finishes downloading and installUpdate() is triggered. */
+  update_downloaded: { status: string };
+  /** Fired when an update is confirmed installed (e.g. detected on next launch). */
+  update_installed: {
+    status: string;
+    previous_version?: string;
+    current_version?: string;
+  };
+  /** Fired when the flexible download fails before completing. */
+  update_download_failed: { error_code: number };
+  /** Fired when the user cancels a flexible update download. */
+  update_download_canceled: { error_code: number };
+  /**
+   * Fired when DeepLinkUpdateProvider redirects the user to the store
+   * (Google Play deep-link, Play Store web URL) or reloads the web app.
+   */
+  update_store_redirect: { platform: string; url: string };
+}
+
 export interface AnalyticsEventMap
   extends
     AppLifecycleEvents,
@@ -69,4 +95,5 @@ export interface AnalyticsEventMap
     SystemEvents,
     TestEvents,
     PaymentEvents,
-    TermsEvents {}
+    TermsEvents,
+    InAppUpdateEvents {}

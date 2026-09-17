@@ -22,6 +22,7 @@ import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-
 import { UpdateRequiredModal } from '@/components/update-required-modal';
 import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
+import { updateService } from '@/services/update-service';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
@@ -83,9 +84,10 @@ export default function RootLayout() {
   // Check Terms and Conditions acceptance
   const termsCheck = useTermsCheck();
 
-  // Track app open event
+  // Track app open event and check for installed update
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
+    void updateService.checkForInstalledUpdate();
   }, []);
 
   useEffect(() => {
