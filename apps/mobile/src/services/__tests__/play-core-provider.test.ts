@@ -83,6 +83,13 @@ describe('PlayCoreUpdateProvider', () => {
       const available = await provider.isAvailable();
       expect(available).toBe(false);
     });
+
+    it('returns false when NativeModules.SpInAppUpdates is missing (e.g. Expo Go)', async () => {
+      delete (NativeModules as Record<string, unknown>).SpInAppUpdates;
+      const provider = new PlayCoreUpdateProvider();
+      const available = await provider.isAvailable();
+      expect(available).toBe(false);
+    });
   });
 
   describe('checkForUpdate()', () => {

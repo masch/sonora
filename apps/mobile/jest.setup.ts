@@ -139,6 +139,9 @@ jest.mock('sp-react-native-in-app-updates', () => {
   const MockSpInAppUpdates = jest.fn().mockImplementation(() => ({
     startUpdate: jest.fn().mockResolvedValue(undefined),
     checkNeedsUpdate: jest.fn().mockResolvedValue({ shouldUpdate: false }),
+    installUpdate: jest.fn().mockResolvedValue(undefined),
+    addStatusUpdateListener: jest.fn(),
+    removeStatusUpdateListener: jest.fn(),
   }));
   return {
     __esModule: true,
@@ -146,6 +149,16 @@ jest.mock('sp-react-native-in-app-updates', () => {
     IAUUpdateKind: {
       FLEXIBLE: 0,
       IMMEDIATE: 1,
+    },
+    IAUInstallStatus: {
+      UNKNOWN: 0,
+      PENDING: 1,
+      DOWNLOADING: 2,
+      INSTALLING: 3,
+      INSTALLED: 4,
+      FAILED: 5,
+      CANCELED: 6,
+      DOWNLOADED: 11,
     },
   };
 });
