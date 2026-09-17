@@ -33,6 +33,7 @@ jobs:
       - name: Trigger CodeRabbit Review
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.PAT_PR_ONLY || secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request
