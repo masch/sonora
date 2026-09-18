@@ -41,6 +41,19 @@ export const es = {
   },
   experiences: {
     title: 'Experiencias',
+    credits: 'Créditos',
+    creditRoles: {
+      realization: 'Realización',
+      musicalEditing: 'Edición musical',
+      treesMusic: 'Música de Los Árboles',
+      riverFeetSong: 'Tema Los pies en el Rio',
+      oceanomarAudio: 'Audio oceanomar',
+      voices: 'Voces',
+      forestObjects: 'Objetos bosque',
+      text: 'Texto',
+      voiceover: 'Locución',
+      editing: 'Edición',
+    },
     searchPlaceholder: {
       track: 'Buscar audios...',
       trip: 'Buscar derivas...',

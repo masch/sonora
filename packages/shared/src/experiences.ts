@@ -37,6 +37,11 @@ export interface Waypoint {
   radiusMeters: number;
 }
 
+export interface ExperienceCredit {
+  role: string;
+  names: string;
+}
+
 export interface BaseExperience {
   id: string;
   slug: string;
@@ -54,6 +59,7 @@ export interface BaseExperience {
   geofenceBypassable?: boolean;
   geoMode: GeoMode;
   radiusMeters: number | null;
+  credits?: ExperienceCredit[] | null;
 }
 
 export interface TrackExperience extends BaseExperience {

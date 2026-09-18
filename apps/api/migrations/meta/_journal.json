@@ -120,6 +120,13 @@
       "when": 1789436013776,
       "tag": "0016_crazy_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789760244771,
+      "tag": "0017_add_experience_credits",
+      "breakpoints": true
     }
   ]
 }

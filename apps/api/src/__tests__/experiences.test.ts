@@ -256,6 +256,53 @@ describe('GET /experiences', () => {
     expect(body[0]).toHaveProperty('radiusMeters', null);
   });
 
+  it('surfaces credits on experience via the ...exp spread', async () => {
+    const expMock = [
+      {
+        id: 'exp-credits',
+        title: 'Credits Trip',
+        free: true,
+        audioUrl: 'free-audio.mp3',
+        published: true,
+        credits: [
+          { role: 'Realización', names: 'Grupo Arquitectura del juego' },
+          { role: 'Edición musical', names: 'Max Delanian' },
+        ],
+      },
+    ];
+    const waypointsMock: any[] = [];
+    const accessesMock: any[] = [];
+    const purchasesMock: any[] = [];
+
+    let queryCallCount = 0;
+    mockDb.then = vi.fn().mockImplementation((resolve) => {
+      queryCallCount++;
+      if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
+      if (queryCallCount === 2) return Promise.resolve(accessesMock).then(resolve);
+      if (queryCallCount === 3) return Promise.resolve(purchasesMock).then(resolve);
+      return Promise.resolve(waypointsMock).then(resolve);
+    });
+
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/experiences',
+      {
+        headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any[];
+    expect(body).toHaveLength(1);
+    expect(body[0]).toHaveProperty('credits');
+    expect(body[0].credits).toEqual([
+      { role: 'Realización', names: 'Grupo Arquitectura del juego' },
+      { role: 'Edición musical', names: 'Max Delanian' },
+    ]);
+  });
+
   it('lists experiences and maps waypoints and free audio urls', async () => {
     const expMock = [
       { id: 'exp-1', title: 'Free Trip', free: true, audioUrl: 'free-audio.mp3', published: true },

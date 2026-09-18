@@ -20,6 +20,7 @@ import {
   PLATFORMS,
   PURCHASE_STATUSES,
   SUPPORTED_LANGUAGES,
+  type ExperienceCredit,
 } from '@sonora/shared';
 
 export const sonoraSchema = pgSchema('sonora');
@@ -68,6 +69,7 @@ export const experiences = sonoraSchema.table('experiences', {
   geoMode: experienceGeoModeEnum('geo_mode').notNull(),
   radiusMeters: integer('radius_meters'),
   published: boolean('published').notNull(),
+  credits: jsonb('credits').$type<ExperienceCredit[]>(),
 });
 
 export const waypoints = sonoraSchema.table('waypoints', {

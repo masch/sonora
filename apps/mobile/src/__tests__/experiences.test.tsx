@@ -98,7 +98,9 @@ jest.mock('@/components/home-audio-player', () => ({
 
 describe('ExperiencesScreen', () => {
   it('renders all layout elements correctly', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = await render(<ExperiencesScreen />);
+    const { getByText, getByPlaceholderText, getByTestId } = await render(
+      <ExperiencesScreen showChips />,
+    );
 
     await waitFor(() => {
       expect(getByTestId('type-chip-track')).toBeTruthy();
@@ -130,7 +132,7 @@ describe('ExperiencesScreen', () => {
   });
 
   it('filters tracks by theme chip selection', async () => {
-    const { getByText, queryByText } = await render(<ExperiencesScreen />);
+    const { getByText, queryByText } = await render(<ExperiencesScreen showChips />);
 
     await waitFor(() => {
       expect(getByText('Landscapes')).toBeTruthy();
@@ -156,7 +158,7 @@ describe('ExperiencesScreen', () => {
   });
 
   it('renders instructions audio player when format is trip and hides it when switching back to track', async () => {
-    const { getByTestId, queryByTestId } = await render(<ExperiencesScreen />);
+    const { getByTestId, queryByTestId } = await render(<ExperiencesScreen showChips />);
 
     await waitFor(() => {
       expect(getByTestId('type-chip-track')).toBeTruthy();

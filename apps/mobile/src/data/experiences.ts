@@ -12,6 +12,7 @@ export {
 } from '@sonora/shared';
 export type {
   Experience,
+  ExperienceCredit,
   ExperienceFormat,
   PlayableExperience,
   Theme,
