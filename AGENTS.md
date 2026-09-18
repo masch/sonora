@@ -89,3 +89,8 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 - **Routing Prefixes**: Sub-routers mounted on Hono backend groups (like `/payments`) must have their route paths explicitly prefixed with that namespace in client-side calls (e.g., prefix `/experiences/:id/purchased` as `/payments/experiences/:id/purchased`).
 - **WebBrowser Checkout Polling**: When initiating checkouts on web via `openAuthSessionAsync`, the parent container must begin status polling in parallel immediately, as the popup closure event might not resolve the promise instantly.
 - **Active Sync Fallback**: Always include `?sync=true` in client polling status requests to force real-time gateway checks in non-production environments where sandbox webhooks may experience latency or failure.
+
+## 12. Workspace Search Boundary
+
+- **Strict Repository Boundary**: All file searches, pattern matches (`grep`, `find`), and tool explorations must remain strictly within the workspace root.
+- **No Global Directory Scans**: Never perform recursive searches or inspect directories outside the repository (e.g., `~/.config`, `~/.local`, `/home`). Project configurations and SDD state are fully self-contained inside the repository.

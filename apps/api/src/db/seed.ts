@@ -4,9 +4,11 @@ import { createDbClient } from './index';
 import {
   assertSeedEnv,
   baseExperiences,
+  baseTerms,
   baseWaypoints,
   defaultThemes,
   seedExperiences,
+  seedTerms,
 } from './seed-data';
 
 // Fail closed: refuses when SEED_ENV is present and not 'production'.
@@ -33,6 +35,8 @@ async function main() {
       experiences: baseExperiences,
       waypoints: baseWaypoints,
     });
+
+    await seedTerms(db, baseTerms);
 
     logger.info('Seeding completed successfully! 🌱');
   } catch (error) {

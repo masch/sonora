@@ -7,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -148,6 +149,34 @@ export const translations = sonoraSchema.table(
   }),
 );
 
+export const termsVersions = sonoraSchema.table(
+  'terms_versions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    version: text('version').notNull(),
+    lang: languageEnum('lang').notNull(),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    contentHash: text('content_hash').notNull(),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+  },
+  (table) => ({
+    unq: unique().on(table.version, table.lang),
+  }),
+);
+
+export const termsAcceptances = sonoraSchema.table('terms_acceptances', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deviceId: text('device_id').notNull(),
+  version: text('version').notNull(),
+  lang: languageEnum('lang').notNull(),
+  contentHash: text('content_hash').notNull(),
+  platform: platformEnum('platform').notNull(),
+  ipAddress: text('ip_address').notNull(),
+  userAgent: text('user_agent').notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull(),
+});
+
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
 export type Experience = typeof experiences.$inferSelect;
@@ -164,3 +193,7 @@ export type Feedback = typeof feedback.$inferSelect;
 export type NewFeedback = typeof feedback.$inferInsert;
 export type Translation = typeof translations.$inferSelect;
 export type NewTranslation = typeof translations.$inferInsert;
+export type TermsVersion = typeof termsVersions.$inferSelect;
+export type NewTermsVersion = typeof termsVersions.$inferInsert;
+export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
+export type NewTermsAcceptance = typeof termsAcceptances.$inferInsert;

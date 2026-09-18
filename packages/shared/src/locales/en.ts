@@ -76,12 +76,12 @@ export const en = {
     geofenceBlocked: {
       bannerTitle: "You're too far from the starting point",
       bannerDescription:
-        'You need to be within {{radius}} meters of the starting point to listen to this deriva.',
+        'You need to be within {{radius}} of the starting point to listen to this deriva.',
       bannerDistance: 'Current distance: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: "Can't play",
       blockedAlertMessage:
-        'You need to be within {{radius}} meters of the starting point to listen to this deriva. Current distance: {{distance}}.',
+        'You need to be within {{radius}} of the starting point to listen to this deriva. Current distance: {{distance}}.',
       blockedAlertOk: 'Got it',
       preparingAudio: 'Preparing audio…',
     },
@@ -277,6 +277,14 @@ export const en = {
     bannerTitle: 'Update Available',
     bannerMessage: 'A new version of Sonora is available. Please update for the best experience.',
     bannerDismiss: 'Dismiss',
+    bannerUpdate: 'Update',
+    updateError: 'Unable to open store update URL',
+  },
+  webGate: {
+    title: 'Experience Sonora on Android',
+    message:
+      'Sonora requires the native Android app for geolocated soundscapes, offline audio, and full guided explorations.',
+    button: 'Download on Google Play',
   },
   messages: {
     title: 'Messages',
@@ -325,5 +333,18 @@ export const en = {
       noBrowser: 'Cannot open payment page. Please try again.',
       restore: 'Could not restore purchases. Please try again.',
     },
+  },
+  terms: {
+    title: 'Terms & Conditions',
+    version: 'Version {{version}}',
+    accept: 'Accept and Continue',
+    accepting: 'Saving...',
+    offlineTitle: 'Connection Required',
+    offlineDescription:
+      'An internet connection is required to review and accept the terms and conditions on initial setup.',
+    retry: 'Retry',
+    errorTitle: 'Error',
+    errorDescription: 'Could not register acceptance. Please try again.',
+    networkError: 'Could not load terms. Please check your internet connection and try again.',
   },
 };

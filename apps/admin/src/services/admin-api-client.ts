@@ -12,16 +12,16 @@ export const AdminApiClient = {
   },
 
   async getTranslations(lang: string): Promise<Record<string, string>> {
-    return client.get<Record<string, string>>(`/api/translations/${lang}`);
+    return client.get<Record<string, string>>(`/translations/${lang}`);
   },
 
   async setTranslations(payload: TranslationBulkPayload): Promise<{ updated: number }> {
-    return client.put<{ updated: number }>('/api/translations', payload);
+    return client.put<{ updated: number }>('/translations', payload);
   },
 
   async loginSession(key: string): Promise<boolean> {
     try {
-      await client.post('/api/translations/session', { key });
+      await client.post('/translations/session', { key });
       return true;
     } catch {
       return false;
@@ -30,7 +30,7 @@ export const AdminApiClient = {
 
   async logoutSession(): Promise<boolean> {
     try {
-      await client.delete('/api/translations/session');
+      await client.delete('/translations/session');
       return true;
     } catch {
       return false;
@@ -39,7 +39,7 @@ export const AdminApiClient = {
 
   async checkSession(): Promise<boolean> {
     try {
-      const res = await client.get<{ valid: boolean }>('/api/translations/session');
+      const res = await client.get<{ valid: boolean }>('/translations/session');
       return res?.valid === true;
     } catch {
       return false;

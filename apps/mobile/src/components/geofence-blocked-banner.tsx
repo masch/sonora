@@ -44,7 +44,7 @@ export default function GeofenceBlockedBanner({
       {/* Description */}
       <ThemedText type="small" themeColor="textSecondary">
         {t('experiences.geofenceBlocked.bannerDescription', {
-          radius: requiredRadiusMeters,
+          radius: formatDistance(requiredRadiusMeters, t),
         })}
       </ThemedText>
 

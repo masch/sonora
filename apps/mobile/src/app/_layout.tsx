@@ -22,10 +22,14 @@ import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-
 import { UpdateRequiredModal } from '@/components/update-required-modal';
 import { UpdateWarningBanner } from '@/components/update-warning-banner';
 import { AnalyticsService } from '@/services/analytics';
+import { updateService } from '@/services/update-service';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
+import { useTermsCheck } from '@/hooks/use-terms-check';
+import { TermsModal } from '@/components/terms-modal';
+import { AndroidWebGate } from '@/components/android-web-gate';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
@@ -77,9 +81,13 @@ export default function RootLayout() {
   // Subscribe to version status
   const versionStatus = useRemoteConfigStore((s) => s.versionStatus);
 
-  // Track app open event
+  // Check Terms and Conditions acceptance
+  const termsCheck = useTermsCheck();
+
+  // Track app open event and check for installed update
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
+    void updateService.checkForInstalledUpdate();
   }, []);
 
   useEffect(() => {
@@ -123,6 +131,15 @@ export default function RootLayout() {
       <GlobalAudioPlayer />
       <InterruptConfirmationModal />
       {versionStatus === 'block' && <UpdateRequiredModal />}
+      <TermsModal
+        visible={termsCheck.isBlocking}
+        terms={termsCheck.terms}
+        blockingError={termsCheck.blockingError}
+        error={termsCheck.error}
+        onAccept={termsCheck.acceptTerms}
+        onRetry={termsCheck.retry}
+      />
+      <AndroidWebGate />
     </ThemeProvider>
   );
 }

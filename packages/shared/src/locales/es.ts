@@ -76,12 +76,12 @@ export const es = {
     geofenceBlocked: {
       bannerTitle: 'Estás lejos del punto de inicio',
       bannerDescription:
-        'Necesitás estar a menos de {{radius}} metros del punto de inicio para escuchar este deriva.',
+        'Necesitás estar a menos de {{radius}} del punto de inicio para escuchar este deriva.',
       bannerDistance: 'Distancia actual: {{distance}}',
       notAvailable: 'N/A',
       blockedAlertTitle: 'No podés reproducir',
       blockedAlertMessage:
-        'Para escuchar este deriva tenés que estar a menos de {{radius}} metros del punto de inicio. Distancia actual: {{distance}}.',
+        'Para escuchar este deriva tenés que estar a menos de {{radius}} del punto de inicio. Distancia actual: {{distance}}.',
       blockedAlertOk: 'Entendido',
       preparingAudio: 'Preparando audio…',
     },
@@ -280,6 +280,14 @@ export const es = {
     bannerMessage:
       'Hay una nueva versión de Sonora disponible. Actualizá para tener la mejor experiencia.',
     bannerDismiss: 'Descartar',
+    bannerUpdate: 'Actualizar',
+    updateError: 'No se pudo abrir el enlace de actualización de la tienda',
+  },
+  webGate: {
+    title: 'Viví Sonora en Android',
+    message:
+      'Sonora requiere la app nativa en Android para brindarte audio geolocalizado, funcionamiento sin conexión y derivas completas.',
+    button: 'Descargar en Google Play',
   },
   messages: {
     title: 'Mensajes',
@@ -328,5 +336,19 @@ export const es = {
       noBrowser: 'No se pudo abrir la página de pago. Reintentá.',
       restore: 'No se pudieron restaurar las compras. Reintentá.',
     },
+  },
+  terms: {
+    title: 'Términos y Condiciones',
+    version: 'Versión {{version}}',
+    accept: 'Aceptar y Continuar',
+    accepting: 'Guardando...',
+    offlineTitle: 'Conexión Requerida',
+    offlineDescription:
+      'Se requiere conexión a internet para revisar y aceptar los términos y condiciones la primera vez.',
+    retry: 'Reintentar',
+    errorTitle: 'Error',
+    errorDescription: 'No se pudo registrar la aceptación. Por favor intentá nuevamente.',
+    networkError:
+      'No se pudieron cargar los términos. Verificá tu conexión a internet e intentá nuevamente.',
   },
 };

@@ -180,6 +180,16 @@ export const ERRORS_4XX = {
     detail: 'Too many requests. Please try again later.',
     status: HTTP.TOO_MANY_REQUESTS,
   } as const,
+  TERMS_VERSION_MISMATCH: {
+    code: 'TERMS_VERSION_MISMATCH',
+    detail: 'Submitted terms version or content hash does not match the active terms.',
+    status: HTTP.UNPROCESSABLE_ENTITY,
+  } as const,
+  NO_ACTIVE_TERMS: {
+    code: 'NO_ACTIVE_TERMS',
+    detail: 'No active terms version available to accept.',
+    status: HTTP.NOT_FOUND,
+  } as const,
 } as const;
 
 export type ErrorConstant =

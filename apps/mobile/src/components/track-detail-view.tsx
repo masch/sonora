@@ -309,7 +309,7 @@ export default function TrackDetailView({
           </ThemedText>
           <ThemedText className="mb-6">
             {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
-              radius: geofence.requiredRadiusMeters,
+              radius: formatDistance(geofence.requiredRadiusMeters, t),
               distance: formatDistance(
                 geofence.distanceMeters,
                 t,

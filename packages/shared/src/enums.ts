@@ -16,6 +16,15 @@ export type PaymentProviderName = (typeof PAYMENT_PROVIDERS)[number];
 
 export const SUPPORTED_LANGUAGES = ['en', 'es'] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'es';
+
+export function resolveLanguage(lang?: string | null): SupportedLanguage {
+  if (!lang) return DEFAULT_LANGUAGE;
+  const prefix = lang.split(/[-_]/)[0]?.toLowerCase();
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(prefix)
+    ? (prefix as SupportedLanguage)
+    : DEFAULT_LANGUAGE;
+}
 
 const PAYMENT_PREFIX = '/payments';
 

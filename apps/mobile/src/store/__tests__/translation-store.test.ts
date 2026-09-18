@@ -70,7 +70,7 @@ describe('TranslationStore', () => {
 
       // API was called with AbortSignal
       expect(mockApiGet).toHaveBeenCalledWith(
-        '/api/translations/en',
+        '/translations/en',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
 
@@ -94,7 +94,7 @@ describe('TranslationStore', () => {
       await useTranslationStore.getState().fetchLanguage('en');
 
       expect(mockApiGet).toHaveBeenCalledWith(
-        '/api/translations/en',
+        '/translations/en',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
       // Merged result should be cached
@@ -170,8 +170,8 @@ describe('TranslationStore', () => {
 
     it('merges multiple language calls independently', async () => {
       mockApiGet.mockImplementation((path: string) => {
-        if (path === '/api/translations/en') return Promise.resolve(EN_TRANSLATIONS);
-        if (path === '/api/translations/es') return Promise.resolve(ES_TRANSLATIONS);
+        if (path === '/translations/en') return Promise.resolve(EN_TRANSLATIONS);
+        if (path === '/translations/es') return Promise.resolve(ES_TRANSLATIONS);
         return Promise.resolve({});
       });
 
