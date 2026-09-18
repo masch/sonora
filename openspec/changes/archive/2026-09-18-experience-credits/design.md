@@ -8,7 +8,7 @@ Artistic credits in Sonora are heterogeneous and ordered. Storing them as a stru
 ┌───────────────────────────────────────────────────────────┐
 │                     PostgreSQL (API)                      │
 │ experiences table -> column credits: jsonb                │
-│ [{ role: "Realización", names: "..." }, ...]              │
+│ [{ role: "realization", names: "..." }, ...]              │
 └─────────────────────────────┬─────────────────────────────┘
                               │
                               ▼ GET /experiences
@@ -64,13 +64,13 @@ Populated for:
   ```typescript
   credits: [
     {
-      role: 'Realización',
+      role: 'realization',
       names: 'Grupo Arquitectura del juego: Nachugo, Lucesypeces, Magali de Masi, Mara Ticach',
     },
-    { role: 'Edición musical', names: 'Max Delanian' },
-    { role: 'Música de Los Árboles', names: 'Hila.musicadelasplantas' },
+    { role: 'musicalEditing', names: 'Max Delanian' },
+    { role: 'musicOfTrees', names: 'Hila.musicadelasplantas' },
     {
-      role: 'Tema Los pies en el Rio',
+      role: 'themeFeetInRiver',
       names: 'Mara Ticach, con colaboración de Clara Canale, Cande czarnowska, Max Delanian',
     },
     {

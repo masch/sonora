@@ -7,18 +7,35 @@ import { TwView } from '@/tw';
 import type { ExperienceCredit } from '@sonora/shared';
 import type { TranslationKeys } from '@/i18n/types';
 
-export { CreditItem };
-export type { CreditItemProps } from '@/components/credit-item';
-
 interface ExperienceCreditsProps {
   credits?: ExperienceCredit[] | null;
+}
+
+function isValidCredit(item: unknown): item is ExperienceCredit {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    'role' in item &&
+    'names' in item &&
+    typeof (item as ExperienceCredit).role === 'string' &&
+    typeof (item as ExperienceCredit).names === 'string' &&
+    (item as ExperienceCredit).role.trim().length > 0 &&
+    (item as ExperienceCredit).names.trim().length > 0
+  );
 }
 
 export function ExperienceCredits({ credits }: ExperienceCreditsProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
 
-  if (!credits || credits.length === 0) {
+  // Presentational sub-component: detail views (TrackDetailView / TripDetailView)
+  // handle async states. When an experience has no credits, this section is omitted.
+  if (!credits || !Array.isArray(credits) || credits.length === 0) {
+    return null;
+  }
+
+  const validItems = credits.filter(isValidCredit);
+  if (validItems.length === 0) {
     return null;
   }
 
@@ -28,15 +45,27 @@ export function ExperienceCredits({ credits }: ExperienceCreditsProps) {
       testID="experience-credits"
     >
       <TwView className="flex-row items-center gap-2">
-        <Icon name="music" size={14} tintColor={colors.textSecondary} />
+        <Icon
+          name="music"
+          size={14}
+          tintColor={colors.textSecondary}
+          testID="experience-credits-header-icon"
+          accessibilityLabel={t('experiences.credits' as TranslationKeys)}
+        />
         <ThemedText className="text-[11px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
           {t('experiences.credits' as TranslationKeys)}
         </ThemedText>
       </TwView>
 
       <TwView className="gap-2.5">
-        {credits.map((item) => (
-          <CreditItem key={`${item.role}:${item.names}`} role={item.role} names={item.names} />
+        {validItems.map((item) => (
+          <CreditItem
+            key={`${item.role}:${item.names}`}
+            role={item.role}
+            names={item.names}
+            testID={`credit-item-${item.role}`}
+            accessibilityLabel={`${item.role}: ${item.names}`}
+          />
         ))}
       </TwView>
     </TwView>

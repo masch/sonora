@@ -63,4 +63,34 @@ describe('ExperienceCredits component', () => {
     expect(getByText('Custom Role')).toBeTruthy();
     expect(getByText('Artistic Contributor')).toBeTruthy();
   });
+
+  it('filters out null, non-object, and malformed credit entries gracefully', async () => {
+    const mixedCredits = [
+      null,
+      undefined,
+      'invalid string',
+      { role: '', names: 'Missing Role' },
+      { role: 'producer', names: '' },
+      { role: 'realization', names: 'Valid Contributor' },
+    ] as unknown as ExperienceCredit[];
+
+    const { getByTestId, getByText, queryByText } = await render(
+      <ExperienceCredits credits={mixedCredits} />,
+    );
+
+    expect(getByTestId('experience-credits')).toBeTruthy();
+    expect(getByText('Valid Contributor')).toBeTruthy();
+    expect(queryByText('Missing Role')).toBeNull();
+  });
+
+  it('renders nothing if all credit entries are malformed', async () => {
+    const invalidCredits = [
+      null,
+      { role: '   ', names: '   ' },
+      { role: 123, names: 456 },
+    ] as unknown as ExperienceCredit[];
+
+    const { queryByTestId } = await render(<ExperienceCredits credits={invalidCredits} />);
+    expect(queryByTestId('experience-credits')).toBeNull();
+  });
 });
