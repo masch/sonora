@@ -35,7 +35,13 @@ async function fetchDynamicData() {
   return { themes: fetchedThemes, experiences: fetchedExps };
 }
 
-export default function ExperiencesScreen({ format }: { format?: ExperienceFormat }) {
+export default function ExperiencesScreen({
+  format,
+  showChips = false,
+}: {
+  format?: ExperienceFormat;
+  showChips?: boolean;
+}) {
   const params = useLocalSearchParams<{ format?: string }>();
   const lockedFormat = format || params.format;
   const isFormatLocked = format
@@ -125,6 +131,7 @@ export default function ExperiencesScreen({ format }: { format?: ExperienceForma
       themesList={themesList}
       isFormatLocked={isFormatLocked}
       initialFormat={initialFormat}
+      showChips={showChips}
     />
   );
 }
@@ -134,11 +141,13 @@ function ExperiencesContent({
   themesList,
   isFormatLocked,
   initialFormat,
+  showChips,
 }: {
   experiences: Experience[];
   themesList: Theme[];
   isFormatLocked: boolean;
   initialFormat: ExperienceFormat;
+  showChips: boolean;
 }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -199,7 +208,7 @@ function ExperiencesContent({
           </ThemedText>
         </TwView>
 
-        {!isFormatLocked && (
+        {!isFormatLocked && showChips && (
           <TwView className="flex-row gap-2 mb-4 justify-center">
             {USER_EXPERIENCE_FORMATS.map((format) => {
               const isSelected = selectedFormat === format;
@@ -255,37 +264,39 @@ function ExperiencesContent({
         </TwView>
       </TwView>
 
-      <TwView className="mb-5">
-        <TwScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="px-6 gap-2.5 flex-row items-center py-1"
-        >
-          {themeOptions.map((theme) => {
-            const isSelected = selectedTheme === theme.key;
-            return (
-              <TwPressable
-                key={theme.key}
-                onPress={() => setSelectedTheme(theme.key)}
-                className={`px-4 py-2 rounded-full border ${
-                  isSelected
-                    ? 'bg-text border-text'
-                    : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-                } active:opacity-75`}
-                accessibilityLabel={t(theme.labelKey)}
-                testID={`category-chip-${theme.key}`}
-              >
-                <ThemedText
-                  themeColor={isSelected ? 'background' : 'text'}
-                  className="text-xs font-semibold"
+      {showChips && (
+        <TwView className="mb-5">
+          <TwScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="px-6 gap-2.5 flex-row items-center py-1"
+          >
+            {themeOptions.map((theme) => {
+              const isSelected = selectedTheme === theme.key;
+              return (
+                <TwPressable
+                  key={theme.key}
+                  onPress={() => setSelectedTheme(theme.key)}
+                  className={`px-4 py-2 rounded-full border ${
+                    isSelected
+                      ? 'bg-text border-text'
+                      : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
+                  } active:opacity-75`}
+                  accessibilityLabel={t(theme.labelKey)}
+                  testID={`category-chip-${theme.key}`}
                 >
-                  {t(theme.labelKey)}
-                </ThemedText>
-              </TwPressable>
-            );
-          })}
-        </TwScrollView>
-      </TwView>
+                  <ThemedText
+                    themeColor={isSelected ? 'background' : 'text'}
+                    className="text-xs font-semibold"
+                  >
+                    {t(theme.labelKey)}
+                  </ThemedText>
+                </TwPressable>
+              );
+            })}
+          </TwScrollView>
+        </TwView>
+      )}
 
       <TwView className="px-1 gap-5">
         {/* Instructions Audio Player */}

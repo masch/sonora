@@ -24,6 +24,7 @@ import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import TrackDetailMap from '@/components/track-detail-map';
+import { ExperienceCredits } from '@/components/experience-credits';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
@@ -280,6 +281,9 @@ export default function TrackDetailView({
               </TwPressable>
             </TwView>
           </TwView>
+
+          {/* Credits */}
+          <ExperienceCredits credits={track.credits} />
         </TwView>
       </TwView>
     </TwView>

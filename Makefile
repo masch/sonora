@@ -80,6 +80,10 @@ verify-web: ## Build web bundle and execute it to verify CJS interop (catches ci
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun expo export --platform web
 	node -e "require('fs').readdirSync('apps/mobile/dist/_expo/static/js/web').filter(f => f.endsWith('.js')).forEach(f => require('./apps/mobile/dist/_expo/static/js/web/' + f))"
 
+.PHONY: dev-android-local
+dev-android-local: ## Launch Expo dev server for Android pointing to local Node API (port 3000 via 10.0.2.2)
+	cd apps/mobile && APP_ENV=development APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:3000" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run android-dev
+
 .PHONY: dev-android
 dev-android: ## Launch Expo dev server for Android (Expo Go)
 	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run android-dev
@@ -608,6 +612,9 @@ api-test-production-db: ## Test production DB connection (GET /health/db)
 .PHONY: api-db-up
 api-db-up: ## Start Postgres (Podman)
 	podman compose -f $(API_DIR)/docker-compose.yml up -d
+	@until podman compose -f $(API_DIR)/docker-compose.yml exec -T postgres pg_isready -U sonora -d sonora >/dev/null 2>&1; do \
+		sleep 0.5; \
+	done
 
 .PHONY: api-db-down
 api-db-down: ## Stop Postgres (Podman)
@@ -618,11 +625,11 @@ api-db-generate: ## Generate Drizzle migration from schema changes
 	cd $(API_DIR) && bun run db:generate
 
 .PHONY: api-db-migrate
-api-db-migrate: ## Apply pending Drizzle migrations
+api-db-migrate: api-db-up ## Apply pending Drizzle migrations
 	cd $(API_DIR) && bun run db:migrate
 
 .PHONY: api-db-seed
-api-db-seed: ## Seed default trips data in local Postgres
+api-db-seed: api-db-migrate ## Seed default trips data in local Postgres
 	cd $(API_DIR) && bun run db:seed
 
 # ── Neon cloud DB (requires DATABASE_URL_STAGING / DATABASE_URL_PRODUCTION in api/.env) ──
@@ -824,7 +831,25 @@ api-dev-local: ## Run Hono API locally with Docker Postgres
 	cd $(API_DIR) && bun run dev:local
 
 .PHONY: api-dev-full
-api-dev-full: api-db-up api-db-migrate api-db-seed api-dev-local ## Start Postgres, migrate, seed, and run Hono API locally
+api-dev-full: api-db-seed api-dev-local ## Start Postgres, migrate, seed, and run Hono API locally
+
+.PHONY: dev-all
+dev-all: api-db-seed ## Start Postgres, migrate, seed, and run API + Mobile concurrently (port 3000)
+	bunx concurrently --kill-others -n "api,mobile" -c "cyan,magenta" \
+		"cd $(API_DIR) && bun run dev:local" \
+		"cd apps/mobile && APP_VERSION_NAME=\"$(APP_VERSION_NAME)\" EXPO_PUBLIC_API_URL=\"http://localhost:3000\" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web"
+
+.PHONY: dev-all-android
+dev-all-android: api-db-seed ## Start Postgres, migrate, seed, and run API + Android emulator concurrently (port 3000 via 10.0.2.2)
+	bunx concurrently --kill-others -n "api,mobile" -c "cyan,magenta" \
+		"cd $(API_DIR) && bun run dev:local" \
+		"cd apps/mobile && APP_VERSION_NAME=\"$(APP_VERSION_NAME)\" EXPO_PUBLIC_API_URL=\"http://10.0.2.2:3000\" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run android-dev"
+
+.PHONY: dev-all-wrangler
+dev-all-wrangler: ## Run API with Wrangler and Mobile concurrently (port 8787)
+	bunx concurrently --kill-others -n "wrangler,mobile" -c "cyan,magenta" \
+		"cd $(API_DIR) && bun run dev" \
+		"cd apps/mobile && APP_VERSION_NAME=\"$(APP_VERSION_NAME)\" EXPO_PUBLIC_API_URL=\"http://localhost:8787\" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run start-web"
 
 
 # ── Test ──────────────────────────────────────

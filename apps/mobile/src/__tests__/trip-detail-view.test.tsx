@@ -263,4 +263,19 @@ describe('TripDetailView geofence gate (post-purchase, too far)', () => {
     // Still in idle (undownloaded) state — the download was never started
     expect(getByTestId('unified-audio-controller-idle')).toBeTruthy();
   });
+
+  it('renders experience credits if present and omits when absent', async () => {
+    const trackWithoutCredits = { ...tripTrack, credits: undefined };
+    const { queryByTestId, rerender } = await render(
+      <TripDetailView track={trackWithoutCredits} showGPSDetails={false} />,
+    );
+    expect(queryByTestId('experience-credits')).toBeNull();
+
+    const trackWithCredits = {
+      ...tripTrack,
+      credits: [{ role: 'Realización', names: 'Grupo Arquitectura del juego' }],
+    };
+    await rerender(<TripDetailView track={trackWithCredits} showGPSDetails={false} />);
+    expect(queryByTestId('experience-credits')).toBeTruthy();
+  });
 });

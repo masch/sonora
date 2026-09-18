@@ -10,8 +10,8 @@ Universal Expo app targeting iOS, Android, and Web.
 
 ### 🟢 Production
 
-- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora.expo.app/](https://sonoraderivapoeticas-team-sonora.expo.app/)
-- **Admin Portal:** [https://sonora-admin.expo.app/](https://sonora-admin.expo.app/)
+- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora.expo.app](https://sonoraderivapoeticas-team-sonora.expo.app)
+- **Admin Portal:** [https://sonora-admin.expo.app](https://sonora-admin.expo.app)
 - **Smart App Link (Android / Web):** [https://sonora-api.sonora-api.workers.dev/app](https://sonora-api.sonora-api.workers.dev/app)
 - **App QR Code Generator:** [https://sonora-api.sonora-api.workers.dev/app/qr](https://sonora-api.sonora-api.workers.dev/app/qr)
 
@@ -25,8 +25,8 @@ Universal Expo app targeting iOS, Android, and Web.
 
 ### 🟡 Staging (Preview builds)
 
-- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora--staging.expo.app/](https://sonoraderivapoeticas-team-sonora--staging.expo.app/)
-- **Admin Portal:** [https://sonora-admin--staging.expo.app/](https://sonora-admin--staging.expo.app/)
+- **Mobile App (Web):** [https://sonoraderivapoeticas-team-sonora--staging.expo.app](https://sonoraderivapoeticas-team-sonora--staging.expo.app)
+- **Admin Portal:** [https://sonora-admin--staging.expo.app](https://sonora-admin--staging.expo.app)
 
 ## Prerequisites
 

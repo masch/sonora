@@ -311,4 +311,21 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
     expect(lastProps.userLatitude).toBe(-32.21);
     expect(lastProps.userLongitude).toBe(-64.73);
   });
+
+  it('renders experience credits if present and omits when absent', async () => {
+    mockExperience.credits = undefined;
+    const { queryByTestId, rerender } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(queryByTestId('experience-credits')).toBeNull();
+    });
+
+    mockExperience.credits = [
+      { role: 'Texto', names: 'Magali de Masi' },
+      { role: 'Locución', names: 'Mara Ticach' },
+    ];
+    await rerender(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(queryByTestId('experience-credits')).toBeTruthy();
+    });
+  });
 });

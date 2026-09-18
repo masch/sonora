@@ -1,0 +1,1 @@
+ALTER TABLE "sonora"."experiences" ADD COLUMN "credits" jsonb;

@@ -9,6 +9,7 @@ import { Icon } from '@/components/icon';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { ExperienceCredits } from '@/components/experience-credits';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
 import { type TripExperience } from '@/data/experiences';
@@ -315,6 +316,9 @@ export default function TripDetailView({
               </TwPressable>
             </TwView>
           </TwView>
+
+          {/* Credits */}
+          <ExperienceCredits credits={track.credits} />
         </TwView>
       </TwView>
     </TwView>

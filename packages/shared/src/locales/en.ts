@@ -41,6 +41,19 @@ export const en = {
   },
   experiences: {
     title: 'Experiences',
+    credits: 'Credits',
+    creditRoles: {
+      realization: 'Realization',
+      musicalEditing: 'Music editing',
+      treesMusic: 'Music of the trees',
+      riverFeetSong: 'Song: Feet in the river',
+      oceanomarAudio: 'Oceanomar audio',
+      voices: 'Voices',
+      forestObjects: 'Forest objects',
+      text: 'Text',
+      voiceover: 'Voiceover',
+      editing: 'Editing',
+    },
     searchPlaceholder: {
       track: 'Search audios...',
       trip: 'Search derivas...',

@@ -15,9 +15,22 @@ interface IconProps {
   tintColor?: string;
   weight?: SymbolWeight;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
+  accessibilityLabel?: string;
 }
 
-export function Icon({ name, ios, android, web, size = 24, tintColor, weight, style }: IconProps) {
+export function Icon({
+  name,
+  ios,
+  android,
+  web,
+  size = 24,
+  tintColor,
+  weight,
+  style,
+  testID,
+  accessibilityLabel,
+}: IconProps) {
   // If a generic name is specified, resolve platform-specific names from ICON_MAP
   const resolvedIos = name ? ICON_MAP[name].ios : ios;
   const resolvedAndroid = name ? ICON_MAP[name].android : android;
@@ -34,6 +47,8 @@ export function Icon({ name, ios, android, web, size = 24, tintColor, weight, st
       tintColor={tintColor}
       weight={weight}
       style={style}
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 }

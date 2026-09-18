@@ -129,6 +129,24 @@ const trips: readonly NewExperience[] = [
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
     published: true,
+    credits: [
+      {
+        role: 'realization',
+        names: 'Grupo Arquitectura del juego: Nachugo, Lucesypeces, Magali de Masi, Mara Ticach.',
+      },
+      { role: 'musicalEditing', names: 'Max Delanian.' },
+      { role: 'treesMusic', names: 'Hila.musicadelasplantas' },
+      {
+        role: 'riverFeetSong',
+        names: 'Mara Ticach, con colaboración de Clara Canale, Cande Czarnowska, Max Delanian.',
+      },
+      {
+        role: 'oceanomarAudio',
+        names: 'Matías Etcheguren sobre texto “ Océano mar” de Alessandro Baricco.',
+      },
+      { role: 'voices', names: 'Chantal, Rafaela, Mara, Maga, Max, Luz, Fede.' },
+      { role: 'forestObjects', names: 'Lucesypeces.' },
+    ],
   },
 ];
 
@@ -150,6 +168,11 @@ const tracks: readonly NewExperience[] = [
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
     published: true,
+    credits: [
+      { role: 'text', names: 'Magali de Masi' },
+      { role: 'voiceover', names: 'Mara Ticach' },
+      { role: 'editing', names: 'Max Delanian' },
+    ],
   },
   {
     id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d',
