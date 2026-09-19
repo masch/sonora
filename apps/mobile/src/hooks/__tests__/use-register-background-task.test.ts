@@ -7,6 +7,7 @@ import { useRegisterBackgroundTask } from '../use-register-background-task';
 // Mock expo-background-fetch
 jest.mock('expo-background-fetch', () => ({
   registerTaskAsync: jest.fn(),
+  unregisterTaskAsync: jest.fn(),
   BackgroundFetchResult: {
     NewData: 'NewData',
     Failed: 'Failed',
@@ -25,7 +26,7 @@ describe('useRegisterBackgroundTask', () => {
     jest.clearAllMocks();
   });
 
-  it('registers a task with options if not registered', async () => {
+  it('registers a task with safe options (stopOnTerminate: true, startOnBoot: false) if not registered', async () => {
     const taskName = 'test-task';
     (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(false);
     (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
@@ -37,20 +38,27 @@ describe('useRegisterBackgroundTask', () => {
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(taskName);
     expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(taskName, {
       minimumInterval: 300,
-      stopOnTerminate: false,
-      startOnBoot: true,
+      stopOnTerminate: true,
+      startOnBoot: false,
     });
   });
 
-  it('does not register a task if already registered', async () => {
+  it('unregisters legacy task before re-registering with safe options if already registered', async () => {
     const taskName = 'test-task';
     (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(true);
+    (BackgroundFetch.unregisterTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
+    (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
 
     await act(async () => {
       await renderHook(() => useRegisterBackgroundTask(taskName));
     });
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(taskName);
-    expect(BackgroundFetch.registerTaskAsync).not.toHaveBeenCalled();
+    expect(BackgroundFetch.unregisterTaskAsync).toHaveBeenCalledWith(taskName);
+    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(taskName, {
+      minimumInterval: 15 * 60,
+      stopOnTerminate: true,
+      startOnBoot: false,
+    });
   });
 });
