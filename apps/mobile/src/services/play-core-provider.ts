@@ -1,4 +1,4 @@
-import type { UpdateOptions, UpdateProvider } from './update-service';
+import type { UpdateOptions, CheckForUpdateOptions, UpdateProvider } from './update-service';
 
 /**
  * Web/Stub implementation of PlayCoreUpdateProvider.
@@ -12,7 +12,7 @@ export class PlayCoreUpdateProvider implements UpdateProvider {
     return false;
   }
 
-  async checkForUpdate(): Promise<boolean> {
+  async checkForUpdate(_options: CheckForUpdateOptions): Promise<boolean> {
     return false;
   }
 

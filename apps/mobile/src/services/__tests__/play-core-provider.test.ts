@@ -96,13 +96,27 @@ describe('PlayCoreUpdateProvider', () => {
     it('returns true when an update is available', async () => {
       mockCheckNeedsUpdate.mockResolvedValueOnce({ shouldUpdate: true });
       const provider = new PlayCoreUpdateProvider();
-      await expect(provider.checkForUpdate()).resolves.toBe(true);
+      await expect(provider.checkForUpdate({ source: 'startup' })).resolves.toBe(true);
     });
 
     it('returns false when no update is available', async () => {
       mockCheckNeedsUpdate.mockResolvedValueOnce({ shouldUpdate: false });
       const provider = new PlayCoreUpdateProvider();
-      await expect(provider.checkForUpdate()).resolves.toBe(false);
+      await expect(provider.checkForUpdate({ source: 'manual' })).resolves.toBe(false);
+    });
+
+    it('passes source to analytics events when provided', async () => {
+      mockCheckNeedsUpdate.mockResolvedValueOnce({ shouldUpdate: true });
+      const provider = new PlayCoreUpdateProvider();
+      await provider.checkForUpdate({ source: 'startup' });
+
+      expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_check_started', {
+        source: 'startup',
+      });
+      expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_check_completed', {
+        update_available: true,
+        source: 'startup',
+      });
     });
   });
 
@@ -182,6 +196,15 @@ describe('PlayCoreUpdateProvider', () => {
       expect(AnalyticsService.trackEvent).toHaveBeenCalledWith('update_download_canceled', {
         error_code: 6,
       });
+    });
+
+    it('rejects when startUpdate throws in FLEXIBLE mode and cleans up listener', async () => {
+      mockStartUpdate.mockRejectedValueOnce(new Error('Start update rejected'));
+      const provider = new PlayCoreUpdateProvider();
+      await expect(provider.triggerUpdate({ mode: 'flexible' })).rejects.toThrow(
+        'Start update rejected',
+      );
+      expect(mockRemoveStatusUpdateListener).toHaveBeenCalled();
     });
   });
 });

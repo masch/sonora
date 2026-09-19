@@ -3,16 +3,23 @@ import { t } from 'i18next';
 import { getStoreUrls } from './store-url';
 import { PlayCoreUpdateProvider } from './play-core-provider';
 import { AnalyticsService } from './analytics';
+import type { UpdateCheckSource } from './analytics-events';
 import { getAppVersion } from '@/utils/app-version';
 import { getLastInstalledVersion, setLastInstalledVersion } from '@/storage/app-storage';
+import { logger } from '@/utils/logger';
 
 export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
 }
 
+export interface CheckForUpdateOptions {
+  source: UpdateCheckSource;
+}
+
 export interface UpdateProvider {
   name: string;
   isAvailable(): Promise<boolean>;
+  checkForUpdate?(options: CheckForUpdateOptions): Promise<boolean>;
   triggerUpdate(options?: UpdateOptions): Promise<void>;
 }
 
@@ -25,6 +32,10 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
 
   async isAvailable(): Promise<boolean> {
     return true;
+  }
+
+  async checkForUpdate(_options: CheckForUpdateOptions): Promise<boolean> {
+    return false;
   }
 
   async triggerUpdate(): Promise<void> {
@@ -87,6 +98,21 @@ export class UpdateService {
     }
   }
 
+  async checkForUpdate(options: CheckForUpdateOptions): Promise<boolean> {
+    for (const provider of this.providers) {
+      try {
+        const available = await provider.isAvailable();
+        if (available && provider.checkForUpdate) {
+          return await provider.checkForUpdate(options);
+        }
+      } catch (err) {
+        // Graceful degradation: log and continue to next provider
+        logger.warn(`[UpdateService] Provider ${provider.name} failed during checkForUpdate:`, err);
+      }
+    }
+    return false;
+  }
+
   async triggerUpdate(options?: UpdateOptions): Promise<void> {
     for (const provider of this.providers) {
       try {
@@ -95,8 +121,9 @@ export class UpdateService {
           await provider.triggerUpdate(options);
           return;
         }
-      } catch {
-        // Graceful degradation: continue to next provider
+      } catch (err) {
+        // Graceful degradation: log and continue to next provider
+        logger.warn(`[UpdateService] Provider ${provider.name} failed during triggerUpdate:`, err);
       }
     }
   }
