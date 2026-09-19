@@ -16,27 +16,32 @@ interface RegisterOptions {
  * Note: The task handler itself must still be defined globally in the module using TaskManager.defineTask.
  */
 export function useRegisterBackgroundTask(taskName: string, options: RegisterOptions = {}) {
+  const minimumInterval = options.minimumInterval ?? 15 * 60; // 15 minutes default
+  const stopOnTerminate = options.stopOnTerminate ?? true;
+  const startOnBoot = options.startOnBoot ?? false;
+
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
     async function register() {
       try {
         const isRegistered = await TaskManager.isTaskRegisteredAsync(taskName);
-        if (!isRegistered) {
-          await BackgroundFetch.registerTaskAsync(taskName, {
-            minimumInterval: options.minimumInterval ?? 15 * 60, // 15 minutes default
-            stopOnTerminate: options.stopOnTerminate ?? false,
-            startOnBoot: options.startOnBoot ?? true,
-          });
-          logger.info(`[BACKGROUND_FETCH] Task "${taskName}" registered successfully`);
-        } else {
-          logger.info(`[BACKGROUND_FETCH] Task "${taskName}" is already registered`);
+        if (isRegistered) {
+          // Unregister legacy persistent alarm in Android's AlarmManager to prevent zombie wakeups
+          await BackgroundFetch.unregisterTaskAsync(taskName);
         }
+
+        await BackgroundFetch.registerTaskAsync(taskName, {
+          minimumInterval,
+          stopOnTerminate,
+          startOnBoot,
+        });
+        logger.info(`[BACKGROUND_FETCH] Task "${taskName}" registered safely`);
       } catch (error) {
         logger.error(`[BACKGROUND_FETCH] Failed to register task "${taskName}":`, error);
       }
     }
 
-    register();
-  }, [taskName, options.minimumInterval, options.stopOnTerminate, options.startOnBoot]);
+    void register();
+  }, [taskName, minimumInterval, stopOnTerminate, startOnBoot]);
 }
