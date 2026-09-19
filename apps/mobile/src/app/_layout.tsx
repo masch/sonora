@@ -64,12 +64,6 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Initialise remote config and translation overrides on app load
-  useEffect(() => {
-    useRemoteConfigStore.getState().init();
-    useTranslationStore.getState().init();
-  }, []);
-
   // Subscribe to translation overrides and push into i18next when they change
   const overridesByLang = useTranslationStore((s) => s.overridesByLang);
 
@@ -85,13 +79,18 @@ export default function RootLayout() {
   // Check Terms and Conditions acceptance
   const termsCheck = useTermsCheck();
 
-  // Track app open event, check for installed update, and check for available update
+  // Initialise remote config, translation overrides, and app startup checks on load
   useEffect(() => {
+    const remoteConfigPromise = useRemoteConfigStore.getState().init();
+    void useTranslationStore.getState().init();
+
     AnalyticsService.trackEvent('app_open');
     void updateService.checkForInstalledUpdate();
 
     void (async () => {
       try {
+        // Wait for remote config initialization to complete so versionStatus is authoritative
+        await remoteConfigPromise;
         const hasUpdate = await updateService.checkForUpdate({ source: 'startup' });
         if (hasUpdate && useRemoteConfigStore.getState().versionStatus !== 'block') {
           await updateService.triggerUpdate({ mode: 'flexible' });

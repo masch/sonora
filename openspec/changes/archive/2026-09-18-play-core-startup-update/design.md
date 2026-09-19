@@ -22,16 +22,17 @@ All check lifecycles are instrumented via `AnalyticsService.trackEvent` with `so
 
 - Add `checkForUpdate(): Promise<boolean>` to `UpdateProvider` interface.
 - Implement in `UpdateService`:
+
   ```ts
-  async checkForUpdate(): Promise<boolean> {
+  async checkForUpdate(options: CheckForUpdateOptions): Promise<boolean> {
     for (const provider of this.providers) {
       try {
         const available = await provider.isAvailable();
-        if (available && 'checkForUpdate' in provider && typeof provider.checkForUpdate === 'function') {
-          return await provider.checkForUpdate();
+        if (available && provider.checkForUpdate) {
+          return await provider.checkForUpdate(options);
         }
-      } catch {
-        // Graceful fallback
+      } catch (err) {
+        logger.warn(`[UpdateService] Provider ${provider.name} failed during checkForUpdate:`, err);
       }
     }
     return false;
@@ -40,27 +41,32 @@ All check lifecycles are instrumented via `AnalyticsService.trackEvent` with `so
 
 ### 2.2 DeepLinkUpdateProvider Stub
 
-- `checkForUpdate(): Promise<boolean>` resolves to `false` (no background polling mechanism for generic store links).
+- `checkForUpdate(options: CheckForUpdateOptions): Promise<boolean>` resolves to `false` (no background polling mechanism for generic store links).
 
 ### 2.3 Analytics Events
 
-- Extend `update_check_started` to `{ source?: 'startup' | 'manual' }`.
-- Extend `update_check_completed` to `{ update_available: boolean; source?: 'startup' | 'manual' }`.
-- Update `PlayCoreUpdateProvider.checkForUpdate(options?: { source?: 'startup' | 'manual' })` to pass `source`.
+- Extend `update_check_started` to `{ source: 'startup' | 'manual' }`.
+- Extend `update_check_completed` to `{ update_available: boolean; source: 'startup' | 'manual' }`.
+- Update `PlayCoreUpdateProvider.checkForUpdate(options: CheckForUpdateOptions)` to pass `source`.
 
 ### 2.4 App Startup Hook (`_layout.tsx`)
 
 - In `useEffect` on app mount:
+
   ```ts
   useEffect(() => {
+    const remoteConfigPromise = useRemoteConfigStore.getState().init();
+    void useTranslationStore.getState().init();
+
     AnalyticsService.trackEvent('app_open');
     void updateService.checkForInstalledUpdate();
 
     // Check for available updates in background
     void (async () => {
       try {
+        await remoteConfigPromise;
         const hasUpdate = await updateService.checkForUpdate({ source: 'startup' });
-        if (hasUpdate) {
+        if (hasUpdate && useRemoteConfigStore.getState().versionStatus !== 'block') {
           await updateService.triggerUpdate({ mode: 'flexible' });
         }
       } catch (err) {

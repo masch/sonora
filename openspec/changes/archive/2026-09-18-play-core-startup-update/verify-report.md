@@ -7,7 +7,7 @@ requirements: 3/3
 scenarios: 3/3
 test_command: make test-front
 test_exit_code: 0
-build_command: make typecheck && make lint
+build_command: make validate
 build_exit_code: 0
 ```
 

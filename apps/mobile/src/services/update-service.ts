@@ -6,6 +6,7 @@ import { AnalyticsService } from './analytics';
 import type { UpdateCheckSource } from './analytics-events';
 import { getAppVersion } from '@/utils/app-version';
 import { getLastInstalledVersion, setLastInstalledVersion } from '@/storage/app-storage';
+import { logger } from '@/utils/logger';
 
 export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
@@ -104,8 +105,9 @@ export class UpdateService {
         if (available && provider.checkForUpdate) {
           return await provider.checkForUpdate(options);
         }
-      } catch {
-        // Graceful degradation: continue to next provider
+      } catch (err) {
+        // Graceful degradation: log and continue to next provider
+        logger.warn(`[UpdateService] Provider ${provider.name} failed during checkForUpdate:`, err);
       }
     }
     return false;
@@ -119,8 +121,9 @@ export class UpdateService {
           await provider.triggerUpdate(options);
           return;
         }
-      } catch {
-        // Graceful degradation: continue to next provider
+      } catch (err) {
+        // Graceful degradation: log and continue to next provider
+        logger.warn(`[UpdateService] Provider ${provider.name} failed during triggerUpdate:`, err);
       }
     }
   }
