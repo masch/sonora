@@ -3,6 +3,7 @@ import { t } from 'i18next';
 import { getStoreUrls } from './store-url';
 import { PlayCoreUpdateProvider } from './play-core-provider';
 import { AnalyticsService } from './analytics';
+import type { UpdateCheckSource } from './analytics-events';
 import { getAppVersion } from '@/utils/app-version';
 import { getLastInstalledVersion, setLastInstalledVersion } from '@/storage/app-storage';
 
@@ -10,9 +11,14 @@ export interface UpdateOptions {
   mode?: 'immediate' | 'flexible';
 }
 
+export interface CheckForUpdateOptions {
+  source: UpdateCheckSource;
+}
+
 export interface UpdateProvider {
   name: string;
   isAvailable(): Promise<boolean>;
+  checkForUpdate?(options: CheckForUpdateOptions): Promise<boolean>;
   triggerUpdate(options?: UpdateOptions): Promise<void>;
 }
 
@@ -25,6 +31,10 @@ export class DeepLinkUpdateProvider implements UpdateProvider {
 
   async isAvailable(): Promise<boolean> {
     return true;
+  }
+
+  async checkForUpdate(_options: CheckForUpdateOptions): Promise<boolean> {
+    return false;
   }
 
   async triggerUpdate(): Promise<void> {
@@ -85,6 +95,20 @@ export class UpdateService {
     } else {
       this.providers.push(provider);
     }
+  }
+
+  async checkForUpdate(options: CheckForUpdateOptions): Promise<boolean> {
+    for (const provider of this.providers) {
+      try {
+        const available = await provider.isAvailable();
+        if (available && provider.checkForUpdate) {
+          return await provider.checkForUpdate(options);
+        }
+      } catch {
+        // Graceful degradation: continue to next provider
+      }
+    }
+    return false;
   }
 
   async triggerUpdate(options?: UpdateOptions): Promise<void> {

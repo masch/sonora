@@ -29,6 +29,11 @@ describe('UpdateService', () => {
       await expect(provider.isAvailable()).resolves.toBe(true);
     });
 
+    it('returns false for checkForUpdate', async () => {
+      const provider = new DeepLinkUpdateProvider();
+      await expect(provider.checkForUpdate({ source: 'manual' })).resolves.toBe(false);
+    });
+
     it('opens primary URL if canOpenURL is true', async () => {
       jest.spyOn(storeUrlModule, 'getStoreUrls').mockReturnValue({
         primary: 'market://details?id=test',
@@ -223,6 +228,87 @@ describe('UpdateService', () => {
 
       expect(providers[0].triggerUpdate).toHaveBeenCalled();
       expect(Linking.openURL).toHaveBeenCalled();
+    });
+
+    it('prepends provider when registerProvider called with prepend=true', () => {
+      const service = new UpdateService([]);
+      const p1: UpdateProvider = { name: 'p1', isAvailable: jest.fn(), triggerUpdate: jest.fn() };
+      const p2: UpdateProvider = { name: 'p2', isAvailable: jest.fn(), triggerUpdate: jest.fn() };
+      service.registerProvider(p1);
+      service.registerProvider(p2, true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((service as any).providers).toEqual([p2, p1]);
+    });
+
+    it('appends provider when registerProvider called with prepend=false', () => {
+      const service = new UpdateService([]);
+      const p1: UpdateProvider = { name: 'p1', isAvailable: jest.fn(), triggerUpdate: jest.fn() };
+      const p2: UpdateProvider = { name: 'p2', isAvailable: jest.fn(), triggerUpdate: jest.fn() };
+      service.registerProvider(p1);
+      service.registerProvider(p2, false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((service as any).providers).toEqual([p1, p2]);
+    });
+  });
+
+  describe('checkForUpdate', () => {
+    it('returns true when a provider reports an update is available', async () => {
+      const mockProvider: UpdateProvider = {
+        name: 'mock',
+        isAvailable: jest.fn().mockResolvedValue(true),
+        checkForUpdate: jest.fn().mockResolvedValue(true),
+        triggerUpdate: jest.fn(),
+      };
+      const service = new UpdateService([mockProvider]);
+
+      const result = await service.checkForUpdate({ source: 'startup' });
+      expect(result).toBe(true);
+      expect(mockProvider.checkForUpdate).toHaveBeenCalledWith({ source: 'startup' });
+    });
+
+    it('returns false when provider reports no update', async () => {
+      const mockProvider: UpdateProvider = {
+        name: 'mock',
+        isAvailable: jest.fn().mockResolvedValue(true),
+        checkForUpdate: jest.fn().mockResolvedValue(false),
+        triggerUpdate: jest.fn(),
+      };
+      const service = new UpdateService([mockProvider]);
+
+      const result = await service.checkForUpdate({ source: 'manual' });
+      expect(result).toBe(false);
+    });
+
+    it('falls back to next provider if first provider throws', async () => {
+      const failingProvider: UpdateProvider = {
+        name: 'failing',
+        isAvailable: jest.fn().mockResolvedValue(true),
+        checkForUpdate: jest.fn().mockRejectedValue(new Error('Network error')),
+        triggerUpdate: jest.fn(),
+      };
+      const fallbackProvider: UpdateProvider = {
+        name: 'fallback',
+        isAvailable: jest.fn().mockResolvedValue(true),
+        checkForUpdate: jest.fn().mockResolvedValue(true),
+        triggerUpdate: jest.fn(),
+      };
+      const service = new UpdateService([failingProvider, fallbackProvider]);
+
+      const result = await service.checkForUpdate({ source: 'manual' });
+      expect(result).toBe(true);
+      expect(fallbackProvider.checkForUpdate).toHaveBeenCalled();
+    });
+
+    it('returns false if no providers have an update or implement checkForUpdate', async () => {
+      const providerWithoutCheck: UpdateProvider = {
+        name: 'no-check',
+        isAvailable: jest.fn().mockResolvedValue(true),
+        triggerUpdate: jest.fn(),
+      };
+      const service = new UpdateService([providerWithoutCheck]);
+
+      const result = await service.checkForUpdate({ source: 'manual' });
+      expect(result).toBe(false);
     });
   });
 

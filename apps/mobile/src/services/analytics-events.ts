@@ -60,11 +60,13 @@ export interface TermsEvents {
   };
 }
 
+export type UpdateCheckSource = 'startup' | 'manual';
+
 export interface InAppUpdateEvents {
   /** Fired when the update availability check is initiated. */
-  update_check_started: Record<string, never> | undefined;
+  update_check_started: { source: UpdateCheckSource };
   /** Fired after the check resolves, reporting whether an update is available. */
-  update_check_completed: { update_available: boolean };
+  update_check_completed: { update_available: boolean; source: UpdateCheckSource };
   /** Fired when an update flow is triggered (user or automatic). */
   update_triggered: { mode: 'flexible' | 'immediate'; provider: string };
   /** Fired when a flexible update finishes downloading and installUpdate() is triggered. */

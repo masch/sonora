@@ -1,5 +1,5 @@
 import { Platform, NativeModules } from 'react-native';
-import type { UpdateOptions, UpdateProvider } from './update-service';
+import type { UpdateOptions, CheckForUpdateOptions, UpdateProvider } from './update-service';
 import type SpInAppUpdates from 'sp-react-native-in-app-updates';
 import type { StatusUpdateEvent } from 'sp-react-native-in-app-updates';
 import { AnalyticsService } from './analytics';
@@ -67,12 +67,13 @@ export class PlayCoreUpdateProvider implements UpdateProvider {
     return !!getSpInAppUpdatesClass();
   }
 
-  async checkForUpdate(): Promise<boolean> {
-    AnalyticsService.trackEvent('update_check_started', undefined);
+  async checkForUpdate(options: CheckForUpdateOptions): Promise<boolean> {
+    AnalyticsService.trackEvent('update_check_started', { source: options.source });
     const client = this.getClient();
     const result = await client.checkNeedsUpdate();
     AnalyticsService.trackEvent('update_check_completed', {
       update_available: result.shouldUpdate,
+      source: options.source,
     });
     return result.shouldUpdate;
   }

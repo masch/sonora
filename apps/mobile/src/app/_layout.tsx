@@ -30,6 +30,7 @@ import { useTranslationStore } from '@/store/translation-store';
 import { useTermsCheck } from '@/hooks/use-terms-check';
 import { TermsModal } from '@/components/terms-modal';
 import { AndroidWebGate } from '@/components/android-web-gate';
+import { logger } from '@/utils/logger';
 import { TwView, TwText, TwPressable } from '@/tw';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
@@ -84,10 +85,21 @@ export default function RootLayout() {
   // Check Terms and Conditions acceptance
   const termsCheck = useTermsCheck();
 
-  // Track app open event and check for installed update
+  // Track app open event, check for installed update, and check for available update
   useEffect(() => {
     AnalyticsService.trackEvent('app_open');
     void updateService.checkForInstalledUpdate();
+
+    void (async () => {
+      try {
+        const hasUpdate = await updateService.checkForUpdate({ source: 'startup' });
+        if (hasUpdate && useRemoteConfigStore.getState().versionStatus !== 'block') {
+          await updateService.triggerUpdate({ mode: 'flexible' });
+        }
+      } catch (err) {
+        logger.warn('[UpdateService] Startup update check failed:', err);
+      }
+    })();
   }, []);
 
   useEffect(() => {
