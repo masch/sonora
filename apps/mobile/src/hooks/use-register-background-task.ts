@@ -34,6 +34,10 @@ interface RegisterOptions {
  *
  * Note: The task handler itself must still be defined globally in the module using `TaskManager.defineTask`.
  */
+// Maps to serialize registration calls and track active generations per taskName
+const taskRegistrationLocks = new Map<string, Promise<void>>();
+const taskRegistrationGenerations = new Map<string, number>();
+
 export function useRegisterBackgroundTask(taskName: string, options: RegisterOptions = {}) {
   const minimumInterval = options.minimumInterval ?? 15 * 60; // 15 minutes default
   const stopOnTerminate = options.stopOnTerminate ?? true;
@@ -42,25 +46,61 @@ export function useRegisterBackgroundTask(taskName: string, options: RegisterOpt
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
-    async function register() {
+    let isCancelled = false;
+    const currentGeneration = (taskRegistrationGenerations.get(taskName) ?? 0) + 1;
+    taskRegistrationGenerations.set(taskName, currentGeneration);
+
+    const isStale = () =>
+      isCancelled || taskRegistrationGenerations.get(taskName) !== currentGeneration;
+
+    async function executeRegister() {
       try {
         const isRegistered = await TaskManager.isTaskRegisteredAsync(taskName);
+        if (isStale()) return;
+
         if (isRegistered) {
           // Unregister legacy persistent alarm in Android's AlarmManager to prevent zombie wakeups
           await BackgroundFetch.unregisterTaskAsync(taskName);
         }
+        if (isStale()) return;
 
         await BackgroundFetch.registerTaskAsync(taskName, {
           minimumInterval,
           stopOnTerminate,
           startOnBoot,
         });
-        logger.info(`[BACKGROUND_FETCH] Task "${taskName}" registered safely`);
+        if (!isStale()) {
+          logger.info(`[BACKGROUND_FETCH] Task "${taskName}" registered safely`);
+        }
       } catch (error) {
-        logger.error(`[BACKGROUND_FETCH] Failed to register task "${taskName}":`, error);
+        if (!isStale()) {
+          logger.error(`[BACKGROUND_FETCH] Failed to register task "${taskName}":`, error);
+        }
       }
     }
 
-    void register();
+    // Serialize registration calls per taskName to avoid race conditions on rapid prop updates
+    const previousLock = taskRegistrationLocks.get(taskName) ?? Promise.resolve();
+    const currentLock = previousLock
+      .catch(() => {})
+      .then(async () => {
+        if (!isStale()) {
+          await executeRegister();
+        }
+      })
+      .finally(() => {
+        if (taskRegistrationLocks.get(taskName) === currentLock) {
+          taskRegistrationLocks.delete(taskName);
+        }
+        if (taskRegistrationGenerations.get(taskName) === currentGeneration) {
+          taskRegistrationGenerations.delete(taskName);
+        }
+      });
+
+    taskRegistrationLocks.set(taskName, currentLock);
+
+    return () => {
+      isCancelled = true;
+    };
   }, [taskName, minimumInterval, stopOnTerminate, startOnBoot]);
 }

@@ -61,4 +61,41 @@ describe('useRegisterBackgroundTask', () => {
       startOnBoot: false,
     });
   });
+
+  it('handles rapid rerenders safely by serializing and ignoring stale in-flight calls', async () => {
+    const taskName = 'concurrent-task';
+    let resolveFirstTaskCheck!: (value: boolean) => void;
+    const firstCheckPromise = new Promise<boolean>((resolve) => {
+      resolveFirstTaskCheck = resolve;
+    });
+
+    (TaskManager.isTaskRegisteredAsync as jest.Mock)
+      .mockReturnValueOnce(firstCheckPromise)
+      .mockResolvedValueOnce(false);
+    (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValue(undefined);
+
+    const { rerender } = await renderHook(
+      ({ interval }: { interval: number }) =>
+        useRegisterBackgroundTask(taskName, { minimumInterval: interval }),
+      { initialProps: { interval: 100 } },
+    );
+
+    // Rerender with new interval before the first check resolves
+    await act(async () => {
+      rerender({ interval: 200 });
+    });
+
+    // Now resolve the first check
+    await act(async () => {
+      resolveFirstTaskCheck(false);
+    });
+
+    // The second registration should finish with interval 200, and first stale registration was cancelled
+    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledTimes(1);
+    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(taskName, {
+      minimumInterval: 200,
+      stopOnTerminate: true,
+      startOnBoot: false,
+    });
+  });
 });
