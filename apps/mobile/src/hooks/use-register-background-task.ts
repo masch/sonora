@@ -12,8 +12,27 @@ interface RegisterOptions {
 }
 
 /**
- * Reusable hook to register an expo-background-fetch task.
- * Note: The task handler itself must still be defined globally in the module using TaskManager.defineTask.
+ * Reusable hook to register an expo-background-fetch task safely.
+ *
+ * ### Android Crash Prevention Rationale:
+ * In expo-background-fetch on Android, tasks are scheduled via native AlarmManager.
+ * If registered with `stopOnTerminate: false` or `startOnBoot: true`, AlarmManager persists
+ * recurring wake-up intents (targeting `expo.modules.taskManager.TaskBroadcastReceiver`).
+ *
+ * When the app process is terminated and AlarmManager fires, `TaskBroadcastReceiver` is invoked
+ * in cold start before the React Native runtime is mounted (`taskManager == null`). In release
+ * builds with R8 code shrinking/obfuscation enabled, `TaskService.executeTask` falls back to
+ * `getAppLoader().loadApp(...)`, where `getAppLoader()` returns `null`, resulting in an unhandled
+ * `java.lang.NullPointerException` inside `ActivityThread.handleReceiver` that crashes the app.
+ *
+ * ### Solution Mechanism:
+ * 1. Safe Defaults: `stopOnTerminate: true` and `startOnBoot: false` ensure alarms are cancelled
+ *    when the app exits and never restored on device boot.
+ * 2. Proactive Cleanup: If the task was previously registered by an older app version, we call
+ *    `BackgroundFetch.unregisterTaskAsync(taskName)` to cancel any existing AlarmManager PendingIntents
+ *    and purge stale task entries from SharedPreferences before safely re-registering.
+ *
+ * Note: The task handler itself must still be defined globally in the module using `TaskManager.defineTask`.
  */
 export function useRegisterBackgroundTask(taskName: string, options: RegisterOptions = {}) {
   const minimumInterval = options.minimumInterval ?? 15 * 60; // 15 minutes default
