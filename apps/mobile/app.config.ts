@@ -1,4 +1,5 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
+import { withAppBuildGradle, type ConfigPlugin } from 'expo/config-plugins';
 import { fontConfig } from './src/config/font.ts';
 import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
 
@@ -41,8 +42,20 @@ const appVersionCode = process.env.APP_VERSION_CODE
   ? parseInt(process.env.APP_VERSION_CODE, 10)
   : 6;
 
+const withR8Optimization: ConfigPlugin = (config) => {
+  return withAppBuildGradle(config, (modConfig) => {
+    if (modConfig.modResults.language === 'groovy') {
+      modConfig.modResults.contents = modConfig.modResults.contents.replace(
+        'getDefaultProguardFile("proguard-android.txt")',
+        'getDefaultProguardFile("proguard-android-optimize.txt")',
+      );
+    }
+    return modConfig;
+  });
+};
+
 export default ({ config }: ConfigContext): ExpoConfig => {
-  return {
+  return withR8Optimization({
     ...config,
     name: activeEnv.name,
     slug: 'sonora',
@@ -121,11 +134,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'expo-build-properties',
         {
           android: {
-            // Enable R8 minification/obfuscation in release builds so the
-            // mapping.txt deobfuscation file is generated and uploaded to
-            // Google Play Console (required for crash/ANR symbolication).
+            // Enable R8 minification/obfuscation and resource shrinking in release builds
+            // so unused code and resources are pruned, and mapping.txt is generated for
+            // Google Play Console symbolication.
             enableMinifyInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
             debugSymbolLevel: 'SYMBOL_TABLE',
+            extraProguardRules: `
+# Safeguard reflection and annotation metadata during R8 code optimization
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+`,
           },
         },
       ],
@@ -145,5 +166,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       domain: activeEnv.domain,
     },
     owner: 'sonoraderivapoeticas-team',
-  };
+  });
 };
