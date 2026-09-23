@@ -3,7 +3,6 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 
 import { useBackgroundSync, BACKGROUND_SYNC_TASK } from '../use-background-sync';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
 
 // Mock expo-background-fetch
 jest.mock('expo-background-fetch', () => ({
@@ -22,36 +21,14 @@ jest.mock('expo-task-manager', () => ({
   isTaskRegisteredAsync: jest.fn(),
 }));
 
-// Mock flushQueue
-jest.mock('../use-feedback-sync', () => ({
-  flushQueue: jest.fn(() => Promise.resolve()),
-}));
-
 describe('useBackgroundSync', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('registers background fetch task if not already registered', async () => {
-    (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(false);
-    (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
-
-    await act(async () => {
-      await renderHook(() => useBackgroundSync());
-    });
-
-    expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
-    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK, {
-      minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
-      stopOnTerminate: true,
-      startOnBoot: false,
-    });
-  });
-
-  it('unregisters legacy task before re-registering with safe options if already registered', async () => {
+  it('unregisters legacy background task if currently registered', async () => {
     (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(true);
     (BackgroundFetch.unregisterTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
-    (BackgroundFetch.registerTaskAsync as jest.Mock).mockResolvedValueOnce(undefined);
 
     await act(async () => {
       await renderHook(() => useBackgroundSync());
@@ -59,10 +36,18 @@ describe('useBackgroundSync', () => {
 
     expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
     expect(BackgroundFetch.unregisterTaskAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
-    expect(BackgroundFetch.registerTaskAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK, {
-      minimumInterval: useRemoteConfigStore.getState().config.feedback.syncIntervalSec,
-      stopOnTerminate: true,
-      startOnBoot: false,
+    expect(BackgroundFetch.registerTaskAsync).not.toHaveBeenCalled();
+  });
+
+  it('does nothing if legacy background task is not registered', async () => {
+    (TaskManager.isTaskRegisteredAsync as jest.Mock).mockResolvedValueOnce(false);
+
+    await act(async () => {
+      await renderHook(() => useBackgroundSync());
     });
+
+    expect(TaskManager.isTaskRegisteredAsync).toHaveBeenCalledWith(BACKGROUND_SYNC_TASK);
+    expect(BackgroundFetch.unregisterTaskAsync).not.toHaveBeenCalled();
+    expect(BackgroundFetch.registerTaskAsync).not.toHaveBeenCalled();
   });
 });
