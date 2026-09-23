@@ -1,5 +1,10 @@
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
-import { withAppBuildGradle, type ConfigPlugin } from 'expo/config-plugins';
+import {
+  AndroidConfig,
+  type ConfigPlugin,
+  withAppBuildGradle,
+  withGradleProperties,
+} from 'expo/config-plugins';
 import { fontConfig } from './src/config/font.ts';
 import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
 
@@ -43,13 +48,22 @@ const appVersionCode = process.env.APP_VERSION_CODE
   : 6;
 
 const withR8Optimization: ConfigPlugin = (config) => {
-  return withAppBuildGradle(config, (modConfig) => {
+  const configWithGradle = withAppBuildGradle(config, (modConfig) => {
     if (modConfig.modResults.language === 'groovy') {
       modConfig.modResults.contents = modConfig.modResults.contents.replace(
         'getDefaultProguardFile("proguard-android.txt")',
         'getDefaultProguardFile("proguard-android-optimize.txt")',
       );
     }
+    return modConfig;
+  });
+
+  return withGradleProperties(configWithGradle, (modConfig) => {
+    modConfig.modResults = AndroidConfig.BuildProperties.updateAndroidBuildProperty(
+      modConfig.modResults,
+      'android.r8.optimizedResourceShrinking',
+      'true',
+    );
     return modConfig;
   });
 };
