@@ -64,6 +64,11 @@ const withR8Optimization: ConfigPlugin = (config) => {
       'android.r8.optimizedResourceShrinking',
       'true',
     );
+    modConfig.modResults = AndroidConfig.BuildProperties.updateAndroidBuildProperty(
+      modConfig.modResults,
+      'org.gradle.jvmargs',
+      '-Xmx4096m -XX:MaxMetaspaceSize=1024m',
+    );
     return modConfig;
   });
 };
