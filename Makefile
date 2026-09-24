@@ -989,13 +989,13 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	cd apps/mobile && \
 	  npx expo prebuild --platform android --clean && \
 	  cd android && \
-	  ./gradlew :app:assembleRelease :app:bundleRelease && \
+	  ./gradlew -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" :app:assembleRelease :app:bundleRelease && \
 	  cd .. && \
-	  zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" || true && \
+	  (zip -d android/app/build/outputs/bundle/release/app-release.aab "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" 2>/dev/null || true) && \
 	  mv android/app/build/outputs/apk/release/app-release.apk $(if $(OUTPUT_APK),$(OUTPUT_APK),sonora-release-unsigned.apk) && \
 	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab) && \
 	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt) && \
-	  cp android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip $(if $(OUTPUT_NATIVE_SYMBOLS),$(OUTPUT_NATIVE_SYMBOLS),sonora-release-native-debug-symbols.zip) 2>/dev/null || true
+	  (cp android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip $(if $(OUTPUT_NATIVE_SYMBOLS),$(OUTPUT_NATIVE_SYMBOLS),sonora-release-native-debug-symbols.zip) 2>/dev/null || true)
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)
