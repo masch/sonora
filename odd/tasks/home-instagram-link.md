@@ -34,5 +34,8 @@ Display a centered, accessible link to the official Sonora Instagram account at 
   - Action: Read `instagramHandle` from `useRemoteConfigStore`, render centered link at bottom, open native app on iOS/Android with fallback to web URL.
   - Proof: Jest component and utility tests pass (86 suites, 716 tests).
 
-- [ ] **Task 4: Full Validation & Quality Gate**
-  - Action: Run `make validate` (linter, types, tests).
+- [x] **Task 4: Full Validation & Quality Gate**
+  - Action: Run `make validate` (linter, types, tests, GGA).
+  - Proof: All checks passed. Commit `009d407`.
+  - Issue: [#475](https://github.com/masch/sonora/issues/475)
+  - PR: [#476](https://github.com/masch/sonora/pull/476)
