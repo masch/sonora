@@ -38,6 +38,7 @@ const DEFAULT_CONFIG = {
   },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
+  social: { instagramHandle: 'sonora.derivapoetica' },
 };
 
 const DEFAULT_APP_VERSION = {
@@ -188,6 +189,7 @@ describe('RemoteConfigStore', () => {
       audio: { rewindOffsetMs: 20000 },
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
+      social: { instagramHandle: 'sonora.derivapoetica' },
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
     mockApiGet.mockRejectedValue(new Error('Offline'));

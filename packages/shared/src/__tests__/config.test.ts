@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   RemoteConfigPayloadSchema,
   RemoteConfigAppVersionSchema,
+  RemoteConfigSocialSchema,
   DEFAULT_REMOTE_CONFIG,
   type RemoteConfigPayload,
 } from '../schemas/config';
@@ -20,6 +21,9 @@ const fullPayload: RemoteConfigPayload = {
     blockOlderVersions: true,
     gracePeriodStart: '2026-07-02T00:00:00Z',
     gracePeriodEnd: '2026-07-09T00:00:00Z',
+  },
+  social: {
+    instagramHandle: 'sonora.derivapoetica',
   },
 };
 
@@ -112,6 +116,7 @@ describe('RemoteConfigPayloadSchema', () => {
         audio: { rewindOffsetMs: 10000 },
         feedback: { syncIntervalSec: 30 },
         appVersion: { minimumVersion: '1.0.0', blockOlderVersions: true },
+        social: { instagramHandle: 'sonora.derivapoetica' },
       };
       const result = RemoteConfigPayloadSchema.safeParse(payload);
       expect(result.success).toBe(true);
@@ -142,12 +147,29 @@ describe('RemoteConfigPayloadSchema', () => {
     });
   });
 
+  describe('social configuration', () => {
+    it('defaults instagramHandle to sonora.derivapoetica', () => {
+      expect(DEFAULT_REMOTE_CONFIG.social.instagramHandle).toBe('sonora.derivapoetica');
+    });
+
+    it('rejects empty instagramHandle', () => {
+      const schema = RemoteConfigSocialSchema.shape.instagramHandle;
+      expect(schema.safeParse('').success).toBe(false);
+    });
+
+    it('accepts valid instagramHandle', () => {
+      const schema = RemoteConfigSocialSchema.shape.instagramHandle;
+      expect(schema.safeParse('sonora.derivapoetica').success).toBe(true);
+    });
+  });
+
   describe('TypeScript types', () => {
     it('DEFAULT_REMOTE_CONFIG satisfies RemoteConfigPayload', () => {
       const check: RemoteConfigPayload = DEFAULT_REMOTE_CONFIG;
       expect(check.geofence.bypassGeofence).toBe(false);
       expect(check.geofence.trip.defaultMode).toBe('formatDefaultRadius');
       expect(check.geofence.track.defaultMode).toBe('formatDefaultRadius');
+      expect(check.social.instagramHandle).toBe('sonora.derivapoetica');
     });
   });
 });

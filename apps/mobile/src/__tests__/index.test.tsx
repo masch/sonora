@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 
 // ---------------------------------------------------------------------------
 // Mock modules required by HomeAudioPlayer (now rendered in index.tsx)
@@ -69,11 +69,18 @@ jest.mock('@/hooks/use-translation', () => ({
   useAppTranslation: () => ({ t: (k: string) => k }),
 }));
 
+const mockOpenInstagramProfile = jest.fn();
+jest.mock('@/utils/social', () => ({
+  openInstagramProfile: (...args: unknown[]) => mockOpenInstagramProfile(...args),
+  sanitizeInstagramHandle: (h: string) => h.replace(/^@/, ''),
+}));
+
 jest.mock('@/store/remote-config-store', () => ({
   useRemoteConfigStore: jest.fn((selector?: (s: unknown) => unknown) => {
     const state = {
       config: {
         audio: { rewindOffsetMs: 10000 },
+        social: { instagramHandle: 'sonora.derivapoetica' },
       },
     };
     return selector ? selector(state) : state;
@@ -112,5 +119,14 @@ describe('Home screen (Redesigned)', () => {
     const { toJSON } = await render(<HomeScreen />);
 
     expect(toJSON()).not.toBeNull();
+  });
+
+  it('renders centered instagram link and handles press', async () => {
+    const { getByTestId } = await render(<HomeScreen />);
+    const link = getByTestId('home-instagram-link');
+    expect(link).toBeTruthy();
+
+    fireEvent.press(link);
+    expect(mockOpenInstagramProfile).toHaveBeenCalledWith('sonora.derivapoetica');
   });
 });

@@ -28,6 +28,7 @@ describe('config-cache', () => {
         audio: { rewindOffsetMs: 15000 },
         feedback: { syncIntervalSec: 60 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
+        social: { instagramHandle: 'sonora.derivapoetica' },
       };
 
       await setCachedConfig(config);
@@ -48,6 +49,7 @@ describe('config-cache', () => {
         audio: { rewindOffsetMs: 5000 },
         feedback: { syncIntervalSec: 120 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
+        social: { instagramHandle: 'sonora.derivapoetica' },
       };
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(config));
 
