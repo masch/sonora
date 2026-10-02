@@ -61,6 +61,20 @@ describe('social utilities', () => {
       }
     });
 
+    it('encodes handle with special characters', async () => {
+      const openSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true as never);
+
+      await openInstagramProfile('user name');
+
+      expect(openSpy).toHaveBeenCalledWith('instagram://user?username=user%20name');
+    });
+
+    it('handles openURL rejection gracefully without throwing unhandled rejection', async () => {
+      jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('Browser not found'));
+
+      await expect(openInstagramProfile('sonora.derivapoetica')).resolves.toBeUndefined();
+    });
+
     it('does nothing when handle is empty', async () => {
       const openSpy = jest.spyOn(Linking, 'openURL');
 
