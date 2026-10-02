@@ -122,6 +122,8 @@ export const es = {
     localMessagesSub: 'Voces de la comunidad',
     instructionsName: 'Antes de empezar',
     instructionsSubtitle: 'Instrucciones para mejorar experiencia',
+    instagramAria: 'Seguinos en Instagram @{{handle}}',
+    instagramHandle: '@{{handle}}',
   },
   index: {
     loading: 'Cargando…',

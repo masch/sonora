@@ -122,6 +122,8 @@ export const en = {
     localMessagesSub: 'Community voices',
     instructionsName: 'Before you begin',
     instructionsSubtitle: 'Instructions to improve your experience',
+    instagramAria: 'Follow us on Instagram @{{handle}}',
+    instagramHandle: '@{{handle}}',
   },
   index: {
     loading: 'Loading…',

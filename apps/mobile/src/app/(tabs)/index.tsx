@@ -9,6 +9,7 @@ import { TwPressable, TwView } from '@/tw';
 import { getExperienceIcon } from '@/utils/icons';
 import { useRouter } from 'expo-router';
 
+import { InstagramLink } from '@/components/instagram-link';
 import { PopupImageModal } from '@/components/popup-image-modal';
 import { SONORA_HOME_BG, SONORA_HOME_MAP } from '@/constants/images';
 
@@ -154,6 +155,9 @@ export default function HomeScreen() {
             </TwPressable>
           )}
         </TwView>
+
+        {/* Official Instagram Link */}
+        <InstagramLink />
 
         {/* Spacer to match the padding between elements */}
         <TwView className="h-3" />
