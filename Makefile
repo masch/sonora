@@ -872,17 +872,20 @@ api-db-shell: ## Open psql shell to local Postgres (amigable)
 	podman cp $(PSQLRC_SONORA) sonora-postgres:/tmp/.psqlrc-sonora && \
 		podman compose -f $(API_DIR)/docker-compose.yml exec \
 			-e PSQLRC=/tmp/.psqlrc-sonora \
+			-e PGTZ=America/Argentina/Buenos_Aires \
 			postgres psql -U sonora -d sonora
 
 .PHONY: api-db-shell-staging
 api-db-shell-staging: ## Open psql shell to Neon staging DB (amigable)
 	podman run -it --rm \
+		-e PGTZ=America/Argentina/Buenos_Aires \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
 		postgres:18-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
 
 .PHONY: api-db-shell-production
 api-db-shell-production: ## Open psql shell to Neon production DB (amigable)
 	podman run -it --rm \
+		-e PGTZ=America/Argentina/Buenos_Aires \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
 		postgres:18-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
 
