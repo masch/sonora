@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
-import { PAYMENT_ROUTES } from '@sonora/shared';
+import { ApiError, PAYMENT_ROUTES } from '@sonora/shared';
 import { PaymentClient } from '@/services/payment-client';
 import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -25,9 +25,14 @@ export interface PurchaseState {
   polling: boolean;
 }
 
+export interface RestoreResult {
+  success: boolean;
+  error?: string | null;
+}
+
 export interface PurchaseActions {
   pay: () => Promise<void>;
-  restore: (email: string) => Promise<boolean>;
+  restore: (email: string) => Promise<RestoreResult>;
   refresh: () => Promise<void>;
   checkStatus: () => Promise<void>;
 }
@@ -297,7 +302,7 @@ export function usePurchase(
     }
   };
 
-  const restore = async (email: string): Promise<boolean> => {
+  const restore = async (email: string): Promise<RestoreResult> => {
     setState((prev) => ({ ...prev, restoring: true, error: null }));
 
     try {
@@ -312,19 +317,39 @@ export function usePurchase(
           restoring: false,
           error: null,
         }));
-        return true;
+        return { success: true };
       } else {
-        setState((prev) => ({ ...prev, restoring: false }));
-        return false;
+        const notFoundMsg = t('payments.restore.notFound');
+        setState((prev) => ({ ...prev, restoring: false, error: notFoundMsg }));
+        return { success: false, error: notFoundMsg };
       }
-    } catch {
-      logger.error('[usePurchase] Failed to restore purchases');
+    } catch (err: unknown) {
+      logger.error('[usePurchase] Failed to restore purchases', err);
+      let errorMsg = t('payments.error.restore');
+      const isApiError =
+        err instanceof ApiError ||
+        (Boolean(err) && typeof err === 'object' && 'body' in (err as object));
+      if (isApiError) {
+        const body = (err as { body?: unknown }).body;
+        if (body && typeof body === 'object') {
+          const code = (body as { code?: string }).code;
+          if (code === 'COUPON_EXPIRED') {
+            errorMsg = t('payments.error.couponExpired');
+          } else if (code === 'COUPON_NOT_YET_VALID') {
+            errorMsg = t('payments.error.couponNotYetValid');
+          } else if (code === 'COUPON_LIMIT_REACHED') {
+            errorMsg = t('payments.error.couponLimitReached');
+          } else if (code === 'COUPON_NOT_FOUND') {
+            errorMsg = t('payments.error.couponNotFound');
+          }
+        }
+      }
       setState((prev) => ({
         ...prev,
         restoring: false,
-        error: t('payments.error.restore'),
+        error: errorMsg,
       }));
-      return false;
+      return { success: false, error: errorMsg };
     }
   };
 

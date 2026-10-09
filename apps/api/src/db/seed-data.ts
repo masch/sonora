@@ -142,7 +142,7 @@ const trips: readonly NewExperience[] = [
       },
       {
         role: 'oceanomarAudio',
-        names: 'Matías Etcheguren sobre texto “ Océano mar” de Alessandro Baricco.',
+        names: 'Matías Etcheguren sobre texto “Océano mar” de Alessandro Baricco.',
       },
       { role: 'voices', names: 'Chantal, Rafaela, Mara, Maga, Max, Luz, Fede.' },
       { role: 'forestObjects', names: 'Lucesypeces.' },

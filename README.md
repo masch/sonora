@@ -231,6 +231,31 @@ The Worker reads `DB_ADAPTER=neon` from `wrangler.toml` and connects via `@neond
 | `api-db-shell`    | Open an interactive psql shell               |
 | `api-dev-local`   | Run the API server locally with Postgres     |
 
+## Group Trip Coupons
+
+To create or update a group trip coupon for an experience, use the `api-create-coupon-staging` (or `api-create-coupon-production`) Makefile target:
+
+```bash
+make api-create-coupon-staging \
+  ADMIN_API_KEY="<staging-admin-key>" \
+  EXP_ID="a23baa7e-2c82-472f-9241-4f23e00c1732" \
+  EMAIL="test@sonora.org" \
+  STARTS="2026-10-09T00:18:00-03:00" \
+  EXPIRES="2026-10-12T00:00:00-03:00" \
+  NOTES="Viaje Grupal Bosque domingo 2026-10-09" \
+  MAX=3
+```
+
+| Parameter       | Required | Description                                                                                  |
+| --------------- | -------- | -------------------------------------------------------------------------------------------- |
+| `ADMIN_API_KEY` | Yes      | Admin API key for the target environment (same key used to log into the Admin portal)        |
+| `EXP_ID`        | Yes      | Experience UUID (e.g. `a23baa7e-2c82-472f-9241-4f23e00c1732` for _Deriva del bosque al río_) |
+| `EMAIL`         | Yes      | User email                                                                                   |
+| `STARTS`        | Yes      | ISO 8601 start date/time (accepts local offset like `-03:00` or UTC `Z`, auto-normalized)    |
+| `EXPIRES`       | Yes      | ISO 8601 expiry date/time                                                                    |
+| `NOTES`         | Yes      | Description or group reference                                                               |
+| `MAX`           | No       | Max downloads/devices allowed (defaults to `1`)                                              |
+
 ## App Version Check
 
 The app enforces a minimum version via remote config. On `init()`, the store fetches config from the API, compares the installed version (from `app.config.ts` → `Constants.expoConfig.version`) against the server's `minimumVersion`, and sets a `versionStatus` that drives conditional UI.

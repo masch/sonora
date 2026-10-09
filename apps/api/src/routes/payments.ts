@@ -1,5 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import {
+  CreateCouponBodySchema,
   CreatePaymentBodySchema,
   EmailQuerySchema,
   LogAccessBodySchema,
@@ -9,19 +10,29 @@ import {
   z,
   type PurchaseStatus,
 } from '@sonora/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { experienceAccesses, experiences, freeDownloads, purchases } from '../db/schema';
+import {
+  experienceAccesses,
+  experienceCouponRedemptions,
+  experienceCoupons,
+  experiences,
+  purchases,
+} from '../db/schema';
 import type { Env, Variables } from '../index';
 import { sanitizeUrl } from '../lib/log-redaction';
+import { adminAuthGuard } from '../middleware/admin-auth-guard';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
+import { hmacGuard } from '../middleware/hmac-guard';
 import { paymentsGuard } from '../middleware/payments-guard';
 import { platformGuard } from '../middleware/platform-guard';
 import { created, ERRORS, HTTP, problem, success } from '../middleware/problem-details';
 import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
 import { urlGuard } from '../middleware/url-guard';
 import { validationHook } from '../middleware/validation-error';
+import { hashEmail, maskEmail } from '../utils/coupons';
+import { isUniqueViolation } from '../utils/db-errors';
 
 const ReturnParamSchema = z.object({
   status: z.string(),
@@ -475,17 +486,84 @@ paymentsRouter.get(
   },
 );
 
-// GET /experiences/:id/purchased?email= — Check if email purchased an experience
+// POST /payments/experiences/:id/coupons — Admin creates a coupon for an experience
+paymentsRouter.post(
+  '/experiences/:id/coupons',
+  adminAuthGuard(),
+  dbGuard(),
+  hmacGuard(),
+  zValidator('param', IdParamSchema, validationHook),
+  zValidator('json', CreateCouponBodySchema, validationHook),
+  async (c) => {
+    const db = c.var.db;
+    const { id } = c.req.valid('param');
+    const { email, startsAt, expiresAt, notes, maxDownloads } = c.req.valid('json');
+
+    const [experience] = await db
+      .select({ id: experiences.id })
+      .from(experiences)
+      .where(eq(experiences.id, id))
+      .limit(1);
+
+    if (!experience) {
+      return problem(c, ERRORS.EXPERIENCE_NOT_FOUND);
+    }
+
+    const secret = c.var.hmacSecret;
+    const emailHash = await hashEmail(email, secret);
+    const emailMasked = maskEmail(email);
+
+    const [coupon] = await db
+      .insert(experienceCoupons)
+      .values({
+        experienceId: id,
+        emailHash,
+        emailMasked,
+        notes,
+        maxDownloads,
+        startsAt: new Date(startsAt),
+        expiresAt: new Date(expiresAt),
+      })
+      .onConflictDoUpdate({
+        target: [experienceCoupons.experienceId, experienceCoupons.emailHash],
+        set: {
+          notes,
+          maxDownloads,
+          startsAt: new Date(startsAt),
+          expiresAt: new Date(expiresAt),
+        },
+      })
+      .returning();
+
+    return created(c, {
+      id: coupon.id,
+      experienceId: coupon.experienceId,
+      emailMasked: coupon.emailMasked,
+      notes: coupon.notes,
+      maxDownloads: coupon.maxDownloads,
+      usedDownloads: coupon.usedDownloads,
+      startsAt: coupon.startsAt,
+      expiresAt: coupon.expiresAt,
+      createdAt: coupon.createdAt,
+    });
+  },
+);
+
+// GET /experiences/:id/purchased?email= — Check if email purchased an experience or has a group trip coupon
 paymentsRouter.get(
   '/experiences/:id/purchased',
   dbGuard(),
   deviceIdGuard(),
+  platformGuard(),
+  hmacGuard(),
   zValidator('param', IdParamSchema, validationHook),
   zValidator('query', EmailQuerySchema, validationHook),
   async (c) => {
     const db = c.var.db;
     const { id } = c.req.valid('param');
     const { email } = c.req.valid('query') as { email: string };
+    const deviceId = c.var.deviceId;
+    const platform = c.var.devicePlatform;
 
     // Unpublished experiences are hidden: treated as if they did not exist.
     const [experience] = await db
@@ -518,33 +596,110 @@ paymentsRouter.get(
       )
       .limit(1);
 
-    if (!purchase) {
-      const deviceId = c.var.deviceId;
-      const platform = c.var.devicePlatform;
+    if (purchase) {
+      return success(c, {
+        purchased: true,
+        purchase: {
+          purchaseId: purchase.id,
+          status: purchase.status,
+          provider: purchase.provider,
+          amount: purchase.amount,
+          currency: purchase.currency,
+          purchasedAt: purchase.createdAt,
+        },
+      });
+    }
 
-      await db.insert(freeDownloads).values({
+    // No regular purchase found — check for a coupon (Viaje Grupal)
+    const secret = c.var.hmacSecret;
+    const emailHash = await hashEmail(email, secret);
+
+    const [coupon] = await db
+      .select()
+      .from(experienceCoupons)
+      .where(
+        and(eq(experienceCoupons.experienceId, id), eq(experienceCoupons.emailHash, emailHash)),
+      )
+      .limit(1);
+
+    if (!coupon) {
+      return problem(c, ERRORS.COUPON_NOT_FOUND);
+    }
+
+    const now = new Date();
+    if (coupon.startsAt > now) {
+      return problem(c, ERRORS.COUPON_NOT_YET_VALID);
+    }
+    if (coupon.expiresAt <= now) {
+      return problem(c, ERRORS.COUPON_EXPIRED);
+    }
+
+    // Check if this device has already redeemed this coupon
+    const [existingRedemption] = await db
+      .select({ id: experienceCouponRedemptions.id })
+      .from(experienceCouponRedemptions)
+      .where(
+        and(
+          eq(experienceCouponRedemptions.couponId, coupon.id),
+          eq(experienceCouponRedemptions.deviceId, deviceId),
+        ),
+      )
+      .limit(1);
+
+    if (existingRedemption) {
+      // Device already redeemed: idempotent grant, don't re-increment
+      return success(c, {
+        purchased: true,
+      });
+    }
+
+    // Fast-path quota check
+    if (coupon.usedDownloads >= coupon.maxDownloads) {
+      return problem(c, ERRORS.COUPON_LIMIT_REACHED);
+    }
+
+    // Atomically increment usedDownloads only if quota has not been exceeded
+    const [updatedCoupon] = await db
+      .update(experienceCoupons)
+      .set({ usedDownloads: sql`${experienceCoupons.usedDownloads} + 1` })
+      .where(
+        and(
+          eq(experienceCoupons.id, coupon.id),
+          lt(experienceCoupons.usedDownloads, experienceCoupons.maxDownloads),
+        ),
+      )
+      .returning();
+
+    if (!updatedCoupon) {
+      return problem(c, ERRORS.COUPON_LIMIT_REACHED);
+    }
+
+    try {
+      // Record redemption for this device
+      await db.insert(experienceCouponRedemptions).values({
+        couponId: coupon.id,
         experienceId: id,
-        email,
         deviceId,
         platform,
       });
+    } catch (insertErr) {
+      // Compensate quota increment if redemption record fails
+      await db
+        .update(experienceCoupons)
+        .set({ usedDownloads: sql`${experienceCoupons.usedDownloads} - 1` })
+        .where(eq(experienceCoupons.id, coupon.id));
 
-      return success(c, {
-        purchased: true,
-        freeGrant: true,
-      });
+      if (isUniqueViolation(insertErr)) {
+        // Concurrent duplicate request from the same device: grant access idempotently
+        return success(c, {
+          purchased: true,
+        });
+      }
+      throw insertErr;
     }
 
     return success(c, {
       purchased: true,
-      purchase: {
-        purchaseId: purchase.id,
-        status: purchase.status,
-        provider: purchase.provider,
-        amount: purchase.amount,
-        currency: purchase.currency,
-        purchasedAt: purchase.createdAt,
-      },
     });
   },
 );

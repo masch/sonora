@@ -4,6 +4,7 @@ import {
   WebhookBodySchema,
   LogAccessBodySchema,
   EmailQuerySchema,
+  CreateCouponBodySchema,
 } from '../schemas/payments';
 import { AudioUploadBodySchema } from '../schemas/audio';
 
@@ -183,6 +184,79 @@ describe('EmailQuerySchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].message).toBe('A valid email is required');
     }
+  });
+});
+
+describe('CreateCouponBodySchema', () => {
+  it('accepts valid payload', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      startsAt: '2026-10-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal Universidad',
+      maxDownloads: 5,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('defaults maxDownloads to 1 if omitted', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      startsAt: '2026-10-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxDownloads).toBe(1);
+    }
+  });
+
+  it('rejects missing startsAt', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects startsAt equal to or after expiresAt', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      startsAt: '2026-12-31T23:59:59.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(false);
+
+    const afterResult = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      startsAt: '2027-01-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(afterResult.success).toBe(false);
+  });
+
+  it('rejects invalid email', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'not-an-email',
+      startsAt: '2026-10-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty notes', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      startsAt: '2026-10-01T00:00:00.000Z',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: '',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

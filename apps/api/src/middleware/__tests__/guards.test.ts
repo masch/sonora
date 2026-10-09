@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import { jwtGuard } from '../jwt-guard';
+import { hmacGuard } from '../hmac-guard';
 import { configGuard } from '../config-guard';
 import { paymentsGuard } from '../payments-guard';
 import { envGuard } from '../env-guard';
@@ -138,6 +139,32 @@ describe('Middleware Guards (c.var injection)', () => {
       const body = (await res.json()) as { environment: string; hasStore: boolean };
       expect(body.environment).toBe('production');
       expect(body.hasStore).toBe(false);
+    });
+  });
+
+  describe('hmacGuard', () => {
+    it('returns 500 HMAC_SECRET_MISSING when HMAC_SECRET is not set', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', hmacGuard(), (c) => c.text('ok'));
+
+      const res = await app.request('/test', {}, {});
+      expect(res.status).toBe(500);
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe('HMAC_SECRET_MISSING');
+    });
+
+    it('injects hmacSecret into c.var when present', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', hmacGuard(), (c) => {
+        return c.json({
+          hmacSecret: c.var.hmacSecret,
+        });
+      });
+
+      const res = await app.request('/test', {}, { HMAC_SECRET: 'my-hmac-salt' });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { hmacSecret: string };
+      expect(body.hmacSecret).toBe('my-hmac-salt');
     });
   });
 });

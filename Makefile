@@ -360,7 +360,7 @@ api-deploy: api-deploy-production ## Deploy Hono API to Cloudflare Workers (defa
 .PHONY: api-validate-wrangler-vars
 api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml [vars]
 	@for file in $(API_DIR)/wrangler.toml $(API_DIR)/wrangler.staging.toml; do \
-		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN"; \
+		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN HMAC_SECRET"; \
 		IN_VARS=0; \
 		while IFS= read -r line; do \
 			case "$$line" in \
@@ -460,23 +460,23 @@ api-kv-list-production: ## List production KV namespaces
 	cd $(API_DIR) && bunx wrangler kv namespace list
 
 .PHONY: api-upload-audio-staging
-api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging ADMIN_API_KEY=\"<staging-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	curl -X POST $(API_STAGING_URL)/audio/upload \
+	@curl -X POST $(API_STAGING_URL)/audio/upload \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
 .PHONY: api-upload-audio-production
-api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production ADMIN_API_KEY=\"<prod-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
+	@curl -X POST $(API_PRODUCTION_URL)/audio/upload \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
@@ -490,6 +490,56 @@ api-upload-public-audio-staging: ## Upload audio to staging public bucket. Usage
 api-upload-public-audio-production: ## Upload audio to production public bucket. Usage: make api-upload-public-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
+
+.PHONY: api-create-coupon-staging
+api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-staging ADMIN_API_KEY=\"<staging-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi; \
+	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
+	NORM_EXPIRES=$$(date -u -d "$(EXPIRES)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(EXPIRES)"); \
+	if [ -z "$$NORM_STARTS" ] || [ -z "$$NORM_EXPIRES" ]; then \
+		echo "Error: Invalid date format for STARTS or EXPIRES."; \
+		exit 1; \
+	fi; \
+	PAYLOAD=$$(jq -n \
+	  --arg email "$(EMAIL)" \
+	  --arg startsAt "$$NORM_STARTS" \
+	  --arg expiresAt "$$NORM_EXPIRES" \
+	  --arg notes "$(NOTES)" \
+	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
+	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Content-Type: application/json" \
+	  -d "$$PAYLOAD"
+
+.PHONY: api-create-coupon-production
+api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-production ADMIN_API_KEY=\"<prod-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi; \
+	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
+	NORM_EXPIRES=$$(date -u -d "$(EXPIRES)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(EXPIRES)"); \
+	if [ -z "$$NORM_STARTS" ] || [ -z "$$NORM_EXPIRES" ]; then \
+		echo "Error: Invalid date format for STARTS or EXPIRES."; \
+		exit 1; \
+	fi; \
+	PAYLOAD=$$(jq -n \
+	  --arg email "$(EMAIL)" \
+	  --arg startsAt "$$NORM_STARTS" \
+	  --arg expiresAt "$$NORM_EXPIRES" \
+	  --arg notes "$(NOTES)" \
+	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
+	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Content-Type: application/json" \
+	  -d "$$PAYLOAD"
 
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
@@ -697,6 +747,16 @@ api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (in
 api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive)
 	@read -r -p "Paste the ADMIN_API_KEY for production: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY
+
+.PHONY: api-deploy-staging-set-hmac-secret
+api-deploy-staging-set-hmac-secret: ## Set HMAC_SECRET on staging Worker (interactive)
+	@read -r -p "Paste the HMAC_SECRET for staging: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put HMAC_SECRET --config wrangler.staging.toml
+
+.PHONY: api-deploy-production-set-hmac-secret
+api-deploy-production-set-hmac-secret: ## Set HMAC_SECRET on production Worker (interactive)
+	@read -r -p "Paste the HMAC_SECRET for production: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put HMAC_SECRET
 
 .PHONY: api-db-backup
 api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and prune old backups (>90 days)

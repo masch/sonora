@@ -43,6 +43,7 @@ export interface Env {
   MP_ACCESS_TOKEN?: string;
   MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
+  HMAC_SECRET?: string;
   ENABLE_API_LOGGING?: string;
   APP_SCHEME?: string;
   RATE_LIMIT_STORE?: KVNamespace;
@@ -57,6 +58,7 @@ export interface Variables {
   privateBucket: R2Bucket;
   publicBucket: R2Bucket;
   jwtSecret: string;
+  hmacSecret: string;
   audioLinkExpirySeconds: number;
   configEnv: {
     minimumVersion: string;

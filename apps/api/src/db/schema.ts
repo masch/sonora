@@ -138,6 +138,52 @@ export const freeDownloads = sonoraSchema.table('free_downloads', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const experienceCoupons = sonoraSchema.table(
+  'experience_coupons',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    experienceId: uuid('experience_id')
+      .notNull()
+      .references(() => experiences.id, { onDelete: 'cascade' }),
+    emailHash: text('email_hash').notNull(),
+    emailMasked: text('email_masked').notNull(),
+    notes: text('notes').notNull(),
+    maxDownloads: integer('max_downloads').notNull().default(1),
+    usedDownloads: integer('used_downloads').notNull().default(0),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('experience_coupons_experience_id_email_hash_unique').on(
+      table.experienceId,
+      table.emailHash,
+    ),
+  ],
+);
+
+export const experienceCouponRedemptions = sonoraSchema.table(
+  'experience_coupon_redemptions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    couponId: uuid('coupon_id')
+      .notNull()
+      .references(() => experienceCoupons.id, { onDelete: 'cascade' }),
+    experienceId: uuid('experience_id')
+      .notNull()
+      .references(() => experiences.id, { onDelete: 'cascade' }),
+    deviceId: text('device_id').notNull(),
+    platform: platformEnum('platform').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('experience_coupon_redemptions_coupon_id_device_id_unique').on(
+      table.couponId,
+      table.deviceId,
+    ),
+  ],
+);
+
 export const translations = sonoraSchema.table(
   'translations',
   {
@@ -146,9 +192,7 @@ export const translations = sonoraSchema.table(
     value: text('value').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.lang, table.key] }),
-  }),
+  (table) => [primaryKey({ columns: [table.lang, table.key] })],
 );
 
 export const termsVersions = sonoraSchema.table(
@@ -162,9 +206,7 @@ export const termsVersions = sonoraSchema.table(
     contentHash: text('content_hash').notNull(),
     publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
   },
-  (table) => ({
-    unq: unique().on(table.version, table.lang),
-  }),
+  (table) => [unique().on(table.version, table.lang)],
 );
 
 export const termsAcceptances = sonoraSchema.table('terms_acceptances', {
@@ -191,6 +233,10 @@ export type ExperienceAccess = typeof experienceAccesses.$inferSelect;
 export type NewExperienceAccess = typeof experienceAccesses.$inferInsert;
 export type FreeDownload = typeof freeDownloads.$inferSelect;
 export type NewFreeDownload = typeof freeDownloads.$inferInsert;
+export type ExperienceCoupon = typeof experienceCoupons.$inferSelect;
+export type NewExperienceCoupon = typeof experienceCoupons.$inferInsert;
+export type ExperienceCouponRedemption = typeof experienceCouponRedemptions.$inferSelect;
+export type NewExperienceCouponRedemption = typeof experienceCouponRedemptions.$inferInsert;
 export type Feedback = typeof feedback.$inferSelect;
 export type NewFeedback = typeof feedback.$inferInsert;
 export type Translation = typeof translations.$inferSelect;

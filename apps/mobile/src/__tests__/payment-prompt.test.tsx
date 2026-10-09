@@ -188,6 +188,24 @@ describe('PaymentPrompt', () => {
     });
   });
 
+  it('shows custom error message when restore returns error object', async () => {
+    defaultProps.onRestore.mockResolvedValue({
+      success: false,
+      error: 'payments.error.couponExpired',
+    });
+
+    const { getByTestId, getByText } = await render(<PaymentPrompt {...defaultProps} />);
+    await fireEvent.press(getByTestId('restore-link-button'));
+
+    const input = getByTestId('restore-email-input');
+    await fireEvent.changeText(input, 'expired@example.com');
+    await fireEvent.press(getByTestId('restore-button'));
+
+    await waitFor(() => {
+      expect(getByText('payments.error.couponExpired')).toBeTruthy();
+    });
+  });
+
   it('shows restore error when onRestore throws', async () => {
     defaultProps.onRestore.mockRejectedValue(new Error('Network error'));
 

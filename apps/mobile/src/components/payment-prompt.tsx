@@ -9,11 +9,16 @@ import { EmailQuerySchema, formatPrice } from '@sonora/shared';
 import { useState } from 'react';
 import { ActivityIndicator, Platform } from 'react-native';
 
+interface RestoreResult {
+  success: boolean;
+  error?: string | null;
+}
+
 interface PaymentPromptProps {
   price: number;
   currency?: string;
   onPay: () => void;
-  onRestore: (email: string) => Promise<boolean>;
+  onRestore: (email: string) => Promise<boolean | RestoreResult>;
   loading?: boolean;
   error?: string | null;
 }
@@ -45,11 +50,16 @@ export function PaymentPrompt({
     setRestoreError(null);
     try {
       const result = await onRestore(trimmedEmail);
-      if (result) {
+      const isSuccess = typeof result === 'boolean' ? result : result.success;
+      if (isSuccess) {
         setShowRestore(false);
         setEmail('');
       } else {
-        setRestoreError(t('payments.restore.notFound'));
+        const errorMsg =
+          typeof result === 'object' && result.error
+            ? result.error
+            : t('payments.restore.notFound');
+        setRestoreError(errorMsg);
       }
       setRestoring(false);
     } catch {
@@ -95,23 +105,19 @@ export function PaymentPrompt({
         <TwPressable
           accessibilityLabel={t('payments.restore.link')}
           testID="restore-link-button"
-          className="items-center justify-center py-3 px-4 rounded-xl border border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/15 active:opacity-60 gap-1"
+          className="flex-row items-center justify-center py-3.5 px-4 rounded-xl border border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/15 active:opacity-60 gap-2"
           onPress={() => setShowRestore(true)}
         >
+          <Icon
+            ios="person.2.fill"
+            android="group"
+            web="group"
+            size={18}
+            tintColor={isDark ? '#34d399' : '#059669'}
+          />
           <ThemedText className="text-xs font-semibold text-center text-zinc-700 dark:text-zinc-300">
             {t('payments.restore.linkQuestion')}
           </ThemedText>
-          <TwView className="flex-row items-center justify-center gap-1">
-            <ThemedText className="text-xs font-bold text-center text-emerald-600 dark:text-emerald-400">
-              {t('payments.restore.linkAction')}
-            </ThemedText>
-            <Icon
-              name="chevronRight"
-              size={20}
-              weight="bold"
-              tintColor={isDark ? '#34d399' : '#059669'}
-            />
-          </TwView>
         </TwPressable>
       </TwView>
 

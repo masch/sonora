@@ -352,10 +352,12 @@ describe('POST /payments/experiences/:id/access — characterization', () => {
 
 describe('GET /payments/experiences/:id/purchased — characterization', () => {
   let mockDb: any;
+  const charEnv = { HMAC_SECRET: 'test-hmac-salt' };
 
   beforeEach(() => {
     vi.clearAllMocks();
     setDbClient(null);
+    const mockReturning = vi.fn().mockResolvedValue([{ id: 'coupon-1' }]);
     mockDb = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
@@ -363,33 +365,20 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
       where: vi.fn().mockReturnThis(),
       limit: vi.fn(),
       insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: mockReturning,
+          }),
+        }),
+      }),
+      returning: mockReturning,
     };
   });
 
   afterEach(() => setDbClient(null));
 
-  it('captures 400 when email query missing', async () => {
-    setDbClient(mockDb);
-    const res = await app.request(
-      `/payments/experiences/${VALID_UUID}/purchased`,
-      {
-        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
-      },
-      {},
-    );
-    expect(res.status).toBe(422);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
-    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
-    expect(body).toHaveProperty('status', 422);
-    const errors = body.errors as Array<Record<string, unknown>>;
-    expect(errors[0]).toHaveProperty('path', 'email');
-  });
-
-  it('captures 200 with email (no purchase) and registers free download', async () => {
-    mockDb.limit
-      .mockResolvedValueOnce([{ published: true }]) // experience lookup
-      .mockResolvedValueOnce([]); // purchases
+  it('returns 500 HMAC_SECRET_MISSING when HMAC_SECRET is missing', async () => {
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
@@ -401,8 +390,99 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
       },
       {},
     );
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ code: 'HMAC_SECRET_MISSING' });
+  });
+
+  it('captures 400 when email query missing', async () => {
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased`,
+      {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+      },
+      charEnv,
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    expect(body).toHaveProperty('detail', 'The request contains invalid fields.');
+    expect(body).toHaveProperty('status', 422);
+    const errors = body.errors as Array<Record<string, unknown>>;
+    expect(errors[0]).toHaveProperty('path', 'email');
+  });
+
+  it('returns 400 PLATFORM_REQUIRED when X-Device-Platform header is missing', async () => {
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+        },
+      },
+      charEnv,
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'PLATFORM_REQUIRED' });
+  });
+
+  it('returns 404 COUPON_NOT_FOUND when email has no purchase and no coupon', async () => {
+    mockDb.limit
+      .mockResolvedValueOnce([{ published: true }]) // experience lookup
+      .mockResolvedValueOnce([]) // purchases lookup
+      .mockResolvedValueOnce([]); // coupons lookup
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+      },
+      charEnv,
+    );
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ code: 'COUPON_NOT_FOUND' });
+  });
+
+  it('captures 200 with purchased true when valid coupon exists', async () => {
+    const futureDate = new Date(Date.now() + 1000000);
+    mockDb.limit
+      .mockResolvedValueOnce([{ published: true }]) // experience lookup
+      .mockResolvedValueOnce([]) // purchases lookup
+      .mockResolvedValueOnce([
+        {
+          id: 'coupon-1',
+          experienceId: VALID_UUID,
+          usedDownloads: 0,
+          maxDownloads: 5,
+          startsAt: new Date(Date.now() - 60000),
+          expiresAt: futureDate,
+        },
+      ]) // coupons lookup
+      .mockResolvedValueOnce([]); // existing redemptions lookup (not yet redeemed by this device)
+    mockDb.returning.mockResolvedValueOnce([{ id: 'coupon-1' }]);
+    setDbClient(mockDb);
+    const res = await app.request(
+      `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+      {
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
+      },
+      charEnv,
+    );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ purchased: true, freeGrant: true });
+    expect(await res.json()).toEqual({
+      purchased: true,
+    });
+    expect(mockDb.update).toHaveBeenCalled();
     expect(mockDb.insert).toHaveBeenCalled();
   });
 
@@ -423,9 +503,12 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
       {
-        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
       },
-      {},
+      charEnv,
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { purchased: boolean; purchase?: { purchaseId: string } };
@@ -439,9 +522,12 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
       {
-        headers: { 'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000' },
+        headers: {
+          'X-Device-Id': '550e8400-e29b-41d4-a716-446655440000',
+          'X-Device-Platform': 'ios',
+        },
       },
-      {},
+      charEnv,
     );
     expect(res.status).toBe(404);
     expect((await res.json()) as Record<string, unknown>).toHaveProperty(

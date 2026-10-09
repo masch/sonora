@@ -23,3 +23,18 @@ export const LogAccessBodySchema = z.object({
 export const EmailQuerySchema = z.object({
   email: z.string().email('A valid email is required'),
 });
+
+export const CreateCouponBodySchema = z
+  .object({
+    email: z.string().email('A valid email is required'),
+    startsAt: z.string().datetime({ message: 'A valid ISO datetime is required' }),
+    expiresAt: z.string().datetime({ message: 'A valid ISO datetime is required' }),
+    notes: z.string().min(1, 'Notes are required'),
+    maxDownloads: z.number().int().positive().default(1),
+  })
+  .refine((data) => new Date(data.startsAt) < new Date(data.expiresAt), {
+    message: 'startsAt must be before expiresAt',
+    path: ['startsAt'],
+  });
+
+export type CreateCouponBody = z.infer<typeof CreateCouponBodySchema>;
