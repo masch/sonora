@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
-import { PAYMENT_ROUTES } from '@sonora/shared';
+import { ApiError, PAYMENT_ROUTES } from '@sonora/shared';
 import { PaymentClient } from '@/services/payment-client';
 import { getPurchasedIds, addPurchasedId, getUserEmail, setUserEmail } from '@/storage/app-storage';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -317,12 +317,29 @@ export function usePurchase(
         setState((prev) => ({ ...prev, restoring: false }));
         return false;
       }
-    } catch {
-      logger.error('[usePurchase] Failed to restore purchases');
+    } catch (err: unknown) {
+      logger.error('[usePurchase] Failed to restore purchases', err);
+      let errorMsg = t('payments.error.restore');
+      const isApiError =
+        err instanceof ApiError ||
+        (Boolean(err) && typeof err === 'object' && 'body' in (err as object));
+      if (isApiError) {
+        const body = (err as { body?: unknown }).body;
+        if (body && typeof body === 'object') {
+          const code = (body as { code?: string }).code;
+          if (code === 'COUPON_EXPIRED') {
+            errorMsg = t('payments.error.couponExpired');
+          } else if (code === 'COUPON_LIMIT_REACHED') {
+            errorMsg = t('payments.error.couponLimitReached');
+          } else if (code === 'COUPON_NOT_FOUND') {
+            errorMsg = t('payments.error.couponNotFound');
+          }
+        }
+      }
       setState((prev) => ({
         ...prev,
         restoring: false,
-        error: t('payments.error.restore'),
+        error: errorMsg,
       }));
       return false;
     }

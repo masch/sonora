@@ -95,23 +95,19 @@ export function PaymentPrompt({
         <TwPressable
           accessibilityLabel={t('payments.restore.link')}
           testID="restore-link-button"
-          className="items-center justify-center py-3 px-4 rounded-xl border border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/15 active:opacity-60 gap-1"
+          className="flex-row items-center justify-center py-3.5 px-4 rounded-xl border border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/15 active:opacity-60 gap-2"
           onPress={() => setShowRestore(true)}
         >
+          <Icon
+            ios="person.2.fill"
+            android="group"
+            web="group"
+            size={18}
+            tintColor={isDark ? '#34d399' : '#059669'}
+          />
           <ThemedText className="text-xs font-semibold text-center text-zinc-700 dark:text-zinc-300">
             {t('payments.restore.linkQuestion')}
           </ThemedText>
-          <TwView className="flex-row items-center justify-center gap-1">
-            <ThemedText className="text-xs font-bold text-center text-emerald-600 dark:text-emerald-400">
-              {t('payments.restore.linkAction')}
-            </ThemedText>
-            <Icon
-              name="chevronRight"
-              size={20}
-              weight="bold"
-              tintColor={isDark ? '#34d399' : '#059669'}
-            />
-          </TwView>
         </TwPressable>
       </TwView>
 

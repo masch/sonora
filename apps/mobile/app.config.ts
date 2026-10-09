@@ -5,8 +5,8 @@ import {
   withAppBuildGradle,
   withGradleProperties,
 } from 'expo/config-plugins';
-import { fontConfig } from './src/config/font.ts';
 import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
+import { fontConfig } from './src/config/font.ts';
 
 const isProduction = process.env.APP_ENV === 'production';
 
@@ -16,10 +16,10 @@ const ENV_CONFIG = {
     appId: APP_IDENTIFIERS.staging.appId,
     domain: 'sonora-api-staging.sonora-api.workers.dev',
     scheme: APP_IDENTIFIERS.staging.scheme,
-    icon: './assets/images/sonora/logo_staging.png',
-    adaptiveIconForeground: './assets/images/sonora/logo_staging.png',
+    icon: './assets/images/sonora/logo.png',
+    adaptiveIconForeground: './assets/images/sonora/logo.png',
     splashColor: '#F59E0B',
-    splashIcon: './assets/images/sonora/logo_staging.png',
+    splashIcon: './assets/images/sonora/logo.png',
   },
   production: {
     name: 'Sonora',

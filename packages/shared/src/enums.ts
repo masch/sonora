@@ -47,6 +47,8 @@ export const PAYMENT_ROUTES = {
     PREFIX: `${PAYMENT_PREFIX}/experiences`,
     purchased: (experienceId: string) =>
       `${PAYMENT_PREFIX}/experiences/${experienceId}/purchased` as const,
+    coupons: (experienceId: string) =>
+      `${PAYMENT_PREFIX}/experiences/${experienceId}/coupons` as const,
     access: (experienceId: string) =>
       `${PAYMENT_PREFIX}/experiences/${experienceId}/access` as const,
   },

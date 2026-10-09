@@ -491,6 +491,30 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
+.PHONY: api-create-coupon-staging
+api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging EXP_ID="<id>" EMAIL="mail" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi
+	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Content-Type: application/json" \
+	  -d '{"email":"$(EMAIL)","expiresAt":"$(EXPIRES)","notes":"$(NOTES)","maxDownloads":$(if $(MAX),$(MAX),1)}'
+
+.PHONY: api-create-coupon-production
+api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production EXP_ID="<id>" EMAIL="mail" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi
+	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
+	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Content-Type: application/json" \
+	  -d '{"email":"$(EMAIL)","expiresAt":"$(EXPIRES)","notes":"$(NOTES)","maxDownloads":$(if $(MAX),$(MAX),1)}'
+
 .PHONY: api-deploy-staging-set-origin
 api-deploy-staging-set-origin: ## Set ALLOWED_ORIGIN on staging Worker (interactive)
 	@read -r -p "Paste the ALLOWED_ORIGIN for staging (e.g. https://sonora-staging.eas.host): " SECRET; \

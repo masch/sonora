@@ -58,6 +58,9 @@ describe('enums & PAYMENT_ROUTES', () => {
       expect(PAYMENT_ROUTES.EXPERIENCES.purchased('exp-456')).toBe(
         '/payments/experiences/exp-456/purchased',
       );
+      expect(PAYMENT_ROUTES.EXPERIENCES.coupons('exp-456')).toBe(
+        '/payments/experiences/exp-456/coupons',
+      );
       expect(PAYMENT_ROUTES.EXPERIENCES.access('exp-456')).toBe(
         '/payments/experiences/exp-456/access',
       );

@@ -4,6 +4,7 @@ import {
   WebhookBodySchema,
   LogAccessBodySchema,
   EmailQuerySchema,
+  CreateCouponBodySchema,
 } from '../schemas/payments';
 import { AudioUploadBodySchema } from '../schemas/audio';
 
@@ -183,6 +184,48 @@ describe('EmailQuerySchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].message).toBe('A valid email is required');
     }
+  });
+});
+
+describe('CreateCouponBodySchema', () => {
+  it('accepts valid payload', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal Universidad',
+      maxDownloads: 5,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('defaults maxDownloads to 1 if omitted', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxDownloads).toBe(1);
+    }
+  });
+
+  it('rejects invalid email', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'not-an-email',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: 'Viaje Grupal',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty notes', () => {
+    const result = CreateCouponBodySchema.safeParse({
+      email: 'invited@example.com',
+      expiresAt: '2026-12-31T23:59:59.000Z',
+      notes: '',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

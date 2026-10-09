@@ -15,6 +15,7 @@ export const HTTP = {
   RANGE_NOT_SATISFIABLE: 416,
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
   UNPROCESSABLE_ENTITY: 422,
@@ -74,6 +75,11 @@ export const ERRORS_5XX = {
   } as const,
   JWT_SECRET_MISSING: {
     code: 'JWT_SECRET_MISSING',
+    detail: 'An unexpected error occurred',
+    status: HTTP.INTERNAL_SERVER_ERROR,
+  } as const,
+  HMAC_SECRET_MISSING: {
+    code: 'HMAC_SECRET_MISSING',
     detail: 'An unexpected error occurred',
     status: HTTP.INTERNAL_SERVER_ERROR,
   } as const,
@@ -189,6 +195,21 @@ export const ERRORS_4XX = {
     code: 'NO_ACTIVE_TERMS',
     detail: 'No active terms version available to accept.',
     status: HTTP.NOT_FOUND,
+  } as const,
+  COUPON_NOT_FOUND: {
+    code: 'COUPON_NOT_FOUND',
+    detail: 'No valid coupon or purchase found for this email.',
+    status: HTTP.NOT_FOUND,
+  } as const,
+  COUPON_EXPIRED: {
+    code: 'COUPON_EXPIRED',
+    detail: 'This coupon has expired.',
+    status: HTTP.FORBIDDEN,
+  } as const,
+  COUPON_LIMIT_REACHED: {
+    code: 'COUPON_LIMIT_REACHED',
+    detail: 'This coupon has reached its maximum download limit.',
+    status: HTTP.FORBIDDEN,
   } as const,
 } as const;
 

@@ -46,6 +46,7 @@ jest.mock('@/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+import { ApiError } from '@sonora/shared';
 import { usePurchase } from '@/hooks/use-purchase';
 import { APP_CONFIG } from '@/config/app-config';
 
@@ -348,6 +349,54 @@ describe('usePurchase', () => {
       });
 
       expect(result.current[0].error).toBe('payments.error.restore');
+    });
+
+    it('sets coupon expired error when ApiError has COUPON_EXPIRED', async () => {
+      mockCheckPurchased.mockRejectedValue(
+        new ApiError(403, 'Forbidden', 'Coupon expired', { code: 'COUPON_EXPIRED' }),
+      );
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        const success = await result.current[1].restore('user@example.com');
+        expect(success).toBe(false);
+      });
+
+      expect(result.current[0].error).toBe('payments.error.couponExpired');
+    });
+
+    it('sets coupon limit reached error when ApiError has COUPON_LIMIT_REACHED', async () => {
+      mockCheckPurchased.mockRejectedValue(
+        new ApiError(403, 'Forbidden', 'Coupon limit reached', { code: 'COUPON_LIMIT_REACHED' }),
+      );
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        const success = await result.current[1].restore('user@example.com');
+        expect(success).toBe(false);
+      });
+
+      expect(result.current[0].error).toBe('payments.error.couponLimitReached');
+    });
+
+    it('sets coupon not found error when ApiError has COUPON_NOT_FOUND', async () => {
+      mockCheckPurchased.mockRejectedValue(
+        new ApiError(404, 'Not Found', 'Coupon not found', { code: 'COUPON_NOT_FOUND' }),
+      );
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        const success = await result.current[1].restore('user@example.com');
+        expect(success).toBe(false);
+      });
+
+      expect(result.current[0].error).toBe('payments.error.couponNotFound');
     });
   });
 

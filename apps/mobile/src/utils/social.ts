@@ -39,7 +39,6 @@ export async function openInstagramProfile(handle: string): Promise<void> {
     // Web platform or native fallback
     await Linking.openURL(webUrl);
   } catch (error) {
-    // eslint-disable-next-line i18next/no-literal-string
     logger.warn('[Social] Failed to open Instagram profile', { username, error });
   }
 }
