@@ -7,4 +7,5 @@
 \set PROMPT1 '%[%033[1m%]%n@%/%[%033[0m%]%R%# '
 \set QUIET on
 SET TIME ZONE 'America/Argentina/Buenos_Aires';
+SET search_path TO sonora, public;
 \unset QUIET
