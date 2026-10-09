@@ -360,7 +360,7 @@ api-deploy: api-deploy-production ## Deploy Hono API to Cloudflare Workers (defa
 .PHONY: api-validate-wrangler-vars
 api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml [vars]
 	@for file in $(API_DIR)/wrangler.toml $(API_DIR)/wrangler.staging.toml; do \
-		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN"; \
+		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN HMAC_SECRET"; \
 		IN_VARS=0; \
 		while IFS= read -r line; do \
 			case "$$line" in \
@@ -465,7 +465,7 @@ api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	curl -X POST $(API_STAGING_URL)/audio/upload \
+	@curl -X POST $(API_STAGING_URL)/audio/upload \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
@@ -476,7 +476,7 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
+	@curl -X POST $(API_PRODUCTION_URL)/audio/upload \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
@@ -721,6 +721,16 @@ api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (in
 api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive)
 	@read -r -p "Paste the ADMIN_API_KEY for production: " SECRET; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY
+
+.PHONY: api-deploy-staging-set-hmac-secret
+api-deploy-staging-set-hmac-secret: ## Set HMAC_SECRET on staging Worker (interactive)
+	@read -r -p "Paste the HMAC_SECRET for staging: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put HMAC_SECRET --config wrangler.staging.toml
+
+.PHONY: api-deploy-production-set-hmac-secret
+api-deploy-production-set-hmac-secret: ## Set HMAC_SECRET on production Worker (interactive)
+	@read -r -p "Paste the HMAC_SECRET for production: " SECRET; \
+	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put HMAC_SECRET
 
 .PHONY: api-db-backup
 api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and prune old backups (>90 days)
