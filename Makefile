@@ -498,7 +498,7 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make
 		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi
-	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
+	@curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -H "Content-Type: application/json" \
 	  -d '{"email":"$(EMAIL)","expiresAt":"$(EXPIRES)","notes":"$(NOTES)","maxDownloads":$(if $(MAX),$(MAX),1)}'
@@ -510,7 +510,7 @@ api-create-coupon-production: ## Create a group trip coupon on production. Usage
 		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi
-	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
+	@curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -H "Content-Type: application/json" \
 	  -d '{"email":"$(EMAIL)","expiresAt":"$(EXPIRES)","notes":"$(NOTES)","maxDownloads":$(if $(MAX),$(MAX),1)}'
