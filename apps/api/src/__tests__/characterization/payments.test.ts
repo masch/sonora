@@ -357,6 +357,7 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setDbClient(null);
+    const mockReturning = vi.fn().mockResolvedValue([{ id: 'coupon-1' }]);
     mockDb = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
@@ -365,8 +366,13 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
       limit: vi.fn(),
       insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
       update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: mockReturning,
+          }),
+        }),
       }),
+      returning: mockReturning,
     };
   });
 
@@ -459,6 +465,7 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
         },
       ]) // coupons lookup
       .mockResolvedValueOnce([]); // existing redemptions lookup (not yet redeemed by this device)
+    mockDb.returning.mockResolvedValueOnce([{ id: 'coupon-1' }]);
     setDbClient(mockDb);
     const res = await app.request(
       `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,

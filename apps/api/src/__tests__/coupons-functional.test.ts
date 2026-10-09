@@ -59,7 +59,10 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
 
     const extractParamValues = (obj: any): any[] => {
       if (!obj) return [];
-      if (obj.value !== undefined) return [obj.value];
+      if (obj.value !== undefined) {
+        if (Array.isArray(obj.value)) return obj.value.flatMap(extractParamValues);
+        return [obj.value];
+      }
       if (Array.isArray(obj)) return obj.flatMap(extractParamValues);
       if (obj.queryChunks) return extractParamValues(obj.queryChunks);
       return [];
@@ -132,13 +135,51 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
           },
         }),
       }),
-      update: (_table: any) => ({
+      update: (table: any) => ({
         set: (updates: any) => ({
-          where: (_cond: any) => {
-            for (const [k, coupon] of couponsTable.entries()) {
-              couponsTable.set(k, { ...coupon, ...updates });
-            }
-            return Promise.resolve({ rowCount: 1 });
+          where: (cond: any) => {
+            const doUpdate = () => {
+              if (table === experienceCoupons && cond) {
+                const params = extractParamValues(cond);
+                for (const [k, targetCoupon] of couponsTable.entries()) {
+                  if (params.includes(targetCoupon.id)) {
+                    const isDecrement = updates?.usedDownloads?.queryChunks?.some(
+                      (c: any) => Array.isArray(c.value) && c.value.includes(' - 1'),
+                    );
+                    if (isDecrement) {
+                      const updated = {
+                        ...targetCoupon,
+                        usedDownloads: Math.max(0, targetCoupon.usedDownloads - 1),
+                      };
+                      couponsTable.set(k, updated);
+                      return [updated];
+                    }
+                    if (targetCoupon.usedDownloads >= targetCoupon.maxDownloads) {
+                      return [];
+                    }
+                    const updated = {
+                      ...targetCoupon,
+                      usedDownloads: targetCoupon.usedDownloads + 1,
+                    };
+                    couponsTable.set(k, updated);
+                    return [updated];
+                  }
+                }
+              }
+              return [];
+            };
+
+            const queryObj: any = {
+              returning: (_fields?: any) => {
+                const rows = doUpdate();
+                return Promise.resolve(rows);
+              },
+              then: (resolve: any, reject: any) => {
+                const rows = doUpdate();
+                return Promise.resolve({ rowCount: rows.length }).then(resolve, reject);
+              },
+            };
+            return queryObj;
           },
         }),
       }),
@@ -316,5 +357,59 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
 
     expect(redeemRes.status).toBe(403);
     expect(await redeemRes.json()).toMatchObject({ code: 'COUPON_EXPIRED' });
+  });
+
+  it('enforces atomic quota limit under concurrent redemptions at boundary', async () => {
+    const email = 'race.group@example.com';
+    const futureDate = new Date(Date.now() + 86400000).toISOString();
+
+    // Create coupon with maxDownloads = 1
+    await app.request(
+      `/payments/experiences/${EXPERIENCE_ID}/coupons`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${ADMIN_KEY}`,
+        },
+        body: JSON.stringify({
+          email,
+          expiresAt: futureDate,
+          notes: 'Cupón único límite 1',
+          maxDownloads: 1,
+        }),
+      },
+      env,
+    );
+
+    // Two devices attempt redemption concurrently
+    const [resA, resB] = await Promise.all([
+      app.request(
+        `/payments/experiences/${EXPERIENCE_ID}/purchased?email=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            'X-Device-Id': 'device-concurrent-a',
+            'X-Device-Platform': 'ios',
+          },
+        },
+        env,
+      ),
+      app.request(
+        `/payments/experiences/${EXPERIENCE_ID}/purchased?email=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            'X-Device-Id': 'device-concurrent-b',
+            'X-Device-Platform': 'android',
+          },
+        },
+        env,
+      ),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 403]);
+
+    const errorRes = resA.status === 403 ? resA : resB;
+    expect(await errorRes.json()).toMatchObject({ code: 'COUPON_LIMIT_REACHED' });
   });
 });

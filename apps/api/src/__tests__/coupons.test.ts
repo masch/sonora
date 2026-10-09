@@ -342,6 +342,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
           },
         ]) // coupons lookup
         .mockResolvedValueOnce([]); // no existing redemption for this device
+      mockDb.returning.mockResolvedValueOnce([{ id: 'coupon-1' }]);
       setDbClient(mockDb);
 
       const res = await app.request(
@@ -360,7 +361,9 @@ describe('Experience Coupons (Viaje Grupal)', () => {
         purchased: true,
       });
       expect(mockDb.update).toHaveBeenCalled();
-      expect(mockDb.set).toHaveBeenCalledWith({ usedDownloads: 1 });
+      expect(mockDb.set).toHaveBeenCalledWith(
+        expect.objectContaining({ usedDownloads: expect.anything() }),
+      );
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockDb.values).toHaveBeenCalledWith(
         expect.objectContaining({

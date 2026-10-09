@@ -10,7 +10,7 @@ import {
   z,
   type PurchaseStatus,
 } from '@sonora/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import {
   experienceAccesses,
@@ -32,6 +32,7 @@ import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
 import { urlGuard } from '../middleware/url-guard';
 import { validationHook } from '../middleware/validation-error';
 import { hashEmail, maskEmail } from '../utils/coupons';
+import { isUniqueViolation } from '../utils/db-errors';
 
 const ReturnParamSchema = z.object({
   status: z.string(),
@@ -646,24 +647,50 @@ paymentsRouter.get(
       });
     }
 
-    // New device redemption: check maxDownloads quota
+    // Fast-path quota check
     if (coupon.usedDownloads >= coupon.maxDownloads) {
       return problem(c, ERRORS.COUPON_LIMIT_REACHED);
     }
 
-    // Atomic update of usedDownloads
-    await db
+    // Atomically increment usedDownloads only if quota has not been exceeded
+    const [updatedCoupon] = await db
       .update(experienceCoupons)
-      .set({ usedDownloads: coupon.usedDownloads + 1 })
-      .where(eq(experienceCoupons.id, coupon.id));
+      .set({ usedDownloads: sql`${experienceCoupons.usedDownloads} + 1` })
+      .where(
+        and(
+          eq(experienceCoupons.id, coupon.id),
+          lt(experienceCoupons.usedDownloads, experienceCoupons.maxDownloads),
+        ),
+      )
+      .returning();
 
-    // Record redemption for this device
-    await db.insert(experienceCouponRedemptions).values({
-      couponId: coupon.id,
-      experienceId: id,
-      deviceId,
-      platform,
-    });
+    if (!updatedCoupon) {
+      return problem(c, ERRORS.COUPON_LIMIT_REACHED);
+    }
+
+    try {
+      // Record redemption for this device
+      await db.insert(experienceCouponRedemptions).values({
+        couponId: coupon.id,
+        experienceId: id,
+        deviceId,
+        platform,
+      });
+    } catch (insertErr) {
+      // Compensate quota increment if redemption record fails
+      await db
+        .update(experienceCoupons)
+        .set({ usedDownloads: sql`${experienceCoupons.usedDownloads} - 1` })
+        .where(eq(experienceCoupons.id, coupon.id));
+
+      if (isUniqueViolation(insertErr)) {
+        // Concurrent duplicate request from the same device: grant access idempotently
+        return success(c, {
+          purchased: true,
+        });
+      }
+      throw insertErr;
+    }
 
     return success(c, {
       purchased: true,
