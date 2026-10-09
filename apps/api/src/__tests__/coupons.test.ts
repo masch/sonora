@@ -90,6 +90,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
           },
           body: JSON.stringify({
             email: 'invited@example.com',
+            startsAt: '2026-10-01T00:00:00.000Z',
             expiresAt: '2026-12-31T23:59:59.000Z',
             notes: 'Prensa evento',
           }),
@@ -121,6 +122,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
     });
 
     it('creates coupon and returns 201 with masked email', async () => {
+      const pastDate = new Date('2026-10-01T00:00:00.000Z');
       const futureDate = new Date('2026-12-31T23:59:59.000Z');
       mockDb.limit.mockResolvedValueOnce([{ id: VALID_UUID }]); // experience found
       mockDb.returning.mockResolvedValueOnce([
@@ -131,6 +133,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
           notes: 'Grupo Arquitectura',
           maxDownloads: 3,
           usedDownloads: 0,
+          startsAt: pastDate,
           expiresAt: futureDate,
           createdAt: new Date(),
         },
@@ -147,6 +150,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
           },
           body: JSON.stringify({
             email: 'invited@example.com',
+            startsAt: '2026-10-01T00:00:00.000Z',
             expiresAt: '2026-12-31T23:59:59.000Z',
             notes: 'Grupo Arquitectura',
             maxDownloads: 3,
@@ -238,6 +242,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
             experienceId: VALID_UUID,
             usedDownloads: 0,
             maxDownloads: 1,
+            startsAt: new Date(Date.now() - 120000),
             expiresAt: pastDate,
           },
         ]);
@@ -258,6 +263,39 @@ describe('Experience Coupons (Viaje Grupal)', () => {
       expect(await res.json()).toMatchObject({ code: 'COUPON_EXPIRED' });
     });
 
+    it('returns 403 COUPON_NOT_YET_VALID when coupon startsAt is in the future', async () => {
+      const futureStart = new Date(Date.now() + 60000);
+      const futureEnd = new Date(Date.now() + 120000);
+      mockDb.limit
+        .mockResolvedValueOnce([{ published: true }]) // experience lookup
+        .mockResolvedValueOnce([]) // purchases lookup
+        .mockResolvedValueOnce([
+          {
+            id: 'coupon-future',
+            experienceId: VALID_UUID,
+            usedDownloads: 0,
+            maxDownloads: 1,
+            startsAt: futureStart,
+            expiresAt: futureEnd,
+          },
+        ]);
+      setDbClient(mockDb);
+
+      const res = await app.request(
+        `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+        {
+          headers: {
+            'X-Device-Id': 'device-123',
+            'X-Device-Platform': 'ios',
+          },
+        },
+        env,
+      );
+
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: 'COUPON_NOT_YET_VALID' });
+    });
+
     it('returns 403 COUPON_LIMIT_REACHED when usedDownloads >= maxDownloads for a new device', async () => {
       const futureDate = new Date(Date.now() + 600000);
       mockDb.limit
@@ -269,6 +307,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
             experienceId: VALID_UUID,
             usedDownloads: 2,
             maxDownloads: 2,
+            startsAt: new Date(Date.now() - 60000),
             expiresAt: futureDate,
           },
         ]) // coupons lookup
@@ -301,6 +340,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
             experienceId: VALID_UUID,
             usedDownloads: 1,
             maxDownloads: 1,
+            startsAt: new Date(Date.now() - 60000),
             expiresAt: futureDate,
           },
         ]) // coupons lookup
@@ -338,6 +378,7 @@ describe('Experience Coupons (Viaje Grupal)', () => {
             experienceId: VALID_UUID,
             usedDownloads: 0,
             maxDownloads: 5,
+            startsAt: new Date(Date.now() - 60000),
             expiresAt: futureDate,
           },
         ]) // coupons lookup

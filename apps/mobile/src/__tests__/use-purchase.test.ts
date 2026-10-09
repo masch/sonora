@@ -367,6 +367,22 @@ describe('usePurchase', () => {
       expect(result.current[0].error).toBe('payments.error.couponExpired');
     });
 
+    it('sets coupon not yet valid error when ApiError has COUPON_NOT_YET_VALID', async () => {
+      mockCheckPurchased.mockRejectedValue(
+        new ApiError(403, 'Forbidden', 'Coupon not yet valid', { code: 'COUPON_NOT_YET_VALID' }),
+      );
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        const success = await result.current[1].restore('user@example.com');
+        expect(success).toBe(false);
+      });
+
+      expect(result.current[0].error).toBe('payments.error.couponNotYetValid');
+    });
+
     it('sets coupon limit reached error when ApiError has COUPON_LIMIT_REACHED', async () => {
       mockCheckPurchased.mockRejectedValue(
         new ApiError(403, 'Forbidden', 'Coupon limit reached', { code: 'COUPON_LIMIT_REACHED' }),

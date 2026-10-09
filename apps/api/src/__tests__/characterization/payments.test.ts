@@ -461,6 +461,7 @@ describe('GET /payments/experiences/:id/purchased — characterization', () => {
           experienceId: VALID_UUID,
           usedDownloads: 0,
           maxDownloads: 5,
+          startsAt: new Date(Date.now() - 60000),
           expiresAt: futureDate,
         },
       ]) // coupons lookup

@@ -352,6 +352,7 @@ export const es = {
       noBrowser: 'No se pudo abrir la página de pago. Reintentá.',
       restore: 'No se pudieron restaurar las compras. Reintentá.',
       couponExpired: 'Este acceso ha expirado.',
+      couponNotYetValid: 'Este acceso aún no está activo.',
       couponLimitReached: 'Se alcanzó el límite máximo de descargas para este acceso.',
       couponNotFound: 'No se encontró un acceso válido para este email.',
     },

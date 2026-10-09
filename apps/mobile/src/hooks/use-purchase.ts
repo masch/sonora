@@ -329,6 +329,8 @@ export function usePurchase(
           const code = (body as { code?: string }).code;
           if (code === 'COUPON_EXPIRED') {
             errorMsg = t('payments.error.couponExpired');
+          } else if (code === 'COUPON_NOT_YET_VALID') {
+            errorMsg = t('payments.error.couponNotYetValid');
           } else if (code === 'COUPON_LIMIT_REACHED') {
             errorMsg = t('payments.error.couponLimitReached');
           } else if (code === 'COUPON_NOT_FOUND') {

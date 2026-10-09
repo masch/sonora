@@ -1,0 +1,1 @@
+ALTER TABLE "sonora"."experience_coupons" ADD COLUMN "starts_at" timestamp with time zone NOT NULL;

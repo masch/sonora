@@ -492,36 +492,38 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
 .PHONY: api-create-coupon-staging
-api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging EXP_ID="<id>" EMAIL="mail" EXPIRES="date" NOTES="text" [MAX=1]
-	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
-		echo "Error: EXP_ID, EMAIL, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00Z\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi; \
 	PAYLOAD=$$(jq -n \
 	  --arg email "$(EMAIL)" \
+	  --arg startsAt "$(STARTS)" \
 	  --arg expiresAt "$(EXPIRES)" \
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
-	  '{email: $$email, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
 	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -H "Content-Type: application/json" \
 	  -d "$$PAYLOAD"
 
 .PHONY: api-create-coupon-production
-api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production EXP_ID="<id>" EMAIL="mail" EXPIRES="date" NOTES="text" [MAX=1]
-	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
-		echo "Error: EXP_ID, EMAIL, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
+		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
+		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00Z\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi; \
 	PAYLOAD=$$(jq -n \
 	  --arg email "$(EMAIL)" \
+	  --arg startsAt "$(STARTS)" \
 	  --arg expiresAt "$(EXPIRES)" \
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
-	  '{email: $$email, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
 	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
 	  -H "Content-Type: application/json" \

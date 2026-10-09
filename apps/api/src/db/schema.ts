@@ -150,6 +150,7 @@ export const experienceCoupons = sonoraSchema.table(
     notes: text('notes').notNull(),
     maxDownloads: integer('max_downloads').notNull().default(1),
     usedDownloads: integer('used_downloads').notNull().default(0),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },

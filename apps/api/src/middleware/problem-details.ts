@@ -206,6 +206,11 @@ export const ERRORS_4XX = {
     detail: 'This coupon has expired.',
     status: HTTP.FORBIDDEN,
   } as const,
+  COUPON_NOT_YET_VALID: {
+    code: 'COUPON_NOT_YET_VALID',
+    detail: 'This coupon is not yet active.',
+    status: HTTP.FORBIDDEN,
+  } as const,
   COUPON_LIMIT_REACHED: {
     code: 'COUPON_LIMIT_REACHED',
     detail: 'This coupon has reached its maximum download limit.',

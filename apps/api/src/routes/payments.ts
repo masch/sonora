@@ -497,7 +497,7 @@ paymentsRouter.post(
   async (c) => {
     const db = c.var.db;
     const { id } = c.req.valid('param');
-    const { email, expiresAt, notes, maxDownloads } = c.req.valid('json');
+    const { email, startsAt, expiresAt, notes, maxDownloads } = c.req.valid('json');
 
     const [experience] = await db
       .select({ id: experiences.id })
@@ -521,6 +521,7 @@ paymentsRouter.post(
         emailMasked,
         notes,
         maxDownloads,
+        startsAt: new Date(startsAt),
         expiresAt: new Date(expiresAt),
       })
       .onConflictDoUpdate({
@@ -528,6 +529,7 @@ paymentsRouter.post(
         set: {
           notes,
           maxDownloads,
+          startsAt: new Date(startsAt),
           expiresAt: new Date(expiresAt),
         },
       })
@@ -540,6 +542,7 @@ paymentsRouter.post(
       notes: coupon.notes,
       maxDownloads: coupon.maxDownloads,
       usedDownloads: coupon.usedDownloads,
+      startsAt: coupon.startsAt,
       expiresAt: coupon.expiresAt,
       createdAt: coupon.createdAt,
     });
@@ -624,6 +627,9 @@ paymentsRouter.get(
     }
 
     const now = new Date();
+    if (coupon.startsAt > now) {
+      return problem(c, ERRORS.COUPON_NOT_YET_VALID);
+    }
     if (coupon.expiresAt <= now) {
       return problem(c, ERRORS.COUPON_EXPIRED);
     }

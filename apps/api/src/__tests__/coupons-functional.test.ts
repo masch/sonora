@@ -194,6 +194,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
 
   it('runs complete lifecycle: admin creation -> device 1 redemption & audio access -> idempotency -> device 2 redemption -> device 3 quota exhaustion', async () => {
     const email = 'grupo.amigos@example.com';
+    const pastDate = new Date(Date.now() - 3600000).toISOString();
     const futureDate = new Date(Date.now() + 86400000).toISOString(); // +24h
 
     // 1. Admin creates a coupon for 2 downloads
@@ -207,6 +208,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
         },
         body: JSON.stringify({
           email,
+          startsAt: pastDate,
           expiresAt: futureDate,
           notes: 'Grupo amigos viaje colectivo',
           maxDownloads: 2,
@@ -322,6 +324,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
 
   it('rejects expired coupon on redemption and denies audio access', async () => {
     const email = 'expired.user@example.com';
+    const pastStartDate = new Date(Date.now() - 7200000).toISOString(); // 2h in past
     const pastDate = new Date(Date.now() - 3600000).toISOString(); // 1h in past
 
     // 1. Cupón creado que ya expiró
@@ -335,6 +338,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
         },
         body: JSON.stringify({
           email,
+          startsAt: pastStartDate,
           expiresAt: pastDate,
           notes: 'Cupón de evento ayer',
           maxDownloads: 5,
@@ -359,8 +363,50 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
     expect(await redeemRes.json()).toMatchObject({ code: 'COUPON_EXPIRED' });
   });
 
+  it('rejects not-yet-started coupon on redemption and denies audio access', async () => {
+    const email = 'future.user@example.com';
+    const futureStartDate = new Date(Date.now() + 3600000).toISOString(); // +1h
+    const futureExpireDate = new Date(Date.now() + 86400000).toISOString(); // +24h
+
+    // 1. Cupón creado cuya fecha de inicio es en el futuro
+    await app.request(
+      `/payments/experiences/${EXPERIENCE_ID}/coupons`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${ADMIN_KEY}`,
+        },
+        body: JSON.stringify({
+          email,
+          startsAt: futureStartDate,
+          expiresAt: futureExpireDate,
+          notes: 'Cupón para evento mañana',
+          maxDownloads: 5,
+        }),
+      },
+      env,
+    );
+
+    // 2. Intento de canje antes de fecha de inicio -> 403 COUPON_NOT_YET_VALID
+    const redeemRes = await app.request(
+      `/payments/experiences/${EXPERIENCE_ID}/purchased?email=${encodeURIComponent(email)}`,
+      {
+        headers: {
+          'X-Device-Id': 'device-early-1',
+          'X-Device-Platform': 'ios',
+        },
+      },
+      env,
+    );
+
+    expect(redeemRes.status).toBe(403);
+    expect(await redeemRes.json()).toMatchObject({ code: 'COUPON_NOT_YET_VALID' });
+  });
+
   it('enforces atomic quota limit under concurrent redemptions at boundary', async () => {
     const email = 'race.group@example.com';
+    const pastDate = new Date(Date.now() - 3600000).toISOString();
     const futureDate = new Date(Date.now() + 86400000).toISOString();
 
     // Create coupon with maxDownloads = 1
@@ -374,6 +420,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
         },
         body: JSON.stringify({
           email,
+          startsAt: pastDate,
           expiresAt: futureDate,
           notes: 'Cupón único límite 1',
           maxDownloads: 1,

@@ -349,6 +349,7 @@ export const en = {
       noBrowser: 'Cannot open payment page. Please try again.',
       restore: 'Could not restore purchases. Please try again.',
       couponExpired: 'This access has expired.',
+      couponNotYetValid: 'This access is not yet active.',
       couponLimitReached: 'This access has reached its maximum download limit.',
       couponNotFound: 'No valid access found for this email.',
     },
