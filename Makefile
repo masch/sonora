@@ -460,9 +460,9 @@ api-kv-list-production: ## List production KV namespaces
 	cd $(API_DIR) && bunx wrangler kv namespace list
 
 .PHONY: api-upload-audio-staging
-api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging ADMIN_API_KEY=\"<staging-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
 	@curl -X POST $(API_STAGING_URL)/audio/upload \
@@ -471,9 +471,9 @@ api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api
 	  -F "file=@$(FILE)"
 
 .PHONY: api-upload-audio-production
-api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production ADMIN_API_KEY=\"<prod-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
 	@curl -X POST $(API_PRODUCTION_URL)/audio/upload \
@@ -492,16 +492,22 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
 .PHONY: api-create-coupon-staging
-api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
 	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
 		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00Z\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		echo "Example: make api-create-coupon-staging ADMIN_API_KEY=\"<staging-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi; \
+	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
+	NORM_EXPIRES=$$(date -u -d "$(EXPIRES)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(EXPIRES)"); \
+	if [ -z "$$NORM_STARTS" ] || [ -z "$$NORM_EXPIRES" ]; then \
+		echo "Error: Invalid date format for STARTS or EXPIRES."; \
 		exit 1; \
 	fi; \
 	PAYLOAD=$$(jq -n \
 	  --arg email "$(EMAIL)" \
-	  --arg startsAt "$(STARTS)" \
-	  --arg expiresAt "$(EXPIRES)" \
+	  --arg startsAt "$$NORM_STARTS" \
+	  --arg expiresAt "$$NORM_EXPIRES" \
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
@@ -511,16 +517,22 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make
 	  -d "$$PAYLOAD"
 
 .PHONY: api-create-coupon-production
-api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
 	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
 		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00Z\" EXPIRES=\"2026-12-31T23:59:59Z\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		echo "Example: make api-create-coupon-production ADMIN_API_KEY=\"<prod-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		exit 1; \
+	fi; \
+	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
+	NORM_EXPIRES=$$(date -u -d "$(EXPIRES)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(EXPIRES)"); \
+	if [ -z "$$NORM_STARTS" ] || [ -z "$$NORM_EXPIRES" ]; then \
+		echo "Error: Invalid date format for STARTS or EXPIRES."; \
 		exit 1; \
 	fi; \
 	PAYLOAD=$$(jq -n \
 	  --arg email "$(EMAIL)" \
-	  --arg startsAt "$(STARTS)" \
-	  --arg expiresAt "$(EXPIRES)" \
+	  --arg startsAt "$$NORM_STARTS" \
+	  --arg expiresAt "$$NORM_EXPIRES" \
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \

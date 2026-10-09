@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import app, { setDbClient } from '../index';
+import { maskEmail, normalizeEmail, hashEmail } from '../utils/coupons';
 
 const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
 const ADMIN_KEY = 'test-admin-key-123';
@@ -414,6 +415,136 @@ describe('Experience Coupons (Viaje Grupal)', () => {
           platform: 'ios',
         }),
       );
+    });
+
+    it('returns 403 COUPON_LIMIT_REACHED when atomic update finds limit exceeded', async () => {
+      const futureDate = new Date(Date.now() + 600000);
+      mockDb.limit
+        .mockResolvedValueOnce([{ published: true }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'coupon-race',
+            experienceId: VALID_UUID,
+            usedDownloads: 0,
+            maxDownloads: 1,
+            startsAt: new Date(Date.now() - 60000),
+            expiresAt: futureDate,
+          },
+        ])
+        .mockResolvedValueOnce([]); // no existing redemption
+      // Atomic increment returns empty (someone incremented concurrently)
+      mockDb.returning.mockResolvedValueOnce([]);
+      setDbClient(mockDb);
+
+      const res = await app.request(
+        `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+        {
+          headers: {
+            'X-Device-Id': 'race-device',
+            'X-Device-Platform': 'ios',
+          },
+        },
+        env,
+      );
+
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: 'COUPON_LIMIT_REACHED' });
+    });
+
+    it('compensates quota and returns 200 when redemption insert encounters unique constraint collision', async () => {
+      const futureDate = new Date(Date.now() + 600000);
+      mockDb.limit
+        .mockResolvedValueOnce([{ published: true }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'coupon-1',
+            experienceId: VALID_UUID,
+            usedDownloads: 0,
+            maxDownloads: 3,
+            startsAt: new Date(Date.now() - 60000),
+            expiresAt: futureDate,
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      mockDb.returning.mockResolvedValueOnce([{ id: 'coupon-1' }]);
+      // Insertion throws unique constraint violation (concurrent identical request)
+      mockDb.values.mockRejectedValueOnce({ code: '23505' });
+      setDbClient(mockDb);
+
+      const res = await app.request(
+        `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+        {
+          headers: {
+            'X-Device-Id': 'dup-device',
+            'X-Device-Platform': 'ios',
+          },
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ purchased: true });
+      // Should have compensated quota
+      expect(mockDb.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('compensates quota and rethrows when redemption insert fails with unexpected error', async () => {
+      const futureDate = new Date(Date.now() + 600000);
+      mockDb.limit
+        .mockResolvedValueOnce([{ published: true }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'coupon-1',
+            experienceId: VALID_UUID,
+            usedDownloads: 0,
+            maxDownloads: 3,
+            startsAt: new Date(Date.now() - 60000),
+            expiresAt: futureDate,
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      mockDb.returning.mockResolvedValueOnce([{ id: 'coupon-1' }]);
+      mockDb.values.mockRejectedValueOnce(new Error('Unexpected DB fault'));
+      setDbClient(mockDb);
+
+      const res = await app.request(
+        `/payments/experiences/${VALID_UUID}/purchased?email=user@example.com`,
+        {
+          headers: {
+            'X-Device-Id': 'err-device',
+            'X-Device-Platform': 'ios',
+          },
+        },
+        env,
+      );
+
+      expect(res.status).toBe(500);
+      // Quota compensated before rethrow
+      expect(mockDb.update).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Coupon Utils (hashEmail, maskEmail, normalizeEmail)', () => {
+    it('normalizes email by trimming and lowercasing', () => {
+      expect(normalizeEmail('  USER@EXAMPLE.COM ')).toBe('user@example.com');
+    });
+
+    it('masks email with various localPart lengths and invalid formats', () => {
+      expect(maskEmail('standard.user@example.com')).toBe('s***r@example.com');
+      expect(maskEmail('ab@example.com')).toBe('a***@example.com');
+      expect(maskEmail('a@example.com')).toBe('a***@example.com');
+      expect(maskEmail('invalid-email')).toBe('***');
+      expect(maskEmail('@domain.com')).toBe('***');
+    });
+
+    it('produces deterministic HMAC-SHA256 hex string', async () => {
+      const hash1 = await hashEmail('test@example.com', 'secret');
+      const hash2 = await hashEmail('  TEST@example.com ', 'secret');
+      expect(hash1).toBe(hash2);
+      expect(hash1).toHaveLength(64);
     });
   });
 });
