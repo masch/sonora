@@ -404,7 +404,7 @@ describe('Viaje Grupal — End-to-End Functional Test Suite', () => {
     expect(await redeemRes.json()).toMatchObject({ code: 'COUPON_NOT_YET_VALID' });
   });
 
-  it('enforces atomic quota limit under concurrent redemptions at boundary', async () => {
+  it('enforces quota limit under simulated concurrent redemptions at boundary in stateful test double', async () => {
     const email = 'race.group@example.com';
     const pastDate = new Date(Date.now() - 3600000).toISOString();
     const futureDate = new Date(Date.now() + 86400000).toISOString();

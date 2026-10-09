@@ -9,11 +9,16 @@ import { EmailQuerySchema, formatPrice } from '@sonora/shared';
 import { useState } from 'react';
 import { ActivityIndicator, Platform } from 'react-native';
 
+interface RestoreResult {
+  success: boolean;
+  error?: string | null;
+}
+
 interface PaymentPromptProps {
   price: number;
   currency?: string;
   onPay: () => void;
-  onRestore: (email: string) => Promise<boolean>;
+  onRestore: (email: string) => Promise<boolean | RestoreResult>;
   loading?: boolean;
   error?: string | null;
 }
@@ -45,11 +50,16 @@ export function PaymentPrompt({
     setRestoreError(null);
     try {
       const result = await onRestore(trimmedEmail);
-      if (result) {
+      const isSuccess = typeof result === 'boolean' ? result : result.success;
+      if (isSuccess) {
         setShowRestore(false);
         setEmail('');
       } else {
-        setRestoreError(t('payments.restore.notFound'));
+        const errorMsg =
+          typeof result === 'object' && result.error
+            ? result.error
+            : t('payments.restore.notFound');
+        setRestoreError(errorMsg);
       }
       setRestoring(false);
     } catch {

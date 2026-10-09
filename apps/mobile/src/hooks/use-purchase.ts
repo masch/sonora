@@ -25,9 +25,14 @@ export interface PurchaseState {
   polling: boolean;
 }
 
+export interface RestoreResult {
+  success: boolean;
+  error?: string | null;
+}
+
 export interface PurchaseActions {
   pay: () => Promise<void>;
-  restore: (email: string) => Promise<boolean>;
+  restore: (email: string) => Promise<RestoreResult>;
   refresh: () => Promise<void>;
   checkStatus: () => Promise<void>;
 }
@@ -297,7 +302,7 @@ export function usePurchase(
     }
   };
 
-  const restore = async (email: string): Promise<boolean> => {
+  const restore = async (email: string): Promise<RestoreResult> => {
     setState((prev) => ({ ...prev, restoring: true, error: null }));
 
     try {
@@ -312,10 +317,11 @@ export function usePurchase(
           restoring: false,
           error: null,
         }));
-        return true;
+        return { success: true };
       } else {
-        setState((prev) => ({ ...prev, restoring: false }));
-        return false;
+        const notFoundMsg = t('payments.restore.notFound');
+        setState((prev) => ({ ...prev, restoring: false, error: notFoundMsg }));
+        return { success: false, error: notFoundMsg };
       }
     } catch (err: unknown) {
       logger.error('[usePurchase] Failed to restore purchases', err);
@@ -343,7 +349,7 @@ export function usePurchase(
         restoring: false,
         error: errorMsg,
       }));
-      return false;
+      return { success: false, error: errorMsg };
     }
   };
 

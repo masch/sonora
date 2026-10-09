@@ -315,8 +315,8 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(true);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(true);
       });
 
       expect(result.current[0].status).toBe('purchased');
@@ -332,8 +332,8 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('nobody@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('nobody@example.com');
+        expect(res.success).toBe(false);
       });
     });
 
@@ -344,8 +344,8 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
       });
 
       expect(result.current[0].error).toBe('payments.error.restore');
@@ -360,8 +360,9 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
+        expect(res.error).toBe('payments.error.couponExpired');
       });
 
       expect(result.current[0].error).toBe('payments.error.couponExpired');
@@ -376,8 +377,9 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
+        expect(res.error).toBe('payments.error.couponNotYetValid');
       });
 
       expect(result.current[0].error).toBe('payments.error.couponNotYetValid');
@@ -392,8 +394,9 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
+        expect(res.error).toBe('payments.error.couponLimitReached');
       });
 
       expect(result.current[0].error).toBe('payments.error.couponLimitReached');
@@ -408,8 +411,9 @@ describe('usePurchase', () => {
       await waitFor(() => expect(result.current[0].status).toBe('paid'));
 
       await act(async () => {
-        const success = await result.current[1].restore('user@example.com');
-        expect(success).toBe(false);
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
+        expect(res.error).toBe('payments.error.couponNotFound');
       });
 
       expect(result.current[0].error).toBe('payments.error.couponNotFound');
