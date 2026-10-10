@@ -279,7 +279,7 @@ describe('TripDetailView geofence gate (post-purchase, too far)', () => {
     expect(queryByTestId('experience-credits')).toBeTruthy();
   });
 
-  it('renders lead capture button and allows opening modal', async () => {
+  it('renders lead capture and feedback buttons', async () => {
     const { getByTestId } = await render(
       <TripDetailView track={tripTrack} showGPSDetails={false} />,
     );

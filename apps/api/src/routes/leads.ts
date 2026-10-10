@@ -12,23 +12,27 @@ const leadsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 leadsRouter.use('*', envGuard());
 leadsRouter.use('*', dbGuard());
-leadsRouter.use('/', rateLimitMutation('leads:submit'));
 
-leadsRouter.post('/', validateJson(LeadPostBodySchema), async (c) => {
-  const { email, experienceId, source } = c.req.valid('json') as LeadPostBody;
-  const normalizedEmail = email.toLowerCase().trim();
+leadsRouter.post(
+  '/',
+  rateLimitMutation('leads:submit'),
+  validateJson(LeadPostBodySchema),
+  async (c) => {
+    const { email, experienceId, source } = c.req.valid('json') as LeadPostBody;
+    const normalizedEmail = email.toLowerCase().trim();
 
-  const db = c.var.db;
-  await db.insert(leads).values({
-    id: crypto.randomUUID(),
-    email: normalizedEmail,
-    experienceId: experienceId ?? null,
-    source,
-    createdAt: new Date(),
-  });
+    const db = c.var.db;
+    await db.insert(leads).values({
+      id: crypto.randomUUID(),
+      email: normalizedEmail,
+      experienceId: experienceId ?? null,
+      source,
+      createdAt: new Date(),
+    });
 
-  const response: LeadResponse = { status: 'ok' };
-  return created(c, response);
-});
+    const response: LeadResponse = { status: 'ok' };
+    return created(c, response);
+  },
+);
 
 export { leadsRouter };

@@ -31,7 +31,7 @@ export const RATE_LIMIT_DEFAULTS = {
 } as const;
 
 /**
- * Convenience helper for public mutation routes using standard limits (10 req/60s).
+ * Convenience helper for public mutation routes using mutation-tier limits (10 req/60s).
  */
 export const rateLimitMutation = (keyPrefix: string) =>
   rateLimit({ ...RATE_LIMIT_TIERS.MUTATION, keyPrefix });
