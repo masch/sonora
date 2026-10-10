@@ -8,6 +8,9 @@ export const PLATFORMS = ['ios', 'android', 'web'] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export const PLATFORM_DEFAULT = 'unknown' as const;
 
+export const LEAD_SOURCES = ['track_detail', 'trip_detail'] as const;
+export type LeadSource = (typeof LEAD_SOURCES)[number];
+
 export const CURRENCIES = ['ARS'] as const;
 export type Currency = (typeof CURRENCIES)[number];
 

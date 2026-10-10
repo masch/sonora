@@ -217,6 +217,22 @@ export const es = {
       },
     },
   },
+  leadCapture: {
+    button: 'Contacto',
+    title: 'Dejanos tu contacto',
+    description: 'Ingresá tu email para recibir novedades y más información.',
+    emailPlaceholder: 'tu@email.com',
+    submit: 'Enviar',
+    submitting: 'Enviando…',
+    successTitle: '¡Muchas gracias!',
+    successMessage: 'Registramos tu contacto con éxito.',
+    error: 'Algo salió mal. Por favor intentá de nuevo.',
+    validation: {
+      empty: 'El email no puede estar vacío',
+      invalid: 'Ingresá un email válido',
+    },
+    close: 'Cerrar',
+  },
   errors: {
     invalidDownloadConfig: 'Configuración de descarga o track inválida',
     insufficientSpace:

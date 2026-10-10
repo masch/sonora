@@ -141,6 +141,13 @@
       "when": 1791562517812,
       "tag": "0019_fast_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791643498574,
+      "tag": "0020_rich_bullseye",
+      "breakpoints": true
     }
   ]
 }

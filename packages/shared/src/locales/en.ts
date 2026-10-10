@@ -217,6 +217,22 @@ export const en = {
       },
     },
   },
+  leadCapture: {
+    button: 'Contact',
+    title: 'Leave your contact',
+    description: 'Enter your email to receive updates and more information.',
+    emailPlaceholder: 'you@email.com',
+    submit: 'Send',
+    submitting: 'Sending…',
+    successTitle: 'Thank you!',
+    successMessage: 'We successfully saved your contact.',
+    error: 'Something went wrong. Please try again.',
+    validation: {
+      empty: 'Email cannot be empty',
+      invalid: 'Please enter a valid email address',
+    },
+    close: 'Close',
+  },
   errors: {
     invalidDownloadConfig: 'Invalid poetic or download configuration',
     insufficientSpace: 'Insufficient storage space. Free: {{free}}MB, Required: {{required}}MB',
