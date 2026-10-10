@@ -128,7 +128,7 @@ export function PaymentPrompt({
           setRestoreError(null);
         }}
       >
-        <TwView className="p-6 gap-5">
+        <TwView className="gap-5">
           <ThemedText className="text-xl font-black text-center text-zinc-800 dark:text-zinc-100">
             {t('payments.restore.title')}
           </ThemedText>
