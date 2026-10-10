@@ -1,12 +1,15 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Env, Variables } from '../index';
 
-// ── Global defaults ──────────────────────────────────────────
+// ── Rate Limit Tiers ──────────────────────────────────────────
 
-const GLOBAL_DEFAULTS = {
-  limit: 30,
-  windowSeconds: 60,
-  enabled: true,
+export const RATE_LIMIT_TIERS = {
+  /** Public mutations (e.g., payments, leads) */
+  MUTATION: { limit: 10, windowSeconds: 60 },
+  /** Sensitive resource lookups */
+  SENSITIVE: { limit: 20, windowSeconds: 60 },
+  /** Standard read endpoints */
+  STANDARD: { limit: 30, windowSeconds: 60 },
 } as const;
 
 // ── Per-endpoint config (all optional) ──────────────────────
@@ -21,11 +24,17 @@ export interface RateLimitConfig {
 // ── Named per-route defaults ────────────────────────────────
 
 export const RATE_LIMIT_DEFAULTS = {
-  PAYMENTS_CREATE: { limit: 10, windowSeconds: 60, keyPrefix: 'payments:create' },
-  EXPERIENCES_ACCESS: { limit: 20, windowSeconds: 60, keyPrefix: 'experiences:access' },
-  EXPERIENCES_LIST: { limit: 30, windowSeconds: 60, keyPrefix: 'experiences:list' },
-  PROXIMITY_CHECK: { limit: 30, windowSeconds: 60, keyPrefix: 'experiences:proximity' },
+  PAYMENTS_CREATE: { ...RATE_LIMIT_TIERS.MUTATION, keyPrefix: 'payments:create' },
+  EXPERIENCES_ACCESS: { ...RATE_LIMIT_TIERS.SENSITIVE, keyPrefix: 'experiences:access' },
+  EXPERIENCES_LIST: { ...RATE_LIMIT_TIERS.STANDARD, keyPrefix: 'experiences:list' },
+  PROXIMITY_CHECK: { ...RATE_LIMIT_TIERS.STANDARD, keyPrefix: 'experiences:proximity' },
 } as const;
+
+/**
+ * Convenience helper for public mutation routes using mutation-tier limits (10 req/60s).
+ */
+export const rateLimitMutation = (keyPrefix: string) =>
+  rateLimit({ ...RATE_LIMIT_TIERS.MUTATION, keyPrefix });
 
 // ── Internal helpers ─────────────────────────────────────────
 
@@ -78,9 +87,9 @@ export const rateLimit = (
 
     // 3. Resolve effective config
     const effective = {
-      limit: config?.limit ?? GLOBAL_DEFAULTS.limit,
-      windowSeconds: config?.windowSeconds ?? GLOBAL_DEFAULTS.windowSeconds,
-      enabled: config?.enabled ?? GLOBAL_DEFAULTS.enabled,
+      limit: config?.limit ?? RATE_LIMIT_TIERS.STANDARD.limit,
+      windowSeconds: config?.windowSeconds ?? RATE_LIMIT_TIERS.STANDARD.windowSeconds,
+      enabled: config?.enabled ?? true,
       keyPrefix: config?.keyPrefix ?? 'default',
     };
 

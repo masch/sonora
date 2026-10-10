@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import { LeadCaptureButton } from '@/components/lead-capture-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
@@ -185,7 +186,7 @@ export default function TripDetailView({
             android="volume_up"
             web="volume_up"
             size={18}
-            tintColor="#000000"
+            tintColor={colors.text}
           />
         </TwView>
       </TwView>
@@ -205,7 +206,7 @@ export default function TripDetailView({
               className="text-2xl font-black text-center px-2"
               style={{ color: colors.homeCardText }}
             >
-              {track.title + ' '}
+              {track.title}
             </ThemedText>
             <ThemedText
               className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
@@ -243,7 +244,7 @@ export default function TripDetailView({
                 android={showLabels ? 'label_off' : 'label'}
                 web={showLabels ? 'label_off' : 'label'}
                 size={16}
-                tintColor={showLabels ? '#dc2626' : '#2563eb'}
+                tintColor={showLabels ? colors.text : colors.textSecondary}
               />
             </TwPressable>
           </TwView>
@@ -301,8 +302,8 @@ export default function TripDetailView({
 
           {refreshingExperience && <PreparingAudioHint />}
 
-          {/* Manual feedback button */}
-          <TwView className="self-stretch">
+          {/* Action buttons (Feedback & Contact) */}
+          <TwView className="self-stretch gap-2">
             <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
               <TwPressable
                 accessibilityLabel={t('feedback.form.title')}
@@ -315,6 +316,8 @@ export default function TripDetailView({
                 </ThemedText>
               </TwPressable>
             </TwView>
+
+            <LeadCaptureButton source="trip_detail" experienceId={track.id} />
           </TwView>
 
           {/* Credits */}

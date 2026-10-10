@@ -6,6 +6,18 @@ import type { ProblemDetails } from './problem-details';
 
 export type { ProblemDetails };
 
+/**
+ * Custom validation hook for `@hono/zod-validator`.
+ *
+ * Intercepts Zod validation results to standardize error responses according to RFC 7807 (Problem Details):
+ * - On success: returns `void` to allow Hono to continue pipeline execution to the route handler.
+ * - On failure: returns an HTTP 422 `Response` with code `VALIDATION_ERROR` and a mapped list of
+ *   field paths and error messages, preventing default 400 responses.
+ *
+ * @param result The outcome of the Zod validation containing parsed data or validation issues.
+ * @param c The active Hono execution Context.
+ * @returns An RFC 7807 JSON Response with status 422 on validation failure, or void on success.
+ */
 export function validationHook<T>(
   result:
     | { success: true; data: T }

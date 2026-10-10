@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import { LeadCaptureButton } from '@/components/lead-capture-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
@@ -266,8 +267,8 @@ export default function TrackDetailView({
 
           {refreshingExperience && <PreparingAudioHint />}
 
-          {/* Manual feedback button */}
-          <TwView className="self-stretch mt-2">
+          {/* Action buttons (Feedback & Contact) */}
+          <TwView className="self-stretch mt-2 gap-2">
             <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
               <TwPressable
                 accessibilityLabel={t('feedback.form.title')}
@@ -280,6 +281,8 @@ export default function TrackDetailView({
                 </ThemedText>
               </TwPressable>
             </TwView>
+
+            <LeadCaptureButton source="track_detail" experienceId={track.id} />
           </TwView>
 
           {/* Credits */}
