@@ -45,6 +45,12 @@ export function BottomModal({
     }
   }, [visible, autoDismissTrigger, autoDismissDelay]);
 
+  const bottomPadding = Platform.select({
+    ios: 24 + insets.bottom,
+    web: 16,
+    default: 24,
+  });
+
   return (
     <ModalPrimitive visible={visible} dismissable onDismiss={onDismiss}>
       <TwView className="flex-1 justify-end">
@@ -60,9 +66,9 @@ export function BottomModal({
         >
           <TwView testID="bottom-modal-content-container">
             <TwView
-              className="bg-background rounded-t-3xl p-6 gap-4"
+              className="bg-background rounded-t-3xl pt-6 px-6 gap-4"
               style={{
-                paddingBottom: Platform.OS === 'ios' ? 24 + insets.bottom : 24,
+                paddingBottom: bottomPadding,
               }}
             >
               {children}
