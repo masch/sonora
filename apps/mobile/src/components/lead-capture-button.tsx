@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -6,9 +6,9 @@ import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { LeadClient } from '@/services/lead-client';
+import { useLeadCapture } from '@/hooks/use-lead-capture';
 import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
-import { LeadEmailSchema, type LeadSource } from '@sonora/shared';
+import type { LeadSource } from '@sonora/shared';
 
 export interface LeadCaptureButtonProps {
   source: LeadSource;
@@ -17,19 +17,12 @@ export interface LeadCaptureButtonProps {
   onSubmitSuccess?: () => void;
 }
 
-export type LeadSubmissionState = 'idle' | 'submitting' | 'success' | 'error';
-
 interface InternalModalProps {
   visible: boolean;
   onDismiss: () => void;
   source: LeadSource;
   experienceId?: string;
   onSubmitSuccess?: () => void;
-  onSubmit?: (payload: {
-    email: string;
-    source: LeadSource;
-    experienceId?: string;
-  }) => Promise<void>;
 }
 
 function LeadCaptureModalInternal({
@@ -38,72 +31,29 @@ function LeadCaptureModalInternal({
   source,
   experienceId,
   onSubmitSuccess,
-  onSubmit,
 }: InternalModalProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<LeadSubmissionState>('idle');
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const requestIdRef = useRef(0);
-
-  const isSubmitting = status === 'submitting';
-  const isSuccess = status === 'success';
-  const isError = status === 'error';
-
-  const resetState = () => {
-    setEmail('');
-    setStatus('idle');
-    setValidationError(null);
-    setErrorMessage(null);
-  };
+  const {
+    email,
+    setEmail,
+    validationError,
+    errorMessage,
+    isSubmitting,
+    isSuccess,
+    isError,
+    handleSubmit,
+    handleDismiss: dismissModal,
+  } = useLeadCapture({
+    source,
+    experienceId,
+    onSubmitSuccess,
+  });
 
   const handleDismiss = () => {
-    requestIdRef.current++;
-    resetState();
+    dismissModal();
     onDismiss();
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-
-    const trimmed = email.trim();
-    if (trimmed.length === 0) {
-      setValidationError(t('leadCapture.validation.empty'));
-      return;
-    }
-
-    const emailCheck = LeadEmailSchema.safeParse(trimmed);
-    if (!emailCheck.success) {
-      setValidationError(t('leadCapture.validation.invalid'));
-      return;
-    }
-
-    const currentRequestId = ++requestIdRef.current;
-    setValidationError(null);
-    setErrorMessage(null);
-    setStatus('submitting');
-
-    try {
-      if (onSubmit) {
-        await onSubmit({ email: trimmed, source, experienceId });
-      } else {
-        await LeadClient.submitLead({
-          email: trimmed,
-          source,
-          experienceId,
-        });
-      }
-      if (currentRequestId !== requestIdRef.current) return;
-      setStatus('success');
-      onSubmitSuccess?.();
-    } catch {
-      if (currentRequestId !== requestIdRef.current) return;
-      setStatus('error');
-      setErrorMessage(t('leadCapture.error'));
-    }
   };
 
   return (
@@ -176,10 +126,7 @@ function LeadCaptureModalInternal({
             placeholder={t('leadCapture.emailPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (validationError) setValidationError(null);
-            }}
+            onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
