@@ -3,6 +3,7 @@ import {
   ACCESS_SOURCES,
   CURRENCIES,
   DEFAULT_LANGUAGE,
+  LEAD_SOURCES,
   PAYMENT_PROVIDERS,
   PAYMENT_ROUTES,
   PLATFORMS,
@@ -91,6 +92,7 @@ describe('enums & PAYMENT_ROUTES', () => {
       expect(ACCESS_SOURCES).toEqual(['free', 'paid', 'restored']);
       expect(PLATFORMS).toEqual(['ios', 'android', 'web']);
       expect(CURRENCIES).toEqual(['ARS']);
+      expect(LEAD_SOURCES).toEqual(['track_detail', 'trip_detail']);
       expect(PAYMENT_PROVIDERS).toEqual(['mercadopago', 'stripe', 'paypal']);
       expect(SUPPORTED_LANGUAGES).toEqual(['en', 'es']);
       expect(DEFAULT_LANGUAGE).toBe('es');

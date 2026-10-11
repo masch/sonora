@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import { LeadCaptureButton } from '@/components/lead-capture-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
@@ -21,6 +22,7 @@ import { TwPressable, TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { ThemedText } from '@/components/themed-text';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
+import { Button } from '@/components/ui/button';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import TrackDetailMap from '@/components/track-detail-map';
@@ -266,20 +268,17 @@ export default function TrackDetailView({
 
           {refreshingExperience && <PreparingAudioHint />}
 
-          {/* Manual feedback button */}
-          <TwView className="self-stretch mt-2">
-            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-              <TwPressable
-                accessibilityLabel={t('feedback.form.title')}
-                testID="feedback-manual-button"
-                className="py-3 items-center active:opacity-80"
-                onPress={() => setShowManualFeedback(true)}
-              >
-                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                  {t('feedback.form.title')}
-                </ThemedText>
-              </TwPressable>
-            </TwView>
+          {/* Action buttons (Feedback & Contact) */}
+          <TwView className="self-stretch mt-2 gap-2">
+            <Button
+              label={t('feedback.form.title')}
+              variant="primary"
+              testID="feedback-manual-button"
+              accessibilityLabel={t('feedback.form.title')}
+              onPress={() => setShowManualFeedback(true)}
+            />
+
+            <LeadCaptureButton source="track_detail" experienceId={track.id} />
           </TwView>
 
           {/* Credits */}

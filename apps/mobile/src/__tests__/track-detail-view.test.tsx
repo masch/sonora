@@ -291,6 +291,7 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
       expect(getByTestId('experience-category')).toBeTruthy();
       expect(getByTestId('track-detail-map')).toBeTruthy();
       expect(getByTestId('feedback-manual-button')).toBeTruthy();
+      expect(getByTestId('lead-capture-open-button')).toBeTruthy();
     });
   });
 

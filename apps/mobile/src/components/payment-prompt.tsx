@@ -1,7 +1,6 @@
-import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Button } from '@/components/ui/button';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwTextInput, TwView } from '@/tw';
@@ -33,7 +32,6 @@ export function PaymentPrompt({
 }: PaymentPromptProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const { isDark } = useColorScheme();
   const [showRestore, setShowRestore] = useState(false);
   const [email, setEmail] = useState('');
   const [restoring, setRestoring] = useState(false);
@@ -86,39 +84,30 @@ export function PaymentPrompt({
           <ThemedText className="text-xs font-bold text-center text-red-500">{error}</ThemedText>
         )}
 
-        <TwPressable
-          accessibilityLabel={t('payments.pay')}
-          testID="pay-button"
-          className="bg-emerald-500 rounded-xl py-4 items-center justify-center active:opacity-70"
-          onPress={onPay}
+        <Button
+          label={t('payments.pay')}
+          variant="primary"
+          size="lg"
+          loading={loading}
           disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <ThemedText className="text-white font-extrabold text-base">
-              {t('payments.pay')}
-            </ThemedText>
-          )}
-        </TwPressable>
+          testID="pay-button"
+          accessibilityLabel={t('payments.pay')}
+          onPress={onPay}
+        />
 
-        <TwPressable
-          accessibilityLabel={t('payments.restore.link')}
+        <Button
+          label={t('payments.restore.linkQuestion')}
+          variant="secondary"
+          size="lg"
+          icon={{
+            ios: 'person.2.fill',
+            android: 'group',
+            web: 'group',
+          }}
           testID="restore-link-button"
-          className="flex-row items-center justify-center py-3.5 px-4 rounded-xl border border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/15 active:opacity-60 gap-2"
+          accessibilityLabel={t('payments.restore.link')}
           onPress={() => setShowRestore(true)}
-        >
-          <Icon
-            ios="person.2.fill"
-            android="group"
-            web="group"
-            size={18}
-            tintColor={isDark ? '#34d399' : '#059669'}
-          />
-          <ThemedText className="text-xs font-semibold text-center text-zinc-700 dark:text-zinc-300">
-            {t('payments.restore.linkQuestion')}
-          </ThemedText>
-        </TwPressable>
+        />
       </TwView>
 
       <BottomModal

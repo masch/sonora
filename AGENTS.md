@@ -16,6 +16,8 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 | `Collapsible`         | Expandable/collapsible section.                                                                                                      |
 | `app-tabs`            | Tab navigator component used by the layout.                                                                                          |
 
+- **Self-Contained Trigger & Modal Encapsulation**: When implementing a standalone action consisting purely of a dedicated trigger button and its modal (such as `<LeadCaptureButton />`), agents MUST encapsulate both into a single self-contained action component. The action component must own its local `visible` state and render its modal. Parent views must not declare redundant `useState(false)` flags or duplicate modal JSX blocks for these standalone actions. Modals driven by multi-source lifecycles (such as automated playback completion hooks, async queue status, or imperative method guard checks) are exempt and remain coordinated by the parent view.
+
 ## 2. Navigation
 
 - **File-based routing** via Expo Router — routes live in `src/app/`.
@@ -94,3 +96,9 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 
 - **Strict Repository Boundary**: All file searches, pattern matches (`grep`, `find`), and tool explorations must remain strictly within the workspace root.
 - **No Global Directory Scans**: Never perform recursive searches or inspect directories outside the repository (e.g., `~/.config`, `~/.local`, `/home`). Project configurations and SDD state are fully self-contained inside the repository.
+
+## 13. API Route and Validation Conventions
+
+- **Validation**: Always use `validateJson(schema)` or `validateQuery(schema)` from `src/middleware/validation-error`. Never use raw `zValidator`.
+- **Database Guard**: Always apply `dbGuard()` from `src/middleware/db-guard` on all DB routes. Never branch on `if (db)`.
+- **Security**: Always apply `envGuard()` on all API routers and `rateLimit()` on public mutation routes.

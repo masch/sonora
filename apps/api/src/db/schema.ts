@@ -16,6 +16,7 @@ import {
   CURRENCIES,
   EXPERIENCE_FORMATS,
   GEO_MODES,
+  LEAD_SOURCES,
   PAYMENT_PROVIDERS,
   PLATFORMS,
   PURCHASE_STATUSES,
@@ -39,6 +40,8 @@ export const platformEnum = sonoraSchema.enum('platform', [...PLATFORMS]);
 export const currencyEnum = sonoraSchema.enum('currency', [...CURRENCIES]);
 
 export const languageEnum = sonoraSchema.enum('language', [...SUPPORTED_LANGUAGES]);
+
+export const leadSourceEnum = sonoraSchema.enum('lead_source', [...LEAD_SOURCES]);
 
 export const themes = sonoraSchema.table('themes', {
   key: text('key').primaryKey(),
@@ -136,6 +139,14 @@ export const freeDownloads = sonoraSchema.table('free_downloads', {
   deviceId: text('device_id').notNull(),
   platform: platformEnum('platform'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const leads = sonoraSchema.table('leads', {
+  id: uuid('id').primaryKey(),
+  email: text('email').notNull(),
+  experienceId: uuid('experience_id').references(() => experiences.id, { onDelete: 'cascade' }),
+  source: leadSourceEnum('source').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 
 export const experienceCoupons = sonoraSchema.table(
@@ -245,3 +256,5 @@ export type TermsVersion = typeof termsVersions.$inferSelect;
 export type NewTermsVersion = typeof termsVersions.$inferInsert;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type NewTermsAcceptance = typeof termsAcceptances.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type NewLead = typeof leads.$inferInsert;
