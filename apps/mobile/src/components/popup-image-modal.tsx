@@ -1,5 +1,5 @@
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwButton, TwImage, TwPressable } from '@/tw';
+import { TwImage, TwPressable } from '@/tw';
 import type { ImageProps as ExpoImageProps } from 'expo-image';
 import { useState } from 'react';
 import { ModalPrimitive } from './ui/modal-primitive';
@@ -64,14 +64,15 @@ export function PopupImageModal({
         animationType="fade"
         onDismiss={() => setIsVisible(false)}
       >
-        <TwButton
+        <TwPressable
           className="flex-1 w-full h-full bg-black items-center justify-center"
           onPress={() => setIsVisible(false)}
           testID="popup-image-modal-dismiss-button"
           accessibilityLabel={t('common.dismiss')}
+          accessibilityRole="button"
         >
           <TwImage source={source} className="w-full h-full" contentFit="contain" alt={alt} />
-        </TwButton>
+        </TwPressable>
       </ModalPrimitive>
     </>
   );

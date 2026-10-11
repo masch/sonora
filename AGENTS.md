@@ -15,7 +15,11 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 | `HintRow`             | Label + value row for hint/helper text below inputs.                                                                                 |
 | `Collapsible`         | Expandable/collapsible section.                                                                                                      |
 | `app-tabs`            | Tab navigator component used by the layout.                                                                                          |
+| `BottomModal`         | Standard bottom-sheet modal. Encapsulates backdrop, keyboard avoidance, and platform-safe insets.                                    |
+| `Button`              | Design system button (`@/components/ui/button`). Supports variants (`primary`, `secondary`, `outline`, `ghost`), sizes, and loading. |
 
+- **Button Architecture**: All standalone buttons, triggers, and actions (CTA, submit, cancel, retry, ghost links) MUST use `<Button>` from `@/components/ui/button`. Never build ad-hoc buttons with styled `<TwPressable>`. Reserve `<TwPressable>` strictly for compound interactive surfaces (cards, list items, backdrops).
+- **Modal Architecture**: Never import `<Modal>` from `react-native`. Use `BottomModal` for all sheet dialogs, prompts, and feedback (handles safe-area insets and keyboard avoidance automatically). Use `<ModalPrimitive>` ONLY for fullscreen or centered dialogs.
 - **Self-Contained Trigger & Modal Encapsulation**: When implementing a standalone action consisting purely of a dedicated trigger button and its modal (such as `<LeadCaptureButton />`), agents MUST encapsulate both into a single self-contained action component. The action component must own its local `visible` state and render its modal. Parent views must not declare redundant `useState(false)` flags or duplicate modal JSX blocks for these standalone actions. Modals driven by multi-source lifecycles (such as automated playback completion hooks, async queue status, or imperative method guard checks) are exempt and remain coordinated by the parent view.
 
 ## 2. Navigation

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTranslation } from '@/hooks/use-translation';
 import { ModalPrimitive } from '@/components/ui/modal-primitive';
+import { ModalBasePadding, ModalWebPadding } from '@/constants/theme';
 import { TwPressable, TwView } from '@/tw';
 
 interface BottomModalProps {
@@ -46,9 +47,8 @@ export function BottomModal({
   }, [visible, autoDismissTrigger, autoDismissDelay]);
 
   const bottomPadding = Platform.select({
-    ios: 24 + insets.bottom,
-    web: 16,
-    default: 24,
+    web: ModalWebPadding,
+    default: ModalBasePadding + insets.bottom,
   });
 
   return (
