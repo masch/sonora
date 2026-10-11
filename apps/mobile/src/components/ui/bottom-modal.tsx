@@ -2,14 +2,20 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAppTranslation } from '@/hooks/use-translation';
+import { ThemedText } from '@/components/themed-text';
+import { IconButton } from '@/components/ui/icon-button';
 import { ModalPrimitive } from '@/components/ui/modal-primitive';
 import { ModalBasePadding, ModalWebPadding } from '@/constants/theme';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
 
-interface BottomModalProps {
+export interface BottomModalProps {
   visible: boolean;
   onDismiss: () => void;
+  title?: string;
+  showCloseButton?: boolean;
+  closeButtonTestID?: string;
+  footer?: ReactNode;
   children: ReactNode;
   autoDismissTrigger?: boolean;
   autoDismissDelay?: number;
@@ -19,11 +25,16 @@ interface BottomModalProps {
 /**
  * Reusable modal component that slides from the bottom,
  * overlays the screen, and handles safe area insets at the bottom.
- * Supports tap-to-dismiss on backdrop, keyboard avoidance, and auto-dismiss.
+ * Supports standardized header (title + dismiss), body content, action footer,
+ * tap-to-dismiss on backdrop, keyboard avoidance, and auto-dismiss.
  */
 export function BottomModal({
   visible,
   onDismiss,
+  title,
+  showCloseButton,
+  closeButtonTestID,
+  footer,
   children,
   autoDismissTrigger,
   autoDismissDelay,
@@ -51,6 +62,9 @@ export function BottomModal({
     default: ModalBasePadding + insets.bottom,
   });
 
+  const hasHeader = Boolean(title) || showCloseButton === true;
+  const isCloseVisible = showCloseButton ?? Boolean(title);
+
   return (
     <ModalPrimitive visible={visible} dismissable onDismiss={onDismiss}>
       <TwView className="flex-1 justify-end">
@@ -71,7 +85,31 @@ export function BottomModal({
                 paddingBottom: bottomPadding,
               }}
             >
+              {hasHeader && (
+                <TwView className="flex-row justify-between items-center">
+                  {title ? (
+                    <ThemedText className="text-lg font-bold text-text">{title}</ThemedText>
+                  ) : (
+                    <TwView />
+                  )}
+                  {isCloseVisible && (
+                    <IconButton
+                      onPress={onDismiss}
+                      testID={closeButtonTestID ?? 'bottom-modal-dismiss-button'}
+                      accessibilityLabel={t('common.dismiss')}
+                      icon={{
+                        ios: 'xmark',
+                        android: 'close',
+                        web: 'close',
+                      }}
+                      size="sm"
+                      className="-mr-2"
+                    />
+                  )}
+                </TwView>
+              )}
               {children}
+              {footer}
             </TwView>
           </TwView>
         </KeyboardAvoidingView>

@@ -72,15 +72,15 @@ export function Button({
     primary: {
       button: 'bg-emerald-500 active:bg-emerald-600 shadow-sm border border-transparent',
       text: 'text-white font-extrabold',
-      iconColor: '#ffffff',
-      spinnerColor: '#ffffff',
+      iconColor: colors.buttonPrimaryIcon,
+      spinnerColor: colors.buttonPrimaryIcon,
     },
     secondary: {
       button:
         'border border-emerald-500/40 dark:border-emerald-400/40 bg-zinc-900/85 dark:bg-zinc-900/85 active:opacity-70 shadow-sm',
       text: 'text-white dark:text-zinc-100 font-semibold',
-      iconColor: '#34d399',
-      spinnerColor: '#34d399',
+      iconColor: colors.buttonSecondaryIcon,
+      spinnerColor: colors.buttonSecondaryIcon,
     },
     outline: {
       button: 'border border-border bg-backgroundElement/40 active:opacity-60',

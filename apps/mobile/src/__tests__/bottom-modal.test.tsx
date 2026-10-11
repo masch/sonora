@@ -77,4 +77,31 @@ describe('BottomModal', () => {
 
     expect(getByTestId('bottom-modal-keyboard-view')).toBeTruthy();
   });
+
+  it('renders title and dismiss button when title is provided', async () => {
+    const onDismiss = jest.fn();
+    const { getByText, getByTestId } = await render(
+      <BottomModal visible={true} onDismiss={onDismiss} title="Test Modal Title">
+        <TwText>Modal Body</TwText>
+      </BottomModal>,
+    );
+
+    expect(getByText('Test Modal Title')).toBeTruthy();
+    const closeBtn = getByTestId('bottom-modal-dismiss-button');
+    expect(closeBtn).toBeTruthy();
+
+    await fireEvent.press(closeBtn);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders custom footer slot when provided', async () => {
+    const { getByText } = await render(
+      <BottomModal visible={true} onDismiss={jest.fn()} footer={<TwText>Action Footer</TwText>}>
+        <TwText>Modal Body</TwText>
+      </BottomModal>,
+    );
+
+    expect(getByText('Modal Body')).toBeTruthy();
+    expect(getByText('Action Footer')).toBeTruthy();
+  });
 });

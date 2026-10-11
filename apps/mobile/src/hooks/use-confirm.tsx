@@ -1,8 +1,9 @@
 import { useRef, useState, type ReactNode } from 'react';
 
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import { TwPressable, TwView } from '@/tw';
+import { TwView } from '@/tw';
 
 export interface ConfirmOptions {
   title: string;
@@ -61,35 +62,35 @@ export function useConfirm(): ConfirmResult {
   };
 
   const component = options ? (
-    <BottomModal visible={visible} onDismiss={handleDismiss}>
-      <TwView className="px-6 pb-2">
-        <ThemedText type="subtitle" className="mb-2">
-          {options.title}
-        </ThemedText>
-        <ThemedText className="mb-6">{options.message}</ThemedText>
+    <BottomModal
+      visible={visible}
+      onDismiss={handleDismiss}
+      title={options.title}
+      showCloseButton={false}
+      footer={
         <TwView className="flex-row gap-3">
           {options.cancelLabel && (
-            <TwPressable
-              className="flex-1 rounded-xl py-3 items-center border border-border"
+            <Button
+              className="flex-1"
+              variant="outline"
               onPress={handleDismiss}
               testID="confirm-cancel-button"
               accessibilityLabel={options.cancelLabel}
-            >
-              <ThemedText>{options.cancelLabel}</ThemedText>
-            </TwPressable>
+              label={options.cancelLabel}
+            />
           )}
-          <TwPressable
-            className={`flex-1 rounded-xl py-3 items-center ${
-              options.destructive ? 'bg-red-500' : 'bg-blue-500'
-            }`}
+          <Button
+            className={`flex-1 ${options.destructive ? 'bg-red-500 active:bg-red-600' : 'bg-blue-500 active:bg-blue-600'}`}
+            variant="primary"
             onPress={handleConfirm}
             testID={options.destructive ? 'confirm-destructive-button' : 'confirm-button'}
             accessibilityLabel={options.confirmLabel}
-          >
-            <ThemedText className="text-white font-semibold">{options.confirmLabel}</ThemedText>
-          </TwPressable>
+            label={options.confirmLabel}
+          />
         </TwView>
-      </TwView>
+      }
+    >
+      <ThemedText className="text-sm text-textSecondary">{options.message}</ThemedText>
     </BottomModal>
   ) : null;
 

@@ -18,7 +18,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { TwPressable, TwView } from '@/tw';
+import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { ThemedText } from '@/components/themed-text';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
@@ -89,9 +89,11 @@ export default function TrackDetailView({
     userInitiatedPlayRef.current = true;
     download.startDownload();
     // Fire-and-forget access log
-    getUserEmail().then((email) => {
-      PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
-    });
+    void getUserEmail()
+      .then((email) => {
+        PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
+      })
+      .catch(() => {});
   };
 
   const mappedTrackForFeedback = {
@@ -305,32 +307,27 @@ export default function TrackDetailView({
       <BottomModal
         visible={showGeofenceBlockedAlert}
         onDismiss={() => setShowGeofenceBlockedAlert(false)}
-      >
-        <TwView className="px-6 pb-2">
-          <ThemedText type="subtitle" className="mb-2">
-            {t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
-          </ThemedText>
-          <ThemedText className="mb-6">
-            {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
-              radius: formatDistance(geofence.requiredRadiusMeters, t),
-              distance: formatDistance(
-                geofence.distanceMeters,
-                t,
-                t('experiences.geofenceBlocked.notAvailable'),
-              ),
-            })}
-          </ThemedText>
-          <TwPressable
+        title={t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
+        footer={
+          <Button
+            label={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            variant="primary"
             testID="geofence-blocked-alert-ok"
             accessibilityLabel={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            className="bg-blue-500 rounded-xl py-3 items-center"
             onPress={() => setShowGeofenceBlockedAlert(false)}
-          >
-            <ThemedText className="text-white font-semibold">
-              {t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            </ThemedText>
-          </TwPressable>
-        </TwView>
+          />
+        }
+      >
+        <ThemedText className="text-sm text-textSecondary">
+          {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
+            radius: formatDistance(geofence.requiredRadiusMeters, t),
+            distance: formatDistance(
+              geofence.distanceMeters,
+              t,
+              t('experiences.geofenceBlocked.notAvailable'),
+            ),
+          })}
+        </ThemedText>
       </BottomModal>
     </TwView>
   );

@@ -6,13 +6,33 @@ import FeedbackForm from '@/components/feedback-form';
 
 // Mock BottomModal so useConfirm renders children when visible
 jest.mock('@/components/ui/bottom-modal', () => {
+  const React = jest.requireActual('react');
+  const { Pressable, Text } = jest.requireActual('react-native');
   const MockBottomModal = ({
     visible,
+    title,
+    closeButtonTestID,
+    onDismiss,
     children,
+    footer,
   }: {
     children: React.ReactNode;
     visible: boolean;
-  }) => (visible ? <>{children}</> : null);
+    title?: string;
+    closeButtonTestID?: string;
+    onDismiss?: () => void;
+    footer?: React.ReactNode;
+  }) =>
+    visible ? (
+      <>
+        {title ? React.createElement(Text, null, title) : null}
+        {closeButtonTestID
+          ? React.createElement(Pressable, { testID: closeButtonTestID, onPress: onDismiss })
+          : null}
+        {children}
+        {footer}
+      </>
+    ) : null;
   return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
 });
 
@@ -114,6 +134,26 @@ describe('FeedbackForm', () => {
 
     expect(getByText('Something went wrong')).toBeTruthy();
     expect(getByTestId('feedback-retry-button')).toBeTruthy();
+  });
+
+  it('retries submission with preserved message when status is error', async () => {
+    const onSubmit = jest.fn();
+    const { getByTestId, rerender } = await render(
+      <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    await fireEvent.changeText(input, 'Feedback message needing retry');
+    await fireEvent.press(getByTestId('feedback-submit-button'));
+    expect(onSubmit).toHaveBeenCalledWith('Feedback message needing retry');
+
+    await rerender(
+      <FeedbackForm visible={true} onSubmit={onSubmit} onDismiss={jest.fn()} status="error" />,
+    );
+
+    onSubmit.mockClear();
+    await fireEvent.press(getByTestId('feedback-retry-button'));
+    expect(onSubmit).toHaveBeenCalledWith('Feedback message needing retry');
   });
 
   it('calls onDismiss when dismiss is pressed', async () => {

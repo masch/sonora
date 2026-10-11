@@ -8,7 +8,7 @@ import LoadingView from '@/components/loading-view';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useLeadCapture } from '@/hooks/use-lead-capture';
-import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
+import { TwText, TwTextInput, TwView } from '@/tw';
 import type { LeadSource } from '@sonora/shared';
 
 export interface LeadCaptureButtonProps {
@@ -63,26 +63,20 @@ function LeadCaptureModalInternal({
       onDismiss={handleDismiss}
       autoDismissTrigger={isSuccess}
       autoDismissDelay={3000}
-    >
-      {/* Header with dismiss */}
-      <TwView className="flex-row justify-between items-center">
-        <ThemedText className="text-lg font-bold text-text">{t('leadCapture.title')}</ThemedText>
-        <TwPressable
-          accessibilityLabel={t('common.dismiss')}
-          testID="lead-capture-dismiss-button"
-          onPress={handleDismiss}
-          className="p-2"
-        >
-          <Icon
-            ios="xmark"
-            android="close"
-            web="close"
-            size={18}
-            tintColor={colors.textSecondary}
+      title={isSuccess ? undefined : t('leadCapture.title')}
+      closeButtonTestID="lead-capture-dismiss-button"
+      footer={
+        !isSuccess && !isSubmitting ? (
+          <Button
+            label={t('leadCapture.submit')}
+            variant="primary"
+            testID="lead-capture-submit-button"
+            accessibilityLabel={t('leadCapture.submit')}
+            onPress={handleSubmit}
           />
-        </TwPressable>
-      </TwView>
-
+        ) : undefined
+      }
+    >
       {/* Description */}
       {!isSuccess && (
         <ThemedText className="text-sm text-textSecondary">
@@ -162,18 +156,6 @@ function LeadCaptureModalInternal({
             >
               <LoadingView message={t('leadCapture.submitting')} />
             </TwView>
-          )}
-
-          {/* Submit button */}
-          {!isSubmitting && (
-            <Button
-              label={t('leadCapture.submit')}
-              variant="primary"
-              testID="lead-capture-submit-button"
-              accessibilityLabel={t('leadCapture.submit')}
-              className="mt-1"
-              onPress={handleSubmit}
-            />
           )}
         </>
       )}

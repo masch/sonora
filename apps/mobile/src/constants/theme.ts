@@ -18,6 +18,8 @@ export const RuntimeColors = {
     backgroundSelected: '#dfd7c8',
     textSecondary: '#76706b',
     border: 'rgba(43, 40, 38, 0.15)',
+    buttonPrimaryIcon: '#ffffff',
+    buttonSecondaryIcon: '#34d399',
     // Custom Home Card design colors
     homeInstructionsBg: '#FDF6D2',
     homeExploreRoutesBg: '#7BE5C4',
@@ -38,6 +40,8 @@ export const RuntimeColors = {
     backgroundSelected: '#3d3936',
     textSecondary: '#a59e99',
     border: 'rgba(244, 237, 226, 0.15)',
+    buttonPrimaryIcon: '#ffffff',
+    buttonSecondaryIcon: '#34d399',
     // Custom Home Card design colors
     homeInstructionsBg: '#FDF6D2',
     homeExploreRoutesBg: '#7BE5C4',
