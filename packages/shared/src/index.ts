@@ -7,6 +7,7 @@ export * from './schemas/proximity';
 export * from './schemas/translations';
 export * from './schemas/payments';
 export * from './schemas/audio';
+export * from './schemas/lead';
 export * from './semver';
 export * from './api/base-client';
 export * from './enums';

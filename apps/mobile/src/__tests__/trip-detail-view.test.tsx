@@ -278,4 +278,13 @@ describe('TripDetailView geofence gate (post-purchase, too far)', () => {
     await rerender(<TripDetailView track={trackWithCredits} showGPSDetails={false} />);
     expect(queryByTestId('experience-credits')).toBeTruthy();
   });
+
+  it('renders lead capture and feedback buttons', async () => {
+    const { getByTestId } = await render(
+      <TripDetailView track={tripTrack} showGPSDetails={false} />,
+    );
+
+    expect(getByTestId('lead-capture-open-button')).toBeTruthy();
+    expect(getByTestId('feedback-manual-button')).toBeTruthy();
+  });
 });
