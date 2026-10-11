@@ -14,6 +14,7 @@ import { configRouter } from './routes/config';
 import { experiencesRouter } from './routes/experiences';
 import { feedbackRouter } from './routes/feedback';
 import { healthRouter } from './routes/health';
+import { leadsRouter } from './routes/leads';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { termsRouter } from './routes/terms';
@@ -89,6 +90,7 @@ app.use('*', injectDeviceId());
 // Mount Routes
 app.route('/health', healthRouter);
 app.route('/feedback', feedbackRouter);
+app.route('/leads', leadsRouter);
 app.route('/themes', themesRouter);
 app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);

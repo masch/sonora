@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 import FeedbackForm from '@/components/feedback-form';
+import { LeadCaptureButton } from '@/components/lead-capture-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
@@ -9,6 +10,7 @@ import { Icon } from '@/components/icon';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { Button } from '@/components/ui/button';
 import { ExperienceCredits } from '@/components/experience-credits';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
@@ -185,7 +187,7 @@ export default function TripDetailView({
             android="volume_up"
             web="volume_up"
             size={18}
-            tintColor="#000000"
+            tintColor={colors.text}
           />
         </TwView>
       </TwView>
@@ -205,7 +207,7 @@ export default function TripDetailView({
               className="text-2xl font-black text-center px-2"
               style={{ color: colors.homeCardText }}
             >
-              {track.title + ' '}
+              {track.title}
             </ThemedText>
             <ThemedText
               className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
@@ -243,7 +245,7 @@ export default function TripDetailView({
                 android={showLabels ? 'label_off' : 'label'}
                 web={showLabels ? 'label_off' : 'label'}
                 size={16}
-                tintColor={showLabels ? '#dc2626' : '#2563eb'}
+                tintColor={showLabels ? colors.text : colors.textSecondary}
               />
             </TwPressable>
           </TwView>
@@ -301,20 +303,17 @@ export default function TripDetailView({
 
           {refreshingExperience && <PreparingAudioHint />}
 
-          {/* Manual feedback button */}
-          <TwView className="self-stretch">
-            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-              <TwPressable
-                accessibilityLabel={t('feedback.form.title')}
-                testID="feedback-manual-button"
-                className="py-3 items-center active:opacity-80"
-                onPress={() => setShowManualFeedback(true)}
-              >
-                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                  {t('feedback.form.title')}
-                </ThemedText>
-              </TwPressable>
-            </TwView>
+          {/* Action buttons (Feedback & Contact) */}
+          <TwView className="self-stretch gap-2">
+            <Button
+              label={t('feedback.form.title')}
+              variant="primary"
+              testID="feedback-manual-button"
+              accessibilityLabel={t('feedback.form.title')}
+              onPress={() => setShowManualFeedback(true)}
+            />
+
+            <LeadCaptureButton source="trip_detail" experienceId={track.id} />
           </TwView>
 
           {/* Credits */}

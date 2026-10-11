@@ -12,6 +12,7 @@ export const ICON_MAP = {
   music: { ios: 'music.note.list', android: 'library_music', web: 'library_music' },
   chat: { ios: 'bubble.left', android: 'forum', web: 'forum' },
   chevronRight: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
+  mail: { ios: 'envelope.fill', android: 'mail', web: 'mail' },
 } as const;
 
 export type GenericIconName = keyof typeof ICON_MAP;
