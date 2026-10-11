@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
@@ -105,14 +106,14 @@ function LeadCaptureModalInternal({
           <ThemedText className="text-sm text-textSecondary text-center">
             {t('leadCapture.successMessage')}
           </ThemedText>
-          <TwPressable
-            accessibilityLabel={t('leadCapture.close')}
+          <Button
+            label={t('leadCapture.close')}
+            variant="primary"
             testID="lead-capture-success-close-button"
-            className="mt-4 bg-emerald-500 rounded-xl py-3 px-6 items-center"
+            accessibilityLabel={t('leadCapture.close')}
+            className="mt-4 px-6"
             onPress={handleDismiss}
-          >
-            <ThemedText className="text-white font-bold">{t('leadCapture.close')}</ThemedText>
-          </TwPressable>
+          />
         </TwView>
       )}
 
@@ -165,16 +166,14 @@ function LeadCaptureModalInternal({
 
           {/* Submit button */}
           {!isSubmitting && (
-            <TwView className="bg-emerald-500 rounded-xl overflow-hidden mt-1">
-              <TwPressable
-                accessibilityLabel={t('leadCapture.submit')}
-                testID="lead-capture-submit-button"
-                className="py-3 items-center active:bg-emerald-600"
-                onPress={handleSubmit}
-              >
-                <ThemedText className="text-white font-bold">{t('leadCapture.submit')}</ThemedText>
-              </TwPressable>
-            </TwView>
+            <Button
+              label={t('leadCapture.submit')}
+              variant="primary"
+              testID="lead-capture-submit-button"
+              accessibilityLabel={t('leadCapture.submit')}
+              className="mt-1"
+              onPress={handleSubmit}
+            />
           )}
         </>
       )}
@@ -197,18 +196,15 @@ export function LeadCaptureButton({
 
   return (
     <>
-      <TwView className={className ?? 'border border-emerald-500/30 rounded-xl overflow-hidden'}>
-        <TwPressable
-          accessibilityLabel={t('leadCapture.button')}
-          testID="lead-capture-open-button"
-          className="py-3 items-center active:opacity-80 bg-emerald-500/10 dark:bg-emerald-500/20"
-          onPress={() => setVisible(true)}
-        >
-          <ThemedText className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
-            {t('leadCapture.button')}
-          </ThemedText>
-        </TwPressable>
-      </TwView>
+      <Button
+        label={t('leadCapture.button')}
+        variant="secondary"
+        iconName="mail"
+        testID="lead-capture-open-button"
+        accessibilityLabel={t('leadCapture.button')}
+        className={className}
+        onPress={() => setVisible(true)}
+      />
 
       <LeadCaptureModalInternal
         visible={visible}

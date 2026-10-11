@@ -10,6 +10,7 @@ import { Icon } from '@/components/icon';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { Button } from '@/components/ui/button';
 import { ExperienceCredits } from '@/components/experience-credits';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
@@ -304,18 +305,13 @@ export default function TripDetailView({
 
           {/* Action buttons (Feedback & Contact) */}
           <TwView className="self-stretch gap-2">
-            <TwView className="bg-emerald-500 rounded-xl overflow-hidden shadow-sm">
-              <TwPressable
-                accessibilityLabel={t('feedback.form.title')}
-                testID="feedback-manual-button"
-                className="py-3 items-center active:opacity-80"
-                onPress={() => setShowManualFeedback(true)}
-              >
-                <ThemedText themeColor="background" className="text-white font-extrabold text-sm">
-                  {t('feedback.form.title')}
-                </ThemedText>
-              </TwPressable>
-            </TwView>
+            <Button
+              label={t('feedback.form.title')}
+              variant="primary"
+              testID="feedback-manual-button"
+              accessibilityLabel={t('feedback.form.title')}
+              onPress={() => setShowManualFeedback(true)}
+            />
 
             <LeadCaptureButton source="trip_detail" experienceId={track.id} />
           </TwView>
