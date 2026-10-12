@@ -6,7 +6,7 @@
   "types": "src/index.ts",
   "dependencies": {
     "zod": "3.25.76",
-    "@babel/runtime": "7.29.7"
+    "@babel/runtime": "7.29.10"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.11",
