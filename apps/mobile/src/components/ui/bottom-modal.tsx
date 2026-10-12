@@ -78,12 +78,11 @@ export function BottomModal({
     };
   }, []);
 
-  const isKeyboardVisible = visible && keyboardHeight > 0;
   const effectiveKeyboardHeight = visible ? keyboardHeight : 0;
 
   const bottomPadding = Platform.select({
     web: ModalWebPadding,
-    default: isKeyboardVisible ? ModalBasePadding : ModalBasePadding + insets.bottom,
+    default: ModalBasePadding + insets.bottom,
   });
 
   const hasHeader = Boolean(title) || showCloseButton === true;
