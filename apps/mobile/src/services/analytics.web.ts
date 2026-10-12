@@ -5,6 +5,7 @@ import { logger } from '@/utils/logger';
 import { Platform } from 'react-native';
 import { getAppVersion } from '@/utils/app-version';
 import type { AnalyticsEventMap } from './analytics-events';
+import type { AnalyticsTracker } from './analytics.types';
 
 export type {
   AppLifecycleEvents,
@@ -17,7 +18,7 @@ export type {
   TermsEvents,
 } from './analytics-events';
 
-export type { AnalyticsEventMap };
+export type { AnalyticsEventMap, AnalyticsTracker };
 
 // Firebase Web SDK instance
 let webAnalytics: Analytics | null = null;
@@ -54,7 +55,7 @@ function ensureWebInitialized() {
   }
 }
 
-export const AnalyticsService = {
+export const AnalyticsService: AnalyticsTracker = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
     ensureWebInitialized();
 
