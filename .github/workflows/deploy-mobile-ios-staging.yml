@@ -36,7 +36,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: make check
+
   build-ios:
+    needs: check
     runs-on: macos-latest
     environment: staging
     outputs:
@@ -49,8 +59,6 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
-
-      - run: make check
 
       - name: Tag deployment
         id: tag-release
@@ -104,7 +112,6 @@ jobs:
           </plist>
           EOF
           fi
-          git add -f apps/mobile/GoogleService-Info.plist
 
       - name: Build iOS
         id: build-ios
