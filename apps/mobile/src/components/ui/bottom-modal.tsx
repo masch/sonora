@@ -59,6 +59,7 @@ export function BottomModal({
 
   const bottomPadding = Platform.select({
     web: ModalWebPadding,
+    android: ModalBasePadding,
     default: ModalBasePadding + insets.bottom,
   });
 

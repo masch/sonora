@@ -114,6 +114,7 @@ export function IconButton({
 
   return (
     <TwPressable
+      hitSlop={size === 'sm' ? 6 : size === 'md' ? 2 : 0}
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"

@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 import { TwView, TwText, TwScrollView, TwPressable, TwTextInput } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { TwAnimatedView } from '@/tw/animated';
+import { RuntimeColors } from '@/constants/theme';
 
 describe('TwView', () => {
   it('renders children with className prop', async () => {
@@ -111,7 +112,7 @@ describe('TwTextInput', () => {
       <TwTextInput placeholder="Default color" />,
     );
     const input1 = getByP1('Default color');
-    expect(input1.props.placeholderTextColor).toBeDefined();
+    expect(input1.props.placeholderTextColor).toBe(RuntimeColors.light.textSecondary);
 
     const { getByPlaceholderText: getByP2 } = await render(
       <TwTextInput placeholder="Custom color" placeholderTextColor="#ff0000" />,
