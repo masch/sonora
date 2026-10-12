@@ -49,4 +49,31 @@ describe('IconButton', () => {
 
     expect(getByTestId('test-loading-icon-btn-spinner')).toBeTruthy();
   });
+
+  it('renders with warning variant', async () => {
+    const { getByTestId } = await render(
+      <IconButton
+        onPress={jest.fn()}
+        variant="warning"
+        testID="test-warning-icon-btn"
+        accessibilityLabel="Warning"
+        iconName="pause"
+      />,
+    );
+
+    expect(getByTestId('test-warning-icon-btn')).toBeTruthy();
+  });
+
+  it('handles empty icon and custom hitSlop', async () => {
+    const { getByTestId } = await render(
+      <IconButton
+        onPress={jest.fn()}
+        testID="test-empty-icon-btn"
+        accessibilityLabel="Empty"
+        hitSlop={10}
+      />,
+    );
+
+    expect(getByTestId('test-empty-icon-btn')).toBeTruthy();
+  });
 });

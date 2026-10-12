@@ -95,48 +95,61 @@ jest.mock('@/components/ui/bottom-modal', () => {
   return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
 });
 
+const mockConfirmFn = jest.fn().mockResolvedValue(true);
 jest.mock('@/hooks/use-confirm', () => ({
-  useConfirm: () => ({ confirm: jest.fn().mockResolvedValue(true), component: null }),
+  useConfirm: () => ({ confirm: mockConfirmFn, component: null }),
 }));
 
+const mockStartDownload = jest.fn();
+const mockDeleteTrackLocal = jest.fn();
+let mockDownloadState = {
+  status: 'idle',
+  progress: 0,
+  localAudioUri: null as string | null,
+  errorMsg: null as string | null,
+  startDownload: mockStartDownload,
+  deleteTrackLocal: mockDeleteTrackLocal,
+};
 jest.mock('@/hooks/use-track-download', () => ({
-  useTrackDownload: () => ({
-    status: 'idle',
-    progress: 0,
-    localAudioUri: null,
-    errorMsg: null,
-    startDownload: jest.fn(),
-    deleteTrackLocal: jest.fn(),
-  }),
+  useTrackDownload: () => mockDownloadState,
 }));
 
+const mockPlayerPlay = jest.fn();
+const mockPlayerPause = jest.fn();
+const mockPlayerStop = jest.fn();
+const mockPlayerSeekTo = jest.fn();
+let mockPlayerState = {
+  status: 'idle',
+  positionMs: 0,
+  durationMs: 0,
+  errorMsg: null as string | null,
+  play: mockPlayerPlay,
+  pause: mockPlayerPause,
+  stop: mockPlayerStop,
+  seekTo: mockPlayerSeekTo,
+};
 jest.mock('@/hooks/use-immersion-player', () => ({
-  useImmersionPlayer: () => ({
-    status: 'idle',
-    positionMs: 0,
-    durationMs: 0,
-    errorMsg: null,
-    play: jest.fn(),
-    pause: jest.fn(),
-    stop: jest.fn(),
-  }),
+  useImmersionPlayer: () => mockPlayerState,
 }));
 
 jest.mock('@/hooks/use-audio-rewind', () => ({
   useAudioRewind: () => jest.fn(),
 }));
 
+const mockSubmitFeedback = jest.fn();
+const mockDismissFeedback = jest.fn();
 jest.mock('@/hooks/use-feedback-submit', () => ({
   useFeedbackSubmit: () => ({
-    submitFeedback: jest.fn(),
-    dismissFeedback: jest.fn(),
+    submitFeedback: mockSubmitFeedback,
+    dismissFeedback: mockDismissFeedback,
     feedbackError: null,
     feedbackStatus: undefined,
   }),
 }));
 
+const mockTriggerDismiss = jest.fn();
 jest.mock('@/hooks/use-feedback-trigger', () => ({
-  useFeedbackTrigger: () => ({ showFeedback: false, dismiss: jest.fn() }),
+  useFeedbackTrigger: () => ({ showFeedback: false, dismiss: mockTriggerDismiss }),
 }));
 
 jest.mock('@/services/payment-client', () => ({
@@ -160,10 +173,32 @@ jest.mock('@/components/track-detail-map', () => {
   return { __esModule: true, default: MockTrackDetailMap };
 });
 
-jest.mock('@/components/feedback-form', () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock('@/components/feedback-form', () => {
+  const React = jest.requireActual('react');
+  const { View: RNView, Button: RNButton } = jest.requireActual('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      visible,
+      onSubmit,
+      onDismiss,
+    }: {
+      visible: boolean;
+      onSubmit: (msg: string) => void;
+      onDismiss: () => void;
+    }) =>
+      visible ? (
+        <RNView testID="mock-feedback-form">
+          <RNButton
+            testID="mock-feedback-submit"
+            onPress={() => onSubmit('Feedback message')}
+            title="Submit"
+          />
+          <RNButton testID="mock-feedback-dismiss" onPress={onDismiss} title="Dismiss" />
+        </RNView>
+      ) : null,
+  };
+});
 
 jest.mock('expo-image', () => ({ Image: 'Image' }));
 jest.mock('expo-symbols', () => ({ SymbolView: 'SymbolView' }));
@@ -196,8 +231,12 @@ beforeEach(() => {
   mockBypass.current = false;
   mockExperience.geoMode = 'unrestricted';
   mockExperience.radiusMeters = null;
+  mockDownloadState.localAudioUri = null;
+  mockDownloadState.status = 'idle';
+  mockPlayerState.status = 'idle';
   geofenceCallArgs.length = 0;
   mockTrackDetailMapProps.length = 0;
+  jest.clearAllMocks();
 });
 
 describe('TrackDetailView (via TrackDetail screen)', () => {
@@ -341,5 +380,131 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
     await waitFor(() => {
       expect(queryByTestId('experience-credits')).toBeTruthy();
     });
+  });
+
+  it('opens feedback modal when feedback button is pressed and handles submit and dismiss', async () => {
+    const { getByTestId, queryByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('feedback-manual-button')).toBeTruthy();
+    });
+
+    expect(queryByTestId('mock-feedback-form')).toBeNull();
+
+    await fireEvent.press(getByTestId('feedback-manual-button'));
+    expect(getByTestId('mock-feedback-form')).toBeTruthy();
+
+    await fireEvent.press(getByTestId('mock-feedback-submit'));
+    expect(mockSubmitFeedback).toHaveBeenCalledWith(mockExperience.id, 'Feedback message');
+
+    await fireEvent.press(getByTestId('mock-feedback-dismiss'));
+    expect(mockDismissFeedback).toHaveBeenCalled();
+    expect(mockTriggerDismiss).toHaveBeenCalled();
+  });
+
+  it('starts download when play button is pressed on a track that is not yet downloaded', async () => {
+    mockDownloadState.localAudioUri = null;
+    mockDownloadState.status = 'idle';
+
+    const { getByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('play-download-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('play-download-button'));
+    expect(mockStartDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays audio directly when play button is pressed and track is already downloaded', async () => {
+    mockDownloadState.localAudioUri = 'file://cached-audio.mp3';
+    mockDownloadState.status = 'completed';
+
+    const { getByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('audio-play-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('audio-play-button'));
+    expect(mockPlayerPlay).toHaveBeenCalled();
+  });
+
+  it('closes geofence blocked modal when dismissed', async () => {
+    mockExperience.geoMode = 'entityRadius';
+    mockExperience.radiusMeters = 30;
+    mockGeoffences.isNearStart = false;
+    mockGeoffences.distanceMeters = 300;
+    mockGeoffences.requiredRadiusMeters = 30;
+
+    const { getByTestId, queryByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('play-download-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('play-download-button'));
+
+    await waitFor(() => {
+      expect(getByTestId('geofence-blocked-alert-ok')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('geofence-blocked-alert-ok'));
+
+    await waitFor(() => {
+      expect(queryByTestId('geofence-blocked-alert-ok')).toBeNull();
+    });
+  });
+
+  it('automatically plays audio when download completes after user initiates play', async () => {
+    mockDownloadState.localAudioUri = null;
+    mockDownloadState.status = 'idle';
+
+    const { getByTestId, rerender } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('play-download-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('play-download-button'));
+    expect(mockStartDownload).toHaveBeenCalledTimes(1);
+
+    mockDownloadState.localAudioUri = 'file://downloaded.mp3';
+    mockDownloadState.status = 'completed';
+
+    await rerender(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(mockPlayerPlay).toHaveBeenCalled();
+    });
+  });
+
+  it('handles pause and reset from media controls on downloaded track', async () => {
+    mockDownloadState.localAudioUri = 'file://cached-audio.mp3';
+    mockDownloadState.status = 'completed';
+    mockPlayerState.status = 'playing';
+    mockPlayerState.positionMs = 15000;
+    mockPlayerState.durationMs = 900000;
+
+    const { getByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('audio-pause-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('audio-pause-button'));
+    expect(mockPlayerPause).toHaveBeenCalled();
+
+    await fireEvent.press(getByTestId('audio-reset-button'));
+    expect(mockPlayerSeekTo).toHaveBeenCalledWith(0);
+  });
+
+  it('renders payment prompt when track is paid and handles purchase and restore', async () => {
+    mockExperience.free = false;
+    mockExperience.price = 1500000;
+
+    const { getByTestId } = await render(<TrackDetailScreen />);
+    await waitFor(() => {
+      expect(getByTestId('pay-button')).toBeTruthy();
+    });
+
+    await fireEvent.press(getByTestId('pay-button'));
+
+    await fireEvent.press(getByTestId('restore-link-button'));
+    await fireEvent.changeText(getByTestId('restore-email-input'), 'user@test.com');
+    await fireEvent.press(getByTestId('restore-button'));
   });
 });

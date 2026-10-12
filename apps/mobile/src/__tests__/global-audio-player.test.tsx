@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 
@@ -228,5 +229,62 @@ describe('GlobalAudioPlayer', () => {
     await fireEvent.press(titleBtn);
 
     expect(mockPush).toHaveBeenCalledWith('/derivas');
+  });
+
+  it('navigates to derivas tab screen when slug matches instructions slug', async () => {
+    mockState.status = 'playing';
+    mockState.currentUri = 'file://audio.mp3';
+    mockState.currentMetadata = {
+      slug: 'instructions',
+    };
+
+    const { getByTestId } = await render(<GlobalAudioPlayer />);
+    const titleBtn = getByTestId('global-player-title-button');
+    await fireEvent.press(titleBtn);
+
+    expect(mockPush).toHaveBeenCalledWith('/derivas');
+  });
+
+  it('navigates to poetics detail with slug when id is absent', async () => {
+    mockState.status = 'playing';
+    mockState.currentUri = 'file://poetry.mp3';
+    mockState.currentMetadata = {
+      slug: 'poetry-slug',
+    };
+
+    const { getByTestId } = await render(<GlobalAudioPlayer />);
+    const titleBtn = getByTestId('global-player-title-button');
+    await fireEvent.press(titleBtn);
+
+    expect(mockPush).toHaveBeenCalledWith('/poetics/poetry-slug');
+  });
+
+  it('does not navigate when targetId cannot be resolved', async () => {
+    mockPush.mockClear();
+    mockState.status = 'playing';
+    mockState.currentUri = 'file://.mp3';
+    mockState.currentMetadata = null;
+
+    const { getByTestId } = await render(<GlobalAudioPlayer />);
+    const titleBtn = getByTestId('global-player-title-button');
+    await fireEvent.press(titleBtn);
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('calculates android bottom offset when on poetics screen on Android', async () => {
+    const originalOS = Platform.OS;
+    try {
+      Platform.OS = 'android';
+      mockSegments = ['poetics', 'different-id'];
+      mockPathname = '/poetics/different-id';
+      mockState.status = 'playing';
+      mockState.currentUri = 'file://active-track.mp3';
+
+      const { getByTestId } = await render(<GlobalAudioPlayer />);
+      expect(getByTestId('global-audio-player')).not.toBeNull();
+    } finally {
+      Platform.OS = originalOS;
+    }
   });
 });

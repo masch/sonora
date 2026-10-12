@@ -194,6 +194,7 @@ export const es = {
       btnCancel: 'Cancelar',
       btnRewind: 'Retroceder 10s',
       btnReset: 'Reiniciar',
+      timeSeparator: ' / ',
     },
   },
   feedback: {

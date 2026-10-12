@@ -68,4 +68,19 @@ describe('Button', () => {
     expect(getByText('Contact')).toBeTruthy();
     expect(getByTestId('test-contact-button')).toBeTruthy();
   });
+
+  it('renders with warning variant', async () => {
+    const { getByText, getByTestId } = await render(
+      <Button
+        onPress={jest.fn()}
+        label="Retry"
+        variant="warning"
+        testID="test-warning-button"
+        accessibilityLabel="Retry"
+      />,
+    );
+
+    expect(getByText('Retry')).toBeTruthy();
+    expect(getByTestId('test-warning-button')).toBeTruthy();
+  });
 });
