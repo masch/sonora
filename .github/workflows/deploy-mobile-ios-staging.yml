@@ -1,0 +1,158 @@
+name: 2-STG Mobile iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target (simulator or device)'
+        required: true
+        type: choice
+        options:
+          - simulator
+          - device
+        default: 'simulator'
+  workflow_call:
+    inputs:
+      target:
+        description: 'Build target (simulator or device)'
+        required: false
+        type: string
+        default: 'simulator'
+      skip_tagging:
+        description: 'Skip tagging'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPO_PUBLIC_API_URL: https://sonora-api-staging.sonora-api.workers.dev
+
+concurrency:
+  group: deploy-ios-staging
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: make check
+
+  build-ios:
+    needs: check
+    runs-on: macos-latest
+    environment: staging
+    outputs:
+      artifact_path: ${{ steps.build-ios.outputs.artifact_path }}
+      artifact_name: ${{ steps.build-ios.outputs.artifact_name }}
+      tag_name: ${{ steps.tag-release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Tag deployment
+        id: tag-release
+        uses: ./.github/actions/tag-release
+        with:
+          environment: staging
+          skip_tagging: ${{ inputs.skip_tagging || 'false' }}
+
+      - name: Write GoogleService-Info.plist
+        env:
+          IOS_GOOGLE_SERVICES_BASE64: ${{ secrets.IOS_GOOGLE_SERVICES_BASE64 }}
+        run: |
+          if [ -n "$IOS_GOOGLE_SERVICES_BASE64" ]; then
+            echo "$IOS_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/GoogleService-Info.plist
+          else
+            echo "Notice: IOS_GOOGLE_SERVICES_BASE64 not set, writing stub GoogleService-Info.plist for build"
+            cat << 'EOF' > apps/mobile/GoogleService-Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CLIENT_ID</key>
+            <string>stub.apps.googleusercontent.com</string>
+            <key>REVERSED_CLIENT_ID</key>
+            <string>com.googleusercontent.apps.stub</string>
+            <key>API_KEY</key>
+            <string>stub-api-key</string>
+            <key>GCM_SENDER_ID</key>
+            <string>1234567890</string>
+            <key>PLIST_VERSION</key>
+            <string>1</string>
+            <key>BUNDLE_ID</key>
+            <string>org.masch.sonora.staging.app</string>
+            <key>PROJECT_ID</key>
+            <string>sonora-stub</string>
+            <key>STORAGE_BUCKET</key>
+            <string>sonora-stub.appspot.com</string>
+            <key>IS_ADS_ENABLED</key>
+            <false/>
+            <key>IS_ANALYTICS_ENABLED</key>
+            <false/>
+            <key>IS_APPINVITE_ENABLED</key>
+            <false/>
+            <key>IS_GCM_ENABLED</key>
+            <true/>
+            <key>IS_SIGNIN_ENABLED</key>
+            <false/>
+            <key>GOOGLE_APP_ID</key>
+            <string>1:1234567890:ios:abcdef123456</string>
+          </dict>
+          </plist>
+          EOF
+          fi
+
+      - name: Build iOS
+        id: build-ios
+        env:
+          APP_ENV: staging
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_INTERACTIVE: '1'
+          APP_VERSION_CODE: ${{ steps.tag-release.outputs.version-code }}
+          APP_VERSION_NAME: ${{ steps.tag-release.outputs.version-name }}
+          EXPO_NO_DOCTOR: '1'
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+          TARGET_MODE: ${{ inputs.target || github.event.inputs.target || 'simulator' }}
+        run: |
+          if [ "$TARGET_MODE" = "device" ]; then
+            make eas-build-ios-device-ci OUTPUT_IPA="sonora-${{ steps.tag-release.outputs.tag }}.ipa"
+            echo "artifact_path=apps/mobile/sonora-${{ steps.tag-release.outputs.tag }}.ipa" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=ios-device-ipa" >> "$GITHUB_OUTPUT"
+          else
+            make eas-build-ios-simulator-ci OUTPUT_APP="sonora-${{ steps.tag-release.outputs.tag }}-simulator.tar.gz"
+            echo "artifact_path=apps/mobile/sonora-${{ steps.tag-release.outputs.tag }}-simulator.tar.gz" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=ios-simulator-build" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload iOS Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build-ios.outputs.artifact_name }}
+          path: ${{ steps.build-ios.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Artifact to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.tag-release.outputs.tag }}
+          ARTIFACT_PATH: ${{ steps.build-ios.outputs.artifact_path }}
+        run: |
+          gh release upload "$TAG_NAME" "$ARTIFACT_PATH" --clobber

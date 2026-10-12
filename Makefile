@@ -114,9 +114,24 @@ rebuild-android-production: ## Rebuild native Android project for production env
 rebuild-android-staging: ## Rebuild native Android project for staging environment
 	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo run:android
 
+.PHONY: rebuild-ios-device-staging
+rebuild-ios-device-staging: ## Rebuild and run native iOS app on connected physical device (staging)
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo run:ios --device
+
+.PHONY: rebuild-ios-device-production
+rebuild-ios-device-production: ## Rebuild and run native iOS app on connected physical device (production)
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo run:ios --device
+
+.PHONY: rebuild-ios-staging
+rebuild-ios-staging: ## Rebuild native iOS app for simulator (staging)
+	cd apps/mobile && APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo run:ios
+
+.PHONY: rebuild-ios-production
+rebuild-ios-production: ## Rebuild native iOS app for simulator (production)
+	cd apps/mobile && APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo run:ios
+
 .PHONY: rebuild-ios
-rebuild-ios: ## Rebuild native iOS project (after adding native modules)
-	bunx expo run:ios
+rebuild-ios: rebuild-ios-staging ## Rebuild native iOS app (default: staging simulator)
 
 .PHONY: prebuild
 prebuild: ## Regenerate native project files without compiling
@@ -1064,6 +1079,14 @@ eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (k
 .PHONY: eas-build-android-aab-ci
 eas-build-android-aab-ci: eas-whoami ## Build signed AAB (kept for backward compat, use eas-build-android-release-ci for production)
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile aab --local $(if $(OUTPUT_AAB),--output="$(OUTPUT_AAB)")
+
+.PHONY: eas-build-ios-simulator-ci
+eas-build-ios-simulator-ci: eas-whoami ## Build iOS app for simulator in CI
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile simulator --local $(if $(OUTPUT_APP),--output="$(OUTPUT_APP)")
+
+.PHONY: eas-build-ios-device-ci
+eas-build-ios-device-ci: eas-whoami ## Build signed iOS IPA for physical device in CI
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile preview --local $(if $(OUTPUT_IPA),--output="$(OUTPUT_IPA)")
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
