@@ -1,12 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwTextInput, TwView } from '@/tw';
 import { EmailQuerySchema, formatPrice } from '@sonora/shared';
 import { useState } from 'react';
-import { Platform } from 'react-native';
 
 interface RestoreResult {
   success: boolean;
@@ -31,7 +29,6 @@ export function PaymentPrompt({
   error,
 }: PaymentPromptProps) {
   const { t } = useAppTranslation();
-  const colors = useThemeColors();
   const [showRestore, setShowRestore] = useState(false);
   const [email, setEmail] = useState('');
   const [restoring, setRestoring] = useState(false);
@@ -142,7 +139,6 @@ export function PaymentPrompt({
             if (restoreError) setRestoreError(null);
           }}
           placeholder={t('payments.restore.emailPlaceholder')}
-          placeholderTextColor={colors.textSecondary}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -151,8 +147,7 @@ export function PaymentPrompt({
             restoreError
               ? 'border-red-500 dark:border-red-500'
               : 'border-zinc-300 dark:border-zinc-600'
-          } ${Platform.OS === 'web' ? 'outline-none' : ''}`}
-          style={{ color: colors.text }}
+          }`}
           accessibilityLabel={t('payments.restore.emailPlaceholder')}
           testID="restore-email-input"
           onSubmitEditing={handleRestore}

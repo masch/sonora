@@ -105,6 +105,20 @@ describe('TwTextInput', () => {
     await fireEvent.changeText(getByDisplayValue(''), 'New text');
     expect(onChangeText).toHaveBeenCalledWith('New text');
   });
+
+  it('uses default placeholderTextColor from theme and supports custom override', async () => {
+    const { getByPlaceholderText: getByP1 } = await render(
+      <TwTextInput placeholder="Default color" />,
+    );
+    const input1 = getByP1('Default color');
+    expect(input1.props.placeholderTextColor).toBeDefined();
+
+    const { getByPlaceholderText: getByP2 } = await render(
+      <TwTextInput placeholder="Custom color" placeholderTextColor="#ff0000" />,
+    );
+    const input2 = getByP2('Custom color');
+    expect(input2.props.placeholderTextColor).toBe('#ff0000');
+  });
 });
 
 describe('TwImage', () => {

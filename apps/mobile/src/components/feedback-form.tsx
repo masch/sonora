@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
 import LoadingView from '@/components/loading-view';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useConfirm } from '@/hooks/use-confirm';
 import { TwText, TwTextInput, TwView } from '@/tw';
 import type { FeedbackStatus } from '@/types/feedback';
@@ -30,7 +28,6 @@ export default function FeedbackForm({
   errorMsg,
 }: FeedbackFormProps) {
   const { t } = useAppTranslation();
-  const colors = useThemeColors();
   const [message, setMessage] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [prevStatus, setPrevStatus] = useState(status);
@@ -122,11 +119,8 @@ export default function FeedbackForm({
         <>
           {/* Text input (disabled while sending) */}
           <TwTextInput
-            className={`bg-backgroundElement text-text rounded-xl p-4 min-h-[100px] ${
-              Platform.OS === 'web' ? 'outline-none' : ''
-            }`}
+            className="bg-backgroundElement text-text rounded-xl p-4 min-h-[100px]"
             placeholder={t('feedback.form.placeholder')}
-            placeholderTextColor={colors.textSecondary}
             value={message}
             onChangeText={setMessage}
             multiline

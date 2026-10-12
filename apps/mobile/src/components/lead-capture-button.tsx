@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
@@ -115,11 +114,8 @@ function LeadCaptureModalInternal({
       {!isSuccess && (
         <>
           <TwTextInput
-            className={`bg-backgroundElement text-text rounded-xl p-4 ${
-              Platform.OS === 'web' ? 'outline-none' : ''
-            }`}
+            className="bg-backgroundElement text-text rounded-xl p-4"
             placeholder={t('leadCapture.emailPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
