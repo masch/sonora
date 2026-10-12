@@ -13,6 +13,19 @@ on:
         required: true
         type: string
         default: 'dev-team'
+      build_ios:
+        description: 'Build iOS app'
+        required: false
+        type: boolean
+        default: false
+      ios_target:
+        description: 'iOS build target (simulator or device)'
+        required: false
+        type: choice
+        options:
+          - simulator
+          - device
+        default: 'simulator'
 
 permissions:
   contents: write
@@ -65,5 +78,20 @@ jobs:
     uses: ./.github/workflows/deploy-mobile-android-staging.yml
     with:
       firebase_groups: ${{ inputs.firebase_groups || github.event.inputs.firebase_groups || 'dev-team' }}
+      skip_tagging: true
+    secrets: inherit
+
+  deploy-ios:
+    name: Deploy iOS Staging
+    needs: [deploy-api, tag-release]
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.build_ios == 'true' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/deploy-mobile-ios-staging.yml
+    with:
+      target: ${{ github.event.inputs.ios_target || 'simulator' }}
       skip_tagging: true
     secrets: inherit
