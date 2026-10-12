@@ -1,9 +1,15 @@
 import type React from 'react';
-import { type Pressable as RNPressable, Text as RNText } from 'react-native';
+import {
+  type Pressable as RNPressable,
+  Text as RNText,
+  type TextInput as RNTextInput,
+  Platform,
+} from 'react-native';
 
-import { TwTextBase, TwPressable } from './factory';
+import { TwTextBase, TwPressable, TwTextInputBase } from './factory';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
-export { TwView, TwScrollView, TwPressable, TwTextInput } from './factory';
+export { TwView, TwScrollView, TwPressable } from './factory';
 
 /**
  * Renders text with the default sans-serif font styling.
@@ -30,4 +36,22 @@ export function TwButton(
   },
 ) {
   return <TwPressable accessibilityRole="button" {...props} />;
+}
+
+/**
+ * Renders a text input with theme-aware default placeholderTextColor, font-sans, and web outline reset.
+ *
+ * @param props - TextInput properties with an optional `className` and `placeholderTextColor`.
+ */
+export function TwTextInput(
+  props: React.ComponentProps<typeof RNTextInput> & { className?: string },
+) {
+  const colors = useThemeColors();
+  const placeholderTextColor = props.placeholderTextColor ?? colors.textSecondary;
+  const webOutline = Platform.OS === 'web' ? 'outline-none' : '';
+  const className = `font-sans ${webOutline} ${props.className ?? ''}`.trim();
+
+  return (
+    <TwTextInputBase {...props} className={className} placeholderTextColor={placeholderTextColor} />
+  );
 }

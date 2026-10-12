@@ -6,13 +6,26 @@ import { useConfirm } from '../use-confirm';
 
 // Mock BottomModal so children render when visible
 jest.mock('@/components/ui/bottom-modal', () => {
+  const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
   const MockBottomModal = ({
     visible,
+    title,
     children,
+    footer,
   }: {
     children: React.ReactNode;
     visible: boolean;
-  }) => (visible ? <>{children}</> : null);
+    title?: string;
+    footer?: React.ReactNode;
+  }) =>
+    visible ? (
+      <>
+        {title ? React.createElement(Text, null, title) : null}
+        {children}
+        {footer}
+      </>
+    ) : null;
   return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
 });
 

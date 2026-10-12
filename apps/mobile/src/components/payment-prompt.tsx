@@ -1,12 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwPressable, TwTextInput, TwView } from '@/tw';
+import { TwTextInput, TwView } from '@/tw';
 import { EmailQuerySchema, formatPrice } from '@sonora/shared';
 import { useState } from 'react';
-import { ActivityIndicator, Platform } from 'react-native';
 
 interface RestoreResult {
   success: boolean;
@@ -31,7 +29,6 @@ export function PaymentPrompt({
   error,
 }: PaymentPromptProps) {
   const { t } = useAppTranslation();
-  const colors = useThemeColors();
   const [showRestore, setShowRestore] = useState(false);
   const [email, setEmail] = useState('');
   const [restoring, setRestoring] = useState(false);
@@ -116,73 +113,50 @@ export function PaymentPrompt({
           setShowRestore(false);
           setRestoreError(null);
         }}
-      >
-        <TwView className="p-6 gap-5">
-          <ThemedText className="text-xl font-black text-center text-zinc-800 dark:text-zinc-100">
-            {t('payments.restore.title')}
-          </ThemedText>
-
-          <ThemedText className="text-sm font-semibold text-center text-zinc-600 dark:text-zinc-400">
-            {t('payments.restore.description')}
-          </ThemedText>
-
-          <TwTextInput
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (restoreError) setRestoreError(null);
-            }}
-            placeholder={t('payments.restore.emailPlaceholder')}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            className={`border rounded-xl px-4 py-3 text-base font-semibold text-text bg-white dark:bg-zinc-800 ${
-              restoreError
-                ? 'border-red-500 dark:border-red-500'
-                : 'border-zinc-300 dark:border-zinc-600'
-            } ${Platform.OS === 'web' ? 'outline-none' : ''}`}
-            style={{ color: colors.text }}
-            placeholderTextColor={colors.textSecondary}
-            accessibilityLabel={t('payments.restore.emailPlaceholder')}
-            testID="restore-email-input"
-          />
-
-          {restoreError && (
-            <ThemedText className="text-xs font-bold text-center text-red-500">
-              {restoreError}
-            </ThemedText>
-          )}
-
-          <TwPressable
-            accessibilityLabel={t('payments.restore.button')}
-            testID="restore-button"
-            className="bg-emerald-500 rounded-xl py-4 items-center justify-center active:opacity-70"
-            onPress={handleRestore}
+        title={t('payments.restore.title')}
+        closeButtonTestID="restore-cancel-button"
+        footer={
+          <Button
+            label={t('payments.restore.button')}
+            variant="primary"
+            size="lg"
+            loading={restoring}
             disabled={restoring}
-          >
-            {restoring ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText className="text-white font-extrabold text-base">
-                {t('payments.restore.button')}
-              </ThemedText>
-            )}
-          </TwPressable>
+            testID="restore-button"
+            accessibilityLabel={t('payments.restore.button')}
+            onPress={handleRestore}
+          />
+        }
+      >
+        <ThemedText className="text-sm text-textSecondary">
+          {t('payments.restore.description')}
+        </ThemedText>
 
-          <TwPressable
-            accessibilityLabel={t('common.dismiss')}
-            testID="restore-cancel-button"
-            className="items-center py-2 active:opacity-70"
-            onPress={() => {
-              setShowRestore(false);
-              setRestoreError(null);
-            }}
-          >
-            <ThemedText themeColor="textSecondary" className="text-sm font-bold">
-              {t('common.dismiss')}
-            </ThemedText>
-          </TwPressable>
-        </TwView>
+        <TwTextInput
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (restoreError) setRestoreError(null);
+          }}
+          placeholder={t('payments.restore.emailPlaceholder')}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!restoring}
+          className={`border rounded-xl px-4 py-3 text-base font-semibold text-text bg-white dark:bg-zinc-800 ${
+            restoreError
+              ? 'border-red-500 dark:border-red-500'
+              : 'border-zinc-300 dark:border-zinc-600'
+          }`}
+          accessibilityLabel={t('payments.restore.emailPlaceholder')}
+          testID="restore-email-input"
+          onSubmitEditing={handleRestore}
+          returnKeyType="send"
+        />
+
+        {restoreError && (
+          <ThemedText className="text-xs font-bold text-red-500">{restoreError}</ThemedText>
+        )}
       </BottomModal>
     </>
   );

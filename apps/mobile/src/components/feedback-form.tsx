@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
+import { Button } from '@/components/ui/button';
+import LoadingView from '@/components/loading-view';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useConfirm } from '@/hooks/use-confirm';
-import { TwPressable, TwText, TwTextInput, TwView } from '@/tw';
+import { TwText, TwTextInput, TwView } from '@/tw';
 import type { FeedbackStatus } from '@/types/feedback';
 
 interface FeedbackFormProps {
@@ -29,6 +30,15 @@ export default function FeedbackForm({
   const { t } = useAppTranslation();
   const [message, setMessage] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [prevStatus, setPrevStatus] = useState(status);
+
+  if (status !== prevStatus) {
+    setPrevStatus(status);
+    if (status === 'sent' || status === 'queued') {
+      setMessage('');
+      setValidationError(null);
+    }
+  }
 
   const handleSubmit = () => {
     const trimmed = message.trim();
@@ -37,7 +47,6 @@ export default function FeedbackForm({
       return;
     }
     setValidationError(null);
-    setMessage('');
     onSubmit(trimmed);
   };
 
@@ -76,21 +85,20 @@ export default function FeedbackForm({
       visible={visible}
       onDismiss={handleDismiss}
       autoDismissTrigger={isSent || isQueued}
+      title={isSent || isQueued ? undefined : t('feedback.form.title')}
+      closeButtonTestID="feedback-dismiss-button"
+      footer={
+        showInput && !isSending && !isError ? (
+          <Button
+            label={t('feedback.form.submit')}
+            variant="primary"
+            testID="feedback-submit-button"
+            accessibilityLabel={t('feedback.form.submit')}
+            onPress={handleSubmit}
+          />
+        ) : undefined
+      }
     >
-      {/* Header with dismiss */}
-      <TwView className="flex-row justify-between items-center">
-        <TwText className="text-lg font-bold text-text">{t('feedback.form.title')}</TwText>
-        <TwPressable
-          accessibilityLabel={t('common.dismiss')}
-          testID="feedback-dismiss-button"
-          onPress={handleDismiss}
-          className="p-2"
-        >
-          {/* eslint-disable-next-line i18next/no-literal-string */}
-          <TwText className="text-textSecondary text-lg">✕</TwText>
-        </TwPressable>
-      </TwView>
-
       {isSent && (
         <TwView className="py-8 items-center gap-2" testID="feedback-sent-state">
           {/* eslint-disable-next-line i18next/no-literal-string */}
@@ -111,20 +119,17 @@ export default function FeedbackForm({
         <>
           {/* Text input (disabled while sending) */}
           <TwTextInput
-            className={`bg-backgroundElement text-text rounded-xl p-4 min-h-[100px] ${
-              Platform.OS === 'web' ? 'outline-none' : ''
-            }`}
+            className="bg-backgroundElement text-text rounded-xl p-4 min-h-[100px]"
             placeholder={t('feedback.form.placeholder')}
-            placeholderTextColor="#a1a1aa"
             value={message}
             onChangeText={setMessage}
             multiline
             editable={!isSending}
             autoFocus
             testID="feedback-input"
-            accessibilityLabel={t('feedback.form.placeholder')}
+            accessibilityLabel={t('feedback.form.title')}
             onSubmitEditing={handleSubmit}
-            blurOnSubmit={true}
+            blurOnSubmit
             returnKeyType="send"
           />
 
@@ -137,8 +142,8 @@ export default function FeedbackForm({
 
           {/* Sending indicator */}
           {isSending && (
-            <TwView className="py-4 items-center" testID="feedback-sending-state">
-              <TwText className="text-emerald-400 font-bold">{t('feedback.form.sending')}</TwText>
+            <TwView className="py-4 items-center justify-center" testID="feedback-sending-state">
+              <LoadingView message={t('feedback.form.sending')} />
             </TwView>
           )}
 
@@ -148,28 +153,14 @@ export default function FeedbackForm({
               <TwText className="text-rose-400 text-sm">
                 {errorMsg || t('feedback.form.error')}
               </TwText>
-              <TwPressable
-                accessibilityLabel={t('feedback.form.retry')}
+              <Button
+                label={t('feedback.form.retry')}
+                variant="primary"
+                className="bg-amber-600 active:bg-amber-700"
                 testID="feedback-retry-button"
-                className="bg-amber-600 rounded-xl py-3 items-center"
+                accessibilityLabel={t('feedback.form.retry')}
                 onPress={handleSubmit}
-              >
-                <TwText className="text-white font-bold">{t('feedback.form.retry')}</TwText>
-              </TwPressable>
-            </TwView>
-          )}
-
-          {/* Submit button (hidden while sending, shown for idle/error) */}
-          {!isSending && !isError && (
-            <TwView className="bg-emerald-500 rounded-xl overflow-hidden">
-              <TwPressable
-                accessibilityLabel={t('feedback.form.submit')}
-                testID="feedback-submit-button"
-                className="py-3 items-center active:bg-emerald-600"
-                onPress={handleSubmit}
-              >
-                <TwText className="text-white font-bold">{t('feedback.form.submit')}</TwText>
-              </TwPressable>
+              />
             </TwView>
           )}
         </>

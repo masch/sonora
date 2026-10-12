@@ -7,13 +7,33 @@ import { LeadClient } from '@/services/lead-client';
 
 // Mock BottomModal — RN <Modal> crashes in test renderer (React 19)
 jest.mock('@/components/ui/bottom-modal', () => {
+  const React = jest.requireActual('react');
+  const { Pressable, Text } = jest.requireActual('react-native');
   const MockBottomModal = ({
     visible,
+    title,
+    closeButtonTestID,
+    onDismiss,
+    footer,
     children,
   }: {
     children: React.ReactNode;
     visible: boolean;
-  }) => (visible ? <>{children}</> : null);
+    title?: string;
+    closeButtonTestID?: string;
+    onDismiss?: () => void;
+    footer?: React.ReactNode;
+  }) =>
+    visible ? (
+      <>
+        {title ? React.createElement(Text, null, title) : null}
+        {closeButtonTestID
+          ? React.createElement(Pressable, { testID: closeButtonTestID, onPress: onDismiss })
+          : null}
+        {children}
+        {footer}
+      </>
+    ) : null;
   return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
 });
 

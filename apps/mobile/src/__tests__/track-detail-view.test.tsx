@@ -72,13 +72,26 @@ jest.mock('@/store/remote-config-store', () => ({
 
 // Mock BottomModal — RN <Modal> crashes in test renderer (React 19)
 jest.mock('@/components/ui/bottom-modal', () => {
+  const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
   const MockBottomModal = ({
     visible,
+    title,
     children,
+    footer,
   }: {
     children: React.ReactNode;
     visible: boolean;
-  }) => (visible ? <>{children}</> : null);
+    title?: string;
+    footer?: React.ReactNode;
+  }) =>
+    visible ? (
+      <>
+        {title ? React.createElement(Text, null, title) : null}
+        {children}
+        {footer}
+      </>
+    ) : null;
   return { __esModule: true, default: MockBottomModal, BottomModal: MockBottomModal };
 });
 
