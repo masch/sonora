@@ -13,7 +13,7 @@
     "esbuild": "0.28.2",
     "@opentelemetry/core": "2.9.0",
     "lodash": "4.18.1",
-    "sharp": "0.35.3",
+    "sharp": "0.35.5",
     "undici": "7.29.0"
   },
   "resolutions": {
@@ -23,7 +23,7 @@
     "esbuild": "0.28.2",
     "@opentelemetry/core": "2.9.0",
     "lodash": "4.18.1",
-    "sharp": "0.35.3",
+    "sharp": "0.35.5",
     "undici": "7.29.0"
   },
   "devDependencies": {
