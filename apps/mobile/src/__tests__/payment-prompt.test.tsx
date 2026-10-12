@@ -29,19 +29,34 @@ jest.mock('@/tw', () => {
 // Mock BottomModal as simple View that renders content when visible
 jest.mock('@/components/ui/bottom-modal', () => {
   const React = jest.requireActual('react');
-  const { View } = jest.requireActual('react-native');
+  const { View, Pressable, Text } = jest.requireActual('react-native');
   return {
     BottomModal: ({
       visible,
       onDismiss,
+      title,
+      closeButtonTestID,
       children,
+      footer,
     }: {
       visible: boolean;
       onDismiss?: () => void;
+      title?: string;
+      closeButtonTestID?: string;
       children: React.ReactNode;
+      footer?: React.ReactNode;
     }) => {
       if (!visible) return null;
-      return React.createElement(View, { testID: 'restore-modal', onDismiss }, children);
+      return React.createElement(
+        View,
+        { testID: 'restore-modal', onDismiss },
+        title ? React.createElement(Text, null, title) : null,
+        closeButtonTestID
+          ? React.createElement(Pressable, { testID: closeButtonTestID, onPress: onDismiss })
+          : null,
+        children,
+        footer,
+      );
     },
   };
 });

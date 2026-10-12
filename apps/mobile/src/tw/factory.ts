@@ -52,7 +52,7 @@ export const TwPressable = cssComponent<
   }
 >(RNPressable, { className: 'style' }, 'TwPressable');
 
-export const TwTextInput = cssComponent<React.ComponentProps<typeof RNTextInput>>(
+export const TwTextInputBase = cssComponent<React.ComponentProps<typeof RNTextInput>>(
   RNTextInput,
   { className: 'style' },
   'TwTextInput',

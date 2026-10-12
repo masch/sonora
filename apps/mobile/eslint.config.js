@@ -55,6 +55,41 @@ module.exports = defineConfig([
           // inline eslint-disable comments in specific source lines.
         },
       ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Modal'],
+              message:
+                'Use BottomModal (for sheet modals) or ModalPrimitive (for fullscreen/custom dialogs) instead of raw React Native Modal.',
+            },
+            {
+              name: 'react-native',
+              importNames: [
+                'Button',
+                'TouchableOpacity',
+                'TouchableHighlight',
+                'TouchableWithoutFeedback',
+              ],
+              message:
+                'Use <Button> from "@/components/ui/button" instead of React Native button/touchable primitives.',
+            },
+            {
+              name: '@/tw',
+              importNames: ['TwButton'],
+              message: 'Use <Button> from "@/components/ui/button" instead of TwButton.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['**/src/components/ui/modal-primitive.tsx'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
   {
@@ -62,6 +97,7 @@ module.exports = defineConfig([
     rules: {
       'i18next/no-literal-string': 'off',
       'import/first': 'off',
+      'no-restricted-imports': 'off',
     },
   },
   {

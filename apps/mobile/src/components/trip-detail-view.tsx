@@ -11,6 +11,7 @@ import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { ExperienceCredits } from '@/components/experience-credits';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
@@ -30,7 +31,7 @@ import type { TranslationKeys } from '@/i18n/types';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
-import { TwPressable, TwView } from '@/tw';
+import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { formatDistance } from '@/utils/format-distance';
 import TrackDetailMap from './track-detail-map';
@@ -86,9 +87,11 @@ export default function TripDetailView({
     userInitiatedPlayRef.current = true;
     download.startDownload();
     // Fire-and-forget access log
-    getUserEmail().then((email) => {
-      PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
-    });
+    void getUserEmail()
+      .then((email) => {
+        PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
+      })
+      .catch(() => {});
   };
 
   const mappedTrackForFeedback = {
@@ -234,20 +237,19 @@ export default function TripDetailView({
               showLabels={showLabels}
               waypoints={track.waypoints}
             />
-            <TwPressable
+            <IconButton
               onPress={() => setShowLabels(!showLabels)}
-              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 p-2 rounded-lg shadow-md z-20 active:opacity-80"
+              variant="outline"
+              size="sm"
+              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
               accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
               testID="toggle-map-labels"
-            >
-              <Icon
-                ios={showLabels ? 'tag.slash.fill' : 'tag.fill'}
-                android={showLabels ? 'label_off' : 'label'}
-                web={showLabels ? 'label_off' : 'label'}
-                size={16}
-                tintColor={showLabels ? colors.text : colors.textSecondary}
-              />
-            </TwPressable>
+              icon={{
+                ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+                android: showLabels ? 'label_off' : 'label',
+                web: showLabels ? 'label_off' : 'label',
+              }}
+            />
           </TwView>
 
           {/* GPS precision */}
@@ -340,32 +342,27 @@ export default function TripDetailView({
       <BottomModal
         visible={showGeofenceBlockedAlert}
         onDismiss={() => setShowGeofenceBlockedAlert(false)}
-      >
-        <TwView className="px-6 pb-2">
-          <ThemedText type="subtitle" className="mb-2">
-            {t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
-          </ThemedText>
-          <ThemedText className="mb-6">
-            {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
-              radius: formatDistance(geofence.requiredRadiusMeters, t),
-              distance: formatDistance(
-                geofence.distanceMeters,
-                t,
-                t('experiences.geofenceBlocked.notAvailable'),
-              ),
-            })}
-          </ThemedText>
-          <TwPressable
+        title={t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
+        footer={
+          <Button
+            label={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
+            variant="primary"
             testID="geofence-blocked-alert-ok"
             accessibilityLabel={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            className="bg-blue-500 rounded-xl py-3 items-center"
             onPress={() => setShowGeofenceBlockedAlert(false)}
-          >
-            <ThemedText className="text-white font-semibold">
-              {t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            </ThemedText>
-          </TwPressable>
-        </TwView>
+          />
+        }
+      >
+        <ThemedText className="text-sm text-textSecondary">
+          {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
+            radius: formatDistance(geofence.requiredRadiusMeters, t),
+            distance: formatDistance(
+              geofence.distanceMeters,
+              t,
+              t('experiences.geofenceBlocked.notAvailable'),
+            ),
+          })}
+        </ThemedText>
       </BottomModal>
     </TwView>
   );

@@ -1,6 +1,7 @@
+import { Keyboard, Platform } from 'react-native';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { TwText } from '@/tw';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 describe('BottomModal', () => {
   it('renders children when visible is true', async () => {
@@ -68,7 +69,7 @@ describe('BottomModal', () => {
     jest.useRealTimers();
   });
 
-  it('renders with correct KeyboardAvoidingView behavior', async () => {
+  it('renders with correct KeyboardAvoidingView and card padding', async () => {
     const { getByTestId } = await render(
       <BottomModal visible={true} onDismiss={jest.fn()}>
         <TwText>Modal Content</TwText>
@@ -76,5 +77,101 @@ describe('BottomModal', () => {
     );
 
     expect(getByTestId('bottom-modal-keyboard-view')).toBeTruthy();
+    expect(getByTestId('bottom-modal-card')).toBeTruthy();
+    expect(getByTestId('bottom-modal-card').props.style).toEqual(
+      expect.objectContaining({ paddingBottom: 24 }),
+    );
+  });
+
+  it('applies ModalWebPadding on web platform', async () => {
+    const selectSpy = jest
+      .spyOn(Platform, 'select')
+      .mockImplementation((specifics: { web?: unknown }) => specifics.web);
+    try {
+      const { getByTestId } = await render(
+        <BottomModal visible={true} onDismiss={jest.fn()}>
+          <TwText>Modal Content</TwText>
+        </BottomModal>,
+      );
+
+      expect(getByTestId('bottom-modal-card').props.style).toEqual(
+        expect.objectContaining({ paddingBottom: 16 }),
+      );
+    } finally {
+      selectSpy.mockRestore();
+    }
+  });
+
+  it('registers keyboard listeners and updates padding when keyboard shows and hides', async () => {
+    let showCallback: ((event: { endCoordinates: { height: number } }) => void) | undefined;
+    let hideCallback: (() => void) | undefined;
+
+    const addListenerSpy = jest.spyOn(Keyboard, 'addListener').mockImplementation(((
+      event: string,
+      callback: unknown,
+    ) => {
+      if (event === 'keyboardWillShow' || event === 'keyboardDidShow') {
+        showCallback = callback as (event: { endCoordinates: { height: number } }) => void;
+      }
+      if (event === 'keyboardWillHide' || event === 'keyboardDidHide') {
+        hideCallback = callback as () => void;
+      }
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+
+    const { getByTestId, unmount } = await render(
+      <BottomModal visible={true} onDismiss={jest.fn()}>
+        <TwText>Modal Content</TwText>
+      </BottomModal>,
+    );
+
+    expect(showCallback).toBeDefined();
+    expect(hideCallback).toBeDefined();
+
+    await act(async () => {
+      showCallback?.({ endCoordinates: { height: 280 } });
+    });
+
+    expect(getByTestId('bottom-modal-card').props.style).toEqual(
+      expect.objectContaining({ paddingBottom: 24 }),
+    );
+
+    await act(async () => {
+      hideCallback?.();
+    });
+
+    expect(getByTestId('bottom-modal-card').props.style).toEqual(
+      expect.objectContaining({ paddingBottom: 24 }),
+    );
+
+    unmount();
+    addListenerSpy.mockRestore();
+  });
+
+  it('renders title and dismiss button when title is provided', async () => {
+    const onDismiss = jest.fn();
+    const { getByText, getByTestId } = await render(
+      <BottomModal visible={true} onDismiss={onDismiss} title="Test Modal Title">
+        <TwText>Modal Body</TwText>
+      </BottomModal>,
+    );
+
+    expect(getByText('Test Modal Title')).toBeTruthy();
+    const closeBtn = getByTestId('bottom-modal-dismiss-button');
+    expect(closeBtn).toBeTruthy();
+
+    await fireEvent.press(closeBtn);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders custom footer slot when provided', async () => {
+    const { getByText } = await render(
+      <BottomModal visible={true} onDismiss={jest.fn()} footer={<TwText>Action Footer</TwText>}>
+        <TwText>Modal Body</TwText>
+      </BottomModal>,
+    );
+
+    expect(getByText('Modal Body')).toBeTruthy();
+    expect(getByText('Action Footer')).toBeTruthy();
   });
 });
