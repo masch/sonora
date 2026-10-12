@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useRef } from 'react';
-import { KeyboardAvoidingView, Platform } from 'react-native';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -43,6 +43,7 @@ export function BottomModal({
   const insets = useSafeAreaInsets();
   const { t } = useAppTranslation();
   const onDismissRef = useRef(onDismiss);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     onDismissRef.current = onDismiss;
@@ -57,10 +58,32 @@ export function BottomModal({
     }
   }, [visible, autoDismissTrigger, autoDismissDelay]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const isKeyboardVisible = visible && keyboardHeight > 0;
+  const effectiveKeyboardHeight = visible ? keyboardHeight : 0;
+
   const bottomPadding = Platform.select({
     web: ModalWebPadding,
-    android: ModalBasePadding,
-    default: ModalBasePadding + insets.bottom,
+    default: isKeyboardVisible ? ModalBasePadding : ModalBasePadding + insets.bottom,
   });
 
   const hasHeader = Boolean(title) || showCloseButton === true;
@@ -78,9 +101,11 @@ export function BottomModal({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           testID="bottom-modal-keyboard-view"
+          style={Platform.OS === 'android' ? { paddingBottom: effectiveKeyboardHeight } : undefined}
         >
           <TwView testID="bottom-modal-content-container">
             <TwView
+              testID="bottom-modal-card"
               className="bg-background rounded-t-3xl pt-6 px-6 gap-4"
               style={{
                 paddingBottom: bottomPadding,
