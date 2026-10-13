@@ -23,6 +23,50 @@ interface ScrollScreenWrapperProps extends ScreenWrapperProps {
   fullWidth?: boolean;
 }
 
+function getGlobalPlayerPadding(status: string, currentUri: string | null): number {
+  const isPlaying = status === 'playing';
+  const isPaused = status === 'paused';
+  if ((isPlaying || isPaused) && currentUri !== null) {
+    return Platform.OS === 'android' ? 76 : 64;
+  }
+  return 0;
+}
+
+function getScrollContentWidthClass(fullWidth: boolean): string {
+  if (fullWidth || Platform.OS !== 'web') {
+    return 'w-full grow';
+  }
+  return 'w-full max-w-[800px] self-center grow';
+}
+
+function getScrollWrapperStyles(
+  className?: string,
+  contentContainerClassName?: string,
+  backgroundImage?: ImageSourcePropType,
+) {
+  const finalBgClass = backgroundImage ? 'bg-transparent' : 'bg-background';
+  const finalClassName = `flex-1 ${finalBgClass}${className ? ` ${className}` : ''}`;
+  const finalContentClassName = backgroundImage
+    ? `bg-transparent${contentContainerClassName ? ` ${contentContainerClassName}` : ''}`
+    : contentContainerClassName;
+  return { finalClassName, finalContentClassName };
+}
+
+function useScrollInsets(withTabBar: boolean, disableBottomPadding: boolean) {
+  const status = useAudioPlayerStore((s) => s.status);
+  const currentUri = useAudioPlayerStore((s) => s.currentUri);
+
+  const extraPadding = getGlobalPlayerPadding(status, currentUri);
+  const totalInset = TAB_BAR_INSET + extraPadding;
+  const shouldApplyPadding = withTabBar && !disableBottomPadding;
+
+  const contentInset =
+    shouldApplyPadding && Platform.OS === 'ios' ? { bottom: totalInset } : undefined;
+  const paddingStyle = shouldApplyPadding ? { paddingBottom: totalInset } : undefined;
+
+  return { contentInset, paddingStyle };
+}
+
 /**
  * Scrollable screen wrapper.
  *
@@ -40,25 +84,14 @@ export function ScrollScreenWrapper({
   backgroundImage,
   fullWidth = false,
 }: ScrollScreenWrapperProps) {
-  const status = useAudioPlayerStore((s) => s.status);
-  const currentUri = useAudioPlayerStore((s) => s.currentUri);
-
-  const isPlaying = status === 'playing';
-  const isPaused = status === 'paused';
-  const playerVisible = (isPlaying || isPaused) && currentUri !== null;
-
-  // Extra padding to avoid overlapping the global audio player
-  const extraPadding = playerVisible ? (Platform.OS === 'android' ? 76 : 64) : 0;
-  const totalInset = TAB_BAR_INSET + extraPadding;
-
+  const { contentInset, paddingStyle } = useScrollInsets(withTabBar, disableBottomPadding);
   const edges: Edge[] = withTabBar ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
-
-  // If we have a background image, default wrapper and content background to transparent
-  const finalBgClass = backgroundImage ? 'bg-transparent' : 'bg-background';
-  const finalClassName = `flex-1 ${finalBgClass}${className ? ` ${className}` : ''}`;
-  const finalContentClassName = backgroundImage
-    ? `bg-transparent${contentContainerClassName ? ` ${contentContainerClassName}` : ''}`
-    : contentContainerClassName;
+  const { finalClassName, finalContentClassName } = getScrollWrapperStyles(
+    className,
+    contentContainerClassName,
+    backgroundImage,
+  );
+  const contentWidthClass = getScrollContentWidthClass(fullWidth);
 
   return (
     <TwView className="flex-1 bg-background">
@@ -73,26 +106,11 @@ export function ScrollScreenWrapper({
       <SafeAreaView style={{ flex: 1 }} edges={edges}>
         <TwScrollView
           className={finalClassName}
-          contentInset={
-            withTabBar && !disableBottomPadding && Platform.OS === 'ios'
-              ? { bottom: totalInset }
-              : undefined
-          }
-          contentContainerStyle={[
-            withTabBar && !disableBottomPadding && { paddingBottom: totalInset },
-            contentContainerStyle,
-          ]}
+          contentInset={contentInset}
+          contentContainerStyle={[paddingStyle, contentContainerStyle]}
           contentContainerClassName={finalContentClassName}
         >
-          <TwView
-            className={
-              fullWidth || Platform.OS !== 'web'
-                ? 'w-full grow'
-                : 'w-full max-w-[800px] self-center grow'
-            }
-          >
-            {children}
-          </TwView>
+          <TwView className={contentWidthClass}>{children}</TwView>
         </TwScrollView>
       </SafeAreaView>
     </TwView>

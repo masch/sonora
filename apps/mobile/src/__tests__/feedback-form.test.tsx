@@ -175,7 +175,7 @@ describe('FeedbackForm', () => {
     expect(input.props.autoFocus).toBe(true);
   });
 
-  it('prompts confirmation dialog when dismissing with text', async () => {
+  it('prompts confirmation dialog when dismissing with text and aborts dismiss on cancel', async () => {
     const onDismiss = jest.fn();
 
     const { getByTestId, findByText } = await render(
@@ -185,13 +185,33 @@ describe('FeedbackForm', () => {
     const input = getByTestId('feedback-input');
     await fireEvent.changeText(input, 'Unsaved feedback text');
 
-    // Use raw fireEvent (sync) — fireEvent.press wraps in act() and hangs
-    // because handleDismiss awaits confirm() which needs user interaction.
     fireEvent(getByTestId('feedback-dismiss-button'), 'press');
 
-    // Confirm dialog should appear with title, blocking dismissal
     expect(await findByText('Discard feedback?')).toBeTruthy();
     expect(onDismiss).not.toHaveBeenCalled();
+
+    // User cancels discard
+    await fireEvent.press(getByTestId('confirm-cancel-button'));
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('prompts confirmation dialog and calls onDismiss when discard is confirmed', async () => {
+    const onDismiss = jest.fn();
+
+    const { getByTestId, findByText } = await render(
+      <FeedbackForm visible={true} onSubmit={jest.fn()} onDismiss={onDismiss} />,
+    );
+
+    const input = getByTestId('feedback-input');
+    await fireEvent.changeText(input, 'Unsaved feedback text to discard');
+
+    fireEvent(getByTestId('feedback-dismiss-button'), 'press');
+
+    expect(await findByText('Discard feedback?')).toBeTruthy();
+
+    // User confirms discard
+    await fireEvent.press(getByTestId('confirm-destructive-button'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it('does not prompt confirmation when status is sent or queued', async () => {

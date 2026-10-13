@@ -357,7 +357,8 @@ describe('AudioMediaControls', () => {
       expect(rewindButton.props.accessibilityLabel).toBe('components.mediaControls.btnRewind');
     });
 
-    it('has accessibility label on reset button', async () => {
+    it('calls onReset when reset button is pressed and positionMs > 0', async () => {
+      const onReset = jest.fn();
       const { getByTestId } = await render(
         <AudioMediaControls
           status="playing"
@@ -367,12 +368,77 @@ describe('AudioMediaControls', () => {
           onPlay={jest.fn()}
           onPause={jest.fn()}
           onStop={jest.fn()}
-          onReset={jest.fn()}
+          onReset={onReset}
         />,
       );
 
       const resetButton = getByTestId('audio-reset-button');
-      expect(resetButton.props.accessibilityLabel).toBe('components.mediaControls.btnReset');
+      await fireEvent.press(resetButton);
+      expect(onReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables reset button when disabled is true or positionMs is 0', async () => {
+      const onReset = jest.fn();
+      const { getByTestId } = await render(
+        <AudioMediaControls
+          status="playing"
+          positionMs={0}
+          durationMs={120000}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+          onReset={onReset}
+          disabled={true}
+        />,
+      );
+
+      const resetButton = getByTestId('audio-reset-button');
+      expect(resetButton.props.accessibilityState?.disabled).toBe(true);
+      await fireEvent.press(resetButton);
+      expect(onReset).not.toHaveBeenCalled();
+    });
+
+    it('calls onRewind when rewind button is pressed and positionMs > 0', async () => {
+      const onRewind = jest.fn();
+      const { getByTestId } = await render(
+        <AudioMediaControls
+          status="playing"
+          positionMs={15000}
+          durationMs={120000}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+          onRewind={onRewind}
+        />,
+      );
+
+      const rewindButton = getByTestId('audio-rewind-button');
+      await fireEvent.press(rewindButton);
+      expect(onRewind).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables rewind button when disabled is true or positionMs is 0', async () => {
+      const onRewind = jest.fn();
+      const { getByTestId } = await render(
+        <AudioMediaControls
+          status="playing"
+          positionMs={0}
+          durationMs={120000}
+          errorMsg={null}
+          onPlay={jest.fn()}
+          onPause={jest.fn()}
+          onStop={jest.fn()}
+          onRewind={onRewind}
+          disabled={true}
+        />,
+      );
+
+      const rewindButton = getByTestId('audio-rewind-button');
+      expect(rewindButton.props.accessibilityState?.disabled).toBe(true);
+      await fireEvent.press(rewindButton);
+      expect(onRewind).not.toHaveBeenCalled();
     });
   });
 });

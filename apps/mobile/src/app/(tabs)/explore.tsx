@@ -8,10 +8,10 @@ import AudioMediaControls from '@/components/audio-media-controls';
 import DownloadProgressCard from '@/components/download-progress-card';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import { HintRow } from '@/components/hint-row';
-import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { ScrollScreenWrapper, TAB_BAR_INSET } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
+import { TopBanner } from '@/components/top-banner';
 import { WebBadge } from '@/components/web-badge';
 import {
   fetchExperiences,
@@ -22,12 +22,13 @@ import {
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
-import { TwPressable, TwView } from '@/tw';
+import { Button } from '@/components/ui/button';
+import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { SONORA_BANNER_BG, SONORA_LOGO, SONORA_MAIN_BG } from '@/constants/images';
+import { SONORA_MAIN_BG } from '@/constants/images';
 
 // Web: fixed padding below the horizontal tab bar via Tailwind spacing
 const CONTENT_PADDING = 'pb-6';
@@ -145,16 +146,13 @@ export default function ExploreScreen() {
           <ThemedText className="text-base font-bold text-text mb-4 text-center">
             {t('index.errorLoading')}
           </ThemedText>
-          <TwPressable
+          <Button
+            label={t('index.retry')}
+            variant="primary"
             onPress={loadExperience}
-            className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
             testID="explore-retry-button"
             accessibilityLabel={t('index.retry')}
-          >
-            <ThemedText themeColor="background" className="font-semibold">
-              {t('index.retry')}
-            </ThemedText>
-          </TwPressable>
+          />
         </TwView>
       </ScrollScreenWrapper>
     );
@@ -189,27 +187,7 @@ export default function ExploreScreen() {
   return (
     <ScrollScreenWrapper disableBottomPadding contentContainerClassName={CONTENT_PADDING}>
       <TwView className="flex-1">
-        {/* Top Banner */}
-        <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
-          <TwImage
-            source={SONORA_BANNER_BG}
-            className="absolute inset-0 w-full h-full"
-            contentFit="cover"
-            alt=""
-          />
-          <TwView className="size-40 items-center justify-center z-10">
-            <TwImage source={SONORA_LOGO} className="w-full h-full" contentFit="contain" alt="" />
-          </TwView>
-          <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
-            <Icon
-              ios="speaker.wave.2.fill"
-              android="volume_up"
-              web="volume_up"
-              size={18}
-              tintColor="#000000"
-            />
-          </TwView>
-        </TwView>
+        <TopBanner />
 
         {/* Main Content Area */}
         <TwView

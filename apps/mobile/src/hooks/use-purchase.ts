@@ -324,7 +324,6 @@ export function usePurchase(
         return { success: false, error: notFoundMsg };
       }
     } catch (err: unknown) {
-      logger.error('[usePurchase] Failed to restore purchases', err);
       let errorMsg = t('payments.error.restore');
       const isApiError =
         err instanceof ApiError ||
@@ -344,6 +343,22 @@ export function usePurchase(
           }
         }
       }
+
+      const status =
+        err instanceof ApiError
+          ? err.status
+          : typeof (err as { status?: unknown })?.status === 'number'
+            ? (err as { status: number }).status
+            : undefined;
+
+      const isBusinessError = isApiError && (status === undefined || status < 500);
+
+      if (isBusinessError) {
+        logger.warn('[usePurchase] Failed to restore purchases:', err);
+      } else {
+        logger.error('[usePurchase] Failed to restore purchases', err);
+      }
+
       setState((prev) => ({
         ...prev,
         restoring: false,

@@ -1,6 +1,10 @@
 import React from 'react';
 
-const mockT = jest.fn((key: string) => key);
+const specialKeys: Record<string, string> = {
+  'components.mediaControls.timeSeparator': ' / ',
+};
+
+const mockT = jest.fn((key: string) => specialKeys[key] ?? key);
 
 module.exports = {
   useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),

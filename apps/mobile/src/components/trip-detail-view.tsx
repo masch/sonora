@@ -1,40 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-
-import FeedbackForm from '@/components/feedback-form';
-import { LeadCaptureButton } from '@/components/lead-capture-button';
-import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
-import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import PreparingAudioHint from '@/components/preparing-audio-hint';
-import { Icon } from '@/components/icon';
-import { PaymentPrompt } from '@/components/payment-prompt';
 import { ThemedText } from '@/components/themed-text';
-import { BottomModal } from '@/components/ui/bottom-modal';
+import { Icon } from '@/components/icon';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
-import { ExperienceCredits } from '@/components/experience-credits';
 import UnifiedAudioController from '@/components/unified-audio-controller';
-import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
-import { type TripExperience } from '@/data/experiences';
-import { useAudioRewind } from '@/hooks/use-audio-rewind';
-import { useConfirm } from '@/hooks/use-confirm';
-import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
-import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
+import PreparingAudioHint from '@/components/preparing-audio-hint';
+import { PaymentPrompt } from '@/components/payment-prompt';
+import FeedbackForm from '@/components/feedback-form';
+import GpsPrecisionBadge from '@/components/gps-precision-badge';
+import TrackDetailMap from '@/components/track-detail-map';
+import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
+import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
+import { ExperienceCredits } from '@/components/experience-credits';
+import { LeadCaptureButton } from '@/components/lead-capture-button';
+import type { TripExperience } from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
+import { useTrackDownload } from '@/hooks/use-track-download';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
+import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
+import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
+import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { usePurchase } from '@/hooks/use-purchase';
 import { useRefreshExperienceOnPurchase } from '@/hooks/use-refresh-experience-on-purchase';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useTrackDownload } from '@/hooks/use-track-download';
-import { useAppTranslation } from '@/hooks/use-translation';
-import type { TranslationKeys } from '@/i18n/types';
+import { useGeofencePlaybackGuard } from '@/hooks/use-geofence-playback-guard';
 import { PaymentClient } from '@/services/payment-client';
 import { getUserEmail } from '@/storage/app-storage';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
-import { formatDistance } from '@/utils/format-distance';
-import TrackDetailMap from './track-detail-map';
+import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
 
 interface TripDetailViewProps {
   track: TripExperience;
@@ -45,6 +41,54 @@ interface TripDetailViewProps {
   onPurchased?: () => void;
   /** True while the parent re-fetches the experience after a purchase. */
   refreshingExperience?: boolean;
+}
+
+interface TripCardHeaderProps {
+  title: string;
+  durationSeconds: number;
+  description?: string;
+  titleColor: string;
+  subtextColor: string;
+}
+
+function TripCardHeader({
+  title,
+  durationSeconds,
+  description,
+  titleColor,
+  subtextColor,
+}: TripCardHeaderProps) {
+  const { t } = useAppTranslation();
+
+  return (
+    <>
+      <TwView className="items-center gap-2 p-2 w-full">
+        <ThemedText
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className="text-2xl font-black text-center px-2"
+          style={{ color: titleColor }}
+        >
+          {title}
+        </ThemedText>
+        <ThemedText
+          className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
+          style={{ color: subtextColor }}
+        >
+          {t('experiences.duration', { minutes: Math.round(durationSeconds / 60) })}
+        </ThemedText>
+      </TwView>
+
+      {description && (
+        <ThemedText
+          className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
+          style={{ color: titleColor }}
+        >
+          {description}
+        </ThemedText>
+      )}
+    </>
+  );
 }
 
 export default function TripDetailView({
@@ -58,7 +102,6 @@ export default function TripDetailView({
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
-  const [showGeofenceBlockedAlert, setShowGeofenceBlockedAlert] = useState(false);
   const userInitiatedPlayRef = useRef(false);
 
   const geofence = useOfflineGeofence(
@@ -68,11 +111,29 @@ export default function TripDetailView({
     },
     { format: 'trip', geoMode: track.geoMode, radiusMeters: track.radiusMeters },
   );
+
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
   const player = useImmersionPlayer(download.localAudioUri, {
     title: track.title,
     id: track.id,
     slug: track.slug,
+  });
+
+  const isBypassable = track.geofenceBypassable === true;
+  const rewind = useAudioRewind();
+  const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
+
+  useRefreshExperienceOnPurchase(purchaseState.status, !!track.audioUrl, onPurchased);
+
+  const {
+    isPlaybackBlocked,
+    showGeofenceBlockedAlert,
+    setShowGeofenceBlockedAlert,
+    confirmComponent,
+    guardAction,
+  } = useGeofencePlaybackGuard({
+    isNearStart: geofence.isNearStart,
+    isBypassable,
   });
 
   // Auto-play when download completes if the user initiated it
@@ -86,7 +147,6 @@ export default function TripDetailView({
   const handlePlayAndDownload = () => {
     userInitiatedPlayRef.current = true;
     download.startDownload();
-    // Fire-and-forget access log
     void getUserEmail()
       .then((email) => {
         PaymentClient.logAccess(track.id, 'free', email ?? undefined, Platform.OS);
@@ -120,214 +180,145 @@ export default function TripDetailView({
     feedbackTrigger.dismiss();
   };
 
-  const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
+  const handlePlay = () => guardAction(() => player.play());
+  const handleDownload = () => guardAction(handlePlayAndDownload);
 
+  const trackImage = TRACK_IMAGES[track.imageKey] || DEFAULT_TRACK_IMAGE;
   const showFeedbackForm =
     feedbackTrigger.showFeedback || showManualFeedback || feedback.feedbackStatus !== undefined;
-
-  const isBypassable = track.geofenceBypassable === true;
-  const bypassGeofence = useRemoteConfigStore((s) => s.config.geofence.bypassGeofence);
-  const rewind = useAudioRewind();
-  const [purchaseState, purchaseActions] = usePurchase(track.id, track.free, track.price);
-  const isPlaybackBlocked = !geofence.isNearStart && !isBypassable && !bypassGeofence;
-  const showBypassWarning = !geofence.isNearStart && isBypassable && !bypassGeofence;
-
-  // When the purchase resolves but the fetched experience predates the
-  // payment (no signed audioUrl), ask the parent to re-fetch the list so
-  // the play/download button unlocks without a reload.
-  useRefreshExperienceOnPurchase(purchaseState.status, !!track.audioUrl, onPurchased);
-
-  const { confirm, component: confirmComponent } = useConfirm();
-  const openBlockedAlert = () => setShowGeofenceBlockedAlert(true);
-
-  const handlePlay = async () => {
-    if (showBypassWarning) {
-      const ok = await confirm({
-        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
-        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
-        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
-        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
-      });
-      if (!ok) return;
-    } else if (isPlaybackBlocked) {
-      openBlockedAlert();
-      return;
-    }
-    player.play();
-  };
-
-  const handleDownload = async () => {
-    if (showBypassWarning) {
-      const ok = await confirm({
-        title: t('experiences.warnings.locationAlertTitle' as TranslationKeys),
-        message: t('experiences.warnings.locationAlertMessage' as TranslationKeys),
-        confirmLabel: t('experiences.warnings.continue' as TranslationKeys),
-        cancelLabel: t('experiences.warnings.cancel' as TranslationKeys),
-      });
-      if (!ok) return;
-    } else if (isPlaybackBlocked) {
-      openBlockedAlert();
-      return;
-    }
-    handlePlayAndDownload();
-  };
-
   const cardBg = colors.homeExploreRoutesBg + 'CC';
-
-  const innerView = (
-    <TwView className="flex-1 bg-transparent">
-      {/* Top Banner */}
-      <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
-        <TwImage
-          source={trackImage}
-          className="absolute inset-0 w-full h-full"
-          contentFit="cover"
-          alt=""
-        />
-        <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
-          <Icon
-            ios="speaker.wave.2.fill"
-            android="volume_up"
-            web="volume_up"
-            size={18}
-            tintColor={colors.text}
-          />
-        </TwView>
-      </TwView>
-
-      {/* Main Content Area */}
-      <TwView className="relative flex-1 gap-4 p-4">
-        {/* Main Details Card */}
-        <TwView
-          style={{ backgroundColor: cardBg, borderColor: colors.border }}
-          className="w-full border px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
-        >
-          {/* Track header */}
-          <TwView className="items-center gap-2 p-2 w-full">
-            <ThemedText
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              className="text-2xl font-black text-center px-2"
-              style={{ color: colors.homeCardText }}
-            >
-              {track.title}
-            </ThemedText>
-            <ThemedText
-              className="font-bold text-[10px] leading-relaxed uppercase tracking-wider"
-              style={{ color: colors.homeCardSubtext }}
-            >
-              {t('experiences.duration', { minutes: Math.round(track.durationSeconds / 60) })}
-            </ThemedText>
-          </TwView>
-
-          <ThemedText
-            className="text-center text-sm font-bold leading-relaxed p-2 rounded-xl bg-white/40 dark:bg-zinc-800/40"
-            style={{ color: colors.homeCardText }}
-          >
-            {track.description}
-          </ThemedText>
-
-          {/* Mini map */}
-          <TwView className="-mx-3 relative">
-            <TrackDetailMap
-              latitude={track.latitude}
-              longitude={track.longitude}
-              userLatitude={geofence.userCoordinates?.latitude}
-              userLongitude={geofence.userCoordinates?.longitude}
-              showLabels={showLabels}
-              waypoints={track.waypoints}
-            />
-            <IconButton
-              onPress={() => setShowLabels(!showLabels)}
-              variant="outline"
-              size="sm"
-              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
-              accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
-              testID="toggle-map-labels"
-              icon={{
-                ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
-                android: showLabels ? 'label_off' : 'label',
-                web: showLabels ? 'label_off' : 'label',
-              }}
-            />
-          </TwView>
-
-          {/* GPS precision */}
-          {showGPSDetails && (
-            <GpsPrecisionBadge
-              gpsStatus={geofence.gpsStatus}
-              gpsAccuracy={geofence.gpsAccuracy}
-              distanceMeters={geofence.distanceMeters}
-              isNearStart={geofence.isNearStart}
-              requiredRadiusMeters={geofence.requiredRadiusMeters}
-            />
-          )}
-
-          {/* Block playback banner if blocked */}
-          {isPlaybackBlocked && (
-            <GeofenceBlockedBanner
-              distanceMeters={geofence.distanceMeters}
-              requiredRadiusMeters={geofence.requiredRadiusMeters}
-            />
-          )}
-
-          {/* Unified Audio Controller: Download & Play in one flow */}
-          {purchaseState.status === 'paid' ? (
-            <PaymentPrompt
-              price={purchaseState.price || 0}
-              currency={track.currency}
-              onPay={purchaseActions.pay}
-              onRestore={async (email) => {
-                return purchaseActions.restore(email);
-              }}
-              loading={purchaseState.paying}
-              error={purchaseState.error}
-            />
-          ) : (
-            <UnifiedAudioController
-              downloadStatus={download.status}
-              downloadProgress={download.progress}
-              downloadError={download.errorMsg}
-              playerStatus={player.status}
-              positionMs={player.positionMs}
-              durationMs={player.durationMs || track.durationSeconds * 1000}
-              playerError={player.errorMsg}
-              onPlay={handlePlay}
-              onPause={player.pause}
-              onStop={player.stop}
-              onRewind={rewind}
-              onReset={() => player.seekTo(0)}
-              onDownload={handleDownload}
-              onCancelDownload={download.deleteTrackLocal}
-              disabled={!track.audioUrl || purchaseState.status === 'loading'}
-            />
-          )}
-
-          {refreshingExperience && <PreparingAudioHint />}
-
-          {/* Action buttons (Feedback & Contact) */}
-          <TwView className="self-stretch gap-2">
-            <Button
-              label={t('feedback.form.title')}
-              variant="primary"
-              testID="feedback-manual-button"
-              accessibilityLabel={t('feedback.form.title')}
-              onPress={() => setShowManualFeedback(true)}
-            />
-
-            <LeadCaptureButton source="trip_detail" experienceId={track.id} />
-          </TwView>
-
-          {/* Credits */}
-          <ExperienceCredits credits={track.credits} />
-        </TwView>
-      </TwView>
-    </TwView>
-  );
 
   return (
     <TwView className="flex-1">
-      {Platform.OS === 'web' ? <TwView className="flex-1">{innerView}</TwView> : innerView}
+      <TwView className="flex-1 bg-transparent">
+        {/* Top Banner */}
+        <TwView className="relative w-full h-48 overflow-hidden items-center justify-center bg-zinc-950">
+          <TwImage
+            source={trackImage}
+            className="absolute inset-0 w-full h-full"
+            contentFit="cover"
+            alt=""
+          />
+          <TwView className="absolute top-4 right-4 bg-white/20 p-2 rounded-full backdrop-blur-md">
+            <Icon
+              ios="speaker.wave.2.fill"
+              android="volume_up"
+              web="volume_up"
+              size={18}
+              tintColor={colors.text}
+            />
+          </TwView>
+        </TwView>
+
+        {/* Main Content Area */}
+        <TwView className="relative flex-1 gap-4 p-4">
+          {/* Main Details Card */}
+          <TwView
+            style={{ backgroundColor: cardBg, borderColor: colors.border }}
+            className="w-full border px-3 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
+          >
+            <TripCardHeader
+              title={track.title}
+              durationSeconds={track.durationSeconds}
+              description={track.description}
+              titleColor={colors.homeCardText}
+              subtextColor={colors.homeCardSubtext}
+            />
+
+            {/* Mini map */}
+            <TwView className="-mx-3 relative">
+              <TrackDetailMap
+                latitude={track.latitude}
+                longitude={track.longitude}
+                userLatitude={geofence.userCoordinates?.latitude}
+                userLongitude={geofence.userCoordinates?.longitude}
+                showLabels={showLabels}
+                waypoints={track.waypoints}
+              />
+              <IconButton
+                onPress={() => setShowLabels(!showLabels)}
+                variant="outline"
+                size="sm"
+                className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
+                accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+                testID="toggle-map-labels"
+                icon={{
+                  ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+                  android: showLabels ? 'label_off' : 'label',
+                  web: showLabels ? 'label_off' : 'label',
+                }}
+              />
+            </TwView>
+
+            {/* GPS precision */}
+            {showGPSDetails && (
+              <GpsPrecisionBadge
+                gpsStatus={geofence.gpsStatus}
+                gpsAccuracy={geofence.gpsAccuracy}
+                distanceMeters={geofence.distanceMeters}
+                isNearStart={geofence.isNearStart}
+                requiredRadiusMeters={geofence.requiredRadiusMeters}
+              />
+            )}
+
+            {/* Block playback banner if blocked */}
+            {isPlaybackBlocked && (
+              <GeofenceBlockedBanner
+                distanceMeters={geofence.distanceMeters}
+                requiredRadiusMeters={geofence.requiredRadiusMeters}
+              />
+            )}
+
+            {/* Unified Audio Controller: Download & Play in one flow */}
+            {purchaseState.status === 'paid' ? (
+              <PaymentPrompt
+                price={purchaseState.price || 0}
+                currency={track.currency}
+                onPay={purchaseActions.pay}
+                onRestore={async (email) => purchaseActions.restore(email)}
+                loading={purchaseState.paying}
+                error={purchaseState.error}
+              />
+            ) : (
+              <UnifiedAudioController
+                downloadStatus={download.status}
+                downloadProgress={download.progress}
+                downloadError={download.errorMsg}
+                playerStatus={player.status}
+                positionMs={player.positionMs}
+                durationMs={player.durationMs || track.durationSeconds * 1000}
+                playerError={player.errorMsg}
+                onPlay={handlePlay}
+                onPause={player.pause}
+                onStop={player.stop}
+                onRewind={rewind}
+                onReset={() => player.seekTo(0)}
+                onDownload={handleDownload}
+                onCancelDownload={download.deleteTrackLocal}
+                disabled={!track.audioUrl || purchaseState.status === 'loading'}
+              />
+            )}
+
+            {refreshingExperience && <PreparingAudioHint />}
+
+            {/* Action buttons (Feedback & Contact) */}
+            <TwView className="self-stretch gap-2">
+              <Button
+                label={t('feedback.form.title')}
+                variant="primary"
+                testID="feedback-manual-button"
+                accessibilityLabel={t('feedback.form.title')}
+                onPress={() => setShowManualFeedback(true)}
+              />
+
+              <LeadCaptureButton source="trip_detail" experienceId={track.id} />
+            </TwView>
+
+            {/* Credits */}
+            <ExperienceCredits credits={track.credits} />
+          </TwView>
+        </TwView>
+      </TwView>
 
       <FeedbackForm
         visible={showFeedbackForm}
@@ -339,31 +330,12 @@ export default function TripDetailView({
 
       {confirmComponent}
 
-      <BottomModal
+      <GeofenceBlockedModal
         visible={showGeofenceBlockedAlert}
         onDismiss={() => setShowGeofenceBlockedAlert(false)}
-        title={t('experiences.geofenceBlocked.blockedAlertTitle' as TranslationKeys)}
-        footer={
-          <Button
-            label={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            variant="primary"
-            testID="geofence-blocked-alert-ok"
-            accessibilityLabel={t('experiences.geofenceBlocked.blockedAlertOk' as TranslationKeys)}
-            onPress={() => setShowGeofenceBlockedAlert(false)}
-          />
-        }
-      >
-        <ThemedText className="text-sm text-textSecondary">
-          {t('experiences.geofenceBlocked.blockedAlertMessage' as TranslationKeys, {
-            radius: formatDistance(geofence.requiredRadiusMeters, t),
-            distance: formatDistance(
-              geofence.distanceMeters,
-              t,
-              t('experiences.geofenceBlocked.notAvailable'),
-            ),
-          })}
-        </ThemedText>
-      </BottomModal>
+        requiredRadiusMeters={geofence.requiredRadiusMeters}
+        distanceMeters={geofence.distanceMeters}
+      />
     </TwView>
   );
 }

@@ -49,6 +49,7 @@ jest.mock('@/utils/logger', () => ({
 import { ApiError } from '@sonora/shared';
 import { usePurchase } from '@/hooks/use-purchase';
 import { APP_CONFIG } from '@/config/app-config';
+import { logger } from '@/utils/logger';
 
 describe('usePurchase', () => {
   beforeEach(() => {
@@ -417,6 +418,31 @@ describe('usePurchase', () => {
       });
 
       expect(result.current[0].error).toBe('payments.error.couponNotFound');
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[usePurchase] Failed to restore purchases:',
+        expect.any(ApiError),
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it('logs error with logger.error when restore encounters server 500 error', async () => {
+      mockCheckPurchased.mockRejectedValue(
+        new ApiError(500, 'Internal Server Error', 'Database down', { code: 'INTERNAL_ERROR' }),
+      );
+
+      const { result } = await renderHook(() => usePurchase('exp-1', false, 15000));
+      await waitFor(() => expect(result.current[0].status).toBe('paid'));
+
+      await act(async () => {
+        const res = await result.current[1].restore('user@example.com');
+        expect(res.success).toBe(false);
+        expect(res.error).toBe('payments.error.restore');
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        '[usePurchase] Failed to restore purchases',
+        expect.any(ApiError),
+      );
     });
   });
 
