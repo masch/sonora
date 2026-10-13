@@ -6,6 +6,7 @@ import type { TranslationKeys } from '@/i18n/types';
 export type AppTFunction = (key: TranslationKeys, options?: Record<string, unknown>) => string;
 
 export { resolveLanguage };
+export type { TranslationKeys };
 
 /** Typed `t()` wrapper. Gives autocomplete on valid translation keys. */
 export function useAppTranslation() {

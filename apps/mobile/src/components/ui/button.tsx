@@ -1,12 +1,12 @@
 import React from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, type Insets } from 'react-native';
 import { TwPressable } from '@/tw';
 import { ThemedText } from '@/components/themed-text';
 import { Icon, type GenericIconName } from '@/components/icon';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'warning';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
@@ -26,6 +26,8 @@ export interface ButtonProps {
   className?: string;
   testID: string;
   accessibilityLabel: string;
+  hitSlop?: Insets | number;
+  numberOfLines?: number;
 }
 
 /**
@@ -45,6 +47,8 @@ export function Button({
   className = '',
   testID,
   accessibilityLabel,
+  hitSlop,
+  numberOfLines,
 }: ButtonProps) {
   const colors = useThemeColors();
 
@@ -94,6 +98,12 @@ export function Button({
       iconColor: colors.textSecondary,
       spinnerColor: colors.textSecondary,
     },
+    warning: {
+      button: 'bg-amber-600 active:bg-amber-700 shadow-sm border border-transparent',
+      text: 'text-white font-extrabold',
+      iconColor: colors.buttonPrimaryIcon,
+      spinnerColor: colors.buttonPrimaryIcon,
+    },
   }[variant];
 
   const renderIcon = () => {
@@ -125,6 +135,7 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={onPress}
+      hitSlop={hitSlop}
       className={`flex-row items-center justify-center rounded-xl overflow-hidden ${
         sizeStyles.button
       } ${variantStyles.button} ${isDisabled ? 'opacity-50' : ''} ${className}`}
@@ -138,7 +149,12 @@ export function Button({
       ) : (
         <>
           {iconPosition === 'left' && renderIcon()}
-          <ThemedText className={`${sizeStyles.text} ${variantStyles.text}`}>{label}</ThemedText>
+          <ThemedText
+            numberOfLines={numberOfLines}
+            className={`${sizeStyles.text} ${variantStyles.text}`}
+          >
+            {label}
+          </ThemedText>
           {iconPosition === 'right' && renderIcon()}
         </>
       )}
@@ -147,3 +163,4 @@ export function Button({
 }
 
 export default Button;
+export { IconButton, type IconButtonProps } from './icon-button';

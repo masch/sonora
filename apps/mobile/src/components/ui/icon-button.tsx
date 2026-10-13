@@ -1,11 +1,11 @@
 import React from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, type Insets } from 'react-native';
 import { TwPressable } from '@/tw';
 import { Icon, type GenericIconName } from '@/components/icon';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { SFSymbol, AndroidSymbol } from 'expo-symbols';
 
-export type IconButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+export type IconButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'warning';
 export type IconButtonSize = 'sm' | 'md' | 'lg';
 
 export interface IconButtonProps {
@@ -23,6 +23,7 @@ export interface IconButtonProps {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  hitSlop?: Insets | number;
 }
 
 /**
@@ -40,6 +41,7 @@ export function IconButton({
   loading = false,
   disabled = false,
   className = '',
+  hitSlop,
 }: IconButtonProps) {
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
@@ -81,6 +83,11 @@ export function IconButton({
       iconColor: colors.textSecondary,
       spinnerColor: colors.textSecondary,
     },
+    warning: {
+      button: 'bg-amber-600 active:bg-amber-700 shadow-sm border border-transparent',
+      iconColor: colors.buttonPrimaryIcon,
+      spinnerColor: colors.buttonPrimaryIcon,
+    },
   }[variant];
 
   const renderIcon = () => {
@@ -114,7 +121,7 @@ export function IconButton({
 
   return (
     <TwPressable
-      hitSlop={size === 'sm' ? 6 : size === 'md' ? 2 : 0}
+      hitSlop={hitSlop ?? (size === 'sm' ? 6 : size === 'md' ? 2 : 0)}
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
