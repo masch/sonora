@@ -2,6 +2,7 @@ import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
 import { getAppVersion } from '@/utils/app-version';
 import type { AnalyticsEventMap } from './analytics-events';
+import type { AnalyticsTracker } from './analytics.types';
 
 export type {
   AppLifecycleEvents,
@@ -15,7 +16,7 @@ export type {
   InAppUpdateEvents,
 } from './analytics-events';
 
-export type { AnalyticsEventMap };
+export type { AnalyticsEventMap, AnalyticsTracker };
 
 // Dynamic require: native Firebase modules only available in production/dev builds, not Expo Go
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,7 +41,7 @@ const isFirebaseAvailable = () => {
   return !!NativeModules.RNFBAppModule;
 };
 
-export const AnalyticsService = {
+export const AnalyticsService: AnalyticsTracker = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
     const extendedParams = {
       ...params,

@@ -152,6 +152,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-build-properties',
         {
+          ios: {
+            useFrameworks: 'static',
+          },
           android: {
             // Enable R8 minification/obfuscation and resource shrinking in release builds
             // so unused code and resources are pruned, and mapping.txt is generated for
