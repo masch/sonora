@@ -77,11 +77,11 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 
 ### Phase 1 — Reference plane (no pipeline, no credentials)
 
-- [ ] **T2: Shared map document module** — Refs: S1, S5.
+- [x] **T2: Shared map document module** — Refs: S1, S5.
   - Path: `packages/shared/src/map/{document,schema,camera,style,map-like}.ts`, `packages/shared/src/__tests__/map.test.ts`
-  - Action: types, GeoJSON subset Zod schema with limits, bounds math, style-layer builder, `applyMapDocument(map, docs)` over a minimal `MapLike`.
-  - Proof: `bun test packages/shared`; `applyMapDocument` tested against a fake map.
-  - Route: inline. Commit: pending.
+  - Action: types, GeoJSON subset Zod schema with limits, bounds math, style-layer builder, `applyMapDocuments(map, docs)` over a minimal `MapLike`.
+  - Proof: shared suite 15 files / 217 tests (10 new); `typecheck` clean in both mobile and api workspaces; `expo lint` clean.
+  - Route: inline. Commit: `5b32df0`.
 
 - [ ] **T3: API storage and payload** — Refs: S1, S5, S7.
   - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/*`, `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/*`
