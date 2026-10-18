@@ -264,16 +264,39 @@ async function main() {
 
   const headers = { 'content-type': 'application/json', authorization: `Bearer ${args.adminKey}` };
 
-  // El endpoint acepta 500 entradas por request; se envía en tandas.
-  for (let index = 0; index < payloads.length; index += 500) {
-    const chunk = payloads.slice(index, index + 500);
-    const response = await fetch(`${args.api}/translations`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(chunk),
-    });
-    if (!response.ok)
-      throw new Error(`translations failed: ${response.status} ${await response.text()}`);
+  // El schema acepta 500 entradas por request, pero el Worker no: cada entrada es una
+  // consulta, y el plan free corta la invocación bastante antes. Con 72 entradas en un
+  // solo PUT, staging escribió 25 y devolvió 500. Tandas chicas y con reintento: los
+  // upserts son idempotentes, así que repetir una tanda no duplica nada.
+  const chunkArg = process.argv.slice(2).find((arg) => arg.startsWith('--chunk='));
+  const chunkSize = Number(chunkArg?.split('=')[1] ?? 10);
+
+  for (let index = 0; index < payloads.length; index += chunkSize) {
+    const chunk = payloads.slice(index, index + chunkSize);
+    let failure = '';
+
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const response = await fetch(`${args.api}/translations`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(chunk),
+      });
+
+      if (response.ok) {
+        failure = '';
+        break;
+      }
+
+      failure = `${response.status} ${await response.text()}`;
+      if (attempt < 3) {
+        console.log(
+          `traducciones  tanda ${index + 1}-${index + chunk.length} falló (${failure.slice(0, 60)}), reintento ${attempt}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+
+    if (failure) throw new Error(`translations failed: ${failure}`);
     console.log(
       `traducciones  ${chunk.length} escritas (${index + chunk.length}/${payloads.length})`,
     );
