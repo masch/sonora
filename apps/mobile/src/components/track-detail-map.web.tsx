@@ -14,6 +14,15 @@ const LEAFLET_VERSION = '1.9.4';
 const LEAFLET_CSS_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`;
 const LEAFLET_JS_URL = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`;
 
+/**
+ * OSM tile policy requires the exact host (no subdomains) and visible
+ * attribution. Browsers send their own User-Agent and Referer.
+ * https://operations.osmfoundation.org/policies/tiles/
+ */
+const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -78,9 +87,8 @@ export default function TrackDetailMap({
         });
 
         leaflet
-          .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          .tileLayer(OSM_TILE_URL, {
+            attribution: OSM_ATTRIBUTION,
             maxZoom: 19,
           })
           .addTo(map);
