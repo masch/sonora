@@ -1,6 +1,8 @@
 import type { StyleSpecification } from 'maplibre-gl';
 import type { GeoBounds, MapDocument } from '@sonora/shared';
 
+export { resolveMapRenderer, MAP_RENDERER_ENV, type MapRenderer } from './resolve-renderer';
+
 /** Where the base map tiles come from. */
 export interface MapSourceConfig {
   /** PMTiles archive: `pmtiles://https://…` online, `pmtiles://file://…` offline. */
@@ -31,6 +33,8 @@ export interface ExperienceMapProps {
   bounds?: GeoBounds | null;
   center?: [number, number];
   zoom?: number;
+  /** Where the walker is, when the app knows it. */
+  userCoordinates?: { latitude: number; longitude: number };
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;
