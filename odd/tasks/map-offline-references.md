@@ -99,7 +99,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Path: `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/experiences.test.ts`
   - Action: include published global documents plus the ones bound to the experience in `GET /experiences`, so they inherit the offline cache; both lookups happen once for the whole list, and a binding to an unpublished document is skipped.
   - Proof: api suite 51 files / 579 tests (new test covers global + bound + skipped-unpublished); `tsc --noEmit` clean in api and mobile; `expo lint` clean.
-  - Route: inline. Commit: `PENDING`.
+  - Route: inline. Commit: `7227f91`.
 
 - [ ] **T4: Map renderer, both platforms** — Refs: S1, S4, S6.
   - Path: `apps/mobile/src/components/map/{experience-map.tsx,experience-map.web.tsx,map-container.tsx,map-view.types.ts}`, `apps/mobile/src/hooks/use-map-overlays.ts`
