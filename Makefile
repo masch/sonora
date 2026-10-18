@@ -506,6 +506,64 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
+# ── Map tiles & style (public bucket) ────────────
+# Map artifacts are immutable per version, so they are cached for a year and the
+# client never revalidates. --remote is required: without it wrangler writes to its
+# local Miniflare simulation and the deployed Worker keeps seeing an empty bucket.
+
+.PHONY: api-upload-map-tiles-staging
+api-upload-map-tiles-staging: ## Upload a map region archive + style to the staging public bucket. Usage: make api-upload-map-tiles-staging REGION="calamuchita" VERSION="v1" ARCHIVE="path/region-v1.pmtiles" STYLE="path/style-v1.json"
+	@if [ -z "$(REGION)" ] || [ -z "$(VERSION)" ] || [ -z "$(ARCHIVE)" ] || [ -z "$(STYLE)" ]; then \
+		echo "Error: REGION, VERSION, ARCHIVE and STYLE are required."; \
+		echo "  make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
+		exit 1; \
+	fi
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the staging public bucket"
+
+.PHONY: api-upload-map-tiles-production
+api-upload-map-tiles-production: ## Upload a map region archive + style to the production public bucket. Usage: make api-upload-map-tiles-production REGION="calamuchita" VERSION="v1" ARCHIVE="path/region-v1.pmtiles" STYLE="path/style-v1.json"
+	@if [ -z "$(REGION)" ] || [ -z "$(VERSION)" ] || [ -z "$(ARCHIVE)" ] || [ -z "$(STYLE)" ]; then \
+		echo "Error: REGION, VERSION, ARCHIVE and STYLE are required."; \
+		echo "  make api-upload-map-tiles-production REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
+		exit 1; \
+	fi
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
+	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
+
+# ── OSM reference ingestion (map documents) ──────
+# Turns OSM objects the basemap schema cannot carry (named buildings, tourism,
+# historic, amenities, shops) into one global reference document, with its i18n
+# keys. Idempotent: the document key is derived from the region, so re-running
+# replaces it instead of duplicating. Overpass is a shared community service, so
+# the script sends one combined query, identifies itself and backs off on 429/502.
+
+REGION ?= calamuchita
+
+.PHONY: api-ingest-osm-dry-run
+api-ingest-osm-dry-run: ## Preview the OSM reference ingestion: writes nothing anywhere. Usage: make api-ingest-osm-dry-run [REGION=calamuchita] [OUT=path.json] [LIST=1]
+	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --dry-run $(if $(OUT),--out=$(OUT),) $(if $(LIST),--list,)
+
+.PHONY: api-ingest-osm-staging
+api-ingest-osm-staging: ## Publish OSM references to the staging API. Usage: make api-ingest-osm-staging ADMIN_API_KEY="key" [REGION=calamuchita]
+	@if [ -z "$(ADMIN_API_KEY)" ]; then \
+		echo "Error: ADMIN_API_KEY is required."; \
+		echo "  make api-ingest-osm-staging ADMIN_API_KEY=<staging-admin-key> REGION=calamuchita"; \
+		exit 1; \
+	fi
+	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_STAGING_URL) --admin-key=$(ADMIN_API_KEY_CLEAN)
+
+.PHONY: api-ingest-osm-production
+api-ingest-osm-production: ## Publish OSM references to the production API. Usage: make api-ingest-osm-production ADMIN_API_KEY="key" [REGION=calamuchita]
+	@if [ -z "$(ADMIN_API_KEY)" ]; then \
+		echo "Error: ADMIN_API_KEY is required."; \
+		echo "  make api-ingest-osm-production ADMIN_API_KEY=<production-admin-key> REGION=calamuchita"; \
+		exit 1; \
+	fi
+	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_PRODUCTION_URL) --admin-key=$(ADMIN_API_KEY_CLEAN)
+
 .PHONY: api-create-coupon-staging
 api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
 	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
