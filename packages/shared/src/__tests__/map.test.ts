@@ -208,6 +208,26 @@ describe('reference style layers', () => {
     // The map cannot translate keys, so it reads the label injected before drawing.
     expect(layers[3].layout).toMatchObject({ 'text-field': ['get', 'label'] });
   });
+
+  it('gates every layer on the zoom the feature asks for', () => {
+    const layers = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`);
+
+    for (const layer of layers) {
+      expect(layer.filter).toContainEqual(['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]]);
+    }
+  });
+
+  it('omits the label layer when the style has no glyphs source', () => {
+    const layers = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, {
+      includeLabels: false,
+    });
+
+    expect(layers.map((layer) => layer.id)).toEqual([
+      `${REFERENCE_SOURCE_PREFIX}sendero:fill`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:line`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:circle`,
+    ]);
+  });
 });
 
 describe('applyMapDocuments', () => {
@@ -261,6 +281,22 @@ describe('applyMapDocuments', () => {
     applyMapDocuments(map, documents);
 
     expect(calls).toEqual([`setData:${REFERENCE_SOURCE_PREFIX}sendero`]);
+  });
+
+  it('reconciles documents in zIndex order so draw order is deterministic', () => {
+    const { map, calls } = createFakeMap();
+
+    applyMapDocuments(map, [
+      { ...documentWith('arriba', [point]), zIndex: 10 },
+      { ...documentWith('abajo', [point]), zIndex: 1 },
+      { ...documentWith('medio', [point]) },
+    ]);
+
+    expect(calls.filter((call) => call.startsWith('addSource:'))).toEqual([
+      `addSource:${REFERENCE_SOURCE_PREFIX}medio`,
+      `addSource:${REFERENCE_SOURCE_PREFIX}abajo`,
+      `addSource:${REFERENCE_SOURCE_PREFIX}arriba`,
+    ]);
   });
 
   it('removes reference layers and sources that are no longer present', () => {

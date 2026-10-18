@@ -1,5 +1,10 @@
 import type { MapDocument } from './document';
-import { buildReferenceStyleLayers, REFERENCE_SOURCE_PREFIX, referenceSourceId } from './style';
+import {
+  buildReferenceStyleLayers,
+  REFERENCE_SOURCE_PREFIX,
+  referenceSourceId,
+  type ReferenceLayerOptions,
+} from './style';
 
 /** The slice of the MapLibre map this module needs. Kept small so it is testable. */
 export interface MapLike {
@@ -23,9 +28,19 @@ function sourceIdOfLayer(layerId: string): string {
  * missing, pushes new data into existing sources, and removes references that
  * are no longer present. Web only; native MapLibre is declarative.
  */
-export function applyMapDocuments(map: MapLike, documents: readonly MapDocument[]): void {
+export function applyMapDocuments(
+  map: MapLike,
+  documents: readonly MapDocument[],
+  options: ReferenceLayerOptions = {},
+): void {
+  // Layer add order is draw order, so the documents are reconciled in the
+  // order the schema already documents: lower zIndex first, then key.
+  const ordered = [...documents].sort(
+    (left, right) => (left.zIndex ?? 0) - (right.zIndex ?? 0) || left.key.localeCompare(right.key),
+  );
+
   const desired = new Map<string, MapDocument>();
-  for (const document of documents) desired.set(referenceSourceId(document.key), document);
+  for (const document of ordered) desired.set(referenceSourceId(document.key), document);
 
   const style = map.getStyle() ?? {};
   const existingLayers = (style.layers ?? []).map((layer) => layer.id);
@@ -48,7 +63,7 @@ export function applyMapDocuments(map: MapLike, documents: readonly MapDocument[
       map.addSource(sourceId, { type: 'geojson', data: document.collection });
     }
 
-    for (const layer of buildReferenceStyleLayers(sourceId)) {
+    for (const layer of buildReferenceStyleLayers(sourceId, options)) {
       if (!existingLayers.includes(layer.id)) map.addLayer(layer);
     }
   }
