@@ -123,7 +123,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Path: `apps/api/src/routes/media.ts`, `packages/shared/src/schemas/map-document.ts`, `apps/api/src/routes/map-documents.ts`, `apps/api/src/__tests__/media.test.ts`
   - Action: `POST /media/reference-images` behind the admin guard stores a UUID-keyed image in the public bucket after checking mime type and size, and returns the URL the document must use; `GET /media/public/:key` serves it unauthenticated with an immutable cache header; the document write path rejects an `imageUrl` outside that same origin and path. The schema accepts any absolute image URL on purpose, because the origin rule needs the request origin and local runs are http.
   - Proof: api suite 53 files / 591 tests; the new suite covers an accepted image, a rejected mime type, an oversize file, the unauthenticated upload, and the write path rejecting a foreign image host while accepting our own. `tsc --noEmit` clean in api and mobile; `expo lint` clean.
-  - Route: inline. Commit: `PENDING`.
+  - Route: inline. Commit: `f0ced90`.
 
 ### Phase 2 — Platform, offline and flag
 
