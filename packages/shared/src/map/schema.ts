@@ -42,7 +42,9 @@ const httpsUrlSchema = z
 const propertiesSchema = z.object({
   labelKey: z.string().regex(MAP_LABEL_KEY_PATTERN),
   descriptionKey: z.string().regex(MAP_LABEL_KEY_PATTERN).optional(),
-  imageUrl: httpsUrlSchema.optional(),
+  /** Any absolute URL: the API only accepts images from its own upload endpoint. */
+  imageUrl: z.string().url().optional(),
+  /** Card actions leave the app, so they must be https and allowlisted by the API. */
   linkUrl: httpsUrlSchema.optional(),
   color: z
     .string()

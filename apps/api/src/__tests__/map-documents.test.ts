@@ -248,3 +248,61 @@ describe('POST /map-documents', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('POST /map-documents card images', () => {
+  afterEach(() => {
+    setDbClient(null);
+  });
+
+  function bodyWithImage(imageUrl: string) {
+    return {
+      ...validBody,
+      collection: {
+        ...collection,
+        features: [
+          {
+            ...collection.features[0],
+            properties: { labelKey: 'map.references.taller', imageUrl },
+          },
+        ],
+      },
+    };
+  }
+
+  function post(body: unknown) {
+    return app.request(
+      '/map-documents',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${BINDINGS.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+      },
+      BINDINGS,
+    );
+  }
+
+  const translations = ['es:map.references.taller', 'en:map.references.taller'];
+
+  it('rejects a card image that does not come from our upload endpoint', async () => {
+    setDbClient(createMockDb({ translations }));
+
+    const res = await post(bodyWithImage('https://evil.example.com/foto.jpg'));
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { errors?: { message: string }[] };
+    expect(body.errors?.[0].message).toContain('upload endpoint');
+  });
+
+  it('accepts a card image served from this origin', async () => {
+    setDbClient(createMockDb({ translations }));
+
+    const res = await post(
+      bodyWithImage('http://localhost/media/public/map-references/abc123.png'),
+    );
+
+    expect(res.status).toBe(201);
+  });
+});

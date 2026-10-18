@@ -58,6 +58,27 @@ function linkRejectionReason(document: MapDocument): string | null {
   return null;
 }
 
+/** Returns a reason when a card image did not come from our upload endpoint. */
+function imageRejectionReason(document: MapDocument, requestOrigin: string): string | null {
+  for (const feature of document.collection.features) {
+    const { imageUrl } = feature.properties;
+    if (!imageUrl) continue;
+
+    let parsed: URL;
+    try {
+      parsed = new URL(imageUrl);
+    } catch {
+      return `invalid image url: ${imageUrl}`;
+    }
+
+    if (parsed.origin !== requestOrigin || !parsed.pathname.startsWith('/media/public/')) {
+      return `image urls must come from the upload endpoint on this origin: ${imageUrl}`;
+    }
+  }
+
+  return null;
+}
+
 /** GET /map-documents — every stored document with its bindings, for admin. */
 mapDocumentsRouter.get('/', adminAuthGuard(), dbGuard(), async (c) => {
   const db = c.var.db;
@@ -122,6 +143,13 @@ mapDocumentsRouter.post(
     if (linkReason) {
       return problem(c, ERRORS.VALIDATION, linkReason, [
         { path: 'collection', message: linkReason },
+      ]);
+    }
+
+    const imageReason = imageRejectionReason(document, new URL(c.req.url).origin);
+    if (imageReason) {
+      return problem(c, ERRORS.VALIDATION, imageReason, [
+        { path: 'collection', message: imageReason },
       ]);
     }
 
