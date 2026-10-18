@@ -4,10 +4,13 @@ import {
   applyMapDocuments,
   boundsOfDocuments,
   buildReferenceStyleLayers,
+  isAllowedHttpsUrl,
+  MAP_LINK_ALLOWED_HOSTS,
   MAP_REFERENCE_LIMITS,
   mapDocumentSchema,
   parseMapDocument,
   REFERENCE_SOURCE_PREFIX,
+  withResolvedLabels,
   type MapDocument,
   type MapLike,
 } from '../map';
@@ -23,7 +26,7 @@ function documentWith(key: string, features: readonly Record<string, unknown>[])
 const point = {
   type: 'Feature',
   geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
-  properties: { name: 'Taller' },
+  properties: { labelKey: 'map.references.taller' },
 };
 
 const line = {
@@ -35,7 +38,7 @@ const line = {
       [-64.735, -32.215],
     ],
   },
-  properties: { name: 'Sendero' },
+  properties: { labelKey: 'map.references.sendero' },
 };
 
 const polygon = {
@@ -51,7 +54,7 @@ const polygon = {
       ],
     ],
   },
-  properties: { name: 'Bosque' },
+  properties: { labelKey: 'map.references.bosque' },
 };
 
 describe('map document schema', () => {
@@ -62,10 +65,44 @@ describe('map document schema', () => {
     expect(parsed.collection.features).toHaveLength(3);
   });
 
-  it('rejects a document whose reference has no name', () => {
-    const broken = documentWith('sin-nombre', [{ ...point, properties: {} }]);
+  it('accepts an optional card image and external link', () => {
+    const withCard = documentWith('ficha-completa', [
+      {
+        ...point,
+        properties: {
+          labelKey: 'map.references.taller',
+          descriptionKey: 'map.references.taller.body',
+          imageUrl: 'https://images.example.com/taller.jpg',
+          linkUrl: 'https://www.openstreetmap.org/way/638440638',
+        },
+      },
+    ]);
+
+    expect(() => parseMapDocument(withCard)).not.toThrow();
+  });
+
+  it('rejects a reference without a label key', () => {
+    expect(() =>
+      parseMapDocument(documentWith('sin-clave', [{ ...point, properties: {} }])),
+    ).toThrow();
+  });
+
+  it('rejects a label key outside the map namespace', () => {
+    const broken = documentWith('clave-suelta', [{ ...point, properties: { labelKey: 'taller' } }]);
 
     expect(() => parseMapDocument(broken)).toThrow();
+  });
+
+  it('rejects non-https card images and links', () => {
+    const image = documentWith('imagen-insegura', [
+      { ...point, properties: { labelKey: 'map.a', imageUrl: 'http://example.com/a.jpg' } },
+    ]);
+    const link = documentWith('enlace-inseguro', [
+      { ...point, properties: { labelKey: 'map.a', linkUrl: 'http://example.com' } },
+    ]);
+
+    expect(() => parseMapDocument(image)).toThrow();
+    expect(() => parseMapDocument(link)).toThrow();
   });
 
   it('rejects geometries outside the supported subset', () => {
@@ -73,7 +110,7 @@ describe('map document schema', () => {
       {
         type: 'Feature',
         geometry: { type: 'MultiPoint', coordinates: [[0, 0]] },
-        properties: { name: 'x' },
+        properties: { labelKey: 'map.a' },
       },
     ]);
 
@@ -84,6 +121,41 @@ describe('map document schema', () => {
     const tooMany = Array.from({ length: MAP_REFERENCE_LIMITS.maxFeatures + 1 }, () => point);
 
     expect(() => parseMapDocument(documentWith('enorme', tooMany))).toThrow();
+  });
+});
+
+describe('link allowlist', () => {
+  it('accepts https URLs on allowed hosts and their subdomains', () => {
+    expect(isAllowedHttpsUrl('https://openstreetmap.org/way/1', MAP_LINK_ALLOWED_HOSTS)).toBe(true);
+    expect(isAllowedHttpsUrl('https://www.openstreetmap.org/way/1', MAP_LINK_ALLOWED_HOSTS)).toBe(
+      true,
+    );
+  });
+
+  it('rejects other hosts, plain http and malformed values', () => {
+    expect(isAllowedHttpsUrl('https://evil.example.com/x', MAP_LINK_ALLOWED_HOSTS)).toBe(false);
+    expect(isAllowedHttpsUrl('http://openstreetmap.org/way/1', MAP_LINK_ALLOWED_HOSTS)).toBe(false);
+    expect(isAllowedHttpsUrl('not a url', MAP_LINK_ALLOWED_HOSTS)).toBe(false);
+    expect(isAllowedHttpsUrl('https://openstreetmap.org.evil.com/x', MAP_LINK_ALLOWED_HOSTS)).toBe(
+      false,
+    );
+  });
+});
+
+describe('label resolution', () => {
+  it('injects the translated label into every feature', () => {
+    const resolved = withResolvedLabels(documentWith('sendero', [point, line]), (key) =>
+      key === 'map.references.taller' ? 'Taller' : 'Sendero',
+    );
+
+    expect(resolved.collection.features[0].properties.label).toBe('Taller');
+    expect(resolved.collection.features[1].properties.label).toBe('Sendero');
+  });
+
+  it('falls back to the key itself when the translation is missing', () => {
+    const resolved = withResolvedLabels(documentWith('sendero', [point]), (key) => key);
+
+    expect(resolved.collection.features[0].properties.label).toBe('map.references.taller');
   });
 });
 
@@ -114,7 +186,8 @@ describe('reference style layers', () => {
       `${REFERENCE_SOURCE_PREFIX}sendero:label`,
     ]);
     expect(layers.map((layer) => layer.type)).toEqual(['fill', 'line', 'circle', 'symbol']);
-    expect(layers[3].layout).toMatchObject({ 'text-field': ['get', 'name'] });
+    // The map cannot translate keys, so it reads the label injected before drawing.
+    expect(layers[3].layout).toMatchObject({ 'text-field': ['get', 'label'] });
   });
 });
 
