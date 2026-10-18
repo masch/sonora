@@ -15,16 +15,20 @@ export type MapReferenceGeometry =
 
 /** Renderable and interactive data carried by a reference. */
 export interface MapReferenceProperties {
-  /** Label shown on the map and in the reference card. */
-  name: string;
-  /** Optional body copy for the card. */
-  description?: string;
-  /** Key of an image already shipped or served by the app. */
-  imageKey?: string;
+  /** i18n key for the map label and the card title. */
+  labelKey: string;
+  /** i18n key for the card body copy. */
+  descriptionKey?: string;
+  /** Public https URL of the card image (served from the public bucket). */
+  imageUrl?: string;
+  /** Public https URL opened by the card action; host is allowlisted. */
+  linkUrl?: string;
   /** `#rrggbb` override for the reference colour. */
   color?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
+  /** Injected at runtime from `labelKey`; never authored. */
+  label?: string;
 }
 
 export interface MapReferenceFeature {

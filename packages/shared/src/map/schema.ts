@@ -11,6 +11,9 @@ export const MAP_REFERENCE_LIMITS = {
 /** Reference documents are authored by hand, so keys stay simple and stable. */
 export const MAP_DOCUMENT_KEY_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
+/** Translation keys for references stay inside the `map.*` namespace. */
+export const MAP_LABEL_KEY_PATTERN = /^map\.[a-z0-9][a-z0-9.-]*$/;
+
 /** GeoJSON coordinates are [longitude, latitude]. */
 const coordinateSchema = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
 
@@ -31,10 +34,16 @@ const polygonSchema = z.object({
     .min(1),
 });
 
+const httpsUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('https://'), 'must be an https URL');
+
 const propertiesSchema = z.object({
-  name: z.string().min(1).max(120),
-  description: z.string().max(2000).optional(),
-  imageKey: z.string().min(1).max(120).optional(),
+  labelKey: z.string().regex(MAP_LABEL_KEY_PATTERN),
+  descriptionKey: z.string().regex(MAP_LABEL_KEY_PATTERN).optional(),
+  imageUrl: httpsUrlSchema.optional(),
+  linkUrl: httpsUrlSchema.optional(),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)

@@ -55,6 +55,11 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 | D5  | The current Leaflet map is patched for OSM policy compliance now, instead of waiting for the removal.                                    | user choice, 1 of 2                             |
 | D6  | Web stays online-only (browser cache); offline packs are native-only. Android browsers are already gated to the Play Store.              | proposed in design, not objected                |
 | D7  | Style and `maxzoom` are served from R2 so changing tile depth never needs a release.                                                     | design constraint derived from D2               |
+| D8  | The reference card shows description text, an image and an external link. No audio in this feature.                                      | user selection                                  |
+| D9  | Reference labels and descriptions are i18n keys, not text inside the GeoJSON.                                                            | user selection                                  |
+| D10 | References are authored through a token-authenticated admin API, not a repo script.                                                      | user selection                                  |
+| D11 | Card images are served from the public bucket and uploaded from admin, because bundled assets would need a release per image.            | user selection                                  |
+| D12 | Card links must be https and their host must be in an exported allowlist.                                                                | user selection                                  |
 
 ## Constraints & Conventions
 
@@ -82,6 +87,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Action: types, GeoJSON subset Zod schema with limits, bounds math, style-layer builder, `applyMapDocuments(map, docs)` over a minimal `MapLike`.
   - Proof: shared suite 15 files / 217 tests (10 new); `typecheck` clean in both mobile and api workspaces; `expo lint` clean.
   - Route: inline. Commit: `5b32df0`.
+  - Amended by D9-D12: properties now carry `labelKey`/`descriptionKey`/`imageUrl`/`linkUrl`, the style reads an injected `label`, and `withResolvedLabels` resolves keys before drawing.
 
 - [ ] **T3: API storage and payload** — Refs: S1, S5, S7.
   - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/*`, `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/*`
@@ -97,15 +103,15 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 
 - [ ] **T5: Tap a reference to open its content card** — Refs: S1, S6.
   - Path: `apps/mobile/src/components/map/*`, `apps/mobile/src/components/reference-card.tsx`, locales in `packages/shared/src/locales`
-  - Action: `onFeaturePress` contract on both platforms, invisible 16 px hit layer, `BottomModal` card with title/body/image, i18n keys.
+  - Action: `onFeaturePress` contract on both platforms, invisible 16 px hit layer, `BottomModal` card with the translated title and description, the `imageUrl` image and an action button that opens `linkUrl` (allowlisted https). Missing translations render the key itself.
   - Proof: Jest covers press → card content on native; manual web check.
   - Route: worker. Commit: pending.
 
-- [ ] **T6: Authoring path for references** — Refs: S1.
-  - Path: `apps/api/src/scripts/*` (or seed), `docs/`
-  - Action: documented, validated way to add/adjust a document without a release.
-  - Proof: script run against local DB; docs describe the flow.
-  - Route: inline. Commit: pending.
+- [ ] **T6: Authoring API for references** — Refs: S1, D10, D11, D12.
+  - Path: `apps/api/src/routes/map-documents.ts`, `apps/api/src/middleware/admin-auth-guard.ts` (reuse), image upload on the public bucket, `docs/`
+  - Action: CRUD behind `adminAuthGuard()` + `dbGuard()` + `validateJson()`; publishing rejects a document whose `labelKey`/`descriptionKey` is missing in `es` and `en`, and a `linkUrl`/`imageUrl` whose host is not allowlisted; image upload validated by size and mime type.
+  - Proof: route tests cover rejected translations, rejected hosts and a valid publish; docs describe the flow end to end.
+  - Route: worker. Commit: pending.
 
 ### Phase 2 — Platform, offline and flag
 
@@ -162,8 +168,8 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 
 ## Open questions
 
-1. What content does a reference card hold (text only, text + image, link)? Blocks T5's data model.
-2. Re-tile cadence and who runs it. Blocks T14.
+1. Re-tile cadence and who runs it. Blocks T14.
+2. Which hosts join `MAP_LINK_ALLOWED_HOSTS` beyond `openstreetmap.org` (project site, social profiles)? Blocks T6 validation rules.
 3. Keep the hardcoded `'Pt 1'` strings in `track-detail-map.web.tsx`, or fix them to `t('map.point')` before deleting the file.
 
 ## Log
@@ -177,3 +183,4 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 - **L7** (concrete case): "En este map veo Noridza y Taller pero no en le ejemplo que armamos, porque?"
 - **L8** (depth question): "ok y entonces para poder ver esos Datos como Centro Umepay, Bosque Umepay en nuestra nueva implementacion de maps en la app deberíámos usar zoom 16 y 17 si o si?"
 - **L9** (requirements confirmation): "antes quiero confirmar si la solucion va a tener: tomo las referencias de OSM, le puedo sumar informacion extra al mapa que interactue con licks y zoom offline, exista el flag de modo actual realflet y modo nuevo para la transiccion"
+- **L10** (card and authoring decisions, selected options): "Descripción de texto, Imagen, Enlace externo" · "Claves i18n en los locales" · "API admin con token" · "R2 público con subida desde admin" · "URL validada y whitelist de dominios"

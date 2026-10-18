@@ -58,7 +58,7 @@ export function buildReferenceStyleLayers(sourceId: string): MapStyleLayer[] {
       source: sourceId,
       filter: ['==', ['geometry-type'], 'Point'],
       layout: {
-        'text-field': ['get', 'name'],
+        'text-field': ['get', 'label'],
         'text-font': LABEL_FONT,
         'text-size': 12,
         'text-anchor': 'top',
