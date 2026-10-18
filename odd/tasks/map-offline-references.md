@@ -101,10 +101,16 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Proof: api suite 51 files / 579 tests (new test covers global + bound + skipped-unpublished); `tsc --noEmit` clean in api and mobile; `expo lint` clean.
   - Route: inline. Commit: `7227f91`.
 
-- [ ] **T4: Map renderer, both platforms** — Refs: S1, S4, S6.
-  - Path: `apps/mobile/src/components/map/{experience-map.tsx,experience-map.web.tsx,map-container.tsx,map-view.types.ts}`, `apps/mobile/src/hooks/use-map-overlays.ts`
-  - Action: MapLibre native (declarative) and maplibre-gl web (imperative hook), one source/style model, loading/error/no-WebGL states.
-  - Proof: mobile Jest + `tsc` + lint; web renders the z15 archive from the local spike fixture.
+- [x] **T4: Map renderer, web** — Refs: S1, S4, S6.
+  - Path: `apps/mobile/src/components/map/experience-map.web.tsx`, `apps/mobile/src/components/map/map-view.types.ts`, `apps/mobile/src/test-utils/*`, `apps/mobile/src/__tests__/experience-map-web.test.tsx`, `apps/mobile/package.json`
+  - Action: a MapLibre GL web map that draws the documents from the experiences payload, resolves i18n keys into drawn labels, reports a tapped reference to the caller, and reads callbacks, translation and documents through refs so a re-render never rebuilds the instance. Adds `maplibre-gl` and `pmtiles` pinned exactly and past the release-age gate; jest maps `maplibre-gl` to a double because the package is ESM-only and needs WebGL.
+  - Proof: mobile suite 96 files / 801 tests (9 for this component, including the regression that keeps the map from rebuilding on load); `tsc --noEmit` clean; `expo lint` clean; `expo export --platform web` exits 0 with the component included, bundling 136 `maplibregl` references and 199 `maplibregl-ctrl` rules from the node_modules stylesheet. Independently verified: the first version rebuilt the map on every render (verifier reproduced 1 load → 3 instances, 8 loads → 17); fixed before this commit.
+  - Route: inline + independent verifier. Commit: `PENDING`.
+
+- [ ] **T4b: Map renderer, native** — Refs: S1, S4, S6.
+  - Path: `apps/mobile/src/components/map/experience-map.tsx`, `apps/mobile/app.config.ts`
+  - Action: the declarative MapLibre native map over the same documents and style builder, behind the dev build the native module requires.
+  - Proof: dev build renders the same references; no web-only import reaches the native bundle.
   - Route: worker. Commit: pending.
 
 - [ ] **T5: Tap a reference to open its content card** — Refs: S1, S6.

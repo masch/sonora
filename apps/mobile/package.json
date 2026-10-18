@@ -39,7 +39,9 @@
     "expo-web-browser": "56.0.6",
     "firebase": "11.3.1",
     "i18next": "26.3.6",
+    "maplibre-gl": "6.14.0",
     "nativewind": "5.0.0-preview.4",
+    "pmtiles": "4.5.0",
     "postcss": "8.5.25",
     "promise": "8.3.0",
     "react": "19.2.3",
@@ -100,7 +102,8 @@
     "moduleNameMapper": {
       "\\.(css|png|jpg|jpeg|gif|svg)$": "<rootDir>/__mocks__/styleMock.ts",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
-      "^@/(.*)$": "<rootDir>/src/$1"
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^maplibre-gl$": "<rootDir>/src/test-utils/maplibre-gl-double.ts"
     },
     "testPathIgnorePatterns": [
       "/api/",
