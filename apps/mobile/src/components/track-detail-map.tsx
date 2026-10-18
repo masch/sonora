@@ -4,13 +4,28 @@ import { WebView } from 'react-native-webview';
 import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
 import { useAppTranslation } from '@/hooks/use-translation';
+import { DEFAULT_WEB_URL } from '@/services/store-url';
 import { TwView } from '@/tw';
+import { getAppVersion } from '@/utils/app-version';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
+
+/**
+ * OSM tile policy requires an exact host (no subdomains) and a stable
+ * User-Agent that identifies the application and a contact point.
+ * https://operations.osmfoundation.org/policies/tiles/
+ */
+const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+function buildMapUserAgent(): string {
+  return `Sonora/${getAppVersion().versionName} (+${DEFAULT_WEB_URL})`;
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -58,7 +73,7 @@ shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 iconSize:[25,41],iconAnchor:[12,41],popupAnchor:[1,-34],shadowSize:[41,41]});
 var map=L.map('map',{center:[${lat},${lng}],zoom:15,zoomControl:false,scrollWheelZoom:false});
 window.map=map;
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM contributors',maxZoom:19}).addTo(map);
+L.tileLayer('${OSM_TILE_URL}',{attribution:'${OSM_ATTRIBUTION}',maxZoom:19}).addTo(map);
 var destMarker = L.marker([${lat},${lng}],{icon}).addTo(map);
 window.destMarker = destMarker;
 destMarker.bindTooltip("${destLabel}",{permanent:true,direction:'top'});
@@ -131,6 +146,7 @@ export default function TrackDetailMap({
   const uri = fallback
     ? buildEmbedUrl(latitude, longitude)
     : buildDataUri(latitude, longitude, destLabel, waypointsJson, pointTemplate);
+  const mapUserAgent = buildMapUserAgent();
 
   // Toggle labels dynamically without reloading the WebView
   useEffect(() => {
@@ -239,6 +255,7 @@ export default function TrackDetailMap({
             className="flex-1 bg-transparent"
             accessibilityLabel={t('map.loadingMap')}
             testID="track-detail-map"
+            userAgent={mapUserAgent}
             scrollEnabled={false}
             bounces={false}
             overScrollMode="never"
