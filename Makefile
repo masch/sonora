@@ -547,22 +547,40 @@ api-ingest-osm-dry-run: ## Preview the OSM reference ingestion: writes nothing a
 	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --dry-run $(if $(OUT),--out=$(OUT),) $(if $(LIST),--list,)
 
 .PHONY: api-ingest-osm-staging
-api-ingest-osm-staging: ## Publish OSM references to the staging API. Usage: make api-ingest-osm-staging ADMIN_API_KEY="key" [REGION=calamuchita]
-	@if [ -z "$(ADMIN_API_KEY)" ]; then \
-		echo "Error: ADMIN_API_KEY is required."; \
-		echo "  make api-ingest-osm-staging ADMIN_API_KEY=<staging-admin-key> REGION=calamuchita"; \
+api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
+	@KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$KEY" ]; then \
+		if [ -r /dev/tty ]; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s KEY < /dev/tty; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r KEY; \
+		fi; \
+	fi; \
+	if [ -z "$$KEY" ]; then \
+		echo "Error: no admin key provided."; \
 		exit 1; \
-	fi
-	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_STAGING_URL) --admin-key=$(ADMIN_API_KEY_CLEAN)
+	fi; \
+	cd $(API_DIR) && ADMIN_API_KEY="$$KEY" bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_STAGING_URL)
 
 .PHONY: api-ingest-osm-production
-api-ingest-osm-production: ## Publish OSM references to the production API. Usage: make api-ingest-osm-production ADMIN_API_KEY="key" [REGION=calamuchita]
-	@if [ -z "$(ADMIN_API_KEY)" ]; then \
-		echo "Error: ADMIN_API_KEY is required."; \
-		echo "  make api-ingest-osm-production ADMIN_API_KEY=<production-admin-key> REGION=calamuchita"; \
+api-ingest-osm-production: ## Publish OSM references to the production API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
+	@KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$KEY" ]; then \
+		if [ -r /dev/tty ]; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s KEY < /dev/tty; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r KEY; \
+		fi; \
+	fi; \
+	if [ -z "$$KEY" ]; then \
+		echo "Error: no admin key provided."; \
 		exit 1; \
-	fi
-	@cd $(API_DIR) && bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_PRODUCTION_URL) --admin-key=$(ADMIN_API_KEY_CLEAN)
+	fi; \
+	cd $(API_DIR) && ADMIN_API_KEY="$$KEY" bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_PRODUCTION_URL)
 
 .PHONY: api-create-coupon-staging
 api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
