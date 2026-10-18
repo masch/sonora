@@ -11,6 +11,7 @@ export * from './schemas/lead';
 export * from './semver';
 export * from './api/base-client';
 export * from './enums';
+export * from './map';
 export * from './utils/logger';
 export * from './utils/format-price';
 export * from './locales/en';
