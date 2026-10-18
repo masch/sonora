@@ -130,6 +130,12 @@ describe('link allowlist', () => {
     expect(isAllowedHttpsUrl('https://www.openstreetmap.org/way/1', MAP_LINK_ALLOWED_HOSTS)).toBe(
       true,
     );
+    expect(
+      isAllowedHttpsUrl('https://www.instagram.com/sonora.derivapoetica', MAP_LINK_ALLOWED_HOSTS),
+    ).toBe(true);
+    expect(
+      isAllowedHttpsUrl('https://instagram.com/sonora.derivapoetica', MAP_LINK_ALLOWED_HOSTS),
+    ).toBe(true);
   });
 
   it('rejects other hosts, plain http and malformed values', () => {
@@ -137,6 +143,12 @@ describe('link allowlist', () => {
     expect(isAllowedHttpsUrl('http://openstreetmap.org/way/1', MAP_LINK_ALLOWED_HOSTS)).toBe(false);
     expect(isAllowedHttpsUrl('not a url', MAP_LINK_ALLOWED_HOSTS)).toBe(false);
     expect(isAllowedHttpsUrl('https://openstreetmap.org.evil.com/x', MAP_LINK_ALLOWED_HOSTS)).toBe(
+      false,
+    );
+    expect(isAllowedHttpsUrl('https://instagram.com.evil.com/x', MAP_LINK_ALLOWED_HOSTS)).toBe(
+      false,
+    );
+    expect(isAllowedHttpsUrl('https://t.me/sonora.derivapoetica', MAP_LINK_ALLOWED_HOSTS)).toBe(
       false,
     );
   });

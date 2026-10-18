@@ -89,10 +89,16 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Route: inline. Commit: `5b32df0`.
   - Amended by D9-D12: properties now carry `labelKey`/`descriptionKey`/`imageUrl`/`linkUrl`, the style reads an injected `label`, and `withResolvedLabels` resolves keys before drawing.
 
-- [ ] **T3: API storage and payload** — Refs: S1, S5, S7.
-  - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/*`, `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/*`
-  - Action: `map_documents` + `map_document_bindings`, bbox columns, include global + bound documents in `GET /experiences`, validation rejecting invalid documents.
-  - Proof: API tests; existing experiences payload fields unchanged (superset check).
+- [x] **T3: API storage for reference documents** — Refs: S1, S5, S7.
+  - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/0021_unique_rogue.sql`
+  - Action: `map_documents` (key, scope, z-index, version, collection, bbox, published) plus `map_document_bindings` as an N:N join with cascade deletes; `toMapDocument` rebuilds the renderer-facing shape.
+  - Proof: api suite 51 files / 578 tests; `tsc --noEmit` clean; migration is purely additive (one enum, two tables, no column changes).
+  - Route: inline. Commit: `03ba622`.
+
+- [ ] **T3b: Documents in the experiences payload** — Refs: S1, S5, S7.
+  - Path: `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/experiences.test.ts`
+  - Action: include published global documents plus the ones bound to the experience in `GET /experiences`, so they inherit the offline cache; the payload stays a superset of what it returns today.
+  - Proof: route test asserts a bound document is returned and an unpublished one is not; existing payload assertions unchanged.
   - Route: inline. Commit: pending.
 
 - [ ] **T4: Map renderer, both platforms** — Refs: S1, S4, S6.
@@ -109,7 +115,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 
 - [ ] **T6: Authoring API for references** — Refs: S1, D10, D11, D12.
   - Path: `apps/api/src/routes/map-documents.ts`, `apps/api/src/middleware/admin-auth-guard.ts` (reuse), image upload on the public bucket, `docs/`
-  - Action: CRUD behind `adminAuthGuard()` + `dbGuard()` + `validateJson()`; publishing rejects a document whose `labelKey`/`descriptionKey` is missing in `es` and `en`, and a `linkUrl`/`imageUrl` whose host is not allowlisted; image upload validated by size and mime type.
+  - Action: CRUD behind `adminAuthGuard()` + `dbGuard()` + `validateJson()`; publishing rejects a document whose `labelKey`/`descriptionKey` is missing in `es` and `en`, and a `linkUrl`/`imageUrl` whose host is not allowlisted; an Instagram link path must match `social.instagramHandle`; image upload validated by size and mime type.
   - Proof: route tests cover rejected translations, rejected hosts and a valid publish; docs describe the flow end to end.
   - Route: worker. Commit: pending.
 
@@ -169,7 +175,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 ## Open questions
 
 1. Re-tile cadence and who runs it. Blocks T14.
-2. Which hosts join `MAP_LINK_ALLOWED_HOSTS` beyond `openstreetmap.org` (project site, social profiles)? Blocks T6 validation rules.
+2. `MAP_LINK_ALLOWED_HOSTS` currently allows `openstreetmap.org` and `instagram.com`. Confirm whether any other host is needed (project site, other social profiles). Blocks T6 validation rules.
 3. Keep the hardcoded `'Pt 1'` strings in `track-detail-map.web.tsx`, or fix them to `t('map.point')` before deleting the file.
 
 ## Log
@@ -184,3 +190,4 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 - **L8** (depth question): "ok y entonces para poder ver esos Datos como Centro Umepay, Bosque Umepay en nuestra nueva implementacion de maps en la app deberíámos usar zoom 16 y 17 si o si?"
 - **L9** (requirements confirmation): "antes quiero confirmar si la solucion va a tener: tomo las referencias de OSM, le puedo sumar informacion extra al mapa que interactue con licks y zoom offline, exista el flag de modo actual realflet y modo nuevo para la transiccion"
 - **L10** (card and authoring decisions, selected options): "Descripción de texto, Imagen, Enlace externo" · "Claves i18n en los locales" · "API admin con token" · "R2 público con subida desde admin" · "URL validada y whitelist de dominios"
+- **L11** (allowlist answer): "instagram con handler sonora.derivapoetica"
