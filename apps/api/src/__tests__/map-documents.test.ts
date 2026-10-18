@@ -1,9 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import app, { setDbClient } from '../index';
+import { SUPPORTED_LANGUAGES } from '@sonora/shared';
 import { experiences, mapDocumentBindings, translations } from '../db/schema';
 
 const BINDINGS = { ADMIN_API_KEY: 'test-admin-key-123' };
+
+function postDocument(body: unknown) {
+  return app.request(
+    '/map-documents',
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Authorization: `Bearer ${BINDINGS.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    },
+    BINDINGS,
+  );
+}
 
 const collection = {
   type: 'FeatureCollection',
@@ -282,27 +298,12 @@ describe('POST /map-documents card images', () => {
     };
   }
 
-  function post(body: unknown) {
-    return app.request(
-      '/map-documents',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          Authorization: `Bearer ${BINDINGS.ADMIN_API_KEY}`,
-        },
-        body: JSON.stringify(body),
-      },
-      BINDINGS,
-    );
-  }
-
   const translations = ['es:map.references.taller', 'en:map.references.taller'];
 
   it('rejects a card image that does not come from our upload endpoint', async () => {
     setDbClient(createMockDb({ translations }));
 
-    const res = await post(bodyWithImage('https://evil.example.com/foto.jpg'));
+    const res = await postDocument(bodyWithImage('https://evil.example.com/foto.jpg'));
 
     expect(res.status).toBe(422);
     const body = (await res.json()) as { errors?: { message: string }[] };
@@ -312,7 +313,7 @@ describe('POST /map-documents card images', () => {
   it('accepts a card image served from this origin', async () => {
     setDbClient(createMockDb({ translations, experiences: validBody.experienceIds as string[] }));
 
-    const res = await post(
+    const res = await postDocument(
       bodyWithImage('http://localhost/media/public/map-references/abc123.png'),
     );
 
@@ -325,27 +326,30 @@ describe('POST /map-documents bindings', () => {
     setDbClient(null);
   });
 
-  function post(body: unknown) {
-    return app.request(
-      '/map-documents',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          Authorization: `Bearer ${BINDINGS.ADMIN_API_KEY}`,
-        },
-        body: JSON.stringify(body),
-      },
-      BINDINGS,
-    );
-  }
-
   const translations = ['es:map.references.taller', 'en:map.references.taller'];
+
+  it('requires the key in every supported language, not just some of them', async () => {
+    for (const missingLang of SUPPORTED_LANGUAGES) {
+      const present = SUPPORTED_LANGUAGES.filter((lang) => lang !== missingLang).map(
+        (lang) => `${lang}:map.references.taller`,
+      );
+      setDbClient(
+        createMockDb({ translations: present, experiences: validBody.experienceIds as string[] }),
+      );
+
+      const res = await postDocument(validBody);
+
+      expect(res.status).toBe(422);
+      const body = (await res.json()) as { errors?: { message: string }[] };
+      expect(body.errors?.[0].message).toContain('map.references.taller');
+      expect(body.errors?.[0].message).toContain(missingLang);
+    }
+  });
 
   it('rejects a binding to an experience that does not exist', async () => {
     setDbClient(createMockDb({ translations }));
 
-    const res = await post(validBody);
+    const res = await postDocument(validBody);
 
     expect(res.status).toBe(422);
     const body = (await res.json()) as { errors?: { path: string; message: string }[] };
@@ -363,7 +367,7 @@ describe('POST /map-documents bindings', () => {
     });
     setDbClient(mockDb);
 
-    const res = await post({ ...validBody, experienceIds: [alreadyBound, newlyBound] });
+    const res = await postDocument({ ...validBody, experienceIds: [alreadyBound, newlyBound] });
 
     expect(res.status).toBe(201);
     const bindingInsert = mockDb.inserts[1].values as { experienceId: string }[];

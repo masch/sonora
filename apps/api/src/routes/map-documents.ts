@@ -7,6 +7,7 @@ import {
   MAP_LINK_ALLOWED_HOSTS,
   mapDocumentSchema,
   MapDocumentWritePayloadSchema,
+  SUPPORTED_LANGUAGES,
   type MapDocument,
   type MapDocumentWritePayload,
 } from '@sonora/shared';
@@ -25,8 +26,8 @@ import { validateJson } from '../middleware/validation-error';
 
 const mapDocumentsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-/** Every locale of the app must carry the key before a document can be stored. */
-const REQUIRED_TRANSLATION_LANGS = ['es', 'en'] as const;
+/** Every locale the app supports must carry the key before a document is stored. */
+const REQUIRED_TRANSLATION_LANGS = SUPPORTED_LANGUAGES;
 
 function translationKeysOf(document: MapDocument): string[] {
   const keys = new Set<string>();
@@ -175,8 +176,10 @@ mapDocumentsRouter.post(
         : [];
 
     const present = new Set(translationRows.map((row) => `${row.lang}:${row.key}`));
-    const missing = keys.filter((key) =>
-      REQUIRED_TRANSLATION_LANGS.some((lang) => !present.has(`${lang}:${key}`)),
+    const missing = keys.flatMap((key) =>
+      REQUIRED_TRANSLATION_LANGS.filter((lang) => !present.has(`${lang}:${key}`)).map(
+        (lang) => `${key} (${lang})`,
+      ),
     );
     if (missing.length > 0) {
       const missingDetail = `missing translations: ${missing.join(', ')}`;
