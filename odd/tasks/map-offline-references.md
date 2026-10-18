@@ -119,11 +119,11 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Proof: api suite 52 files / 585 tests; the new suite covers the missing translation, a non-allowlisted host, a foreign instagram profile, a global document with bindings, the stored bbox and the unauthenticated write; `tsc --noEmit` clean in api and mobile.
   - Route: inline. Commit: `c6b7780`.
 
-- [ ] **T6b: Reference image upload** — Refs: S1, D11.
-  - Path: a media route next to `apps/api/src/routes/map-documents.ts`, public bucket serving, `docs/`
-  - Action: authenticated multipart upload to the public bucket with size and mime validation, a public read route for the stored object, and a returned URL the document `imageUrl` can hold; the write path then rejects an `imageUrl` outside that origin.
-  - Proof: upload test covers an accepted type, a rejected type and an oversize file; the stored object is readable through the public route.
-  - Route: inline. Commit: pending.
+- [x] **T6b: Reference image upload** — Refs: S1, D11.
+  - Path: `apps/api/src/routes/media.ts`, `packages/shared/src/schemas/map-document.ts`, `apps/api/src/routes/map-documents.ts`, `apps/api/src/__tests__/media.test.ts`
+  - Action: `POST /media/reference-images` behind the admin guard stores a UUID-keyed image in the public bucket after checking mime type and size, and returns the URL the document must use; `GET /media/public/:key` serves it unauthenticated with an immutable cache header; the document write path rejects an `imageUrl` outside that same origin and path. The schema accepts any absolute image URL on purpose, because the origin rule needs the request origin and local runs are http.
+  - Proof: api suite 53 files / 591 tests; the new suite covers an accepted image, a rejected mime type, an oversize file, the unauthenticated upload, and the write path rejecting a foreign image host while accepting our own. `tsc --noEmit` clean in api and mobile; `expo lint` clean.
+  - Route: inline. Commit: `f0ced90`.
 
 ### Phase 2 — Platform, offline and flag
 

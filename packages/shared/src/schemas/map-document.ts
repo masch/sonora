@@ -19,3 +19,20 @@ export const MapDocumentWritePayloadSchema = z.object({
 });
 
 export type MapDocumentWritePayload = z.infer<typeof MapDocumentWritePayloadSchema>;
+
+/** Reference card images are uploaded to the public bucket, so they are bounded. */
+export const REFERENCE_IMAGE_LIMITS = {
+  maxBytes: 5 * 1024 * 1024,
+  mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+} as const;
+
+export const ReferenceImageUploadBodySchema = z.object({
+  file: z
+    .instanceof(File, { message: 'file must be a File' })
+    .refine((file) => (REFERENCE_IMAGE_LIMITS.mimeTypes as readonly string[]).includes(file.type), {
+      message: `unsupported image type, allowed: ${REFERENCE_IMAGE_LIMITS.mimeTypes.join(', ')}`,
+    })
+    .refine((file) => file.size <= REFERENCE_IMAGE_LIMITS.maxBytes, {
+      message: `image is larger than ${REFERENCE_IMAGE_LIMITS.maxBytes} bytes`,
+    }),
+});

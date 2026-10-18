@@ -93,16 +93,23 @@ describe('map document schema', () => {
     expect(() => parseMapDocument(broken)).toThrow();
   });
 
-  it('rejects non-https card images and links', () => {
-    const image = documentWith('imagen-insegura', [
-      { ...point, properties: { labelKey: 'map.a', imageUrl: 'http://example.com/a.jpg' } },
-    ]);
+  it('rejects non-https card links', () => {
     const link = documentWith('enlace-inseguro', [
       { ...point, properties: { labelKey: 'map.a', linkUrl: 'http://example.com' } },
     ]);
 
-    expect(() => parseMapDocument(image)).toThrow();
     expect(() => parseMapDocument(link)).toThrow();
+  });
+
+  it('accepts a card image url, leaving the origin rule to the API', () => {
+    const image = documentWith('imagen', [
+      {
+        ...point,
+        properties: { labelKey: 'map.a', imageUrl: 'http://localhost/media/public/x.png' },
+      },
+    ]);
+
+    expect(() => parseMapDocument(image)).not.toThrow();
   });
 
   it('rejects geometries outside the supported subset', () => {
