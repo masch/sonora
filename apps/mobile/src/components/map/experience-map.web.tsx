@@ -1,8 +1,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import * as maplibregl from 'maplibre-gl';
-import type { StyleSpecification } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
+import type { StyleSpecification, VectorSourceSpecification } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -12,7 +11,9 @@ import {
   type MapDocument,
 } from '@sonora/shared';
 
+import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
+import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
@@ -41,9 +42,6 @@ interface MapHandle {
   fitBounds(bounds: [[number, number], [number, number]], options?: unknown): void;
   queryRenderedFeatures(point: unknown): RenderedFeature[];
 }
-
-/** The pmtiles protocol is global to the MapLibre module, not to an instance. */
-let protocolRegistered = false;
 
 function toPressReference(
   layerId: string,
@@ -83,19 +81,21 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   onFeaturePress,
-  onReady,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t } = useAppTranslation();
+  // El archivo se descarga entero y las tiles se leen de memoria: la ruta que
+  // sirve el bucket no soporta rangos.
+  const archive = useMapSource(source.archiveUrl, source.styleUrl);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
+  const cancelledRef = useRef(false);
 
   const overlaysRef = useRef(overlays);
   /** Labels need a glyphs source; a style without one must not get a label layer. */
   const glyphsAvailableRef = useRef(false);
   const translateRef = useRef(t);
-  const onReadyRef = useRef(onReady);
   const onFeaturePressRef = useRef(onFeaturePress);
 
   const [ready, setReady] = useState(false);
@@ -114,10 +114,6 @@ export default function ExperienceMap({
   useEffect(() => {
     translateRef.current = t;
   }, [t]);
-
-  useEffect(() => {
-    onReadyRef.current = onReady;
-  }, [onReady]);
 
   useEffect(() => {
     onFeaturePressRef.current = onFeaturePress;
@@ -146,31 +142,42 @@ export default function ExperienceMap({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    cancelledRef.current = false;
 
     function init() {
       try {
-        if (cancelled || !containerRef.current) return;
+        if (cancelledRef.current || !containerRef.current) return;
+        if (archive.status !== 'ready' || !archive.sourceUrl) return;
 
-        if (!protocolRegistered) {
-          maplibregl.addProtocol('pmtiles', new Protocol().tile);
-          protocolRegistered = true;
-        }
+        ensureLocalProtocol(maplibregl);
 
         const inlineStyle: StyleSpecification = {
           version: 8,
           sources: {
             basemap: {
               type: 'vector',
-              url: source.archiveUrl,
+              url: archive.sourceUrl,
               ...(source.attribution ? { attribution: source.attribution } : {}),
             },
           },
           layers: [],
         };
 
-        const style = source.style ?? inlineStyle;
-        glyphsAvailableRef.current = Boolean((style as StyleSpecification).glyphs);
+        const baseStyle = source.style ?? archive.style ?? inlineStyle;
+
+        // El archivo ya está en memoria: el estilo apunta al protocolo local.
+        const style: StyleSpecification = {
+          ...baseStyle,
+          sources: {
+            ...baseStyle.sources,
+            basemap: {
+              ...(baseStyle.sources.basemap as VectorSourceSpecification),
+              type: 'vector',
+              url: archive.sourceUrl,
+            },
+          },
+        };
+        glyphsAvailableRef.current = Boolean(style.glyphs);
 
         const map = new maplibregl.Map({
           container: containerRef.current,
@@ -188,9 +195,8 @@ export default function ExperienceMap({
         }) as never);
 
         map.on('load', (() => {
-          if (cancelled) return;
+          if (cancelledRef.current) return;
           setReady(true);
-          onReadyRef.current?.();
           applyOverlays(map);
           if (boundsWest !== undefined) {
             map.fitBounds(
@@ -213,21 +219,25 @@ export default function ExperienceMap({
         }) as never);
       } catch (err) {
         logger.error('ExperienceMap init failed:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : 'map init failed');
+        if (!cancelledRef.current) setError(err instanceof Error ? err.message : 'map init failed');
       }
     }
 
     init();
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      setReady(false);
+      // No se resetea `ready`: el mapa nuevo avisa al cargar, y el efecto de
+      // overlays ya ignora el caso de mapa ausente.
     };
   }, [
-    source.archiveUrl,
+    archive.status,
+    archive.sourceUrl,
+    archive.style,
     source.style,
+    source.styleUrl,
     source.attribution,
     centerLng,
     centerLat,
@@ -246,7 +256,7 @@ export default function ExperienceMap({
     applyOverlays(map);
   }, [overlays, ready, applyOverlays]);
 
-  if (error) {
+  if (error || archive.status === 'error') {
     return (
       <TwView
         testID={`${testID}-error`}
@@ -254,7 +264,7 @@ export default function ExperienceMap({
       >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
-          {t('map.offlineDescription')}
+          {archive.error ?? t('map.offlineDescription')}
         </ThemedText>
       </TwView>
     );
@@ -262,6 +272,7 @@ export default function ExperienceMap({
 
   return (
     <TwView testID={testID} className={`${className} relative overflow-hidden`}>
+      {archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
       <div ref={containerRef} className="h-full w-full z-0" />
     </TwView>
   );

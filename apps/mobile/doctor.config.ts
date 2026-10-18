@@ -45,6 +45,10 @@ export default {
           '**/track-detail-view.tsx',
           '**/trip-detail-view.tsx',
           '**/track-map.tsx',
+          // El mapa es un sistema externo: se crea en un efecto, avisa su carga por
+          // evento y publica su estado (listo / error) desde ahí. No hay forma de
+          // montarlo sin un efecto, y el estado vive en la instancia, no en el render.
+          'src/components/map/experience-map.web.tsx',
         ],
         rules: [
           'react-compiler',
@@ -59,11 +63,21 @@ export default {
           'react-doctor/no-initialize-state',
           'no-giant-component',
           'react-doctor/no-giant-component',
+          'no-pass-live-state-to-parent',
+          'react-doctor/no-pass-live-state-to-parent',
         ],
         // try/finally in async data-fetching functions is correct error-handling
         // and a known React Compiler limitation (BuildHIR::lowerStatement TryStatement).
         // set-state-in-effect: data fetching via useEffect is the established pattern here.
         // These components use independent loading/error/data state by design.
+      },
+      {
+        files: ['src/hooks/use-map-source.ts'],
+        rules: ['no-fetch-in-effect', 'react-doctor/no-fetch-in-effect'],
+        // The map archive is a large immutable file fetched once per page, and this
+        // repository has no data-fetching library. The hook is the boundary that owns
+        // that load; moving it to the screen would put the same fetch in a component
+        // effect, with less locality.
       },
       {
         files: [

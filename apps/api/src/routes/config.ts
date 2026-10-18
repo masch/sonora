@@ -28,6 +28,10 @@ configRouter.get('/', configGuard(), (c) => {
       ...DEFAULT_REMOTE_CONFIG.geofence,
       bypassIosBrowser,
     },
+    map: {
+      archiveUrl: c.env?.MAP_ARCHIVE_URL ?? DEFAULT_REMOTE_CONFIG.map?.archiveUrl ?? '',
+      styleUrl: c.env?.MAP_STYLE_URL ?? DEFAULT_REMOTE_CONFIG.map?.styleUrl ?? '',
+    },
     appVersion,
   } satisfies RemoteConfigPayload);
 });

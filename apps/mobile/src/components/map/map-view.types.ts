@@ -32,7 +32,6 @@ export interface ExperienceMapProps {
   center?: [number, number];
   zoom?: number;
   onFeaturePress?: (reference: MapReferencePress) => void;
-  onReady?: () => void;
   testID?: string;
   className?: string;
 }

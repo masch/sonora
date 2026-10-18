@@ -12,6 +12,7 @@ export interface FakeMapInstance {
   options: Record<string, unknown>;
   features: { layer: { id: string }; properties: Record<string, unknown> }[];
   emit(event: string, payload?: unknown): void;
+  emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
 
 export const mockMapInstances: FakeMapInstance[] = [];
@@ -67,11 +68,25 @@ export class FakeMap implements FakeMapInstance {
   emit(event: string, payload?: unknown) {
     this.handlers.get(event)?.(payload);
   }
+
+  /** Simula un toque: fija qué features devuelve el hit test y emite el click. */
+  emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]) {
+    this.features = features;
+    this.emit('click', { point: { x: 1, y: 1 } });
+  }
 }
 
-/** Shape of the mocked `maplibre-gl` module. */
+/** `addProtocol` del módulo mockeado: se registra una sola vez por página. */
+export const mockAddProtocol = jest.fn();
+
+/**
+ * Shape of the mocked `maplibre-gl` module. The real package is ESM-only with
+ * named exports, and the component imports it as a namespace, so the double
+ * exposes the members both at the top level and under `default`.
+ */
 export function fakeMaplibreModule() {
-  return { default: { Map: FakeMap, addProtocol: jest.fn() } };
+  const members = { Map: FakeMap, addProtocol: mockAddProtocol };
+  return { ...members, default: members };
 }
 
 /** Shape of the mocked `pmtiles` module. */
