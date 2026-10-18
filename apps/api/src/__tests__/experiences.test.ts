@@ -507,3 +507,71 @@ describe('GET /experiences', () => {
     expect(body[0].audioUrl).toBeNull();
   });
 });
+
+describe('GET /experiences reference documents', () => {
+  let mockDb: any;
+  const env = {
+    JWT_SECRET: 'test-jwt-secret',
+    AUDIO_LINK_EXPIRY_SECONDS: '900',
+  };
+  const collection = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
+        properties: { labelKey: 'map.references.taller' },
+      },
+    ],
+  };
+
+  afterEach(() => {
+    setDbClient(null);
+  });
+
+  it('returns published global and bound documents, and skips bindings of unpublished ones', async () => {
+    const expMock = [{ id: 'exp-1', title: 'Trip', free: true, audioUrl: null, published: true }];
+    const publishedDocuments = [
+      { id: 'doc-global', key: 'bosque', scope: 'global', zIndex: 0, version: 1, collection },
+      { id: 'doc-bound', key: 'sendero', scope: 'experience', zIndex: 0, version: 2, collection },
+    ];
+    // A binding to a document that is not in the published set must be ignored.
+    const bindings = [
+      { documentId: 'doc-bound', experienceId: 'exp-1' },
+      { documentId: 'doc-unpublished', experienceId: 'exp-1' },
+    ];
+
+    let queryCallCount = 0;
+    mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      then: vi.fn().mockImplementation((resolve) => {
+        queryCallCount++;
+        if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
+        if (queryCallCount === 5) return Promise.resolve(publishedDocuments).then(resolve);
+        if (queryCallCount === 6) return Promise.resolve(bindings).then(resolve);
+        return Promise.resolve([]).then(resolve);
+      }),
+    };
+
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/experiences',
+      { headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any[];
+    expect(body).toHaveLength(1);
+    expect(body[0].mapDocuments.map((document: { key: string }) => document.key)).toEqual([
+      'bosque',
+      'sendero',
+    ]);
+    expect(body[0].mapDocuments[1].version).toBe(2);
+  });
+});
