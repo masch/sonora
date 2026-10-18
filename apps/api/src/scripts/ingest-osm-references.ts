@@ -13,7 +13,14 @@
  */
 import { writeFile } from 'node:fs/promises';
 
-import { SUPPORTED_LANGUAGES, mapDocumentSchema, type MapReferenceFeature } from '@sonora/shared';
+import {
+  DEFAULT_MAP_REGION,
+  isMapRegionKey,
+  MAP_REGIONS,
+  SUPPORTED_LANGUAGES,
+  mapDocumentSchema,
+  type MapReferenceFeature,
+} from '@sonora/shared';
 
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -23,10 +30,6 @@ const OVERPASS_ENDPOINTS = [
 
 /** Overpass blocks generic clients, so the request identifies the application. */
 const USER_AGENT = 'SonoraMapIngest/1.0 (+https://sonoraderivapoetica.com; contact: dev@sonora)';
-
-const REGIONS: Record<string, { bbox: string; label: string }> = {
-  calamuchita: { bbox: '-64.83,-32.28,-64.66,-32.12', label: 'Valle de Calamuchita' },
-};
 
 interface ClassSpec {
   /** Overpass selector, e.g. `building` or `tourism`. */
@@ -56,17 +59,19 @@ interface Args {
 
 function parseArgs(argv: string[]): Args {
   const get = (name: string) => argv.find((arg) => arg.startsWith(`--${name}=`))?.split('=')[1];
-  const region = get('region') ?? 'calamuchita';
-  const preset = REGIONS[region];
-  if (!preset && !get('bbox')) {
+  const region = get('region') ?? DEFAULT_MAP_REGION;
+  const preset = isMapRegionKey(region) ? MAP_REGIONS[region] : undefined;
+  const bbox = get('bbox') ?? preset?.bbox;
+
+  if (!bbox) {
     throw new Error(
-      `unknown region "${region}"; pass --bbox=w,s,e,n or one of: ${Object.keys(REGIONS).join(', ')}`,
+      `unknown region "${region}"; pass --bbox=w,s,e,n or one of: ${Object.keys(MAP_REGIONS).join(', ')}`,
     );
   }
 
   return {
     region,
-    bbox: get('bbox') ?? preset.bbox,
+    bbox,
     dryRun: !argv.includes('--publish'),
     api: (get('api') ?? 'https://sonora-api-staging.sonora-api.workers.dev').replace(/\/$/, ''),
     adminKey: get('admin-key') ?? process.env.ADMIN_API_KEY,
@@ -161,7 +166,7 @@ function featureFor(element: OverpassElement, spec: ClassSpec): MapReferenceFeat
 async function main() {
   const argv = process.argv.slice(2);
   const args = parseArgs(argv);
-  const preset = REGIONS[args.region];
+  const preset = isMapRegionKey(args.region) ? MAP_REGIONS[args.region] : undefined;
   const documentKey = `osm-${args.region}`;
 
   console.log(`region      ${args.region}${preset ? ` (${preset.label})` : ''}`);
