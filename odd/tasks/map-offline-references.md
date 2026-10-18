@@ -113,11 +113,17 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Proof: Jest covers press → card content on native; manual web check.
   - Route: worker. Commit: pending.
 
-- [ ] **T6: Authoring API for references** — Refs: S1, D10, D11, D12.
-  - Path: `apps/api/src/routes/map-documents.ts`, `apps/api/src/middleware/admin-auth-guard.ts` (reuse), image upload on the public bucket, `docs/`
-  - Action: CRUD behind `adminAuthGuard()` + `dbGuard()` + `validateJson()`; publishing rejects a document whose `labelKey`/`descriptionKey` is missing in `es` and `en`, and a `linkUrl`/`imageUrl` whose host is not allowlisted; an Instagram link path must match `social.instagramHandle`; image upload validated by size and mime type.
-  - Proof: route tests cover rejected translations, rejected hosts and a valid publish; docs describe the flow end to end.
-  - Route: worker. Commit: pending.
+- [x] **T6: Authoring API for reference documents** — Refs: S1, D10, D12.
+  - Path: `packages/shared/src/schemas/map-document.ts`, `apps/api/src/routes/map-documents.ts`, `apps/api/src/index.ts`, `apps/api/src/__tests__/map-documents.test.ts`
+  - Action: `GET`/`POST`/`DELETE /map-documents` behind `adminAuthGuard()` + `validateJson()` + `dbGuard()`; the write validates the document, requires a bbox, rejects a global document that carries bindings, rejects a link outside the allowlist, requires a matching `social.instagramHandle` for instagram links, and requires every `labelKey`/`descriptionKey` to exist in `es` and `en`.
+  - Proof: api suite 52 files / 585 tests; the new suite covers the missing translation, a non-allowlisted host, a foreign instagram profile, a global document with bindings, the stored bbox and the unauthenticated write; `tsc --noEmit` clean in api and mobile.
+  - Route: inline. Commit: `c6b7780`.
+
+- [ ] **T6b: Reference image upload** — Refs: S1, D11.
+  - Path: a media route next to `apps/api/src/routes/map-documents.ts`, public bucket serving, `docs/`
+  - Action: authenticated multipart upload to the public bucket with size and mime validation, a public read route for the stored object, and a returned URL the document `imageUrl` can hold; the write path then rejects an `imageUrl` outside that origin.
+  - Proof: upload test covers an accepted type, a rejected type and an oversize file; the stored object is readable through the public route.
+  - Route: inline. Commit: pending.
 
 ### Phase 2 — Platform, offline and flag
 

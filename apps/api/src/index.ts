@@ -18,6 +18,7 @@ import { leadsRouter } from './routes/leads';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { termsRouter } from './routes/terms';
+import { mapDocumentsRouter } from './routes/map-documents';
 import { translationsRouter } from './routes/translations';
 
 export interface Env {
@@ -96,6 +97,7 @@ app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/terms', termsRouter);
+app.route('/map-documents', mapDocumentsRouter);
 app.route('/translations', translationsRouter);
 // Backward compatibility alias for existing mobile apps
 app.route('/api/translations', translationsRouter);
