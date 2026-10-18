@@ -92,6 +92,8 @@ export default function ExperienceMap({
   const mapRef = useRef<MapHandle | null>(null);
 
   const overlaysRef = useRef(overlays);
+  /** Labels need a glyphs source; a style without one must not get a label layer. */
+  const glyphsAvailableRef = useRef(false);
   const translateRef = useRef(t);
   const onReadyRef = useRef(onReady);
   const onFeaturePressRef = useRef(onFeaturePress);
@@ -129,7 +131,7 @@ export default function ExperienceMap({
     );
 
     try {
-      applyMapDocuments(map, resolved);
+      applyMapDocuments(map, resolved, { includeLabels: glyphsAvailableRef.current });
     } catch (err) {
       logger.error('ExperienceMap failed to apply reference documents:', err);
     }
@@ -168,6 +170,7 @@ export default function ExperienceMap({
         };
 
         const style = source.style ?? inlineStyle;
+        glyphsAvailableRef.current = Boolean((style as StyleSpecification).glyphs);
 
         const map = new maplibregl.Map({
           container: containerRef.current,

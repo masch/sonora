@@ -55,13 +55,42 @@ describe('ExperienceMap (web)', () => {
     map.emit('load');
 
     await waitFor(() => expect(map.layers.length).toBeGreaterThan(0));
+    // The fallback style carries no glyphs URL, so no label layer is added.
+    expect(map.layers.map((layer: { id: string }) => layer.id)).toEqual([
+      'refs:umepay:fill',
+      'refs:umepay:line',
+      'refs:umepay:circle',
+    ]);
+    expect(Object.keys(map.sources)).toContain('refs:umepay');
+  });
+
+  it('adds the label layer only when the style provides glyphs', async () => {
+    await render(
+      <ExperienceMap
+        source={{
+          ...SOURCE,
+          style: {
+            version: 8,
+            glyphs: 'https://example.com/fonts/{fontstack}/{range}.pbf',
+            sources: { basemap: { type: 'vector', url: SOURCE.archiveUrl } },
+            layers: [],
+          },
+        }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    map.emit('load');
+
+    await waitFor(() => expect(map.layers.length).toBeGreaterThan(0));
     expect(map.layers.map((layer: { id: string }) => layer.id)).toEqual([
       'refs:umepay:fill',
       'refs:umepay:line',
       'refs:umepay:circle',
       'refs:umepay:label',
     ]);
-    expect(Object.keys(map.sources)).toContain('refs:umepay');
   });
 
   it('reports the tapped reference with its document key', async () => {

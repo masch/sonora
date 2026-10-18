@@ -10,7 +10,13 @@ import {
   type MapDocument,
   type MapDocumentWritePayload,
 } from '@sonora/shared';
-import { mapDocumentBindings, mapDocuments, toMapDocument, translations } from '../db/schema';
+import {
+  experiences,
+  mapDocumentBindings,
+  mapDocuments,
+  toMapDocument,
+  translations,
+} from '../db/schema';
 import type { Env, Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
 import { dbGuard } from '../middleware/db-guard';
@@ -193,25 +199,60 @@ mapDocumentsRouter.post(
       updatedAt: new Date(),
     };
 
+    // neon-http has no interactive transactions, so every predictable failure is
+    // removed before the first write: duplicates cannot collide on the composite
+    // key, and an unknown experience cannot fail the foreign key.
+    const desiredExperienceIds = [...new Set(payload.experienceIds)];
+    if (desiredExperienceIds.length > 0) {
+      const knownExperiences = await db
+        .select({ id: experiences.id })
+        .from(experiences)
+        .where(inArray(experiences.id, desiredExperienceIds));
+      const knownIds = new Set(knownExperiences.map((row) => row.id));
+      const unknown = desiredExperienceIds.filter((id) => !knownIds.has(id));
+      if (unknown.length > 0) {
+        const detail = `unknown experiences: ${unknown.join(', ')}`;
+        return problem(c, ERRORS.VALIDATION, detail, [{ path: 'experienceIds', message: detail }]);
+      }
+    }
+
     const [row] = await db
       .insert(mapDocuments)
       .values(values)
       .onConflictDoUpdate({ target: mapDocuments.key, set: values })
       .returning();
 
-    await db.delete(mapDocumentBindings).where(eq(mapDocumentBindings.documentId, row.id));
-    if (payload.experienceIds.length > 0) {
+    // Reconcile bindings by difference instead of deleting them all first: a
+    // failed insert then leaves the existing bindings intact.
+    const currentBindings = await db
+      .select({ experienceId: mapDocumentBindings.experienceId })
+      .from(mapDocumentBindings)
+      .where(eq(mapDocumentBindings.documentId, row.id));
+    const currentIds = new Set(currentBindings.map((binding) => binding.experienceId));
+
+    const toDelete = [...currentIds].filter((id) => !desiredExperienceIds.includes(id));
+    const toInsert = desiredExperienceIds.filter((id) => !currentIds.has(id));
+
+    if (toDelete.length > 0) {
+      await db
+        .delete(mapDocumentBindings)
+        .where(
+          and(
+            eq(mapDocumentBindings.documentId, row.id),
+            inArray(mapDocumentBindings.experienceId, toDelete),
+          ),
+        );
+    }
+    if (toInsert.length > 0) {
       await db
         .insert(mapDocumentBindings)
-        .values(
-          payload.experienceIds.map((experienceId) => ({ documentId: row.id, experienceId })),
-        );
+        .values(toInsert.map((experienceId) => ({ documentId: row.id, experienceId })));
     }
 
     return created(c, {
       ...toMapDocument(row),
       published: row.published,
-      experienceIds: payload.experienceIds,
+      experienceIds: desiredExperienceIds,
     });
   },
 );

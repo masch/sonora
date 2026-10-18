@@ -80,7 +80,8 @@ experiencesRouter.get(
     const publishedMapDocuments = await db
       .select()
       .from(mapDocuments)
-      .where(eq(mapDocuments.published, true));
+      .where(eq(mapDocuments.published, true))
+      .orderBy(mapDocuments.zIndex, mapDocuments.key);
     const mapDocumentBindingRows = await db.select().from(mapDocumentBindings);
 
     const documentById = new Map(

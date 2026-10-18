@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import app, { setDbClient } from '../index';
+import { experiences, mapDocumentBindings, translations } from '../db/schema';
 
 const BINDINGS = { ADMIN_API_KEY: 'test-admin-key-123' };
 
@@ -26,6 +27,10 @@ const validBody = {
 interface MockOptions {
   /** `lang:key` pairs that exist in the translations table. */
   translations?: string[];
+  /** Experience ids that exist. */
+  experiences?: string[];
+  /** Experience ids the document is already bound to. */
+  bindings?: string[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial drizzle double, as in the sibling suites
@@ -45,12 +50,19 @@ function createMockDb(options: MockOptions = {}): any {
     const [lang, key] = entry.split(':');
     return { lang, key };
   });
+  const experienceRows = (options.experiences ?? []).map((id) => ({ id }));
+  const bindingRows = (options.bindings ?? []).map((experienceId) => ({ experienceId }));
 
   return {
     inserts,
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => Promise.resolve(rows)),
+      from: vi.fn((table: unknown) => ({
+        where: vi.fn(() => {
+          if (table === translations) return Promise.resolve(rows);
+          if (table === experiences) return Promise.resolve(experienceRows);
+          if (table === mapDocumentBindings) return Promise.resolve(bindingRows);
+          return Promise.resolve([]);
+        }),
       })),
     })),
     insert: vi.fn(() => ({
@@ -98,6 +110,7 @@ describe('POST /map-documents', () => {
   it('stores the document with its bbox and bindings when both locales carry the key', async () => {
     const mockDb = createMockDb({
       translations: ['es:map.references.taller', 'en:map.references.taller'],
+      experiences: [validBody.experienceIds[0]],
     });
     setDbClient(mockDb);
 
@@ -297,12 +310,63 @@ describe('POST /map-documents card images', () => {
   });
 
   it('accepts a card image served from this origin', async () => {
-    setDbClient(createMockDb({ translations }));
+    setDbClient(createMockDb({ translations, experiences: validBody.experienceIds as string[] }));
 
     const res = await post(
       bodyWithImage('http://localhost/media/public/map-references/abc123.png'),
     );
 
     expect(res.status).toBe(201);
+  });
+});
+
+describe('POST /map-documents bindings', () => {
+  afterEach(() => {
+    setDbClient(null);
+  });
+
+  function post(body: unknown) {
+    return app.request(
+      '/map-documents',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${BINDINGS.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+      },
+      BINDINGS,
+    );
+  }
+
+  const translations = ['es:map.references.taller', 'en:map.references.taller'];
+
+  it('rejects a binding to an experience that does not exist', async () => {
+    setDbClient(createMockDb({ translations }));
+
+    const res = await post(validBody);
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { errors?: { path: string; message: string }[] };
+    expect(body.errors?.[0].path).toBe('experienceIds');
+    expect(body.errors?.[0].message).toContain('unknown experiences');
+  });
+
+  it('inserts only the bindings that are missing instead of rewriting them all', async () => {
+    const alreadyBound = '22222222-2222-4222-8222-222222222222';
+    const newlyBound = validBody.experienceIds[0];
+    const mockDb = createMockDb({
+      translations,
+      experiences: [alreadyBound, newlyBound],
+      bindings: [alreadyBound],
+    });
+    setDbClient(mockDb);
+
+    const res = await post({ ...validBody, experienceIds: [alreadyBound, newlyBound] });
+
+    expect(res.status).toBe(201);
+    const bindingInsert = mockDb.inserts[1].values as { experienceId: string }[];
+    expect(bindingInsert).toEqual([{ documentId: 'doc-1', experienceId: newlyBound }]);
   });
 });
