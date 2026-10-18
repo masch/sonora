@@ -13,7 +13,10 @@ import {
   experienceAccesses,
   experienceCouponRedemptions,
   experiences,
+  mapDocumentBindings,
+  mapDocuments,
   purchases,
+  toMapDocument,
   waypoints,
 } from '../db/schema';
 import { type Env, type Variables } from '../index';
@@ -70,6 +73,30 @@ experiencesRouter.get(
       .select({ experienceId: experienceCouponRedemptions.experienceId })
       .from(experienceCouponRedemptions)
       .where(eq(experienceCouponRedemptions.deviceId, deviceId));
+
+    // Reference documents travel with the experiences payload so they inherit the
+    // offline cache. Published globals apply to every experience; the rest apply
+    // only through their bindings. Fetched once for the whole list.
+    const publishedMapDocuments = await db
+      .select()
+      .from(mapDocuments)
+      .where(eq(mapDocuments.published, true));
+    const mapDocumentBindingRows = await db.select().from(mapDocumentBindings);
+
+    const documentById = new Map(
+      publishedMapDocuments.map((row) => [row.id, toMapDocument(row)] as const),
+    );
+    const globalDocuments = publishedMapDocuments
+      .filter((row) => row.scope === 'global')
+      .map((row) => toMapDocument(row));
+    const documentsByExperience = new Map<string, (typeof globalDocuments)[number][]>();
+    for (const binding of mapDocumentBindingRows) {
+      const boundDocument = documentById.get(binding.documentId);
+      if (!boundDocument) continue;
+      const bucket = documentsByExperience.get(binding.experienceId) ?? [];
+      bucket.push(boundDocument);
+      documentsByExperience.set(binding.experienceId, bucket);
+    }
 
     const allowedExperienceIds = new Set([
       ...accesses.map((a) => a.experienceId),
@@ -128,6 +155,7 @@ experiencesRouter.get(
         ...exp,
         audioUrl: mappedAudioUrl,
         waypoints: mappedWaypoints,
+        mapDocuments: [...globalDocuments, ...(documentsByExperience.get(exp.id) ?? [])],
       });
     }
     return success(c, result);
