@@ -10,7 +10,8 @@ export interface StoreUrls {
 
 const DEFAULT_ANDROID_PACKAGE = APP_IDENTIFIERS.production.appId;
 const DEFAULT_IOS_APP_STORE_ID = process.env.EXPO_PUBLIC_APP_STORE_ID || '0000000000';
-const DEFAULT_WEB_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
+/** Public web build of the app. Also the contact URL named in outbound tile User-Agent. */
+export const DEFAULT_WEB_URL = 'https://sonoraderivapoeticas-team-sonora.expo.app/';
 
 /**
  * Resolves platform-specific store URLs for update redirection.
