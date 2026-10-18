@@ -1,4 +1,4 @@
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
 import { zValidator } from '@hono/zod-validator';
@@ -82,7 +82,14 @@ experiencesRouter.get(
       .from(mapDocuments)
       .where(eq(mapDocuments.published, true))
       .orderBy(mapDocuments.zIndex, mapDocuments.key);
-    const mapDocumentBindingRows = await db.select().from(mapDocumentBindings);
+    const payloadExperienceIds = list.map((exp) => exp.id);
+    const mapDocumentBindingRows =
+      payloadExperienceIds.length > 0
+        ? await db
+            .select()
+            .from(mapDocumentBindings)
+            .where(inArray(mapDocumentBindings.experienceId, payloadExperienceIds))
+        : [];
 
     const documentById = new Map(
       publishedMapDocuments.map((row) => [row.id, toMapDocument(row)] as const),

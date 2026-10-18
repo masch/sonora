@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import app, { setDbClient } from '../index';
 import { experiences } from '../db/schema';
 import { DEFAULT_REMOTE_CONFIG, resolveProximity } from '@sonora/shared';
@@ -573,5 +574,41 @@ describe('GET /experiences reference documents', () => {
       'sendero',
     ]);
     expect(body[0].mapDocuments[1].version).toBe(2);
+  });
+
+  it('bounds the document bindings query to the experiences it returns', async () => {
+    const expMock = [
+      { id: 'exp-in-payload', title: 'Trip', free: true, audioUrl: null, published: true },
+    ];
+
+    let queryCallCount = 0;
+    mockDb = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      then: vi.fn().mockImplementation((resolve) => {
+        queryCallCount += 1;
+        if (queryCallCount === 1) return Promise.resolve(expMock).then(resolve);
+        return Promise.resolve([]).then(resolve);
+      }),
+    };
+    setDbClient(mockDb);
+
+    const res = await app.request(
+      '/experiences',
+      { headers: { 'X-Device-Id': '550e8400-e29b-4a4a-a716-446655440000' } },
+      env,
+    );
+    expect(res.status).toBe(200);
+
+    const dialect = new PgDialect();
+    const boundByPayload = (mockDb.where as Mock).mock.calls
+      .map((call: unknown[]) => dialect.sqlToQuery(call[0] as never))
+      .filter((query) => query.sql.includes(' in ') && query.params.includes('exp-in-payload'));
+
+    expect(boundByPayload).toHaveLength(1);
+    expect(boundByPayload[0].sql).toContain('experience_id');
   });
 });
