@@ -558,7 +558,7 @@ api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts fo
 			read -r KEY; \
 		fi; \
 	fi; \
-	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//'); \
+	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
 	if [ -z "$$KEY" ]; then \
 		echo "Error: no admin key provided."; \
 		exit 1; \
@@ -577,7 +577,7 @@ api-ingest-osm-production: ## Publish OSM references to the production API. Prom
 			read -r KEY; \
 		fi; \
 	fi; \
-	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//'); \
+	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
 	if [ -z "$$KEY" ]; then \
 		echo "Error: no admin key provided."; \
 		exit 1; \
