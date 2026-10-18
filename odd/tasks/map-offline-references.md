@@ -117,7 +117,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Path: `packages/shared/src/schemas/map-document.ts`, `apps/api/src/routes/map-documents.ts`, `apps/api/src/index.ts`, `apps/api/src/__tests__/map-documents.test.ts`
   - Action: `GET`/`POST`/`DELETE /map-documents` behind `adminAuthGuard()` + `validateJson()` + `dbGuard()`; the write validates the document, requires a bbox, rejects a global document that carries bindings, rejects a link outside the allowlist, requires a matching `social.instagramHandle` for instagram links, and requires every `labelKey`/`descriptionKey` to exist in `es` and `en`.
   - Proof: api suite 52 files / 585 tests; the new suite covers the missing translation, a non-allowlisted host, a foreign instagram profile, a global document with bindings, the stored bbox and the unauthenticated write; `tsc --noEmit` clean in api and mobile.
-  - Route: inline. Commit: `PENDING`.
+  - Route: inline. Commit: `c6b7780`.
 
 - [ ] **T6b: Reference image upload** — Refs: S1, D11.
   - Path: a media route next to `apps/api/src/routes/map-documents.ts`, public bucket serving, `docs/`
