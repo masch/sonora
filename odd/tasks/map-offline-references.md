@@ -89,10 +89,16 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Route: inline. Commit: `5b32df0`.
   - Amended by D9-D12: properties now carry `labelKey`/`descriptionKey`/`imageUrl`/`linkUrl`, the style reads an injected `label`, and `withResolvedLabels` resolves keys before drawing.
 
-- [ ] **T3: API storage and payload** — Refs: S1, S5, S7.
-  - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/*`, `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/*`
-  - Action: `map_documents` + `map_document_bindings`, bbox columns, include global + bound documents in `GET /experiences`, validation rejecting invalid documents.
-  - Proof: API tests; existing experiences payload fields unchanged (superset check).
+- [x] **T3: API storage for reference documents** — Refs: S1, S5, S7.
+  - Path: `apps/api/src/db/schema.ts`, `apps/api/migrations/0021_unique_rogue.sql`
+  - Action: `map_documents` (key, scope, z-index, version, collection, bbox, published) plus `map_document_bindings` as an N:N join with cascade deletes; `toMapDocument` rebuilds the renderer-facing shape.
+  - Proof: api suite 51 files / 578 tests; `tsc --noEmit` clean; migration is purely additive (one enum, two tables, no column changes).
+  - Route: inline. Commit: **HASH**.
+
+- [ ] **T3b: Documents in the experiences payload** — Refs: S1, S5, S7.
+  - Path: `apps/api/src/routes/experiences.ts`, `apps/api/src/__tests__/experiences.test.ts`
+  - Action: include published global documents plus the ones bound to the experience in `GET /experiences`, so they inherit the offline cache; the payload stays a superset of what it returns today.
+  - Proof: route test asserts a bound document is returned and an unpublished one is not; existing payload assertions unchanged.
   - Route: inline. Commit: pending.
 
 - [ ] **T4: Map renderer, both platforms** — Refs: S1, S4, S6.

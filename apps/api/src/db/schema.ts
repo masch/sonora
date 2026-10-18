@@ -22,6 +22,8 @@ import {
   PURCHASE_STATUSES,
   SUPPORTED_LANGUAGES,
   type ExperienceCredit,
+  type MapDocumentScope,
+  type MapReferenceCollection,
 } from '@sonora/shared';
 
 export const sonoraSchema = pgSchema('sonora');
@@ -258,3 +260,60 @@ export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type NewTermsAcceptance = typeof termsAcceptances.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type NewLead = typeof leads.$inferInsert;
+
+export const mapScopeEnum = sonoraSchema.enum('map_scope', ['global', 'experience']);
+
+/** Reference documents drawn on top of the basemap; see @sonora/shared map module. */
+export const mapDocuments = sonoraSchema.table('map_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  /** Stable slug used to build map source and layer ids. */
+  key: text('key').notNull().unique(),
+  scope: mapScopeEnum('scope').notNull(),
+  zIndex: integer('z_index').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  /** GeoJSON FeatureCollection; labels are i18n keys, resolved on the client. */
+  collection: jsonb('collection').$type<MapReferenceCollection>().notNull(),
+  /** Computed at write time so global documents can be filtered without PostGIS. */
+  bboxWest: doublePrecision('bbox_west').notNull(),
+  bboxSouth: doublePrecision('bbox_south').notNull(),
+  bboxEast: doublePrecision('bbox_east').notNull(),
+  bboxNorth: doublePrecision('bbox_north').notNull(),
+  published: boolean('published').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Which experiences a document applies to. Global documents have no bindings. */
+export const mapDocumentBindings = sonoraSchema.table(
+  'map_document_bindings',
+  {
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => mapDocuments.id, { onDelete: 'cascade' }),
+    experienceId: uuid('experience_id')
+      .notNull()
+      .references(() => experiences.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.documentId, table.experienceId] })],
+);
+
+export type MapDocumentRow = typeof mapDocuments.$inferSelect;
+export type NewMapDocument = typeof mapDocuments.$inferInsert;
+export type MapDocumentBinding = typeof mapDocumentBindings.$inferSelect;
+export type NewMapDocumentBinding = typeof mapDocumentBindings.$inferInsert;
+
+/** Rebuilds the renderer-facing document from its columns. */
+export function toMapDocument(row: MapDocumentRow): {
+  key: string;
+  scope: MapDocumentScope;
+  zIndex: number;
+  version: number;
+  collection: MapReferenceCollection;
+} {
+  return {
+    key: row.key,
+    scope: row.scope,
+    zIndex: row.zIndex,
+    version: row.version,
+    collection: row.collection,
+  };
+}

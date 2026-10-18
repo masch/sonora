@@ -148,6 +148,13 @@
       "when": 1791643498574,
       "tag": "0020_rich_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792339543173,
+      "tag": "0021_unique_rogue",
+      "breakpoints": true
     }
   ]
 }
