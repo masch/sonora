@@ -105,7 +105,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Path: `apps/mobile/src/components/map/experience-map.web.tsx`, `apps/mobile/src/components/map/map-view.types.ts`, `apps/mobile/src/test-utils/*`, `apps/mobile/src/__tests__/experience-map-web.test.tsx`, `apps/mobile/package.json`
   - Action: a MapLibre GL web map that draws the documents from the experiences payload, resolves i18n keys into drawn labels, reports a tapped reference to the caller, and reads callbacks, translation and documents through refs so a re-render never rebuilds the instance. Adds `maplibre-gl` and `pmtiles` pinned exactly and past the release-age gate; jest maps `maplibre-gl` to a double because the package is ESM-only and needs WebGL.
   - Proof: mobile suite 96 files / 801 tests (9 for this component, including the regression that keeps the map from rebuilding on load); `tsc --noEmit` clean; `expo lint` clean; `expo export --platform web` exits 0 with the component included, bundling 136 `maplibregl` references and 199 `maplibregl-ctrl` rules from the node_modules stylesheet. Independently verified: the first version rebuilt the map on every render (verifier reproduced 1 load → 3 instances, 8 loads → 17); fixed before this commit.
-  - Route: inline + independent verifier. Commit: `PENDING`.
+  - Route: inline + independent verifier. Commit: `0d1a7a2`.
 
 - [ ] **T4b: Map renderer, native** — Refs: S1, S4, S6.
   - Path: `apps/mobile/src/components/map/experience-map.tsx`, `apps/mobile/app.config.ts`
