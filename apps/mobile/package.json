@@ -6,6 +6,7 @@
     "@expo-google-fonts/caveat": "0.4.2",
     "@expo/ui": "56.0.24",
     "@expo/vector-icons": "15.1.1",
+    "@maplibre/maplibre-react-native": "11.5.0",
     "@react-native-community/netinfo": "12.0.1",
     "@react-native-firebase/analytics": "21.14.0",
     "@react-native-firebase/app": "21.14.0",
@@ -103,7 +104,8 @@
       "\\.(css|png|jpg|jpeg|gif|svg)$": "<rootDir>/__mocks__/styleMock.ts",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1",
-      "^maplibre-gl$": "<rootDir>/src/test-utils/maplibre-gl-double.ts"
+      "^maplibre-gl$": "<rootDir>/src/test-utils/maplibre-gl-double.ts",
+      "^@maplibre/maplibre-react-native$": "<rootDir>/src/test-utils/maplibre-react-native-double.tsx"
     },
     "testPathIgnorePatterns": [
       "/api/",
