@@ -89,11 +89,16 @@ function remoteUrl(archiveUrl: string): string {
  * deterministic `<archive>.part` name made the runs interfere: the second mount
  * deleted the first's transfer and then published a file the first was still
  * writing.
+ *
+ * The timestamp and the counter are both monotonic within this process, which is
+ * all the separation needed: no run can reuse another's name. Deliberately no
+ * randomness — a weak random token in a file that writes archives is what the
+ * doctor reports as weak cryptography, and crypto-grade randomness would buy
+ * nothing here.
  */
 function temporaryName(archiveName: string): string {
   runSequence += 1;
-  const token = Math.random().toString(36).slice(2, 10);
-  return `${archiveName}.${runSequence}-${token}.part`;
+  return `${archiveName}.${Date.now()}-${runSequence}.part`;
 }
 
 /**
