@@ -15,6 +15,7 @@ configRouter.get('/', configGuard(), (c) => {
     bypassIosBrowser,
     mapArchiveUrl,
     mapStyleUrl,
+    mapRenderer,
   } = c.var.configEnv;
 
   const appVersion: RemoteConfigPayload['appVersion'] = {
@@ -39,6 +40,7 @@ configRouter.get('/', configGuard(), (c) => {
       ...(DEFAULT_REMOTE_CONFIG.map ?? {}),
       archiveUrl: mapArchiveUrl,
       styleUrl: mapStyleUrl,
+      renderer: mapRenderer,
     },
     appVersion,
   } satisfies RemoteConfigPayload);

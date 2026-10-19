@@ -16,7 +16,9 @@ const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
     bypassGeofence: APP_CONFIG.geofence.bypassGeofence,
     bypassIosBrowser: APP_CONFIG.geofence.bypassIosBrowser,
   },
-  map: APP_CONFIG.map,
+  // The build floor of the renderer chain (T10): before the server answers, and for
+  // any payload that predates the field, the build's own choice is what counts.
+  map: { ...APP_CONFIG.map, renderer: APP_CONFIG.mapRenderer },
 };
 
 export type VersionStatus = 'ok' | 'warn' | 'block';
