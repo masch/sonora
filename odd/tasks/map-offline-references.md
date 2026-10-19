@@ -113,11 +113,11 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Proof: dev build renders the same references; no web-only import reaches the native bundle.
   - Route: worker. Commit: pending.
 
-- [ ] **T4c: Both experience screens render the new map with the itinerary** — Refs: S1, S5, S6.
-  - Path: `apps/mobile/src/components/map/experience-map-switch.tsx` (new), `experience-map{,.web}.tsx`, `map-view.types.ts`, `apps/mobile/src/components/{track,trip}-detail-view.tsx`, `packages/shared/src/map/{itinerary,labels,map-like,document,schema}.ts`
-  - Action: extract the renderer switch out of the track screen so both screens share it; derive one itinerary document per experience (origin, numbered stops, path, user location) drawn through the same `applyMapDocuments` path; `showLabels` toggles the label layer.
-  - Proof: Jest covers the switch per renderer, the derived document, the label toggle and the trip screen; the trip map keeps its waypoints and its labels button.
-  - Route: worker. Commit: pending.
+- [x] **T4c: Both experience screens render the new map with the itinerary** — Refs: S1, S5, S6.
+  - Path: `apps/mobile/src/components/map/{experience-map-switch,trip-map}.tsx` (new), `apps/mobile/src/hooks/use-map-view-config.ts` (new), `experience-map{,.web}.tsx`, `map-view.types.ts`, `apps/mobile/src/components/{track,trip}-detail-view.tsx`, `packages/shared/src/map/{itinerary,labels,map-like,document,schema}.ts`
+  - Action: extract the renderer switch and the map config out of the track screen so both screens share them; derive one itinerary document per experience (origin, numbered stops, path, user location) drawn through the same `applyMapDocuments` path; `showLabels` toggles the label layer; the trip's map block moves to `TripMap` with its own toggle state, which keeps `TripDetailView` under the complexity threshold.
+  - Proof: Jest covers the switch per renderer, the derived document, the label toggle, the hook resolution and the trip screen; shared 241 / api 599 / mobile 819 tests; `tsc --noEmit` in both workspaces; `expo lint`; `doctor-ci` 100/100, after a probe on the HEAD content proved the complexity warning was pre-existing. Also relaxes `MAP_LABEL_KEY_PATTERN`, which rejected the camelCase keys the locales actually use.
+  - Route: worker + inline. Commit: `438b558`.
 
 - [ ] **T5: Tap a reference to open its content card** — Refs: S1, S6.
   - Path: `apps/mobile/src/components/map/*`, `apps/mobile/src/components/reference-card.tsx`, locales in `packages/shared/src/locales`
