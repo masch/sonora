@@ -30,6 +30,7 @@ export const en = {
     hideLabels: 'Hide labels',
     showLabels: 'Show labels',
     fetchingLocation: 'Locating…',
+    openLink: 'Open link',
   },
   tabs: {
     index: 'Home',

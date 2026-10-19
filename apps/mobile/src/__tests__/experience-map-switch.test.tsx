@@ -1,7 +1,8 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 import type { MapDocument } from '@sonora/shared';
 
+import type { MapReferencePress } from '@/components/map/map-view.types';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
 import TripDetailView from '@/components/trip-detail-view';
 import type { TrackExperience, TripExperience } from '@/data/experiences';
@@ -280,5 +281,46 @@ describe('TripDetailView map', () => {
 
     const last = mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1];
     expect(last.showLabels).toBe(false);
+  });
+
+  it('opens the reference card when the map reports a tap on a reference', async () => {
+    const view = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />,
+    );
+
+    expect(view.queryByTestId('reference-card')).toBeNull();
+
+    const onFeaturePress = mockExperienceMapProps[0].onFeaturePress as (
+      reference: MapReferencePress,
+    ) => void;
+    await act(async () => {
+      onFeaturePress({
+        documentKey: 'referencias',
+        label: 'Centro Umepay',
+        // Cards need content, not just a label (D8): a label-only feature is
+        // drawing, so this fixture carries the description a real one has.
+        descriptionKey: 'map.centroUmepay.description',
+      });
+    });
+
+    expect(view.getByTestId('reference-card')).toBeTruthy();
+    expect(view.getByText('Centro Umepay')).toBeTruthy();
+  });
+
+  it('ignores a tap on the itinerary, which is drawing and not a reference', async () => {
+    const view = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />,
+    );
+
+    const onFeaturePress = mockExperienceMapProps[0].onFeaturePress as (
+      reference: MapReferencePress,
+    ) => void;
+    await act(async () => {
+      // Exactly what the map reports for an origin, a numbered stop or the path:
+      // the derived document carries a label and nothing else.
+      onFeaturePress({ documentKey: 'itinerary', label: 'Pt 1', labelKey: 'map.point' });
+    });
+
+    expect(view.queryByTestId('reference-card')).toBeNull();
   });
 });

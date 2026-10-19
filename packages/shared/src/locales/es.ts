@@ -30,6 +30,7 @@ export const es = {
     hideLabels: 'Ocultar nombres',
     showLabels: 'Mostrar nombres',
     fetchingLocation: 'Ubicando…',
+    openLink: 'Abrir enlace',
   },
   tabs: {
     index: 'Inicio',
