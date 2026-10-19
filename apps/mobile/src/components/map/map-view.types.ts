@@ -35,6 +35,8 @@ export interface ExperienceMapProps {
   zoom?: number;
   /** Where the walker is, when the app knows it. */
   userCoordinates?: { latitude: number; longitude: number };
+  /** Draw the reference label layer. Defaults to true. */
+  showLabels?: boolean;
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;

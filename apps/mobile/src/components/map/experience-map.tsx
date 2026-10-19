@@ -14,6 +14,7 @@ import type { ExperienceMapProps } from './map-view.types';
 export default function ExperienceMap({
   center = [-64.738, -32.212],
   userCoordinates,
+  showLabels = true,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
@@ -28,6 +29,7 @@ export default function ExperienceMap({
         longitude={longitude}
         userLatitude={userCoordinates?.latitude}
         userLongitude={userCoordinates?.longitude}
+        showLabels={showLabels}
       />
     </TwView>
   );

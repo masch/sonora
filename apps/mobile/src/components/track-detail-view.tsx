@@ -6,20 +6,18 @@ import UnifiedAudioController from '@/components/unified-audio-controller';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
-import TrackDetailMap from '@/components/track-detail-map';
-import ExperienceMap from '@/components/map/experience-map';
-import { resolveMapRenderer, type MapRenderer } from '@/components/map/resolve-renderer';
+import ExperienceMapSwitch from '@/components/map/experience-map-switch';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
 import { ExperienceCredits } from '@/components/experience-credits';
 import { LeadCaptureButton } from '@/components/lead-capture-button';
 import type { PlayableExperience } from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
-import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useFeedbackTrigger } from '@/hooks/use-feedback-trigger';
 import { useFeedbackSubmit } from '@/hooks/use-feedback-submit';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
@@ -31,40 +29,6 @@ import { getUserEmail } from '@/storage/app-storage';
 import { TwView } from '@/tw';
 import { TwImage } from '@/tw/image';
 import { DEFAULT_TRACK_IMAGE, TRACK_IMAGES } from '@/constants/images';
-
-interface TrackMapProps {
-  renderer: MapRenderer;
-  archiveUrl: string;
-  styleUrl?: string;
-  track: PlayableExperience;
-  userCoordinates?: { latitude: number; longitude: number };
-}
-
-/**
- * The map for a track, whichever implementation is enabled. Extracted so the
- * choice stays out of the screen's own control flow.
- */
-function TrackMap({ renderer, archiveUrl, styleUrl, track, userCoordinates }: TrackMapProps) {
-  if (renderer === 'maplibre') {
-    return (
-      <ExperienceMap
-        source={{ archiveUrl, styleUrl }}
-        overlays={track.mapDocuments ?? []}
-        center={[track.longitude, track.latitude]}
-        userCoordinates={userCoordinates}
-      />
-    );
-  }
-
-  return (
-    <TrackDetailMap
-      latitude={track.latitude}
-      longitude={track.longitude}
-      userLatitude={userCoordinates?.latitude}
-      userLongitude={userCoordinates?.longitude}
-    />
-  );
-}
 
 interface TrackDetailViewProps {
   track: PlayableExperience;
@@ -133,10 +97,7 @@ export default function TrackDetailView({
 }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  // The new map is chosen per environment and takes its origins from the remote
-  // config. Expo only inlines literal access, not a computed constant.
-  const mapRenderer = resolveMapRenderer(process.env.EXPO_PUBLIC_MAP_RENDERER);
-  const mapConfig = useRemoteConfigStore((state) => state.config.map);
+  const { renderer: mapRenderer, source: mapSource } = useMapViewConfig();
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
@@ -250,11 +211,10 @@ export default function TrackDetailView({
                 className="mt-3 -mx-3 relative rounded-xl overflow-hidden"
                 testID="track-detail-map"
               >
-                <TrackMap
+                <ExperienceMapSwitch
                   renderer={mapRenderer}
-                  archiveUrl={mapConfig?.archiveUrl ?? ''}
-                  styleUrl={mapConfig?.styleUrl || undefined}
-                  track={track}
+                  source={mapSource}
+                  experience={track}
                   userCoordinates={geofence.userCoordinates ?? undefined}
                 />
               </TwView>

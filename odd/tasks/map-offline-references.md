@@ -113,6 +113,12 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Proof: dev build renders the same references; no web-only import reaches the native bundle.
   - Route: worker. Commit: pending.
 
+- [ ] **T4c: Both experience screens render the new map with the itinerary** — Refs: S1, S5, S6.
+  - Path: `apps/mobile/src/components/map/experience-map-switch.tsx` (new), `experience-map{,.web}.tsx`, `map-view.types.ts`, `apps/mobile/src/components/{track,trip}-detail-view.tsx`, `packages/shared/src/map/{itinerary,labels,map-like,document,schema}.ts`
+  - Action: extract the renderer switch out of the track screen so both screens share it; derive one itinerary document per experience (origin, numbered stops, path, user location) drawn through the same `applyMapDocuments` path; `showLabels` toggles the label layer.
+  - Proof: Jest covers the switch per renderer, the derived document, the label toggle and the trip screen; the trip map keeps its waypoints and its labels button.
+  - Route: worker. Commit: pending.
+
 - [ ] **T5: Tap a reference to open its content card** — Refs: S1, S6.
   - Path: `apps/mobile/src/components/map/*`, `apps/mobile/src/components/reference-card.tsx`, locales in `packages/shared/src/locales`
   - Action: `onFeaturePress` contract on both platforms, invisible 16 px hit layer, `BottomModal` card with the translated title and description, the `imageUrl` image and an action button that opens `linkUrl` (allowlisted https). Missing translations render the key itself.
@@ -205,3 +211,4 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 - **L11** (allowlist answer): "instagram con handler sonora.derivapoetica"
 - **L12** (native review of the branch candidate, lineage `review-fe4ff40301adcf79`): the provider ran four lenses plus a refuter and returned `correction_required` with four candidate-caused CRITICAL findings, all in code this branch introduced — R3-001 partial state when bindings cannot be written, R3-002 ignored zIndex draw order plus non-deterministic document order, R3-003 schema-accepted `minzoom` never applied, R3-004 label layer added to a style with no glyphs. Each is corrected with a test that fails without the fix, in the commit `fix(map): correct four findings from the native review` on the correction slice.
 - **L13** (hosting decision, no custom domain): the public bucket is reached through `r2.dev`, which Cloudflare documents as non-production and which is not covered by its cache, so every byte-range read hits the R2 origin (latency reported at 500 ms or more). Instead of fighting that, the archive is small enough to download whole: the same model as the offline pack, one request instead of dozens, and a future custom domain becomes a pure gain with no client change. Internal references never enter the bucket: they travel in the authenticated experiences payload.
+- **L14** (parity gap reported by the user): the new map was wired only into the track screen, because the renderer switch (`TrackMap`) was defined inside `track-detail-view.tsx`. A trip receives `mapDocuments` in the same payload and draws nothing, and never mounts the new renderer. Two further gaps surfaced while speccing the fix: `ExperienceMapProps.userCoordinates` is declared and unused (the new map draws no user location) and the new map has no labels toggle while the trip screen owns one. Chosen path: extract the switch so both screens share it and close the parity gaps with the Leaflet map's drawn set before the flag can be turned on.

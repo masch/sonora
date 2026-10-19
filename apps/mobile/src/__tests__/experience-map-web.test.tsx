@@ -132,6 +132,37 @@ describe('ExperienceMap (web)', () => {
     );
   });
 
+  it('adds and removes the label layer with the labels toggle', async () => {
+    // A stable source keeps the map instance alive across the toggle.
+    const source = { archiveUrl: ARCHIVE, style: styleWith(true) };
+    const view = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+    expect(mockMapInstances[0].layers.map((layer: { id: string }) => layer.id)).toContain(
+      'refs:umepay:label',
+    );
+
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[document]} showLabels={false} />);
+    });
+    expect(mockMapInstances[0].layers.map((layer: { id: string }) => layer.id)).not.toContain(
+      'refs:umepay:label',
+    );
+    expect(mockMapInstances[0].layers.map((layer: { id: string }) => layer.id)).toContain(
+      'refs:umepay:circle',
+    );
+
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[document]} showLabels />);
+    });
+    expect(mockMapInstances[0].layers.map((layer: { id: string }) => layer.id)).toContain(
+      'refs:umepay:label',
+    );
+  });
+
   it('reports the tapped reference with its document key', async () => {
     const onFeaturePress = jest.fn();
     await render(

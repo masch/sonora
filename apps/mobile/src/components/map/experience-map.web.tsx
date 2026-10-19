@@ -80,6 +80,7 @@ export default function ExperienceMap({
   bounds,
   center = [-64.738, -32.212],
   zoom = 14,
+  showLabels = true,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -95,6 +96,8 @@ export default function ExperienceMap({
   const overlaysRef = useRef(overlays);
   /** Labels need a glyphs source; a style without one must not get a label layer. */
   const glyphsAvailableRef = useRef(false);
+  /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
+  const showLabelsRef = useRef(showLabels);
   const translateRef = useRef(t);
   const onFeaturePressRef = useRef(onFeaturePress);
 
@@ -119,15 +122,22 @@ export default function ExperienceMap({
     onFeaturePressRef.current = onFeaturePress;
   }, [onFeaturePress]);
 
+  // Declared before the overlay effect so the toggle reads the fresh value.
+  useEffect(() => {
+    showLabelsRef.current = showLabels;
+  }, [showLabels]);
+
   /** Draws the current documents. Safe to call on every content or locale change. */
   const applyOverlays = useCallback((map: MapHandle) => {
     // MapLibre cannot call the translation layer, so keys become text here.
     const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(overlay, (key) => translateRef.current(key as never)),
+      withResolvedLabels(overlay, (key, options) => translateRef.current(key as never, options)),
     );
 
     try {
-      applyMapDocuments(map, resolved, { includeLabels: glyphsAvailableRef.current });
+      applyMapDocuments(map, resolved, {
+        includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
+      });
     } catch (err) {
       logger.error('ExperienceMap failed to apply reference documents:', err);
     }
@@ -254,7 +264,7 @@ export default function ExperienceMap({
     const map = mapRef.current;
     if (!ready || !map) return;
     applyOverlays(map);
-  }, [overlays, ready, applyOverlays]);
+  }, [overlays, ready, showLabels, applyOverlays]);
 
   if (error || archive.status === 'error') {
     return (
