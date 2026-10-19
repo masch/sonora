@@ -1,4 +1,4 @@
-import type { Platform } from '@sonora/shared';
+import type { MapRenderer, Platform } from '@sonora/shared';
 import { PAYMENT_ROUTES } from '@sonora/shared';
 import { Hono } from 'hono';
 import type { DbClient } from './db';
@@ -34,6 +34,8 @@ export interface Env {
   PUBLIC_BUCKET?: R2Bucket;
   MAP_ARCHIVE_URL?: string;
   MAP_STYLE_URL?: string;
+  /** `maplibre` enables the new renderer; anything else stays on Leaflet. */
+  MAP_RENDERER?: string;
   ADMIN_API_KEY?: string;
   ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
   ADMIN_SESSION_COOKIE_SECURE?: string;
@@ -74,6 +76,11 @@ export interface Variables {
     /** Public map artifacts; empty when this environment publishes none. */
     mapArchiveUrl: string;
     mapStyleUrl: string;
+    /**
+     * Normalized renderer, never the raw variable: `maplibre` only for that
+     * exact value, `leaflet` for anything else including unset.
+     */
+    mapRenderer: MapRenderer;
   };
   environment: string;
   feedbackStore?: KVNamespace;

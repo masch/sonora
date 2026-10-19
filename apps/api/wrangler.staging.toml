@@ -33,6 +33,9 @@ AUDIO_LINK_EXPIRY_SECONDS = "900"
 # every environment.
 MAP_ARCHIVE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/tiles/calamuchita/v1.pmtiles"
 MAP_STYLE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/styles/v1.json"
+# Renderer served to this environment's clients. `maplibre` switches every build
+# that left the choice open; anything else keeps them on the Leaflet map.
+MAP_RENDERER = "leaflet"
 
 [define]
 MP_BYPASS_SIGNATURE = "true"

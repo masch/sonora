@@ -98,6 +98,39 @@ describe('Middleware Guards (c.var injection)', () => {
       expect(unsetBody.mapArchiveUrl).toBe('');
       expect(unsetBody.mapStyleUrl).toBe('');
     });
+
+    it('normalizes MAP_RENDERER into configEnv', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
+
+      const enabled = await app.request(
+        '/test',
+        {},
+        { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false', MAP_RENDERER: 'maplibre' },
+      );
+      const enabledBody = (await enabled.json()) as { mapRenderer: string };
+      expect(enabledBody.mapRenderer).toBe('maplibre');
+
+      // Only the exact value enables the new renderer; anything else is the
+      // historical map, so an unknown value never reaches a client.
+      for (const value of ['', 'leaflet', 'MapLibre', 'maplibre ', 'webgl']) {
+        const res = await app.request(
+          '/test',
+          {},
+          { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false', MAP_RENDERER: value },
+        );
+        const body = (await res.json()) as { mapRenderer: string };
+        expect({ value, renderer: body.mapRenderer }).toEqual({ value, renderer: 'leaflet' });
+      }
+
+      const unset = await app.request(
+        '/test',
+        {},
+        { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false' },
+      );
+      const unsetBody = (await unset.json()) as { mapRenderer: string };
+      expect(unsetBody.mapRenderer).toBe('leaflet');
+    });
   });
 
   describe('paymentsGuard', () => {

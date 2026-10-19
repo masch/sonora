@@ -163,6 +163,48 @@ describe('RemoteConfigPayloadSchema', () => {
     });
   });
 
+  describe('map artifacts and renderer', () => {
+    const withMap = (map: Record<string, unknown>): Record<string, unknown> => ({
+      ...fullPayload,
+      map,
+    });
+
+    it('defaults renderer to leaflet on a payload that predates the field', () => {
+      // A config cached by a build older than this change carries the artifact
+      // urls but no renderer. It has to parse, and it has to mean leaflet.
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({ archiveUrl: 'https://api.example/tiles/v1.pmtiles', styleUrl: '' }),
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map?.renderer).toBe('leaflet');
+      }
+    });
+
+    it('keeps maplibre when the payload asks for it', () => {
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({ archiveUrl: '', styleUrl: '', renderer: 'maplibre' }),
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map?.renderer).toBe('maplibre');
+      }
+    });
+
+    it('rejects an unknown renderer value instead of defaulting it', () => {
+      // The schema rejects; the API normalizes at the edge, so a rejected value
+      // never travels. Asserted here so the choice is pinned.
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({ archiveUrl: '', styleUrl: '', renderer: 'webgl' }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('ships leaflet as the default map renderer', () => {
+      expect(DEFAULT_REMOTE_CONFIG.map?.renderer).toBe('leaflet');
+    });
+  });
+
   describe('TypeScript types', () => {
     it('DEFAULT_REMOTE_CONFIG satisfies RemoteConfigPayload', () => {
       const check: RemoteConfigPayload = DEFAULT_REMOTE_CONFIG;

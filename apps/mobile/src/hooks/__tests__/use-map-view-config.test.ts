@@ -4,7 +4,8 @@ import { useMapViewConfig } from '@/hooks/use-map-view-config';
 
 let mockRenderer: 'leaflet' | 'maplibre' = 'maplibre';
 
-let mockMapConfig: { archiveUrl: string; styleUrl?: string } | undefined = {
+let mockMapConfig:
+  { archiveUrl: string; styleUrl?: string; renderer?: 'leaflet' | 'maplibre' } | undefined = {
   archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
   styleUrl: 'https://api.example/media/public/styles/v1.json',
 };
@@ -39,6 +40,36 @@ describe('useMapViewConfig', () => {
     mockRenderer = 'leaflet';
     const disabled = await renderHook(() => useMapViewConfig());
     expect(disabled.result.current.renderer).toBe('leaflet');
+  });
+
+  it('lets the remote value reach the renderer when the build left it open', async () => {
+    mockRenderer = 'leaflet';
+    mockMapConfig = {
+      archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+      renderer: 'maplibre',
+    };
+    const { result } = await renderHook(() => useMapViewConfig());
+
+    expect(result.current.renderer).toBe('maplibre');
+  });
+
+  it('keeps the build-time choice when the remote value disagrees', async () => {
+    mockRenderer = 'maplibre';
+    mockMapConfig = { archiveUrl: 'https://api.example/tiles/a.pmtiles', renderer: 'leaflet' };
+    const { result } = await renderHook(() => useMapViewConfig());
+
+    expect(result.current.renderer).toBe('maplibre');
+  });
+
+  it('resolves leaflet when neither the build nor the server asks for maplibre', async () => {
+    mockRenderer = 'leaflet';
+    mockMapConfig = { archiveUrl: 'https://api.example/tiles/a.pmtiles' };
+    const withoutRenderer = await renderHook(() => useMapViewConfig());
+    expect(withoutRenderer.result.current.renderer).toBe('leaflet');
+
+    mockMapConfig = undefined;
+    const withoutMap = await renderHook(() => useMapViewConfig());
+    expect(withoutMap.result.current.renderer).toBe('leaflet');
   });
 
   it('reads the origins from the remote config', async () => {

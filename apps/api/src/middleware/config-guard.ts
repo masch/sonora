@@ -18,6 +18,9 @@ export const configGuard = (): MiddlewareHandler<{
           : DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
       mapArchiveUrl: c.env?.MAP_ARCHIVE_URL || '',
       mapStyleUrl: c.env?.MAP_STYLE_URL || '',
+      // Normalized at the edge: only the exact value enables the new renderer,
+      // so an unset, empty or misspelled variable keeps every client on Leaflet.
+      mapRenderer: c.env?.MAP_RENDERER === 'maplibre' ? 'maplibre' : 'leaflet',
     });
     await next();
   };

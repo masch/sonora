@@ -82,6 +82,24 @@ describe('GET /config', () => {
     expect(body.map.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
   });
 
+  it('sends map.renderer from MAP_RENDERER', async () => {
+    const res = await app.request('/config', {}, { ...BINDINGS, MAP_RENDERER: 'maplibre' });
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('maplibre');
+  });
+
+  it('falls back to leaflet when MAP_RENDERER is unset or unknown', async () => {
+    const unset = await app.request('/config', {}, BINDINGS);
+    const unsetBody = (await unset.json()) as { map: { renderer: string } };
+    expect(unsetBody.map.renderer).toBe('leaflet');
+
+    for (const value of ['', 'MapLibre', 'maplibre ', 'webgl']) {
+      const res = await app.request('/config', {}, { ...BINDINGS, MAP_RENDERER: value });
+      const body = (await res.json()) as { map: { renderer: string } };
+      expect({ value, renderer: body.map.renderer }).toEqual({ value, renderer: 'leaflet' });
+    }
+  });
+
   it('sends empty map urls when the environment publishes no artifacts', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };

@@ -12,6 +12,13 @@ export const RemoteConfigSocialSchema = z.object({
   instagramHandle: z.string().min(1),
 });
 
+/** Map implementations a build can mount. `leaflet` is the historical one. */
+export const MAP_RENDERERS = ['leaflet', 'maplibre'] as const;
+
+export const MapRendererSchema = z.enum(MAP_RENDERERS);
+
+export type MapRenderer = z.infer<typeof MapRendererSchema>;
+
 export const RemoteConfigPayloadSchema = z.object({
   geofence: z.object({
     trip: z.object({
@@ -41,6 +48,11 @@ export const RemoteConfigPayloadSchema = z.object({
     .object({
       archiveUrl: z.string().default(''),
       styleUrl: z.string().default(''),
+      /**
+       * Which implementation the app mounts. Defaulted so a payload cached
+       * before this field existed still parses, and means the Leaflet map.
+       */
+      renderer: MapRendererSchema.default('leaflet'),
     })
     .optional(),
 });
@@ -63,5 +75,6 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
   map: {
     archiveUrl: '',
     styleUrl: '',
+    renderer: 'leaflet',
   },
 };
