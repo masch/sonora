@@ -32,10 +32,38 @@ function mockBytesOf(text: string): Uint8Array {
   return Uint8Array.from(text, (character) => character.charCodeAt(0));
 }
 
-/** A plausible archive body: the format's magic bytes, then filler. */
-function mockArchiveBody(size = 4096): Uint8Array {
+/** Header fields a test may bend; the defaults describe an archive that fits `size`. */
+interface MockHeader {
+  version?: number;
+  rootDirOffset?: number;
+  rootDirLength?: number;
+  tileDataOffset?: number;
+  tileDataLength?: number;
+}
+
+/** A little-endian uint64, written as the two uint32 halves the format stores. */
+function mockUint64(body: Uint8Array, offset: number, value: number): void {
+  const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
+  view.setUint32(offset, value % 2 ** 32, true);
+  view.setUint32(offset + 4, Math.floor(value / 2 ** 32), true);
+}
+
+/**
+ * An archive body the hook must publish: the 127-byte v3 header, with a root
+ * directory and tile data laid out inside `size` bytes. `header` bends one field at
+ * a time, which is how the rejection cases are written.
+ */
+function mockArchiveBody(size = 4096, header: MockHeader = {}): Uint8Array {
   const body = new Uint8Array(size);
   body.set(mockBytesOf('PMTiles'));
+  body[7] = header.version ?? 3;
+  const rootDirOffset = 127;
+  const rootDirLength = 64;
+  const tileDataOffset = rootDirOffset + rootDirLength;
+  mockUint64(body, 8, header.rootDirOffset ?? rootDirOffset);
+  mockUint64(body, 16, header.rootDirLength ?? rootDirLength);
+  mockUint64(body, 56, header.tileDataOffset ?? tileDataOffset);
+  mockUint64(body, 64, header.tileDataLength ?? size - tileDataOffset);
   return body;
 }
 
@@ -323,15 +351,48 @@ describe('useMapArchiveFile', () => {
     expect([...mockDisk.keys()]).toEqual([]);
   });
 
-  it('accepts a body that carries only the magic bytes', async () => {
-    // Nothing beyond the magic is checked: the header and directory are the
-    // reader's business, so the smallest valid answer has to publish.
-    mockDownloadBytes = mockBytesOf('PMTiles');
+  it('publishes a v3 archive whose header and tile data fit the file', async () => {
+    mockDownloadBytes = mockArchiveBody();
 
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
+  });
+
+  it('rejects a body whose tile data ends beyond the file size', async () => {
+    // The magic is there, so the transfer started as a real archive but the body
+    // stopped early: publishing it would break every read that follows.
+    mockDownloadBytes = mockArchiveBody(4096, { tileDataLength: 8192 });
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('downloaded archive is truncated');
+    expect(result.current.uri).toBeUndefined();
+    expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('rejects a body whose root directory ends beyond the file size', async () => {
+    mockDownloadBytes = mockArchiveBody(4096, { rootDirLength: 8192 });
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('downloaded archive is truncated');
+    expect(result.current.uri).toBeUndefined();
+    expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('rejects an archive announced as another PMTiles version', async () => {
+    mockDownloadBytes = mockArchiveBody(4096, { version: 4 });
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('downloaded archive has an unsupported PMTiles version');
+    expect(result.current.uri).toBeUndefined();
+    expect([...mockDisk.keys()]).toEqual([]);
   });
 
   it('says it is loading while the download runs', async () => {

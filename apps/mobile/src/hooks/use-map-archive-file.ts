@@ -30,6 +30,16 @@ const KEY_TAIL_LENGTH = 48;
 /** The PMTiles format's first bytes: no archive starts with anything else. */
 const PMTILES_MAGIC = 'PMTiles';
 
+/** The only version this app reads; the header layout below is the v3 one. */
+const PMTILES_VERSION = 3;
+
+/** Bytes of a v3 header: magic, version byte, then the little-endian uint64 fields. */
+const PMTILES_HEADER_LENGTH = 127;
+
+/** Offsets of the two pairs this check needs, within the v3 header. */
+const HEADER_ROOT_DIRECTORY_OFFSET = 8;
+const HEADER_TILE_DATA_OFFSET = 56;
+
 /** Distinguishes one run's temporary file from another's within this process. */
 let runSequence = 0;
 
@@ -102,28 +112,61 @@ function temporaryName(archiveName: string): string {
 }
 
 /**
- * The first bytes of a file, as text. Only the magic is read, never the whole
- * archive: the header and directory belong to the reader, and loading a full
- * region archive into memory to look at seven bytes would be its own failure.
+ * The first bytes of a file. Only the magic and the header are read, never the whole
+ * archive: the directory and the tiles belong to the reader, and loading a full
+ * region archive into memory to look at its header would be its own failure.
  */
-async function leadingText(file: File, length: number): Promise<string> {
+async function leadingBytes(file: File, length: number): Promise<Uint8Array> {
   const handle = file.open(FileMode.ReadOnly);
   try {
-    return String.fromCharCode(...handle.readBytes(length));
+    return handle.readBytes(length);
   } finally {
     handle.close();
   }
 }
 
 /**
- * Rejects a transfer that did not deliver a PMTiles archive. An empty body, a
- * truncated one, or an HTML error page saved as `.pmtiles` would otherwise be
- * published under the archive's name and break every read that follows.
+ * One little-endian uint64 of the header: the two uint32 halves the format stores.
+ * 32-bit arithmetic stays exact far past any archive this app can hold.
+ */
+function uint64(bytes: Uint8Array, offset: number): number {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const low = view.getUint32(offset, true);
+  const high = view.getUint32(offset + 4, true);
+  return low + high * 2 ** 32;
+}
+
+/**
+ * Rejects a transfer that did not deliver a PMTiles v3 archive.
+ *
+ * The magic alone is not enough: a download cut short still starts with `PMTiles`,
+ * and published under the archive's name it is read on every later mount without
+ * being checked again, so the map never recovers from it. The header is therefore
+ * read once here, while publishing, and the two ranges it promises — the root
+ * directory and the tile data — have to end inside the file. Publication is what
+ * makes the archive trustworthy; the reuse path stays a plain `exists` check.
  */
 async function assertArchive(temporary: File): Promise<void> {
-  if (temporary.size === 0) throw new Error('downloaded archive is empty');
-  if ((await leadingText(temporary, PMTILES_MAGIC.length)) !== PMTILES_MAGIC) {
-    throw new Error('downloaded archive is not a PMTiles archive');
+  const fileSize = temporary.size;
+  if (fileSize === 0) throw new Error('downloaded archive is empty');
+
+  const header = await leadingBytes(temporary, PMTILES_HEADER_LENGTH);
+  const magic = String.fromCharCode(...header.subarray(0, PMTILES_MAGIC.length));
+  if (magic !== PMTILES_MAGIC) throw new Error('downloaded archive is not a PMTiles archive');
+  // Too short to hold a header at all: the rest of it cannot be trusted.
+  if (header.length < PMTILES_HEADER_LENGTH) throw new Error('downloaded archive is truncated');
+  if (header[PMTILES_MAGIC.length] !== PMTILES_VERSION) {
+    throw new Error('downloaded archive has an unsupported PMTiles version');
+  }
+
+  // The root directory and the tile data are all a reader has to reach; an archive
+  // that promises either past its own end is a truncated download.
+  const rootDirectoryEnd =
+    uint64(header, HEADER_ROOT_DIRECTORY_OFFSET) + uint64(header, HEADER_ROOT_DIRECTORY_OFFSET + 8);
+  const tileDataEnd =
+    uint64(header, HEADER_TILE_DATA_OFFSET) + uint64(header, HEADER_TILE_DATA_OFFSET + 8);
+  if (rootDirectoryEnd > fileSize || tileDataEnd > fileSize) {
+    throw new Error('downloaded archive is truncated');
   }
 }
 
@@ -142,12 +185,13 @@ function discardTemporary(temporary: File): void {
  * already there.
  *
  * The transfer lands on a temporary file unique to this run, is checked to be a
- * PMTiles archive, and only then replaces the archive in one move: on Android the
- * response streams straight into the destination, so a failed download can leave a
- * partial file, and a truncated archive would break every read that follows. Every
- * way of failing — a transfer error, a body that is not an archive, a move that
- * cannot land — releases the temporary. An archive of another version is never
- * deleted: it is what the map keeps drawing when the new one cannot be fetched.
+ * PMTiles v3 archive that holds every byte it promises, and only then replaces the
+ * archive in one move: on Android the response streams straight into the
+ * destination, so a failed download can leave a partial file, and a truncated
+ * archive would break every read that follows. Every way of failing — a transfer
+ * error, a body that is not a whole archive, a move that cannot land — releases the
+ * temporary. An archive of another version is never deleted: it is what the map
+ * keeps drawing when the new one cannot be fetched.
  */
 async function downloadArchive(archiveUrl: string): Promise<string> {
   const url = remoteUrl(archiveUrl);
