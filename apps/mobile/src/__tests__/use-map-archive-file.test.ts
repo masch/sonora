@@ -4,15 +4,40 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
  * An in-memory stand-in for the installed `expo-file-system` 56.0.8 class API.
  *
  * The hook only needs `Paths.document`, `Directory.create`, `File.exists`,
- * `File.delete`, `File.move`, `File.downloadFileAsync` and `File.uri`, so the double
- * keeps exactly those and records what really landed on the fake device disk.
- * A failed transfer writes a partial file at the destination, the way Android
- * streams into it, so the hook cannot fake a clean failure by accident.
+ * `File.size`, `File.delete`, `File.move`, `File.open` with `FileHandle.readBytes`,
+ * `File.downloadFileAsync` and `File.uri`, so the double keeps exactly those and
+ * records what really landed on the fake device disk.
+ *
+ * The disk stores contents, not just names, because the hook reads the first bytes
+ * back before it publishes. A transfer writes into the file it opened when it
+ * started, the way a streaming download does, so a run that loses that file
+ * mid-transfer cannot publish as if nothing happened — which is exactly the
+ * interference a second run of the same archive has to be kept out of. A failed
+ * transfer leaves the bytes it streamed at its destination, so the hook cannot fake
+ * a clean failure by accident.
  */
-const mockDisk = new Map<string, number>();
+interface MockInode {
+  bytes: Uint8Array;
+}
+
+const mockDisk = new Map<string, MockInode>();
 const mockDownloadUrls: string[] = [];
 let mockDownloadFailure: Error | null = null;
 let mockDownloadGate: Promise<void> | null = null;
+let mockDownloadBytes: Uint8Array | null = null;
+let mockMoveFailure: Error | null = null;
+
+/** Bytes of a string, as a download body would deliver them. */
+function mockBytesOf(text: string): Uint8Array {
+  return Uint8Array.from(text, (character) => character.charCodeAt(0));
+}
+
+/** A plausible archive body: the format's magic bytes, then filler. */
+function mockArchiveBody(size = 4096): Uint8Array {
+  const body = new Uint8Array(size);
+  body.set(mockBytesOf('PMTiles'));
+  return body;
+}
 
 jest.mock('expo-file-system', () => {
   const normalise = (raw: string): string => {
@@ -54,42 +79,67 @@ jest.mock('expo-file-system', () => {
     }
 
     get size() {
-      return mockDisk.get(this.uri) ?? 0;
+      return mockDisk.get(this.uri)?.bytes.length ?? 0;
     }
 
     delete() {
       mockDisk.delete(this.uri);
     }
 
-    async move(destination: MockFile | MockDirectory, options?: { overwrite?: boolean }) {
-      const size = mockDisk.get(this.uri);
-      if (size === undefined) throw new Error(`no such file: ${this.uri}`);
+    open() {
+      const inode = mockDisk.get(this.uri);
+      if (!inode) throw new Error(`no such file: ${this.uri}`);
+      let offset = 0;
+      return {
+        offset,
+        size: inode.bytes.length,
+        readBytes: (length: number) => {
+          const chunk = inode.bytes.slice(offset, offset + length);
+          offset += chunk.length;
+          return chunk;
+        },
+        writeBytes: () => {},
+        close: () => {},
+      };
+    }
+
+    async move(destination: MockFile, options?: { overwrite?: boolean }) {
+      // A device that is out of space or out of permissions rejects here, before
+      // the archive path is touched.
+      if (mockMoveFailure) throw mockMoveFailure;
+      const inode = mockDisk.get(this.uri);
+      if (!inode) throw new Error(`no such file: ${this.uri}`);
       if (mockDisk.has(destination.uri) && !options?.overwrite) {
         throw new Error(`DestinationAlreadyExists: ${destination.uri}`);
       }
       mockDisk.delete(this.uri);
-      mockDisk.set(destination.uri, size);
+      mockDisk.set(destination.uri, inode);
       this.uri = destination.uri;
     }
 
-    static downloadFileAsync = jest.fn(
-      async (url: string, destination: MockFile | MockDirectory) => {
-        mockDownloadUrls.push(url);
-        if (mockDownloadGate) await mockDownloadGate;
-        if (mockDownloadFailure) {
-          mockDisk.set(destination.uri, 512);
-          throw mockDownloadFailure;
-        }
-        mockDisk.set(destination.uri, 4096);
-        return destination;
-      },
-    );
+    static downloadFileAsync = jest.fn(async (url: string, destination: MockFile) => {
+      mockDownloadUrls.push(url);
+      // The transfer creates its destination when it starts and then streams into
+      // that inode: if another run deletes or replaces the file meanwhile, the
+      // bytes arrive nowhere instead of resurrecting a name this run lost.
+      const inode: MockInode = { bytes: new Uint8Array(0) };
+      mockDisk.set(destination.uri, inode);
+      if (mockDownloadGate) await mockDownloadGate;
+      if (mockDownloadFailure) {
+        inode.bytes = mockArchiveBody().slice(0, 512);
+        throw mockDownloadFailure;
+      }
+      inode.bytes = mockDownloadBytes ?? mockArchiveBody();
+      return destination;
+    });
   }
 
   return {
     Paths: { document: new MockDirectory('file:///document') },
     Directory: MockDirectory,
     File: MockFile,
+    // The hook opens the downloaded file read-only to check its first bytes.
+    FileMode: { ReadOnly: 'r' },
   };
 });
 
@@ -109,6 +159,8 @@ describe('useMapArchiveFile', () => {
     mockDownloadUrls.length = 0;
     mockDownloadFailure = null;
     mockDownloadGate = null;
+    mockDownloadBytes = null;
+    mockMoveFailure = null;
     jest.clearAllMocks();
   });
 
@@ -199,6 +251,87 @@ describe('useMapArchiveFile', () => {
     expect(second.result.current.error).toContain('503');
     // The usable file from before survived, and no partial file was left next to it.
     expect([...mockDisk.keys()]).toEqual([cachedFile]);
+  });
+
+  it('releases the downloaded file when publishing the archive fails', async () => {
+    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(first.result.current.status).toBe('ready'));
+    const cachedFile = fileOf(first.result.current.uri);
+
+    // Out of space or out of permissions: the move onto the archive path rejects
+    // after the whole archive has already been downloaded.
+    mockMoveFailure = new Error('ENOSPC: no space left on device');
+    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V2));
+    await waitFor(() => expect(second.result.current.status).toBe('error'));
+
+    expect(second.result.current.uri).toBeUndefined();
+    expect(second.result.current.error).toBe('ENOSPC: no space left on device');
+    // The finished download was released instead of being kept as the largest file
+    // this app writes, and the archive that was already usable is untouched.
+    expect([...mockDisk.keys()]).toEqual([cachedFile]);
+  });
+
+  it('lets two concurrent downloads of one archive publish the same file', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = () => resolve();
+    });
+    mockDownloadGate = gate;
+
+    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+
+    // Both really transfer, and both are still in flight: each run owns its
+    // temporary file, so neither can delete or overwrite what the other is writing.
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1, ARCHIVE_V1]);
+
+    release();
+    await act(async () => {
+      await gate;
+    });
+
+    await waitFor(() => expect(first.result.current.status).toBe('ready'));
+    await waitFor(() => expect(second.result.current.status).toBe('ready'));
+
+    // The second run loses the race for the download but not the archive: both
+    // point at the one published file.
+    expect(second.result.current.uri).toBe(first.result.current.uri);
+    expect([...mockDisk.keys()]).toEqual([fileOf(first.result.current.uri)]);
+  });
+
+  it('rejects an empty download without publishing anything', async () => {
+    mockDownloadBytes = new Uint8Array(0);
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('downloaded archive is empty');
+    expect(result.current.uri).toBeUndefined();
+    // The empty file was deleted rather than published under the archive's name.
+    expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('rejects a download that is not a PMTiles archive without publishing it', async () => {
+    // An error page or a proxy's HTML answer arriving where the archive should be.
+    mockDownloadBytes = mockBytesOf('<html><body>404 Not Found</body></html>');
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('downloaded archive is not a PMTiles archive');
+    expect(result.current.uri).toBeUndefined();
+    expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('accepts a body that carries only the magic bytes', async () => {
+    // Nothing beyond the magic is checked: the header and directory are the
+    // reader's business, so the smallest valid answer has to publish.
+    mockDownloadBytes = mockBytesOf('PMTiles');
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
   });
 
   it('says it is loading while the download runs', async () => {

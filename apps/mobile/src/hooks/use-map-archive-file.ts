@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File, FileMode, Paths } from 'expo-file-system';
 
 /**
  * Resolves the base-map PMTiles archive to a file on the device.
@@ -26,6 +26,12 @@ const ARCHIVE_DIRECTORY = 'map-archives';
 
 /** Characters of the url kept readable at the end of the key: the `<version>.pmtiles` segment. */
 const KEY_TAIL_LENGTH = 48;
+
+/** The PMTiles format's first bytes: no archive starts with anything else. */
+const PMTILES_MAGIC = 'PMTiles';
+
+/** Distinguishes one run's temporary file from another's within this process. */
+let runSequence = 0;
 
 /**
  * Fingerprint of a string, as 8 lowercase hex digits: FNV-1a over the whole value,
@@ -77,14 +83,66 @@ function remoteUrl(archiveUrl: string): string {
 }
 
 /**
+ * Name of one run's temporary file. Every run gets its own, so two mounts of the
+ * same archive never download into, or delete, each other's file; publication is
+ * still a single move onto the one final name, which is what makes it atomic. A
+ * deterministic `<archive>.part` name made the runs interfere: the second mount
+ * deleted the first's transfer and then published a file the first was still
+ * writing.
+ */
+function temporaryName(archiveName: string): string {
+  runSequence += 1;
+  const token = Math.random().toString(36).slice(2, 10);
+  return `${archiveName}.${runSequence}-${token}.part`;
+}
+
+/**
+ * The first bytes of a file, as text. Only the magic is read, never the whole
+ * archive: the header and directory belong to the reader, and loading a full
+ * region archive into memory to look at seven bytes would be its own failure.
+ */
+async function leadingText(file: File, length: number): Promise<string> {
+  const handle = file.open(FileMode.ReadOnly);
+  try {
+    return String.fromCharCode(...handle.readBytes(length));
+  } finally {
+    handle.close();
+  }
+}
+
+/**
+ * Rejects a transfer that did not deliver a PMTiles archive. An empty body, a
+ * truncated one, or an HTML error page saved as `.pmtiles` would otherwise be
+ * published under the archive's name and break every read that follows.
+ */
+async function assertArchive(temporary: File): Promise<void> {
+  if (temporary.size === 0) throw new Error('downloaded archive is empty');
+  if ((await leadingText(temporary, PMTILES_MAGIC.length)) !== PMTILES_MAGIC) {
+    throw new Error('downloaded archive is not a PMTiles archive');
+  }
+}
+
+/** Drops one run's temporary file, so a failed run releases the space it took. */
+function discardTemporary(temporary: File): void {
+  try {
+    if (temporary.exists) temporary.delete();
+  } catch {
+    // Why the archive could not be published is what the caller has to see, so a
+    // cleanup that fails itself may not replace that error.
+  }
+}
+
+/**
  * Downloads the archive for `archiveUrl` to its versioned path, or reuses the file
  * already there.
  *
- * The transfer lands on a `.part` file and only replaces the archive once it has
- * completed: on Android the response streams straight into the destination, so a
- * failed download can leave a partial file, and a truncated archive would break
- * every read that follows. An archive of another version is never deleted — it is
- * what the map keeps drawing when the new one cannot be fetched.
+ * The transfer lands on a temporary file unique to this run, is checked to be a
+ * PMTiles archive, and only then replaces the archive in one move: on Android the
+ * response streams straight into the destination, so a failed download can leave a
+ * partial file, and a truncated archive would break every read that follows. Every
+ * way of failing — a transfer error, a body that is not an archive, a move that
+ * cannot land — releases the temporary. An archive of another version is never
+ * deleted: it is what the map keeps drawing when the new one cannot be fetched.
  */
 async function downloadArchive(archiveUrl: string): Promise<string> {
   const url = remoteUrl(archiveUrl);
@@ -94,15 +152,15 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
   const archive = new File(directory, `${archiveKey(url)}.pmtiles`);
   if (archive.exists) return `pmtiles://${archive.uri}`;
 
-  const partial = new File(directory, `${archive.name}.part`);
-  if (partial.exists) partial.delete();
+  const temporary = new File(directory, temporaryName(archive.name));
   try {
-    await File.downloadFileAsync(url, partial);
+    await File.downloadFileAsync(url, temporary);
+    await assertArchive(temporary);
+    await temporary.move(archive, { overwrite: true });
   } catch (error) {
-    if (partial.exists) partial.delete();
+    discardTemporary(temporary);
     throw error;
   }
-  await partial.move(archive, { overwrite: true });
 
   return `pmtiles://${archive.uri}`;
 }
