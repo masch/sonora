@@ -26,6 +26,8 @@ let mockDownloadFailure: Error | null = null;
 let mockDownloadGate: Promise<void> | null = null;
 let mockDownloadBytes: Uint8Array | null = null;
 let mockMoveFailure: Error | null = null;
+let mockListFailure: Error | null = null;
+let mockDeleteFailure: Error | null = null;
 
 /** Bytes of a string, as a download body would deliver them. */
 function mockBytesOf(text: string): Uint8Array {
@@ -89,6 +91,16 @@ jest.mock('expo-file-system', () => {
     }
 
     create() {}
+
+    // The device lists what is really on the fake disk; a directory that cannot
+    // be read rejects the way the platform does, which the sweep has to survive.
+    list() {
+      if (mockListFailure) throw mockListFailure;
+      const prefix = `${this.uri}/`;
+      return [...mockDisk.keys()]
+        .filter((uri) => uri.startsWith(prefix))
+        .map((uri) => new MockFile(uri));
+    }
   }
 
   class MockFile {
@@ -111,6 +123,7 @@ jest.mock('expo-file-system', () => {
     }
 
     delete() {
+      if (mockDeleteFailure) throw mockDeleteFailure;
       mockDisk.delete(this.uri);
     }
 
@@ -171,14 +184,37 @@ jest.mock('expo-file-system', () => {
   };
 });
 
-import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
+jest.mock('@/utils/logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
+import { logger } from '@/utils/logger';
 
 const ARCHIVE_V1 = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const ARCHIVE_V2 = 'https://api.example/media/public/tiles/calamuchita/v2.pmtiles';
 
+/** The archive directory on the fake device disk. */
+const ARCHIVE_DIR = 'file:///document/map-archives';
+
 /** The path the hook handed back, without the `pmtiles://` transport scheme. */
 function fileOf(uri: string | undefined): string {
   return (uri ?? '').replace(/^pmtiles:\/\//, '');
+}
+
+/** Puts a file on the fake device disk, as an earlier run or another process left it. */
+function seedFile(uri: string, bytes: Uint8Array = mockArchiveBody()): Uint8Array {
+  mockDisk.set(uri, { bytes });
+  return bytes;
+}
+
+/**
+ * A temporary file named exactly as one run writes it, started `ageMs` ago: the
+ * timestamp is the whole point, since that is what tells a killed run's leftover
+ * from a transfer that is still running.
+ */
+function temporaryOf(archiveName: string, ageMs: number, sequence = 1): string {
+  return `${ARCHIVE_DIR}/${archiveName}.${Date.now() - ageMs}-${sequence}.part`;
 }
 
 describe('useMapArchiveFile', () => {
@@ -189,6 +225,8 @@ describe('useMapArchiveFile', () => {
     mockDownloadGate = null;
     mockDownloadBytes = null;
     mockMoveFailure = null;
+    mockListFailure = null;
+    mockDeleteFailure = null;
     jest.clearAllMocks();
   });
 
@@ -393,6 +431,101 @@ describe('useMapArchiveFile', () => {
     expect(result.current.error).toBe('downloaded archive has an unsupported PMTiles version');
     expect(result.current.uri).toBeUndefined();
     expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('exports the one-hour threshold a temporary has to outlive to be stale', () => {
+    expect(STALE_TEMPORARY_MS).toBe(60 * 60 * 1000);
+  });
+
+  it('deletes the stale temporary a killed run left behind', async () => {
+    const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
+    seedFile(stale, mockArchiveBody(1024));
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    // The leftover of the process that died is gone; only this run's archive stays.
+    expect(mockDisk.has(stale)).toBe(false);
+    expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
+  });
+
+  it('sweeps stale temporaries of another archive, not only of this one', async () => {
+    // The leak belongs to whichever process died, so the sweep cannot be scoped to
+    // the archive this run happens to fetch.
+    const otherArchive = temporaryOf(
+      'fedcba98-another-region-v1.pmtiles',
+      3 * STALE_TEMPORARY_MS,
+      7,
+    );
+    seedFile(otherArchive, mockArchiveBody(2048));
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect(mockDisk.has(otherArchive)).toBe(false);
+    expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
+  });
+
+  it('leaves a recent temporary untouched while it sweeps a stale one', async () => {
+    // A second run of this archive may still be streaming into its own temporary;
+    // deleting it by age alone is what the per-run name exists to prevent.
+    const recent = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 5_000, 2);
+    const recentBytes = seedFile(recent, mockArchiveBody(1024));
+    const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS, 1);
+    seedFile(stale);
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect(mockDisk.has(stale)).toBe(false);
+    // Untouched, byte for byte: the other run keeps writing into it.
+    expect(mockDisk.get(recent)?.bytes).toBe(recentBytes);
+  });
+
+  it('never deletes an archive or a file that is not a temporary', async () => {
+    // An older version's archive is what the map still draws when the new one
+    // cannot be fetched, and the other two names simply do not match the pattern.
+    const olderArchive = `${ARCHIVE_DIR}/0123abcd-calamuchita-media-${Date.now() - 2 * STALE_TEMPORARY_MS}-v9.pmtiles`;
+    const unrelated = `${ARCHIVE_DIR}/notes.txt`;
+    const notATimestamp = `${ARCHIVE_DIR}/0123abcd-calamuchita-media-v1.pmtiles.abcd-1.part`;
+    seedFile(olderArchive);
+    seedFile(unrelated);
+    seedFile(notATimestamp);
+    const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
+    seedFile(stale);
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect(mockDisk.has(stale)).toBe(false);
+    expect(mockDisk.has(olderArchive)).toBe(true);
+    expect(mockDisk.has(unrelated)).toBe(true);
+    expect(mockDisk.has(notATimestamp)).toBe(true);
+  });
+
+  it('downloads anyway when the stale sweep cannot list the directory', async () => {
+    mockListFailure = new Error('EACCES: permission denied, scandir map-archives');
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    // Best effort: the sweep is housekeeping, so its failure is logged and the
+    // download it runs in front of is not held back by it.
+    expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+    expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('downloads anyway when a stale temporary cannot be deleted', async () => {
+    mockDeleteFailure = new Error('EACCES: permission denied, unlink partial');
+    const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
+    seedFile(stale);
+
+    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+    expect(mockDisk.has(stale)).toBe(true);
+    expect(logger.warn).toHaveBeenCalled();
   });
 
   it('says it is loading while the download runs', async () => {
