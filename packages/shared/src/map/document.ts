@@ -27,6 +27,8 @@ export interface MapReferenceProperties {
   color?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
+  /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
+  labelIndex?: number;
   /** Injected at runtime from `labelKey`; never authored. */
   label?: string;
 }

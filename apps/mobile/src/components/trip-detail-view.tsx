@@ -3,13 +3,12 @@ import { Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/icon';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
 import UnifiedAudioController from '@/components/unified-audio-controller';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import TrackDetailMap from '@/components/track-detail-map';
+import TripMap from '@/components/map/trip-map';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
 import { ExperienceCredits } from '@/components/experience-credits';
@@ -101,7 +100,6 @@ export default function TripDetailView({
   const colors = useThemeColors();
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
   const userInitiatedPlayRef = useRef(false);
 
   const geofence = useOfflineGeofence(
@@ -226,29 +224,7 @@ export default function TripDetailView({
             />
 
             {/* Mini map */}
-            <TwView className="-mx-3 relative">
-              <TrackDetailMap
-                latitude={track.latitude}
-                longitude={track.longitude}
-                userLatitude={geofence.userCoordinates?.latitude}
-                userLongitude={geofence.userCoordinates?.longitude}
-                showLabels={showLabels}
-                waypoints={track.waypoints}
-              />
-              <IconButton
-                onPress={() => setShowLabels(!showLabels)}
-                variant="outline"
-                size="sm"
-                className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
-                accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
-                testID="toggle-map-labels"
-                icon={{
-                  ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
-                  android: showLabels ? 'label_off' : 'label',
-                  web: showLabels ? 'label_off' : 'label',
-                }}
-              />
-            </TwView>
+            <TripMap experience={track} userCoordinates={geofence.userCoordinates ?? undefined} />
 
             {/* GPS precision */}
             {showGPSDetails && (

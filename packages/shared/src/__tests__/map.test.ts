@@ -129,6 +129,36 @@ describe('map document schema', () => {
 
     expect(() => parseMapDocument(documentWith('enorme', tooMany))).toThrow();
   });
+
+  it('accepts a positive integer label index and rejects anything else', () => {
+    const indexed = documentWith('serie', [
+      { ...point, properties: { labelKey: 'map.point', labelIndex: 2 } },
+    ]);
+    expect(() => parseMapDocument(indexed)).not.toThrow();
+
+    expect(() =>
+      parseMapDocument(
+        documentWith('cero', [{ ...point, properties: { labelKey: 'map.point', labelIndex: 0 } }]),
+      ),
+    ).toThrow();
+    expect(() =>
+      parseMapDocument(
+        documentWith('medio', [
+          { ...point, properties: { labelKey: 'map.point', labelIndex: 1.5 } },
+        ]),
+      ),
+    ).toThrow();
+  });
+
+  it('accepts the camelCase label keys the app locales use', () => {
+    // The locales name their map keys in camelCase (`map.userLocation`,
+    // `map.offlineTitle`), so the pattern has to accept them: the authored
+    // documents and the derived itinerary share this schema.
+    const camelCase = documentWith('itinerario', [
+      { ...point, properties: { labelKey: 'map.userLocation' } },
+    ]);
+    expect(() => parseMapDocument(camelCase)).not.toThrow();
+  });
 });
 
 describe('link allowlist', () => {
@@ -175,6 +205,18 @@ describe('label resolution', () => {
     const resolved = withResolvedLabels(documentWith('sendero', [point]), (key) => key);
 
     expect(resolved.collection.features[0].properties.label).toBe('map.references.taller');
+  });
+
+  it('interpolates the label index into the translation options', () => {
+    const indexed = documentWith('serie', [
+      { ...point, properties: { labelKey: 'map.point', labelIndex: 3 } },
+    ]);
+
+    const resolved = withResolvedLabels(indexed, (key, options) =>
+      key === 'map.point' ? `Pt ${(options as { index: number }).index}` : key,
+    );
+
+    expect(resolved.collection.features[0].properties.label).toBe('Pt 3');
   });
 });
 
@@ -297,6 +339,24 @@ describe('applyMapDocuments', () => {
       `addSource:${REFERENCE_SOURCE_PREFIX}abajo`,
       `addSource:${REFERENCE_SOURCE_PREFIX}arriba`,
     ]);
+  });
+
+  it('removes the label layer when labels are turned off, and adds it back when they return', () => {
+    const { map, layers } = createFakeMap();
+    const documents = [documentWith('sendero', [point])];
+
+    applyMapDocuments(map, documents);
+    expect(layers.map((layer) => layer.id)).toContain(`${REFERENCE_SOURCE_PREFIX}sendero:label`);
+
+    applyMapDocuments(map, documents, { includeLabels: false });
+    expect(layers.map((layer) => layer.id)).not.toContain(
+      `${REFERENCE_SOURCE_PREFIX}sendero:label`,
+    );
+    // The non-label layers of the same source must survive the toggle.
+    expect(layers.map((layer) => layer.id)).toContain(`${REFERENCE_SOURCE_PREFIX}sendero:circle`);
+
+    applyMapDocuments(map, documents);
+    expect(layers.map((layer) => layer.id)).toContain(`${REFERENCE_SOURCE_PREFIX}sendero:label`);
   });
 
   it('removes reference layers and sources that are no longer present', () => {

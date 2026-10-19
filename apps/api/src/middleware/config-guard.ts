@@ -16,6 +16,8 @@ export const configGuard = (): MiddlewareHandler<{
         c.env?.BYPASS_GEOFENCE_IOS_BROWSER !== undefined
           ? c.env.BYPASS_GEOFENCE_IOS_BROWSER === 'true'
           : DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
+      mapArchiveUrl: c.env?.MAP_ARCHIVE_URL || '',
+      mapStyleUrl: c.env?.MAP_STYLE_URL || '',
     });
     await next();
   };

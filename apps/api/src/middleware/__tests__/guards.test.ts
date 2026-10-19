@@ -62,6 +62,42 @@ describe('Middleware Guards (c.var injection)', () => {
       expect(body.gracePeriodStart).toBe('2026-01-01');
       expect(body.gracePeriodEnd).toBe('2026-02-01');
     });
+
+    it('normalizes the map artifact urls into configEnv', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
+
+      const configured = await app.request(
+        '/test',
+        {},
+        {
+          MINIMUM_APP_VERSION: '1.0.0',
+          BLOCK_OLDER_VERSIONS: 'false',
+          MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+          MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
+        },
+      );
+      const configuredBody = (await configured.json()) as {
+        mapArchiveUrl: string;
+        mapStyleUrl: string;
+      };
+      expect(configuredBody.mapArchiveUrl).toBe(
+        'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+      );
+      expect(configuredBody.mapStyleUrl).toBe('https://api.example/media/public/styles/v1.json');
+
+      const unset = await app.request(
+        '/test',
+        {},
+        {
+          MINIMUM_APP_VERSION: '1.0.0',
+          BLOCK_OLDER_VERSIONS: 'false',
+        },
+      );
+      const unsetBody = (await unset.json()) as { mapArchiveUrl: string; mapStyleUrl: string };
+      expect(unsetBody.mapArchiveUrl).toBe('');
+      expect(unsetBody.mapStyleUrl).toBe('');
+    });
   });
 
   describe('paymentsGuard', () => {

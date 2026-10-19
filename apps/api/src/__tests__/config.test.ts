@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import app from '../index';
 
 const BINDINGS = {
@@ -62,6 +63,49 @@ describe('GET /config', () => {
     );
     const bodyOn = (await resOn.json()) as { geofence: { bypassIosBrowser: boolean } };
     expect(bodyOn.geofence.bypassIosBrowser).toBe(true);
+  });
+
+  it('honors MAP_ARCHIVE_URL and MAP_STYLE_URL env overrides', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+        MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
+      },
+    );
+    const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };
+    expect(body.map.archiveUrl).toBe(
+      'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+    );
+    expect(body.map.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
+  });
+
+  it('sends empty map urls when the environment publishes no artifacts', async () => {
+    const res = await app.request('/config', {}, BINDINGS);
+    const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };
+    expect(body.map.archiveUrl).toBe('');
+    expect(body.map.styleUrl).toBe('');
+  });
+
+  it('keeps every default map field in the response', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+        MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
+      },
+    );
+    const body = (await res.json()) as { map: Record<string, unknown> };
+    // The route resolves the map payload field by field over the shared defaults,
+    // so a field added to DEFAULT_REMOTE_CONFIG.map has to reach the client
+    // instead of being dropped by a literal built here.
+    expect(Object.keys(body.map).sort()).toEqual(
+      Object.keys(DEFAULT_REMOTE_CONFIG.map ?? {}).sort(),
+    );
   });
 
   it('does not include grace period fields when env vars are absent', async () => {

@@ -6,13 +6,14 @@ import UnifiedAudioController from '@/components/unified-audio-controller';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
-import TrackDetailMap from '@/components/track-detail-map';
+import ExperienceMapSwitch from '@/components/map/experience-map-switch';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
 import { ExperienceCredits } from '@/components/experience-credits';
 import { LeadCaptureButton } from '@/components/lead-capture-button';
 import type { PlayableExperience } from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -96,6 +97,7 @@ export default function TrackDetailView({
 }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
+  const { renderer: mapRenderer, source: mapSource } = useMapViewConfig();
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);
@@ -209,11 +211,11 @@ export default function TrackDetailView({
                 className="mt-3 -mx-3 relative rounded-xl overflow-hidden"
                 testID="track-detail-map"
               >
-                <TrackDetailMap
-                  latitude={track.latitude}
-                  longitude={track.longitude}
-                  userLatitude={geofence.userCoordinates?.latitude}
-                  userLongitude={geofence.userCoordinates?.longitude}
+                <ExperienceMapSwitch
+                  renderer={mapRenderer}
+                  source={mapSource}
+                  experience={track}
+                  userCoordinates={geofence.userCoordinates ?? undefined}
                 />
               </TwView>
             )}

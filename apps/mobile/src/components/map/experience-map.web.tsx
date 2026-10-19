@@ -1,8 +1,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import * as maplibregl from 'maplibre-gl';
-import type { StyleSpecification } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
+import type { StyleSpecification, VectorSourceSpecification } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -12,7 +11,9 @@ import {
   type MapDocument,
 } from '@sonora/shared';
 
+import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
+import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
@@ -42,9 +43,6 @@ interface MapHandle {
   queryRenderedFeatures(point: unknown): RenderedFeature[];
 }
 
-/** The pmtiles protocol is global to the MapLibre module, not to an instance. */
-let protocolRegistered = false;
-
 function toPressReference(
   layerId: string,
   properties: Record<string, unknown>,
@@ -68,8 +66,8 @@ function toPressReference(
  * implementation; both consume the same documents and the same style builder
  * from `@sonora/shared`, so a reference is only ever authored once.
  *
- * The base style is served from R2 (see the style task); until it exists the map
- * draws the reference documents over an empty canvas.
+ * The style comes from the remote config or from the archive; when neither is
+ * configured the map draws the reference documents over an empty canvas.
  *
  * The map instance is created once per source and camera. Everything that can
  * change on every render — callbacks, translation, documents — is read through
@@ -82,20 +80,25 @@ export default function ExperienceMap({
   bounds,
   center = [-64.738, -32.212],
   zoom = 14,
+  showLabels = true,
   onFeaturePress,
-  onReady,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t } = useAppTranslation();
+  // The archive is downloaded whole and its tiles are read from memory: the route
+  // that serves the bucket supports no byte ranges.
+  const archive = useMapSource(source.archiveUrl, source.styleUrl);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
+  const cancelledRef = useRef(false);
 
   const overlaysRef = useRef(overlays);
   /** Labels need a glyphs source; a style without one must not get a label layer. */
   const glyphsAvailableRef = useRef(false);
+  /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
+  const showLabelsRef = useRef(showLabels);
   const translateRef = useRef(t);
-  const onReadyRef = useRef(onReady);
   const onFeaturePressRef = useRef(onFeaturePress);
 
   const [ready, setReady] = useState(false);
@@ -116,22 +119,25 @@ export default function ExperienceMap({
   }, [t]);
 
   useEffect(() => {
-    onReadyRef.current = onReady;
-  }, [onReady]);
-
-  useEffect(() => {
     onFeaturePressRef.current = onFeaturePress;
   }, [onFeaturePress]);
+
+  // Declared before the overlay effect so the toggle reads the fresh value.
+  useEffect(() => {
+    showLabelsRef.current = showLabels;
+  }, [showLabels]);
 
   /** Draws the current documents. Safe to call on every content or locale change. */
   const applyOverlays = useCallback((map: MapHandle) => {
     // MapLibre cannot call the translation layer, so keys become text here.
     const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(overlay, (key) => translateRef.current(key as never)),
+      withResolvedLabels(overlay, (key, options) => translateRef.current(key as never, options)),
     );
 
     try {
-      applyMapDocuments(map, resolved, { includeLabels: glyphsAvailableRef.current });
+      applyMapDocuments(map, resolved, {
+        includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
+      });
     } catch (err) {
       logger.error('ExperienceMap failed to apply reference documents:', err);
     }
@@ -146,31 +152,42 @@ export default function ExperienceMap({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    cancelledRef.current = false;
 
     function init() {
       try {
-        if (cancelled || !containerRef.current) return;
+        if (cancelledRef.current || !containerRef.current) return;
+        if (archive.status !== 'ready' || !archive.sourceUrl) return;
 
-        if (!protocolRegistered) {
-          maplibregl.addProtocol('pmtiles', new Protocol().tile);
-          protocolRegistered = true;
-        }
+        ensureLocalProtocol(maplibregl);
 
         const inlineStyle: StyleSpecification = {
           version: 8,
           sources: {
             basemap: {
               type: 'vector',
-              url: source.archiveUrl,
+              url: archive.sourceUrl,
               ...(source.attribution ? { attribution: source.attribution } : {}),
             },
           },
           layers: [],
         };
 
-        const style = source.style ?? inlineStyle;
-        glyphsAvailableRef.current = Boolean((style as StyleSpecification).glyphs);
+        const baseStyle = source.style ?? archive.style ?? inlineStyle;
+
+        // The archive is already in memory: the style points at the local protocol.
+        const style: StyleSpecification = {
+          ...baseStyle,
+          sources: {
+            ...baseStyle.sources,
+            basemap: {
+              ...(baseStyle.sources.basemap as VectorSourceSpecification),
+              type: 'vector',
+              url: archive.sourceUrl,
+            },
+          },
+        };
+        glyphsAvailableRef.current = Boolean(style.glyphs);
 
         const map = new maplibregl.Map({
           container: containerRef.current,
@@ -188,9 +205,8 @@ export default function ExperienceMap({
         }) as never);
 
         map.on('load', (() => {
-          if (cancelled) return;
+          if (cancelledRef.current) return;
           setReady(true);
-          onReadyRef.current?.();
           applyOverlays(map);
           if (boundsWest !== undefined) {
             map.fitBounds(
@@ -213,21 +229,25 @@ export default function ExperienceMap({
         }) as never);
       } catch (err) {
         logger.error('ExperienceMap init failed:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : 'map init failed');
+        if (!cancelledRef.current) setError(err instanceof Error ? err.message : 'map init failed');
       }
     }
 
     init();
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      setReady(false);
+      // `ready` is not reset: the new map reports its own load, and the overlay
+      // effect already ignores the case where no map exists.
     };
   }, [
-    source.archiveUrl,
+    archive.status,
+    archive.sourceUrl,
+    archive.style,
     source.style,
+    source.styleUrl,
     source.attribution,
     centerLng,
     centerLat,
@@ -244,9 +264,9 @@ export default function ExperienceMap({
     const map = mapRef.current;
     if (!ready || !map) return;
     applyOverlays(map);
-  }, [overlays, ready, applyOverlays]);
+  }, [overlays, ready, showLabels, applyOverlays]);
 
-  if (error) {
+  if (error || archive.status === 'error') {
     return (
       <TwView
         testID={`${testID}-error`}
@@ -254,7 +274,7 @@ export default function ExperienceMap({
       >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
-          {t('map.offlineDescription')}
+          {archive.error ?? t('map.offlineDescription')}
         </ThemedText>
       </TwView>
     );
@@ -262,6 +282,7 @@ export default function ExperienceMap({
 
   return (
     <TwView testID={testID} className={`${className} relative overflow-hidden`}>
+      {archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
       <div ref={containerRef} className="h-full w-full z-0" />
     </TwView>
   );

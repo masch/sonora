@@ -32,6 +32,8 @@ export interface Env {
   ALLOWED_HEADERS?: string;
   PRIVATE_BUCKET?: R2Bucket;
   PUBLIC_BUCKET?: R2Bucket;
+  MAP_ARCHIVE_URL?: string;
+  MAP_STYLE_URL?: string;
   ADMIN_API_KEY?: string;
   ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
   ADMIN_SESSION_COOKIE_SECURE?: string;
@@ -69,6 +71,9 @@ export interface Variables {
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
     bypassIosBrowser: boolean;
+    /** Public map artifacts; empty when this environment publishes none. */
+    mapArchiveUrl: string;
+    mapStyleUrl: string;
   };
   environment: string;
   feedbackStore?: KVNamespace;

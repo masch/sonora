@@ -48,7 +48,12 @@ export function applyMapDocuments(
 
   for (const layerId of existingLayers) {
     if (!layerId.startsWith(REFERENCE_SOURCE_PREFIX)) continue;
-    if (!desired.has(sourceIdOfLayer(layerId))) map.removeLayer(layerId);
+    const sourceId = sourceIdOfLayer(layerId);
+    // A desired source can still carry a stale label layer when labels are off.
+    if (desired.has(sourceId) && !(options.includeLabels === false && layerId.endsWith(':label'))) {
+      continue;
+    }
+    map.removeLayer(layerId);
   }
   for (const sourceId of existingSources) {
     if (!sourceId.startsWith(REFERENCE_SOURCE_PREFIX)) continue;

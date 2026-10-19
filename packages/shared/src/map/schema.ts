@@ -11,8 +11,13 @@ export const MAP_REFERENCE_LIMITS = {
 /** Reference documents are authored by hand, so keys stay simple and stable. */
 export const MAP_DOCUMENT_KEY_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
-/** Translation keys for references stay inside the `map.*` namespace. */
-export const MAP_LABEL_KEY_PATTERN = /^map\.[a-z0-9][a-z0-9.-]*$/;
+/**
+ * Translation keys for references stay inside the `map.*` namespace.
+ *
+ * The locales name these keys in camelCase (`map.userLocation`), so the pattern
+ * accepts mixed case: the authored documents and the derived itinerary share it.
+ */
+export const MAP_LABEL_KEY_PATTERN = /^map\.[A-Za-z0-9][A-Za-z0-9.-]*$/;
 
 /** GeoJSON coordinates are [longitude, latitude]. */
 const coordinateSchema = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
@@ -51,6 +56,8 @@ const propertiesSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
   minzoom: z.number().int().min(0).max(22).optional(),
+  /** 1-based position in a numbered series, e.g. the stops of an itinerary. */
+  labelIndex: z.number().int().min(1).optional(),
 });
 
 const featureSchema = z.object({

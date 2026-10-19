@@ -28,6 +28,12 @@ ENVIRONMENT = "staging"
 ADMIN_SESSION_COOKIE_SAMESITE = "None"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
 
+# Map artifacts served by this same Worker from the public bucket. The client
+# rewrites the style's source url with its local protocol, so one style works in
+# every environment.
+MAP_ARCHIVE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/tiles/calamuchita/v1.pmtiles"
+MAP_STYLE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/styles/v1.json"
+
 [define]
 MP_BYPASS_SIGNATURE = "true"
 MP_SIGNATURE_MAX_AGE_MINUTES = "5"
