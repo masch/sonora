@@ -45,11 +45,6 @@ export default {
           '**/track-detail-view.tsx',
           '**/trip-detail-view.tsx',
           '**/track-map.tsx',
-          // The map is an external system: it is created in an effect, reports its load
-          // by event and publishes its state (ready / error) from there. It cannot be
-          // mounted without an effect, and the state lives in the instance, not in the
-          // render.
-          'src/components/map/experience-map.web.tsx',
         ],
         rules: [
           'react-compiler',
@@ -64,13 +59,19 @@ export default {
           'react-doctor/no-initialize-state',
           'no-giant-component',
           'react-doctor/no-giant-component',
-          'no-pass-live-state-to-parent',
-          'react-doctor/no-pass-live-state-to-parent',
         ],
         // try/finally in async data-fetching functions is correct error-handling
         // and a known React Compiler limitation (BuildHIR::lowerStatement TryStatement).
         // set-state-in-effect: data fetching via useEffect is the established pattern here.
         // These components use independent loading/error/data state by design.
+      },
+      {
+        files: ['src/components/map/experience-map.web.tsx'],
+        rules: ['no-pass-live-state-to-parent', 'react-doctor/no-pass-live-state-to-parent'],
+        // The map is an external system: it is created in an effect, reports its load
+        // by event and publishes its state (ready / error) from there, which is the
+        // only way to mount it. Only this rule is waived for the file: it triggers no
+        // other rule of the component block, so those stay active.
       },
       {
         files: ['src/hooks/use-map-source.ts'],
