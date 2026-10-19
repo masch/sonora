@@ -124,6 +124,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       '@react-native-firebase/app',
       '@react-native-firebase/crashlytics',
+      [
+        '@maplibre/maplibre-react-native',
+        {
+          // MapLibre React Native ships the Android SDK build itself; `opengl` is
+          // the variant it documents as its default.
+          android: {
+            nativeVariant: 'opengl',
+          },
+        },
+      ],
       'expo-router',
       [
         'expo-audio',

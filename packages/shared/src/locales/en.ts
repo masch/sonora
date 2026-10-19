@@ -14,6 +14,7 @@ export const en = {
     noTracksTitle: 'No poetics available',
     viewTrack: 'View poetic',
     loadingMap: 'Loading map…',
+    mapLabel: 'Map',
     distanceFromYou: '{{distance}} away',
     distanceMeters: '{{value}} m',
     distanceKilometers: '{{value}} km',
