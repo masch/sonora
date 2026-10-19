@@ -307,6 +307,45 @@ describe('TripDetailView map', () => {
     expect(view.getByText('Centro Umepay')).toBeTruthy();
   });
 
+  it('closes the card when it is dismissed and reopens it with the next tapped reference', async () => {
+    const view = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />,
+    );
+
+    const onFeaturePress = mockExperienceMapProps[0].onFeaturePress as (
+      reference: MapReferencePress,
+    ) => void;
+    await act(async () => {
+      onFeaturePress({
+        documentKey: 'referencias',
+        label: 'Centro Umepay',
+        descriptionKey: 'map.centroUmepay.description',
+      });
+    });
+
+    expect(view.getByTestId('reference-card')).toBeTruthy();
+    expect(view.getByText('Centro Umepay')).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId('bottom-modal-dismiss-button'));
+
+    // Dismissing must clear the switch's state, not just hide the shell.
+    expect(view.queryByTestId('reference-card')).toBeNull();
+    expect(view.queryByText('Centro Umepay')).toBeNull();
+
+    await act(async () => {
+      onFeaturePress({
+        documentKey: 'referencias',
+        label: 'Taller',
+        descriptionKey: 'map.taller.description',
+      });
+    });
+
+    // A later tap opens the card again, showing the new reference and only it.
+    expect(view.getByTestId('reference-card')).toBeTruthy();
+    expect(view.getByText('Taller')).toBeTruthy();
+    expect(view.queryByText('Centro Umepay')).toBeNull();
+  });
+
   it('ignores a tap on the itinerary, which is drawing and not a reference', async () => {
     const view = await render(
       <ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />,
@@ -316,9 +355,15 @@ describe('TripDetailView map', () => {
       reference: MapReferencePress,
     ) => void;
     await act(async () => {
-      // Exactly what the map reports for an origin, a numbered stop or the path:
-      // the derived document carries a label and nothing else.
-      onFeaturePress({ documentKey: 'itinerary', label: 'Pt 1', labelKey: 'map.point' });
+      // The itinerary document carries a label and nothing else, so this press
+      // also carries real card content: with a description in place the card's
+      // own content rule would open it, and only the switch guard keeps it shut.
+      onFeaturePress({
+        documentKey: 'itinerary',
+        label: 'Pt 1',
+        labelKey: 'map.point',
+        descriptionKey: 'map.centroUmepay.description',
+      });
     });
 
     expect(view.queryByTestId('reference-card')).toBeNull();
