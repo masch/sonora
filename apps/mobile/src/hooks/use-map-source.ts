@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { StyleSpecification } from 'maplibre-gl';
 import { PMTiles } from 'pmtiles';
@@ -44,6 +44,7 @@ export interface MapSourceState {
 /** One registry per page: the protocol is global to MapLibre, the archives are not. */
 const archives = new Map<string, PMTiles>();
 const sizes = new Map<string, number>();
+/** Keyed by style url: a style has its own version and changes without the archive. */
 const styles = new Map<string, StyleSpecification>();
 const headers = new Map<string, { minZoom: number; maxZoom: number; bounds: number[] }>();
 let protocolRegistered = false;
@@ -61,6 +62,19 @@ async function fetchStyle(url?: string): Promise<StyleSpecification | undefined>
   const response = await fetch(url);
   if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
   return (await response.json()) as StyleSpecification;
+}
+
+/**
+ * Fetches a configured style into the page registry, reusing the cached document.
+ * Keyed by url, not by archive: the style can be republished while the archive stays.
+ */
+async function loadStyle(url: string): Promise<StyleSpecification> {
+  const cached = styles.get(url);
+  if (cached) return cached;
+  const style = await fetchStyle(url);
+  if (!style) throw new Error(`style ${url} did not return a document`);
+  styles.set(url, style);
+  return style;
 }
 
 /**
@@ -85,7 +99,7 @@ export async function loadArchive(archiveUrl: string, styleUrl?: string): Promis
 
   archives.set(key, archive);
   sizes.set(key, buffer.byteLength);
-  if (style) styles.set(key, style);
+  if (style && styleUrl) styles.set(styleUrl, style);
   headers.set(key, {
     minZoom: header.minZoom,
     maxZoom: header.maxZoom,
@@ -136,6 +150,16 @@ export function ensureLocalProtocol(maplibregl: MapLibreWithProtocols): void {
   protocolRegistered = true;
 }
 
+/** Builds a ready state from the registry, the single source the render path reads. */
+function readyState(key: string, style?: StyleSpecification): MapSourceState {
+  return {
+    status: 'ready',
+    sourceUrl: `sonora://${key}`,
+    bytes: sizes.get(key),
+    ...(style ? { style } : {}),
+  };
+}
+
 /**
  * Downloads the archive and returns the source url to draw from.
  *
@@ -145,46 +169,57 @@ export function ensureLocalProtocol(maplibregl: MapLibreWithProtocols): void {
  */
 export function useMapSource(archiveUrl: string | undefined, styleUrl?: string): MapSourceState {
   // The status is derived from the registry, so the effect never has to reset it.
-  const [result, setResult] = useState<{ key: string; state: MapSourceState } | null>(null);
-  const cancelledRef = useRef(false);
+  const [result, setResult] = useState<{
+    key: string;
+    styleUrl?: string;
+    state: MapSourceState;
+  } | null>(null);
   const key = archiveUrl ? keyFor(archiveUrl) : null;
 
   useEffect(() => {
     if (!key || !archiveUrl) return;
-    if (archives.has(key)) return;
 
-    cancelledRef.current = false;
+    // Cancellation is per run, not shared: a url change cancels only the run it
+    // started, so a stale download can never settle the state of the run that replaced it.
+    let cancelled = false;
 
-    loadArchive(archiveUrl, styleUrl)
-      .then((state) => {
-        if (!cancelledRef.current) setResult({ key, state });
-      })
-      .catch((error: unknown) => {
-        if (cancelledRef.current) return;
-        setResult({
-          key,
-          state: {
-            status: 'error',
-            error: error instanceof Error ? error.message : 'archive download failed',
-          },
-        });
+    const fail = (error: unknown) => {
+      if (cancelled) return;
+      setResult({
+        key,
+        styleUrl,
+        state: {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'archive download failed',
+        },
       });
+    };
+
+    if (!archives.has(key)) {
+      loadArchive(archiveUrl, styleUrl)
+        .then((state) => {
+          if (!cancelled) setResult({ key, styleUrl, state });
+        })
+        .catch(fail);
+    } else if (styleUrl && !styles.has(styleUrl)) {
+      // The archive is already in memory; only its new style document is missing.
+      loadStyle(styleUrl)
+        .then((style) => {
+          if (!cancelled) setResult({ key, styleUrl, state: readyState(key, style) });
+        })
+        .catch(fail);
+    }
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [archiveUrl, key, styleUrl]);
 
   if (!key) return { status: 'error', error: 'no archive configured' };
-  if (archives.has(key)) {
-    const style = styles.get(key);
-    return {
-      status: 'ready',
-      sourceUrl: `sonora://${key}`,
-      bytes: sizes.get(key),
-      ...(style ? { style } : {}),
-    };
+  const style = styleUrl ? styles.get(styleUrl) : undefined;
+  if (archives.has(key) && (!styleUrl || style)) {
+    return readyState(key, style);
   }
-  if (result?.key === key) return result.state;
+  if (result?.key === key && result.styleUrl === styleUrl) return result.state;
   return { status: 'loading' };
 }

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 // The real PMTiles reads a binary archive; the hook only needs the two calls it makes.
 const mockGetHeader = jest.fn();
@@ -16,6 +16,20 @@ import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const ARCHIVE_ERROR = 'https://api.example/media/public/tiles/broken/v1.pmtiles';
 const ARCHIVE_TILES = 'https://api.example/media/public/tiles/second/v1.pmtiles';
+const ARCHIVE_STYLED = 'https://api.example/media/public/tiles/styled/v1.pmtiles';
+const ARCHIVE_SWAP_FIRST = 'https://api.example/media/public/tiles/swap-first/v1.pmtiles';
+const ARCHIVE_SWAP_SECOND = 'https://api.example/media/public/tiles/swap-second/v1.pmtiles';
+const STYLE_ONE = 'https://api.example/media/public/styles/one.json';
+const STYLE_TWO = 'https://api.example/media/public/styles/two.json';
+
+/** Resolves a `fetch` call by hand, so a run can be left genuinely in flight. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 function fakeMaplibre() {
   const protocols = new Map<string, (params: { url: string; type?: string }) => Promise<unknown>>();
@@ -77,6 +91,67 @@ describe('useMapSource', () => {
     await waitFor(() => expect(second.result.current.status).toBe('ready'));
 
     expect((globalThis.fetch as jest.Mock).mock.calls.length).toBe(callsAfterFirst);
+  });
+
+  it('fetches a changed style url once the archive is already cached', async () => {
+    const firstStyle = { version: 8, sources: {}, layers: [] };
+    const secondStyle = { version: 8, sources: { basemap: {} }, layers: [] };
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_STYLED) {
+        return Promise.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(1024) });
+      }
+      if (url === STYLE_ONE) return Promise.resolve({ ok: true, json: async () => firstStyle });
+      if (url === STYLE_TWO) return Promise.resolve({ ok: true, json: async () => secondStyle });
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }) as unknown as typeof fetch;
+
+    const { result, rerender } = await renderHook(
+      ({ styleUrl }: { styleUrl: string }) => useMapSource(ARCHIVE_STYLED, styleUrl),
+      { initialProps: { styleUrl: STYLE_ONE } },
+    );
+
+    await waitFor(() => expect(result.current.style).toEqual(firstStyle));
+
+    await rerender({ styleUrl: STYLE_TWO });
+
+    await waitFor(() => expect(result.current.style).toEqual(secondStyle));
+    expect(result.current.status).toBe('ready');
+
+    const archiveCalls = (globalThis.fetch as jest.Mock).mock.calls.filter(
+      ([url]) => url === ARCHIVE_STYLED,
+    );
+    expect(archiveCalls).toHaveLength(1);
+  });
+
+  it('never settles on a stale run when the archive url changes mid-download', async () => {
+    const staleDownload = deferred<unknown>();
+    const currentDownload = deferred<unknown>();
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_SWAP_FIRST) return staleDownload.promise;
+      if (url === ARCHIVE_SWAP_SECOND) return currentDownload.promise;
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }) as unknown as typeof fetch;
+
+    const { result, rerender } = await renderHook(
+      ({ archiveUrl }: { archiveUrl: string }) => useMapSource(archiveUrl),
+      { initialProps: { archiveUrl: ARCHIVE_SWAP_FIRST } },
+    );
+
+    // The first download is still in flight when the configured url changes.
+    await rerender({ archiveUrl: ARCHIVE_SWAP_SECOND });
+
+    currentDownload.resolve({ ok: false, status: 503, statusText: 'Unavailable' });
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toContain('503');
+
+    // The abandoned run resolves late: it must not overwrite the current result.
+    staleDownload.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(1024) });
+    await act(async () => {
+      await staleDownload.promise;
+    });
+
+    await waitFor(() => expect(result.current.status).not.toBe('loading'));
+    expect(result.current.status).toBe('error');
   });
 });
 
