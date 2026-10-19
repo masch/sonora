@@ -25,11 +25,12 @@ function waypointsOf(experience: PlayableExperience) {
 /**
  * The map for an experience, whichever implementation is enabled.
  *
- * Extracted from the track screen so a trip mounts the same renderer. Both
- * branches are handed the same drawn set: the origin, the numbered stops and
- * the walker position. MapLibre receives them as the derived itinerary document
- * plus the experience's own references; Leaflet receives the coordinates it
- * already knows how to draw.
+ * Extracted from the track screen so a trip mounts the same renderer. The switch
+ * hands the itinerary to whichever branch runs: the origin, the numbered stops
+ * and the walker position. MapLibre receives it as the derived itinerary document
+ * plus the experience's own references; Leaflet receives the waypoints it already
+ * knows how to draw. On native the `ExperienceMap` branch resolves to the Leaflet
+ * facade, which draws the itinerary but not the references yet (task T4b).
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -55,6 +56,7 @@ export default function ExperienceMapSwitch({
         overlays={overlays}
         center={[experience.longitude, experience.latitude]}
         userCoordinates={userCoordinates}
+        waypoints={waypoints}
         showLabels={showLabels}
         testID={testID}
       />

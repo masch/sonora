@@ -35,6 +35,12 @@ export interface ExperienceMapProps {
   zoom?: number;
   /** Where the walker is, when the app knows it. */
   userCoordinates?: { latitude: number; longitude: number };
+  /**
+   * The itinerary both implementations need: the new map derives its route
+   * document from it, and the current Leaflet map draws it as a path plus
+   * numbered markers.
+   */
+  waypoints?: { latitude: number; longitude: number }[];
   /** Draw the reference label layer. Defaults to true. */
   showLabels?: boolean;
   onFeaturePress?: (reference: MapReferencePress) => void;
