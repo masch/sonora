@@ -5,4 +5,5 @@ export * from './style';
 export * from './labels';
 export * from './links';
 export * from './regions';
+export * from './artifacts';
 export * from './map-like';

@@ -69,14 +69,14 @@ export class FakeMap implements FakeMapInstance {
     this.handlers.get(event)?.(payload);
   }
 
-  /** Simula un toque: fija qué features devuelve el hit test y emite el click. */
+  /** Simulates a tap: sets which features the hit test returns and emits the click. */
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]) {
     this.features = features;
     this.emit('click', { point: { x: 1, y: 1 } });
   }
 }
 
-/** `addProtocol` del módulo mockeado: se registra una sola vez por página. */
+/** `addProtocol` of the mocked module: registered once per page. */
 export const mockAddProtocol = jest.fn();
 
 /**

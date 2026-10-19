@@ -66,8 +66,8 @@ function toPressReference(
  * implementation; both consume the same documents and the same style builder
  * from `@sonora/shared`, so a reference is only ever authored once.
  *
- * The base style is served from R2 (see the style task); until it exists the map
- * draws the reference documents over an empty canvas.
+ * The style comes from the remote config or from the archive; when neither is
+ * configured the map draws the reference documents over an empty canvas.
  *
  * The map instance is created once per source and camera. Everything that can
  * change on every render — callbacks, translation, documents — is read through
@@ -85,8 +85,8 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t } = useAppTranslation();
-  // El archivo se descarga entero y las tiles se leen de memoria: la ruta que
-  // sirve el bucket no soporta rangos.
+  // The archive is downloaded whole and its tiles are read from memory: the route
+  // that serves the bucket supports no byte ranges.
   const archive = useMapSource(source.archiveUrl, source.styleUrl);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
@@ -165,7 +165,7 @@ export default function ExperienceMap({
 
         const baseStyle = source.style ?? archive.style ?? inlineStyle;
 
-        // El archivo ya está en memoria: el estilo apunta al protocolo local.
+        // The archive is already in memory: the style points at the local protocol.
         const style: StyleSpecification = {
           ...baseStyle,
           sources: {
@@ -229,8 +229,8 @@ export default function ExperienceMap({
       cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      // No se resetea `ready`: el mapa nuevo avisa al cargar, y el efecto de
-      // overlays ya ignora el caso de mapa ausente.
+      // `ready` is not reset: the new map reports its own load, and the overlay
+      // effect already ignores the case where no map exists.
     };
   }, [
     archive.status,

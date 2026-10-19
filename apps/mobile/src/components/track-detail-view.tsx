@@ -133,8 +133,8 @@ export default function TrackDetailView({
 }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  // El mapa nuevo se elige por entorno y toma sus orígenes de la config remota.
-  // Expo solo inlinea el acceso literal, no una constante computada.
+  // The new map is chosen per environment and takes its origins from the remote
+  // config. Expo only inlines literal access, not a computed constant.
   const mapRenderer = resolveMapRenderer(process.env.EXPO_PUBLIC_MAP_RENDERER);
   const mapConfig = useRemoteConfigStore((state) => state.config.map);
   const feedback = useFeedbackSubmit();

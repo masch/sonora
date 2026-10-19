@@ -68,7 +68,7 @@ async function fetchStyle(url?: string): Promise<StyleSpecification | undefined>
  * Exported so it can be exercised directly, without mounting a component.
  */
 export async function loadArchive(archiveUrl: string, styleUrl?: string): Promise<MapSourceState> {
-  // El estilo y el archivo no dependen entre sí: se piden en paralelo.
+  // The style and the archive do not depend on each other: both are requested at once.
   const [response, style] = await Promise.all([fetch(archiveUrl), fetchStyle(styleUrl)]);
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 

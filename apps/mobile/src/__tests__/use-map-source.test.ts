@@ -14,8 +14,8 @@ jest.mock('pmtiles', () => ({
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
 
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
-const ARCHIVE_ERROR = 'https://api.example/media/public/tiles/otra/v1.pmtiles';
-const ARCHIVE_TILES = 'https://api.example/media/public/tiles/tercera/v1.pmtiles';
+const ARCHIVE_ERROR = 'https://api.example/media/public/tiles/broken/v1.pmtiles';
+const ARCHIVE_TILES = 'https://api.example/media/public/tiles/second/v1.pmtiles';
 
 function fakeMaplibre() {
   const protocols = new Map<string, (params: { url: string; type?: string }) => Promise<unknown>>();

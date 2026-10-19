@@ -3,12 +3,12 @@ import { act, render, waitFor } from '@testing-library/react-native';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { MapDocument } from '@sonora/shared';
 
-// El doble vive fuera de este archivo: la factory de jest.mock no puede contener
-// anotaciones de tipos (las lee como variables fuera de alcance).
-// eslint-disable-next-line @typescript-eslint/no-require-imports -- la factory de jest.mock es hoisted
+// The double lives outside this file: the jest.mock factory cannot hold type
+// annotations (it reads them as out-of-scope variables).
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- the jest.mock factory is hoisted
 jest.mock('maplibre-gl', () => require('@/test-utils/fake-maplibre').fakeMaplibreModule());
 
-// El hook descarga el archivo entero y lo lee con PMTiles; acá se reemplaza por un doble.
+// The hook downloads the whole archive and reads it with PMTiles; this double replaces it.
 const mockGetHeader = jest.fn();
 const mockGetZxy = jest.fn();
 
@@ -24,8 +24,8 @@ import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
 import { documentKeyOfLayer } from '@/components/map/map-view.types';
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const STYLE_URL = 'https://api.example/media/public/styles/v1.json';
-/** El registro de archivos es de módulo: este test necesita uno que nunca se bajó. */
-const ARCHIVE_FAILING = 'https://api.example/media/public/tiles/otra/v1.pmtiles';
+/** The archive registry is module-level: this test needs one that was never downloaded. */
+const ARCHIVE_FAILING = 'https://api.example/media/public/tiles/missing/v1.pmtiles';
 
 const document: MapDocument = {
   key: 'umepay',
@@ -84,7 +84,7 @@ describe('ExperienceMap (web)', () => {
     const style = mockMapInstances[0].options.style as {
       sources: { basemap: { url: string; type: string } };
     };
-    // No la URL remota: el archivo vive en memoria y el protocolo local lo sirve.
+    // Not the remote url: the archive lives in memory and the local protocol serves it.
     expect(style.sources.basemap.url).toMatch(/^sonora:\/\//);
     expect(style.sources.basemap.type).toBe('vector');
     expect(mockAddProtocol).toHaveBeenCalledWith('sonora', expect.anything());

@@ -45,9 +45,10 @@ export default {
           '**/track-detail-view.tsx',
           '**/trip-detail-view.tsx',
           '**/track-map.tsx',
-          // El mapa es un sistema externo: se crea en un efecto, avisa su carga por
-          // evento y publica su estado (listo / error) desde ahí. No hay forma de
-          // montarlo sin un efecto, y el estado vive en la instancia, no en el render.
+          // The map is an external system: it is created in an effect, reports its load
+          // by event and publishes its state (ready / error) from there. It cannot be
+          // mounted without an effect, and the state lives in the instance, not in the
+          // render.
           'src/components/map/experience-map.web.tsx',
         ],
         rules: [

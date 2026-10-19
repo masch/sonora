@@ -71,6 +71,9 @@ export interface Variables {
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
     bypassIosBrowser: boolean;
+    /** Public map artifacts; empty when this environment publishes none. */
+    mapArchiveUrl: string;
+    mapStyleUrl: string;
   };
   environment: string;
   feedbackStore?: KVNamespace;
