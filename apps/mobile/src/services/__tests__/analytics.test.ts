@@ -128,4 +128,14 @@ describe('AnalyticsService', () => {
       }
     });
   });
+
+  it('conforms to the AnalyticsTracker contract interface across platforms', () => {
+    expect(typeof AnalyticsService.trackEvent).toBe('function');
+    expect(typeof AnalyticsService.recordError).toBe('function');
+    expect(typeof AnalyticsService.initializeGlobalErrorTracking).toBe('function');
+
+    expect(typeof AnalyticsServiceWeb.trackEvent).toBe('function');
+    expect(typeof AnalyticsServiceWeb.recordError).toBe('function');
+    expect(typeof AnalyticsServiceWeb.initializeGlobalErrorTracking).toBe('function');
+  });
 });
