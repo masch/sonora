@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import { Directory, File, FileMode, Paths } from 'expo-file-system';
 
+import { logger } from '@/utils/logger';
+
 /**
  * Resolves the base-map PMTiles archive to a file on the device.
  *
@@ -42,6 +44,20 @@ const HEADER_TILE_DATA_OFFSET = 56;
 
 /** Distinguishes one run's temporary file from another's within this process. */
 let runSequence = 0;
+
+/**
+ * How old a temporary file has to be before it is treated as a killed run's
+ * leftover: a transfer of an archive this app can hold finishes well inside an hour,
+ * and a temporary younger than that may belong to a run that is still writing.
+ */
+export const STALE_TEMPORARY_MS = 60 * 60 * 1000;
+
+/**
+ * The `Date.now()` a temporary's name carries, or null when the name is not one of
+ * ours. A temporary is `<archive>.<timestamp>-<sequence>.part`, so the timestamp
+ * comes from the name and no modification-time API is needed.
+ */
+const TEMPORARY_NAME = /\.(\d+)-\d+\.part$/;
 
 /**
  * Fingerprint of a string, as 8 lowercase hex digits: FNV-1a over the whole value,
@@ -104,11 +120,59 @@ function remoteUrl(archiveUrl: string): string {
  * all the separation needed: no run can reuse another's name. Deliberately no
  * randomness — a weak random token in a file that writes archives is what the
  * doctor reports as weak cryptography, and crypto-grade randomness would buy
- * nothing here.
+ * nothing here. The timestamp is also what lets a later run tell this transfer
+ * from the leftover of one that was killed: see {@link sweepStaleTemporaries}.
  */
 function temporaryName(archiveName: string): string {
   runSequence += 1;
   return `${archiveName}.${Date.now()}-${runSequence}.part`;
+}
+
+/** The start time a temporary file's name announces, or null if it names no temporary. */
+function temporaryStartedAt(name: string): number | null {
+  const timestamp = TEMPORARY_NAME.exec(name)?.[1];
+  if (timestamp === undefined) return null;
+  const startedAt = Number(timestamp);
+  return Number.isSafeInteger(startedAt) ? startedAt : null;
+}
+
+/**
+ * Deletes the temporaries a killed process left in the archive directory.
+ *
+ * Every run downloads into its own temporary and publishes in one move, so a process
+ * that dies mid-transfer leaves that file behind forever: nothing else would ever
+ * name it again. The timestamp in the name is the only evidence of its age, and it
+ * is enough — an hour-old temporary cannot belong to a transfer that is still
+ * running, while a recent one may, and deleting a live run's file would break the
+ * concurrency the per-run name exists for. The sweep is not scoped to the archive
+ * being fetched, because the leftover belongs to whichever process died.
+ *
+ * It is best effort by design: this is housekeeping in front of a download that has
+ * to happen anyway, so a listing or a deletion that fails is logged and never
+ * reaches the caller.
+ */
+async function sweepStaleTemporaries(directory: Directory): Promise<void> {
+  let entries: (Directory | File)[];
+  try {
+    entries = directory.list();
+  } catch (error) {
+    logger.warn('map archive sweep could not read the archive directory', error);
+    return;
+  }
+
+  const now = Date.now();
+  for (const entry of entries) {
+    // Directories and anything that does not carry our pattern are never touched: an
+    // archive of another version is what the map still draws, and it is not a leak.
+    if (!(entry instanceof File)) continue;
+    const startedAt = temporaryStartedAt(entry.name);
+    if (startedAt === null || now - startedAt <= STALE_TEMPORARY_MS) continue;
+    try {
+      entry.delete();
+    } catch (error) {
+      logger.warn('map archive sweep could not delete a stale temporary', error);
+    }
+  }
 }
 
 /**
@@ -200,6 +264,9 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
 
   const archive = new File(directory, `${archiveKey(url)}.pmtiles`);
   if (archive.exists) return `pmtiles://${archive.uri}`;
+
+  // Before this run adds a temporary of its own, release the ones dead runs left.
+  await sweepStaleTemporaries(directory);
 
   const temporary = new File(directory, temporaryName(archive.name));
   try {
