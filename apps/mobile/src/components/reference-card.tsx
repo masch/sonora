@@ -36,6 +36,19 @@ export default function ReferenceCard({ reference, onDismiss }: ReferenceCardPro
   const linkUrl = reference?.linkUrl;
   const canOpenLink = Boolean(linkUrl && isAllowedHttpsUrl(linkUrl, MAP_LINK_ALLOWED_HOSTS));
 
+  // A tap on a drawn feature is not a reference: the derived itinerary carries a
+  // label and nothing else (D8), so a label alone must not open an empty card.
+  const hasCardContent = Boolean(
+    reference?.descriptionKey || reference?.imageUrl || reference?.linkUrl,
+  );
+
+  /**
+   * Sends the walker to the reference's external page.
+   *
+   * The URL already passed the https + allowlist check that renders the button,
+   * so this only guards the empty case; a rejected scheme makes `openURL` throw,
+   * which is logged instead of failing the screen.
+   */
   function openLink() {
     if (!linkUrl) return;
     Linking.openURL(linkUrl).catch((err: unknown) => {
@@ -44,7 +57,7 @@ export default function ReferenceCard({ reference, onDismiss }: ReferenceCardPro
   }
 
   return (
-    <BottomModal visible={reference !== null} onDismiss={onDismiss} title={title} showCloseButton>
+    <BottomModal visible={hasCardContent} onDismiss={onDismiss} title={title} showCloseButton>
       <TwView testID="reference-card" className="gap-4">
         {reference?.imageUrl && (
           <TwImage

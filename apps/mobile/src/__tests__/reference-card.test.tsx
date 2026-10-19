@@ -99,4 +99,35 @@ describe('ReferenceCard', () => {
 
     expect(queryByTestId('mock-bottom-modal')).toBeNull();
   });
+
+  it('renders no card for a reference that carries only a label', async () => {
+    const { queryByTestId, queryByText } = await render(
+      <ReferenceCard
+        reference={{
+          documentKey: 'referencias',
+          label: 'Pt 1',
+          labelKey: 'map.point',
+        }}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    expect(queryByTestId('mock-bottom-modal')).toBeNull();
+    expect(queryByTestId('reference-card')).toBeNull();
+    expect(queryByText('Pt 1')).toBeNull();
+  });
+
+  it('renders the card when the reference carries only a description', async () => {
+    const { getByTestId, getByText } = await render(
+      <ReferenceCard
+        reference={{ documentKey: 'referencias', descriptionKey: 'map.centroUmepay.description' }}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('mock-bottom-modal')).toBeTruthy();
+    expect(getByTestId('reference-card')).toBeTruthy();
+    // Missing translations render the key itself instead of hiding the content.
+    expect(getByText('map.centroUmepay.description')).toBeTruthy();
+  });
 });

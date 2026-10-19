@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { itineraryDocument, type MapDocument } from '@sonora/shared';
+import { ITINERARY_DOCUMENT_KEY, itineraryDocument, type MapDocument } from '@sonora/shared';
 
 import TrackDetailMap from '@/components/track-detail-map';
 import ReferenceCard from '@/components/reference-card';
@@ -37,6 +37,10 @@ function waypointsOf(experience: PlayableExperience) {
  *
  * The tapped reference's card belongs to the map that reported the tap, so the
  * state lives here and both screens get it without wiring one of their own.
+ *
+ * The itinerary this switch injects is drawing, not content: a tap on the origin,
+ * a numbered stop, the path or the walker position reports the derived document's
+ * key, and that never opens a card.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -48,6 +52,11 @@ export default function ExperienceMapSwitch({
 }: ExperienceMapSwitchProps) {
   const waypoints = waypointsOf(experience);
   const [pressedReference, setPressedReference] = useState<MapReferencePress | null>(null);
+
+  function handleFeaturePress(reference: MapReferencePress) {
+    if (reference.documentKey === ITINERARY_DOCUMENT_KEY) return;
+    setPressedReference(reference);
+  }
 
   if (renderer === 'maplibre') {
     const itinerary = itineraryDocument({
@@ -66,7 +75,7 @@ export default function ExperienceMapSwitch({
           userCoordinates={userCoordinates}
           waypoints={waypoints}
           showLabels={showLabels}
-          onFeaturePress={setPressedReference}
+          onFeaturePress={handleFeaturePress}
           testID={testID}
         />
         <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
