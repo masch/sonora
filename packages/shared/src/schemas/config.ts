@@ -33,6 +33,16 @@ export const RemoteConfigPayloadSchema = z.object({
   }),
   appVersion: RemoteConfigAppVersionSchema,
   social: RemoteConfigSocialSchema,
+  /**
+   * Public map artifacts. Empty means the map has no basemap yet. Optional so a
+   * config cached before this field existed still parses.
+   */
+  map: z
+    .object({
+      archiveUrl: z.string().default(''),
+      styleUrl: z.string().default(''),
+    })
+    .optional(),
 });
 
 export type RemoteConfigPayload = z.infer<typeof RemoteConfigPayloadSchema>;
@@ -49,5 +59,9 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
   appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
   social: {
     instagramHandle: 'sonora.derivapoetica',
+  },
+  map: {
+    archiveUrl: '',
+    styleUrl: '',
   },
 };

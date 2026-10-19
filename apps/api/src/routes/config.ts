@@ -7,8 +7,15 @@ import { configGuard } from '../middleware/config-guard';
 const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 configRouter.get('/', configGuard(), (c) => {
-  const { minimumVersion, blockOlderVersions, gracePeriodStart, gracePeriodEnd, bypassIosBrowser } =
-    c.var.configEnv;
+  const {
+    minimumVersion,
+    blockOlderVersions,
+    gracePeriodStart,
+    gracePeriodEnd,
+    bypassIosBrowser,
+    mapArchiveUrl,
+    mapStyleUrl,
+  } = c.var.configEnv;
 
   const appVersion: RemoteConfigPayload['appVersion'] = {
     minimumVersion,
@@ -27,6 +34,11 @@ configRouter.get('/', configGuard(), (c) => {
     geofence: {
       ...DEFAULT_REMOTE_CONFIG.geofence,
       bypassIosBrowser,
+    },
+    map: {
+      ...(DEFAULT_REMOTE_CONFIG.map ?? {}),
+      archiveUrl: mapArchiveUrl,
+      styleUrl: mapStyleUrl,
     },
     appVersion,
   } satisfies RemoteConfigPayload);

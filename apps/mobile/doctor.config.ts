@@ -66,6 +66,22 @@ export default {
         // These components use independent loading/error/data state by design.
       },
       {
+        files: ['src/components/map/experience-map.web.tsx'],
+        rules: ['no-pass-live-state-to-parent', 'react-doctor/no-pass-live-state-to-parent'],
+        // The map is an external system: it is created in an effect, reports its load
+        // by event and publishes its state (ready / error) from there, which is the
+        // only way to mount it. Only this rule is waived for the file: it triggers no
+        // other rule of the component block, so those stay active.
+      },
+      {
+        files: ['src/hooks/use-map-source.ts'],
+        rules: ['no-fetch-in-effect', 'react-doctor/no-fetch-in-effect'],
+        // The map archive is a large immutable file fetched once per page, and this
+        // repository has no data-fetching library. The hook is the boundary that owns
+        // that load; moving it to the screen would put the same fetch in a component
+        // effect, with less locality.
+      },
+      {
         files: [
           'src/storage/config-cache.ts',
           'src/storage/config-cache.web.ts',

@@ -1,4 +1,5 @@
 import type { GeoMode } from './geo/proximity';
+import type { MapDocument } from './map/document';
 
 export const USER_EXPERIENCE_FORMATS = ['track', 'trip'] as const;
 export type UserExperienceFormat = (typeof USER_EXPERIENCE_FORMATS)[number];
@@ -60,6 +61,8 @@ export interface BaseExperience {
   geoMode: GeoMode;
   radiusMeters: number | null;
   credits?: ExperienceCredit[] | null;
+  /** Reference documents bound to this experience, plus the published globals. */
+  mapDocuments?: MapDocument[];
 }
 
 export interface TrackExperience extends BaseExperience {

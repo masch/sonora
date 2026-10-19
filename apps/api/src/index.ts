@@ -18,6 +18,8 @@ import { leadsRouter } from './routes/leads';
 import { paymentsRouter } from './routes/payments';
 import { themesRouter } from './routes/themes';
 import { termsRouter } from './routes/terms';
+import { mapDocumentsRouter } from './routes/map-documents';
+import { mediaRouter } from './routes/media';
 import { translationsRouter } from './routes/translations';
 
 export interface Env {
@@ -30,6 +32,8 @@ export interface Env {
   ALLOWED_HEADERS?: string;
   PRIVATE_BUCKET?: R2Bucket;
   PUBLIC_BUCKET?: R2Bucket;
+  MAP_ARCHIVE_URL?: string;
+  MAP_STYLE_URL?: string;
   ADMIN_API_KEY?: string;
   ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
   ADMIN_SESSION_COOKIE_SECURE?: string;
@@ -67,6 +71,9 @@ export interface Variables {
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
     bypassIosBrowser: boolean;
+    /** Public map artifacts; empty when this environment publishes none. */
+    mapArchiveUrl: string;
+    mapStyleUrl: string;
   };
   environment: string;
   feedbackStore?: KVNamespace;
@@ -96,6 +103,8 @@ app.route('/experiences', experiencesRouter);
 app.route('/audio', audioRouter);
 app.route('/config', configRouter);
 app.route('/terms', termsRouter);
+app.route('/map-documents', mapDocumentsRouter);
+app.route('/media', mediaRouter);
 app.route('/translations', translationsRouter);
 // Backward compatibility alias for existing mobile apps
 app.route('/api/translations', translationsRouter);
