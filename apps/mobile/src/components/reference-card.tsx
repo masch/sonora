@@ -5,7 +5,11 @@ import type { MapReferencePress } from '@/components/map/map-view.types';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
-import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
+import {
+  useAppTranslation,
+  type AppTFunction,
+  type TranslationKeys,
+} from '@/hooks/use-translation';
 import { TwImage, TwView } from '@/tw';
 import { logger } from '@/utils/logger';
 
@@ -16,20 +20,31 @@ export interface ReferenceCardProps {
 }
 
 /**
+ * Title for the card: the label the map already resolved, otherwise the
+ * translation of the key that label came from. A missing translation renders the
+ * key itself, so a keyed reference never loses its title.
+ */
+function referenceTitle(reference: MapReferencePress | null, t: AppTFunction): string | undefined {
+  if (!reference) return undefined;
+  return (
+    reference.label ?? (reference.labelKey ? t(reference.labelKey as TranslationKeys) : undefined)
+  );
+}
+
+/**
  * Content card for a tapped map reference.
  *
  * Labels and descriptions arrive as i18n keys, so the text follows the app
  * language; a key with no translation renders the key itself instead of an
  * empty card. The action leaves the app, so the URL is checked here as well as
- * on write: an http URL or a host outside the allowlist gets no button.
+ * on write: only an https URL on an allowlisted host gets the button, and a link
+ * that fails that check is not card content either, so a reference whose only
+ * payload is such a link opens no card at all.
  */
 export default function ReferenceCard({ reference, onDismiss }: ReferenceCardProps) {
   const { t } = useAppTranslation();
 
-  const title = reference
-    ? (reference.label ??
-      (reference.labelKey ? t(reference.labelKey as TranslationKeys) : undefined))
-    : undefined;
+  const title = referenceTitle(reference, t);
   const description = reference?.descriptionKey
     ? t(reference.descriptionKey as TranslationKeys)
     : undefined;
@@ -38,9 +53,9 @@ export default function ReferenceCard({ reference, onDismiss }: ReferenceCardPro
 
   // A tap on a drawn feature is not a reference: the derived itinerary carries a
   // label and nothing else (D8), so a label alone must not open an empty card.
-  const hasCardContent = Boolean(
-    reference?.descriptionKey || reference?.imageUrl || reference?.linkUrl,
-  );
+  // An unopenable link cannot fill that card, so `canOpenLink` — not the raw
+  // `linkUrl` — is what counts as link content.
+  const hasCardContent = Boolean(reference?.descriptionKey || reference?.imageUrl || canOpenLink);
 
   /**
    * Sends the walker to the reference's external page.

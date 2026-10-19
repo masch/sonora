@@ -84,6 +84,43 @@ describe('ReferenceCard', () => {
     expect(queryByTestId('reference-card-link')).toBeNull();
   });
 
+  it('renders no card for a reference whose only payload is a link outside the allowlist', async () => {
+    const { queryByTestId, queryByText } = await render(
+      <ReferenceCard
+        reference={{
+          documentKey: 'referencias',
+          label: 'Taller',
+          linkUrl: 'https://evil.example.com/x',
+        }}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    // A link the card cannot open is not card content: without it the reference
+    // has nothing to show, so the modal (and its title) must not appear.
+    expect(queryByTestId('mock-bottom-modal')).toBeNull();
+    expect(queryByTestId('reference-card')).toBeNull();
+    expect(queryByTestId('reference-card-link')).toBeNull();
+    expect(queryByText('Taller')).toBeNull();
+  });
+
+  it('renders the card and its action when the only payload is an allowlisted link', async () => {
+    const { getByTestId } = await render(
+      <ReferenceCard
+        reference={{
+          documentKey: 'referencias',
+          label: 'Taller',
+          linkUrl: 'https://www.instagram.com/sonora.derivapoetica',
+        }}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('mock-bottom-modal')).toBeTruthy();
+    expect(getByTestId('reference-card')).toBeTruthy();
+    expect(getByTestId('reference-card-link')).toBeTruthy();
+  });
+
   it('translates the label key when the drawn label is missing', async () => {
     const { getByTestId } = await render(
       <ReferenceCard reference={{ ...reference, label: undefined }} onDismiss={jest.fn()} />,
