@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { SPLASH_ICONS } from '@/constants/images';
 import { SPLASH_COLORS } from '@/constants/theme';
+import { resolveMapRenderer } from '@/components/map/resolve-renderer';
 import { resolveMapArtifacts } from './map-artifacts';
 
 /**
@@ -129,4 +130,9 @@ export const APP_CONFIG = {
     archiveUrlOverride: process.env.EXPO_PUBLIC_MAP_ARCHIVE_URL,
     styleUrlOverride: process.env.EXPO_PUBLIC_MAP_STYLE_URL,
   }),
+  /**
+   * Which map implementation this build mounts. A build-time choice today; the
+   * remote flag with a version gate replaces it (T10).
+   */
+  mapRenderer: resolveMapRenderer(process.env.EXPO_PUBLIC_MAP_RENDERER),
 } as const;
