@@ -131,6 +131,40 @@ describe('Middleware Guards (c.var injection)', () => {
       const unsetBody = (await unset.json()) as { mapRenderer: string };
       expect(unsetBody.mapRenderer).toBe('leaflet');
     });
+
+    it('normalizes the per-device renderer lists into configEnv', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
+
+      const configured = await app.request(
+        '/test',
+        {},
+        {
+          MINIMUM_APP_VERSION: '1.0.0',
+          BLOCK_OLDER_VERSIONS: 'false',
+          MAP_RENDERER_DEVICE_IDS: ' hash-a , hash-b ,, hash-a ,',
+          MAP_RENDERER_DEVICE_IDS_BLOCKED: ' hash-c,hash-d, hash-c ',
+        },
+      );
+      const configuredBody = (await configured.json()) as {
+        mapRendererDeviceIds: string[];
+        mapRendererDeviceIdsBlocked: string[];
+      };
+      expect(configuredBody.mapRendererDeviceIds).toEqual(['hash-a', 'hash-b']);
+      expect(configuredBody.mapRendererDeviceIdsBlocked).toEqual(['hash-c', 'hash-d']);
+
+      const unset = await app.request(
+        '/test',
+        {},
+        { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false' },
+      );
+      const unsetBody = (await unset.json()) as {
+        mapRendererDeviceIds: string[];
+        mapRendererDeviceIdsBlocked: string[];
+      };
+      expect(unsetBody.mapRendererDeviceIds).toEqual([]);
+      expect(unsetBody.mapRendererDeviceIdsBlocked).toEqual([]);
+    });
   });
 
   describe('paymentsGuard', () => {

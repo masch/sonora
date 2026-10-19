@@ -100,6 +100,71 @@ describe('GET /config', () => {
     }
   });
 
+  it('serves maplibre to an allowed device on a leaflet environment', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Id': 'device-allowed' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'leaflet',
+        MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('maplibre');
+  });
+
+  it('serves leaflet to a blocked device on a maplibre environment', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Id': 'device-blocked' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
+        MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('leaflet');
+  });
+
+  it('sends the plain environment renderer when the device header is absent', async () => {
+    for (const renderer of ['leaflet', 'maplibre'] as const) {
+      const res = await app.request(
+        '/config',
+        {},
+        {
+          ...BINDINGS,
+          MAP_RENDERER: renderer,
+          MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+          MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+        },
+      );
+      const body = (await res.json()) as { map: { renderer: string } };
+      expect({ renderer, served: body.map.renderer }).toEqual({ renderer, served: renderer });
+    }
+  });
+
+  it('ignores a header no list knows without failing the bootstrap', async () => {
+    for (const deviceId of ['{"garbage":true}', 'unknown-device', 'not a hash at all']) {
+      const res = await app.request(
+        '/config',
+        { headers: { 'X-Device-Id': deviceId } },
+        {
+          ...BINDINGS,
+          MAP_RENDERER: 'maplibre',
+          MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+          MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+        },
+      );
+      expect({ deviceId, status: res.status }).toEqual({ deviceId, status: 200 });
+      const body = (await res.json()) as { map: { renderer: string } };
+      expect({ deviceId, served: body.map.renderer }).toEqual({ deviceId, served: 'maplibre' });
+    }
+  });
+
   it('sends empty map urls when the environment publishes no artifacts', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };
