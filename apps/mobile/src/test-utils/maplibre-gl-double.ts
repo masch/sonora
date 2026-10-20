@@ -9,6 +9,7 @@
 import { FakeMap, mockMapInstances } from './fake-maplibre';
 
 export const addProtocol = jest.fn();
+export const setWorkerUrl = jest.fn();
 
 const maplibregl = { Map: FakeMap, addProtocol };
 
