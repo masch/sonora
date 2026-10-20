@@ -282,13 +282,41 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
 }
 
 /**
+ * How long one run may wait for the archive before it reports the download as the
+ * stage that stalled. The transfer either finishes or it does not, and a screen must
+ * never be left on the loading branch with nothing behind it: an unbounded wait is
+ * what left the first visit to a trip on "Loading map…" until the walker left the
+ * screen and came back, because by then the file was on disk and the run completed
+ * without anyone telling the component.
+ */
+export const ARCHIVE_TIMEOUT_MS = 60 * 1000;
+
+/**
+ * What the caller is told when the transfer outlives the bound. It names the stage
+ * on purpose: two waits feed the same spinner, and the message is how the failure
+ * says which one hung.
+ */
+const ARCHIVE_TIMEOUT_MESSAGE = 'the map archive did not finish downloading';
+
+/**
  * The archive the native map source points at, as a `pmtiles://file://…` uri.
  *
  * @param archiveUrl the archive the map config carries, with or without the
  *                   `pmtiles://` scheme, or undefined when none is configured.
+ * @param attempt    which run this is: a caller that retries a failed archive bumps
+ *                   it, and both the download and its bound start over. It is part
+ *                   of a settled result's identity, so the failure of the attempt
+ *                   that was given up is never answered for the one that replaced it.
  */
-export function useMapArchiveFile(archiveUrl: string | undefined): MapArchiveFileState {
-  const [settled, setSettled] = useState<{ key: string; value: MapArchiveFileState } | null>(null);
+export function useMapArchiveFile(
+  archiveUrl: string | undefined,
+  attempt = 0,
+): MapArchiveFileState {
+  const [settled, setSettled] = useState<{
+    key: string;
+    attempt: number;
+    value: MapArchiveFileState;
+  } | null>(null);
   const key = archiveUrl ? archiveKey(remoteUrl(archiveUrl)) : null;
 
   useEffect(() => {
@@ -297,29 +325,41 @@ export function useMapArchiveFile(archiveUrl: string | undefined): MapArchiveFil
     // Cancellation is per run: a url change cancels only the run it started, so an
     // abandoned download can never settle the state of the run that replaced it.
     let cancelled = false;
+    let bound: ReturnType<typeof setTimeout> | undefined;
+
+    /** Settles this run once, and releases the bound it was racing. */
+    const settle = (value: MapArchiveFileState): void => {
+      if (cancelled) return;
+      cancelled = true;
+      if (bound !== undefined) clearTimeout(bound);
+      setSettled({ key, attempt, value });
+    };
+
+    // Armed before the transfer, so no way of finishing can outrun the bound and no
+    // failure can be answered by a timer that was never set.
+    bound = setTimeout(() => {
+      settle({ status: 'error', error: ARCHIVE_TIMEOUT_MESSAGE });
+    }, ARCHIVE_TIMEOUT_MS);
 
     downloadArchive(archiveUrl)
-      .then((uri) => {
-        if (!cancelled) setSettled({ key, value: { status: 'ready', uri } });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setSettled({
-          key,
-          value: {
-            status: 'error',
-            error: error instanceof Error ? error.message : 'archive download failed',
-          },
-        });
-      });
+      .then((uri) => settle({ status: 'ready', uri }))
+      .catch((error: unknown) =>
+        settle({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'archive download failed',
+        }),
+      );
 
     return () => {
       cancelled = true;
+      // An unmounted screen must not leave a minute-long timer behind it.
+      if (bound !== undefined) clearTimeout(bound);
     };
-  }, [archiveUrl, key]);
+  }, [archiveUrl, key, attempt]);
 
   if (!key) return { status: 'error', error: 'no archive configured' };
-  // A settled result for another archive says nothing about this one.
-  if (settled?.key === key) return settled.value;
+  // A settled result for another archive — or for another attempt of this one —
+  // says nothing about this run.
+  if (settled?.key === key && settled.attempt === attempt) return settled.value;
   return { status: 'loading' };
 }

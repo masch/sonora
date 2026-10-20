@@ -188,7 +188,11 @@ jest.mock('@/utils/logger', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
+import {
+  useMapArchiveFile,
+  ARCHIVE_TIMEOUT_MS,
+  STALE_TEMPORARY_MS,
+} from '@/hooks/use-map-archive-file';
 import { logger } from '@/utils/logger';
 
 const ARCHIVE_V1 = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -215,6 +219,44 @@ function seedFile(uri: string, bytes: Uint8Array = mockArchiveBody()): Uint8Arra
  */
 function temporaryOf(archiveName: string, ageMs: number, sequence = 1): string {
   return `${ARCHIVE_DIR}/${archiveName}.${Date.now() - ageMs}-${sequence}.part`;
+}
+
+/**
+ * Records the timers of one length a run arms, and the handles it clears.
+ *
+ * A jest spy over `clearTimeout` breaks the fake clock it is delegating to (clears
+ * stop reaching it), so this wrapper delegates to whatever jest installed and
+ * records on the way past: it can then tell a bound that was cleared from one that
+ * was left armed, which is the whole point of the assertion.
+ */
+function recordBounds(delay: number): {
+  armed: unknown[];
+  cleared: unknown[];
+  restore: () => void;
+} {
+  const installedSetTimeout = globalThis.setTimeout;
+  const installedClearTimeout = globalThis.clearTimeout;
+  const armed: unknown[] = [];
+  const cleared: unknown[] = [];
+
+  globalThis.setTimeout = ((handler: () => void, timeout?: number, ...args: unknown[]) => {
+    const handle = installedSetTimeout(handler, timeout, ...args);
+    if (timeout === delay) armed.push(handle);
+    return handle;
+  }) as unknown as typeof globalThis.setTimeout;
+  globalThis.clearTimeout = ((handle?: number) => {
+    cleared.push(handle);
+    installedClearTimeout(handle);
+  }) as unknown as typeof globalThis.clearTimeout;
+
+  return {
+    armed,
+    cleared,
+    restore: () => {
+      globalThis.setTimeout = installedSetTimeout;
+      globalThis.clearTimeout = installedClearTimeout;
+    },
+  };
 }
 
 describe('useMapArchiveFile', () => {
@@ -546,6 +588,108 @@ describe('useMapArchiveFile', () => {
     });
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+  });
+
+  it('bounds the download and names the archive when the transfer never finishes', async () => {
+    jest.useFakeTimers();
+    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
+    try {
+      // A transfer that never answers: the first-visit hang on the device, where the
+      // download completed eventually but the screen was never told.
+      mockDownloadGate = new Promise<void>(() => {});
+
+      const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+
+      expect(result.current.status).toBe('loading');
+      // The wait is bounded, by exactly one timer of the documented length.
+      expect(bounds.armed).toHaveLength(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(ARCHIVE_TIMEOUT_MS);
+      });
+
+      expect(result.current.status).toBe('error');
+      // The message names the stage that stalled, so the two waits can be told apart.
+      expect(result.current.error).toBe('the map archive did not finish downloading');
+      expect(result.current.error).toContain('archive');
+      // Never a uri: the failure is reported instead of a path that is not there.
+      expect(result.current.uri).toBeUndefined();
+      // The bound is finished with, not left armed behind a settled state.
+      expect(bounds.cleared).toContain(bounds.armed[0]);
+    } finally {
+      bounds.restore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('clears the bound when the download succeeds', async () => {
+    jest.useFakeTimers();
+    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
+    try {
+      const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+      expect(bounds.armed).toHaveLength(1);
+
+      // The transfer finishes well inside the bound.
+      await act(async () => {});
+
+      expect(result.current.status).toBe('ready');
+      // A run that settled has nothing left to wait for.
+      expect(bounds.cleared).toContain(bounds.armed[0]);
+
+      // And the settled state survives the moment the bound would have expired.
+      await act(async () => {
+        jest.advanceTimersByTime(ARCHIVE_TIMEOUT_MS);
+      });
+      expect(result.current.status).toBe('ready');
+      expect(result.current.error).toBeUndefined();
+    } finally {
+      bounds.restore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('clears the bound when the screen unmounts mid-download', async () => {
+    jest.useFakeTimers();
+    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
+    try {
+      mockDownloadGate = new Promise<void>(() => {});
+
+      const view = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+      expect(bounds.armed).toHaveLength(1);
+
+      await act(async () => {
+        view.unmount();
+      });
+
+      // The run is cancelled, so its bound goes with it instead of waiting out the
+      // minute and settling a screen that is gone.
+      expect(bounds.cleared).toContain(bounds.armed[0]);
+    } finally {
+      bounds.restore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('downloads again when the attempt changes, instead of replaying the failure', async () => {
+    mockDownloadFailure = new Error('UnableToDownload: 503 Service Unavailable');
+
+    const { result, rerender } = await renderHook(
+      ({ attempt }: { attempt: number }) => useMapArchiveFile(ARCHIVE_V1, attempt),
+      { initialProps: { attempt: 0 } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
+
+    // The connection is back: the retry has to start the transfer over, not hand
+    // back the settled error of the previous attempt.
+    mockDownloadFailure = null;
+    await act(async () => {
+      rerender({ attempt: 1 });
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1, ARCHIVE_V1]);
     expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
   });
 });

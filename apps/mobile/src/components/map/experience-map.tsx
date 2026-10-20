@@ -23,6 +23,7 @@ import {
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -37,6 +38,20 @@ import {
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
+
+/**
+ * How long one run may wait for the style document before it reports the style as
+ * the stage that stalled. Shorter than the archive's bound on purpose: the style is
+ * a small JSON document, so silence here is a failure long before a minute is up,
+ * and a map that never draws is worse than one that says it could not.
+ */
+const STYLE_TIMEOUT_MS = 15 * 1000;
+
+/**
+ * What the caller is told when the style request outlives the bound. It names the
+ * stage, so the two waits behind the same spinner are tellable apart.
+ */
+const STYLE_TIMEOUT_MESSAGE = 'the map style did not load';
 
 /** Style documents already fetched, keyed by url: a style is fetched once per page. */
 const styles = new Map<string, StyleSpecification>();
@@ -53,18 +68,43 @@ interface BaseStyleState {
  * read the archive's own TileJSON into a style the way the web renderer does, so
  * the base layers (and the glyphs a label layer needs) come from this document.
  * A failed fetch fails loudly: an empty canvas would look like a working map.
+ *
+ * The wait is bounded, so a request that never answers becomes an error the screen
+ * can show instead of a spinner that never ends, and `attempt` is what a retry
+ * bumps: it restarts the request and identifies its own settled result, so the
+ * failure of the attempt that was given up never answers for the new one.
  */
-function useRemoteStyle(styleUrl: string | undefined): BaseStyleState {
-  // `url` marks which style the settled outcome belongs to; the style itself is
-  // read back out of the page registry below, so this state never holds a
+function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyleState {
+  // `url` and `attempt` mark which run the settled outcome belongs to; the style
+  // itself is read back out of the page registry below, so this state never holds a
   // document for a url that is no longer configured.
-  const [settled, setSettled] = useState<{ url: string; error?: string } | null>(null);
+  const [settled, setSettled] = useState<{
+    url: string;
+    attempt: number;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!styleUrl || styles.has(styleUrl)) return;
 
     // Cancellation is per run: a url change only cancels the run it started.
     let cancelled = false;
+    let bound: ReturnType<typeof setTimeout> | undefined;
+
+    /** Ends this run: nothing may settle it again and its bound is released. */
+    const release = (): void => {
+      cancelled = true;
+      if (bound !== undefined) clearTimeout(bound);
+    };
+
+    // Armed before the request, so no outcome can outrun the bound. The guard stays
+    // written out on every path, including the bound's: an abandoned run must never
+    // publish anything, and a check buried in a helper reads as if it does not.
+    bound = setTimeout(() => {
+      if (cancelled) return;
+      release();
+      setSettled({ url: styleUrl, attempt, error: STYLE_TIMEOUT_MESSAGE });
+    }, STYLE_TIMEOUT_MS);
 
     fetch(styleUrl)
       .then((response) => {
@@ -73,27 +113,37 @@ function useRemoteStyle(styleUrl: string | undefined): BaseStyleState {
       })
       .then((style) => {
         if (cancelled) return;
+        release();
         styles.set(styleUrl, style);
-        setSettled({ url: styleUrl });
+        setSettled({ url: styleUrl, attempt });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        release();
         setSettled({
           url: styleUrl,
+          attempt,
           error: error instanceof Error ? error.message : 'style request failed',
         });
       });
 
     return () => {
+      // Written out here rather than left to `release()`: the teardown is where the
+      // cancellation flag is read, and an unmounted screen must not leave a timer
+      // behind it either way.
       cancelled = true;
+      if (bound !== undefined) clearTimeout(bound);
     };
-  }, [styleUrl]);
+  }, [styleUrl, attempt]);
 
   if (!styleUrl) return { status: 'ready' };
   const cached = styles.get(styleUrl);
   if (cached) return { status: 'ready', style: cached };
-  // A settled result for another style says nothing about this one.
-  if (settled?.url !== styleUrl || !settled.error) return { status: 'loading' };
+  // A settled result for another style — or for another attempt of this one — says
+  // nothing about this run.
+  if (settled?.url !== styleUrl || settled.attempt !== attempt || !settled.error) {
+    return { status: 'loading' };
+  }
   return { status: 'error', error: settled.error };
 }
 
@@ -242,9 +292,16 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t, language } = useAppTranslation();
-  const archive = useMapArchiveFile(source.archiveUrl || undefined);
-  const remote = useRemoteStyle(source.styleUrl);
+  // Which run of both waits this is: the retry below bumps it, and each wait starts
+  // over on a new attempt instead of replaying the failure that was given up.
+  const [attempt, setAttempt] = useState(0);
+  const archive = useMapArchiveFile(source.archiveUrl || undefined, attempt);
+  const remote = useRemoteStyle(source.styleUrl, attempt);
   const mapRef = useRef<MapRef>(null);
+
+  const retry = useCallback(() => {
+    setAttempt((previous) => previous + 1);
+  }, []);
 
   const [centerLng, centerLat] = center;
 
@@ -341,6 +398,16 @@ export default function ExperienceMap({
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {archive.error ?? remote.error ?? t('map.offlineDescription')}
         </ThemedText>
+        {/* Both waits start over, so a failure caused by a cold start or a dropped
+            connection does not cost the walker the screen they came from. */}
+        <Button
+          label={t('common.retry')}
+          accessibilityLabel={t('common.retry')}
+          testID="experience-map-retry"
+          variant="primary"
+          size="sm"
+          onPress={retry}
+        />
       </TwView>
     );
   }

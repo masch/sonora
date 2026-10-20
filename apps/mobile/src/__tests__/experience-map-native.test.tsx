@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import type { StyleSpecification } from 'maplibre-gl';
 import { en, es, type MapDocument } from '@sonora/shared';
@@ -297,6 +297,95 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
     expect(mockMapProps).toHaveLength(0);
+  });
+
+  it('bounds the style wait and names the style when the request never resolves', async () => {
+    jest.useFakeTimers();
+    try {
+      // A style request that never answers: the first-visit hang, where the only way
+      // out of the spinner was leaving the screen and coming back.
+      globalThis.fetch = jest.fn(() => new Promise(() => {})) as never;
+
+      const view = await render(
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?hang` }}
+          overlays={[]}
+        />,
+      );
+
+      expect(view.queryByText('map.loadingMap')).toBeTruthy();
+
+      // Fifteen seconds, no more and no less: still waiting one millisecond short.
+      await act(async () => {
+        jest.advanceTimersByTime(14_999);
+      });
+      expect(view.queryByTestId('experience-map-error')).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+
+      expect(view.queryByTestId('experience-map-error')).toBeTruthy();
+      // The message names the stage that stalled: the style, not the archive.
+      expect(view.queryByText('the map style did not load')).toBeTruthy();
+      expect(mockMapProps).toHaveLength(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('retries both waits from the error state and draws once they resolve', async () => {
+    let resolveStyle = (_response: unknown) => {};
+    const styleGate = new Promise((resolve) => {
+      resolveStyle = resolve;
+    });
+    const fetchStyle = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      .mockReturnValueOnce(styleGate);
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+
+    // The archive failed on the first attempt; the retry has to start it over, so
+    // the double answers by attempt instead of always failing.
+    mockedUseMapArchiveFile.mockImplementation((_archiveUrl, attempt) =>
+      (attempt ?? 0) > 0
+        ? { status: 'ready', uri: ARCHIVE_URI }
+        : { status: 'error', error: 'the map archive did not finish downloading' },
+    );
+
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?retry` }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
+    // The stage that failed stays visible next to the retry.
+    expect(view.queryByText('the map archive did not finish downloading')).toBeTruthy();
+    expect(mockMapProps).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+
+    // Back into loading, not into the failure that was just dismissed.
+    expect(view.queryByText('map.loadingMap')).toBeTruthy();
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+
+    await act(async () => {
+      resolveStyle({ ok: true, json: async () => styleWith(true) });
+      await styleGate;
+    });
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // Both waits really restarted: the style was fetched a second time and the
+    // archive hook was asked again under a new attempt.
+    expect(fetchStyle).toHaveBeenCalledTimes(2);
+    expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 1);
+    expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
   });
 
   it('reports the tapped reference with the same shape the web build emits', async () => {
