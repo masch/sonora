@@ -37,9 +37,11 @@ MAP_STYLE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/
 # that left the choice open; anything else keeps them on the Leaflet map.
 MAP_RENDERER = "leaflet"
 # Capability gate, not a preference: only these platforms can render the new map.
-# `web` is absent because the web export emits no MapLibre worker yet — adding
-# `web` here is what turns the new map on in browsers, once that worker loads.
-MAP_RENDERER_PLATFORMS = "android,ios"
+# `web` is included in staging only: the web bundle published from df1f0ae carries
+# the MapLibre worker, so a browser is now able to render it. The global value stays
+# `leaflet`, so this only decides who *can* be switched on — the device allowlist
+# decides who *is*.
+MAP_RENDERER_PLATFORMS = "android,ios,web"
 
 [define]
 MP_BYPASS_SIGNATURE = "true"
