@@ -14,6 +14,16 @@ describe('GET /config', () => {
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
   });
 
+  it('tells caches the payload depends on the device header', async () => {
+    // The renderer can be overridden per device, so a shared cache that ignored
+    // X-Device-Id would hand one device's answer to another. The app keeps its own
+    // copy in storage, so there is nothing to gain from caching this over HTTP.
+    const res = await app.request('/config', {}, BINDINGS);
+
+    expect(res.headers.get('vary')).toContain('X-Device-Id');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('returns all RemoteConfigPayload fields with correct types', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as Record<string, unknown>;
@@ -97,6 +107,71 @@ describe('GET /config', () => {
       const res = await app.request('/config', {}, { ...BINDINGS, MAP_RENDERER: value });
       const body = (await res.json()) as { map: { renderer: string } };
       expect({ value, renderer: body.map.renderer }).toEqual({ value, renderer: 'leaflet' });
+    }
+  });
+
+  it('serves maplibre to an allowed device on a leaflet environment', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Id': 'device-allowed' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'leaflet',
+        MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('maplibre');
+  });
+
+  it('serves leaflet to a blocked device on a maplibre environment', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Id': 'device-blocked' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
+        MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('leaflet');
+  });
+
+  it('sends the plain environment renderer when the device header is absent', async () => {
+    for (const renderer of ['leaflet', 'maplibre'] as const) {
+      const res = await app.request(
+        '/config',
+        {},
+        {
+          ...BINDINGS,
+          MAP_RENDERER: renderer,
+          MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+          MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+        },
+      );
+      const body = (await res.json()) as { map: { renderer: string } };
+      expect({ renderer, served: body.map.renderer }).toEqual({ renderer, served: renderer });
+    }
+  });
+
+  it('ignores a header no list knows without failing the bootstrap', async () => {
+    for (const deviceId of ['{"garbage":true}', 'unknown-device', 'not a hash at all']) {
+      const res = await app.request(
+        '/config',
+        { headers: { 'X-Device-Id': deviceId } },
+        {
+          ...BINDINGS,
+          MAP_RENDERER: 'maplibre',
+          MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+          MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+        },
+      );
+      expect({ deviceId, status: res.status }).toEqual({ deviceId, status: 200 });
+      const body = (await res.json()) as { map: { renderer: string } };
+      expect({ deviceId, served: body.map.renderer }).toEqual({ deviceId, served: 'maplibre' });
     }
   });
 

@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import type { Env, Variables } from '../index';
+import { normalizeDeviceIdList } from '../lib/map-renderer';
 
 export const configGuard = (): MiddlewareHandler<{
   Bindings: Env;
@@ -21,6 +22,12 @@ export const configGuard = (): MiddlewareHandler<{
       // Normalized at the edge: only the exact value enables the new renderer,
       // so an unset, empty or misspelled variable keeps every client on Leaflet.
       mapRenderer: c.env?.MAP_RENDERER === 'maplibre' ? 'maplibre' : 'leaflet',
+      // Per-device overrides, normalized to trimmed and deduped lists. These two
+      // are **secrets**: they are device ids, and this repository is public, so
+      // the real lists are set out of band (`wrangler secret` / dev vars) and
+      // must never be written into `wrangler.toml`.
+      mapRendererDeviceIds: normalizeDeviceIdList(c.env?.MAP_RENDERER_DEVICE_IDS),
+      mapRendererDeviceIdsBlocked: normalizeDeviceIdList(c.env?.MAP_RENDERER_DEVICE_IDS_BLOCKED),
     });
     await next();
   };
