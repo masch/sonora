@@ -36,6 +36,16 @@ export interface Env {
   MAP_STYLE_URL?: string;
   /** `maplibre` enables the new renderer; anything else stays on Leaflet. */
   MAP_RENDERER?: string;
+  /**
+   * Comma-separated device ids forced onto MapLibre. A **secret**: set it with
+   * `wrangler secret` (never in `wrangler.toml`, the repository is public).
+   */
+  MAP_RENDERER_DEVICE_IDS?: string;
+  /**
+   * Comma-separated device ids forced back onto Leaflet, ahead of the
+   * allowlist. A **secret**, set the same way as `MAP_RENDERER_DEVICE_IDS`.
+   */
+  MAP_RENDERER_DEVICE_IDS_BLOCKED?: string;
   ADMIN_API_KEY?: string;
   ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
   ADMIN_SESSION_COOKIE_SECURE?: string;
@@ -81,6 +91,13 @@ export interface Variables {
      * exact value, `leaflet` for anything else including unset.
      */
     mapRenderer: MapRenderer;
+    /** Normalized `MAP_RENDERER_DEVICE_IDS`; empty when the variable is unset. */
+    mapRendererDeviceIds: readonly string[];
+    /**
+     * Normalized `MAP_RENDERER_DEVICE_IDS_BLOCKED`; empty when the variable is
+     * unset. Checked before the allowlist.
+     */
+    mapRendererDeviceIdsBlocked: readonly string[];
   };
   environment: string;
   feedbackStore?: KVNamespace;
