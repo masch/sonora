@@ -37,6 +37,12 @@ export interface Env {
   /** `maplibre` enables the new renderer; anything else stays on Leaflet. */
   MAP_RENDERER?: string;
   /**
+   * Comma-separated platforms that can render the new map. Public config, not a
+   * secret: it is declared in `wrangler.toml`, and `web` is left out until the
+   * web export emits the MapLibre worker.
+   */
+  MAP_RENDERER_PLATFORMS?: string;
+  /**
    * Comma-separated device ids forced onto MapLibre. A **secret**: set it with
    * `wrangler secret` (never in `wrangler.toml`, the repository is public).
    */
@@ -91,6 +97,12 @@ export interface Variables {
      * exact value, `leaflet` for anything else including unset.
      */
     mapRenderer: MapRenderer;
+    /**
+     * Normalized capability list: only these platforms can render `maplibre`.
+     * Defaults to `android` and `ios` when the variable is unset, so a browser
+     * never receives a renderer it cannot mount.
+     */
+    mapRendererPlatforms: readonly string[];
     /** Normalized `MAP_RENDERER_DEVICE_IDS`; empty when the variable is unset. */
     mapRendererDeviceIds: readonly string[];
     /**

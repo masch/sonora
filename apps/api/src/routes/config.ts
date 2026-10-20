@@ -17,20 +17,25 @@ configRouter.get('/', configGuard(), (c) => {
     mapArchiveUrl,
     mapStyleUrl,
     mapRenderer,
+    mapRendererPlatforms,
     mapRendererDeviceIds,
     mapRendererDeviceIdsBlocked,
   } = c.var.configEnv;
 
-  // Read the header directly instead of adding the strict device-id
+  // Read the headers directly instead of adding the strict device-id
   // middleware: `/config` bootstraps the whole app, so a malformed header must
-  // not fail it — the resolver already treats an unusable id as unknown.
+  // not fail it — the resolver already treats an unusable id as unknown, and an
+  // unusable platform as incapable. The platform comes from `injectDeviceId()`,
+  // which is mounted globally and silently drops a value outside `PLATFORMS`,
+  // so an unknown platform arrives here as unset and keeps the client on Leaflet.
   const deviceId = c.req.header('X-Device-Id');
+  const devicePlatform = c.var.devicePlatform;
 
-  // The payload now depends on a request header, because the renderer can be
-  // overridden per device. Any cache in front of this route must key on that
-  // header, and the app keeps its own copy in storage, so there is nothing to
-  // gain from an HTTP cache here.
-  c.header('Vary', 'X-Device-Id');
+  // The payload now depends on two request headers, because the renderer can be
+  // overridden per device and is gated by platform. Any cache in front of this
+  // route must key on both, and the app keeps its own copy in storage, so there
+  // is nothing to gain from an HTTP cache here.
+  c.header('Vary', 'X-Device-Id, X-Device-Platform');
   c.header('Cache-Control', 'no-store');
 
   const appVersion: RemoteConfigPayload['appVersion'] = {
@@ -56,6 +61,8 @@ configRouter.get('/', configGuard(), (c) => {
       archiveUrl: mapArchiveUrl,
       styleUrl: mapStyleUrl,
       renderer: resolveMapRenderer({
+        platform: devicePlatform,
+        capablePlatforms: mapRendererPlatforms,
         deviceId,
         allowed: mapRendererDeviceIds,
         blocked: mapRendererDeviceIdsBlocked,
