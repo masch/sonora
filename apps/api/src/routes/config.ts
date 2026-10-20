@@ -26,6 +26,13 @@ configRouter.get('/', configGuard(), (c) => {
   // not fail it — the resolver already treats an unusable id as unknown.
   const deviceId = c.req.header('X-Device-Id');
 
+  // The payload now depends on a request header, because the renderer can be
+  // overridden per device. Any cache in front of this route must key on that
+  // header, and the app keeps its own copy in storage, so there is nothing to
+  // gain from an HTTP cache here.
+  c.header('Vary', 'X-Device-Id');
+  c.header('Cache-Control', 'no-store');
+
   const appVersion: RemoteConfigPayload['appVersion'] = {
     minimumVersion,
     blockOlderVersions,

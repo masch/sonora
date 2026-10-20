@@ -14,6 +14,16 @@ describe('GET /config', () => {
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
   });
 
+  it('tells caches the payload depends on the device header', async () => {
+    // The renderer can be overridden per device, so a shared cache that ignored
+    // X-Device-Id would hand one device's answer to another. The app keeps its own
+    // copy in storage, so there is nothing to gain from caching this over HTTP.
+    const res = await app.request('/config', {}, BINDINGS);
+
+    expect(res.headers.get('vary')).toContain('X-Device-Id');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('returns all RemoteConfigPayload fields with correct types', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as Record<string, unknown>;

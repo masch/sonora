@@ -352,7 +352,9 @@ api-dev-staging: ## Run Hono API locally with wrangler dev connected to staging 
 	cd $(API_DIR) && bunx wrangler dev --config wrangler.staging.toml --env-file .env.staging
 
 
-# Per-device map renderer overrides. The lists are Cloudflare secrets: `wrangler
+# Per-device map renderer overrides. Recipes that carry the values are silent
+# (@), so the hashes do not end up in a terminal log; pass them from a file or the
+# environment if they also have to stay out of shell history. The lists are Cloudflare secrets: `wrangler
 # secret put` replaces the whole value and Cloudflare never returns it, so these
 # targets take the COMPLETE list every time — there is no way to append to a secret.
 # Pass an empty value to clear a list. Device ids are the SHA-256 hashes the app
@@ -364,8 +366,8 @@ map-devices-staging: ## Set the map renderer device secrets for staging (ALLOW=h
 		echo "       pass an empty value to clear a list; the full list is required every time"; \
 		exit 1; \
 	fi
-	cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.staging.toml
-	cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.staging.toml
+	@cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.staging.toml
+	@cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.staging.toml
 
 map-devices-production: ## Set the map renderer device secrets for production (ALLOW=h1,h2 BLOCK=h3)
 	@if [ -z "$(ALLOW)$(BLOCK)" ]; then \
@@ -373,8 +375,8 @@ map-devices-production: ## Set the map renderer device secrets for production (A
 		echo "       pass an empty value to clear a list; the full list is required every time"; \
 		exit 1; \
 	fi
-	cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.toml
-	cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.toml
+	@cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.toml
+	@cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.toml
 
 
 .PHONY: api-test
@@ -408,7 +410,7 @@ api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml 
 				\[*\]*)   IN_VARS=0 ;; \
 			esac; \
 			if [ $$IN_VARS -eq 1 ]; then \
-				COMPACT=$$(printf '%s' "$$line" | tr -d '[:space:]'); \
+				COMPACT=$$(printf '%s' "$$line" | tr -d '[:space:]"' | tr -d "'"); \
 				for secret in $$SECRETS; do \
 					case "$$COMPACT" in \
 						$$secret=*) \
