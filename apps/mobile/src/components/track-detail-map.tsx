@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WebView } from 'react-native-webview';
 
 import LoadingView from '@/components/loading-view';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { DEFAULT_WEB_URL } from '@/services/store-url';
@@ -13,6 +14,16 @@ import { getAppVersion } from '@/utils/app-version';
 // ---------------------------------------------------------------------------
 
 const EMPTY_WAYPOINTS: { latitude: number; longitude: number }[] = [];
+
+/**
+ * How long the WebView gets to report that its document loaded.
+ *
+ * `onLoadEnd` is the only signal that used to clear the spinner, and on a cold
+ * WebView it can simply never arrive — the screen then sits on "Loading map…"
+ * until the user leaves and comes back. A bounded wait turns that silence into a
+ * failure the component can act on.
+ */
+const MAP_LOAD_TIMEOUT_MS = 10_000;
 
 /**
  * OSM tile policy requires an exact host (no subdomains) and a stable
@@ -137,6 +148,8 @@ export default function TrackDetailMap({
   const [loading, setLoading] = useState(true);
   const [fallback, setFallback] = useState(false);
   const [error, setError] = useState(false);
+  /** Bumped by a retry, so the WebView remounts and tries the load again. */
+  const [attempt, setAttempt] = useState(0);
 
   const destLabel = t('map.point', { index: 1 });
   const pointTemplate = t('map.point', { index: 'INDEX_PLACEHOLDER' });
@@ -218,19 +231,43 @@ export default function TrackDetailMap({
     waypointsJson,
   ]);
 
-  const handleError = () => {
+  /** The first failure falls back to the embed map; the second gives up. */
+  const handleFailure = useCallback(() => {
     if (!fallback) {
       setFallback(true);
     } else {
       setLoading(false);
       setError(true);
     }
+  }, [fallback]);
+
+  // A WebView that never reports back must not leave the screen on a spinner.
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(handleFailure, MAP_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [loading, attempt, handleFailure]);
+
+  /** Leaves the screen alone: the same load is tried again from scratch. */
+  const retry = () => {
+    setError(false);
+    setFallback(false);
+    setLoading(true);
+    setAttempt((current) => current + 1);
   };
 
   if (error) {
     return (
-      <TwView className="h-80 w-full items-center justify-center bg-backgroundElement">
+      <TwView className="h-80 w-full items-center justify-center gap-3 bg-backgroundElement">
         <ThemedText themeColor="textSecondary">{t('map.offlineTitle')}</ThemedText>
+        <Button
+          label={t('common.retry')}
+          variant="outline"
+          size="sm"
+          testID="track-detail-map-retry"
+          accessibilityLabel={t('common.retry')}
+          onPress={retry}
+        />
       </TwView>
     );
   }
@@ -259,8 +296,10 @@ export default function TrackDetailMap({
             scrollEnabled={false}
             bounces={false}
             overScrollMode="never"
+            key={attempt}
+            onLoad={() => setLoading(false)}
             onLoadEnd={() => setLoading(false)}
-            onError={handleError}
+            onError={handleFailure}
             javaScriptEnabled
             domStorageEnabled
             allowFileAccess
