@@ -36,6 +36,10 @@ MAP_STYLE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/
 # Renderer served to this environment's clients. `maplibre` switches every build
 # that left the choice open; anything else keeps them on the Leaflet map.
 MAP_RENDERER = "leaflet"
+# Capability gate, not a preference: only these platforms can render the new map.
+# `web` is absent because the web export emits no MapLibre worker yet — adding
+# `web` here is what turns the new map on in browsers, once that worker loads.
+MAP_RENDERER_PLATFORMS = "android,ios"
 
 [define]
 MP_BYPASS_SIGNATURE = "true"

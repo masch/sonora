@@ -4,3 +4,5 @@
 
 expo-env.d.ts
 # @end expo-cli
+# Generated at build time by scripts/copy-maplibre-worker.mjs
+public/maplibre-gl-worker.js

@@ -71,6 +71,16 @@ describe('ExperienceMap (web)', () => {
     }) as unknown as typeof fetch;
   });
 
+  it('points MapLibre at the worker published by the build', async () => {
+    // The metro web build does not emit MapLibre's worker; without this URL the map
+    // dies on load with "Worker failed to load" (L37).
+    const { mockSetWorkerUrl } = require('@/test-utils/fake-maplibre') as {
+      mockSetWorkerUrl: jest.Mock;
+    };
+
+    expect(mockSetWorkerUrl).toHaveBeenCalledWith('/maplibre-gl-worker.js');
+  });
+
   it('downloads the archive whole and points the style at the local source', async () => {
     await render(
       <ExperienceMap source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }} overlays={[]} />,

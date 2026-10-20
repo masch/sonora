@@ -132,6 +132,34 @@ describe('Middleware Guards (c.var injection)', () => {
       expect(unsetBody.mapRenderer).toBe('leaflet');
     });
 
+    it('normalizes MAP_RENDERER_PLATFORMS into configEnv', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
+
+      const configured = await app.request(
+        '/test',
+        {},
+        {
+          MINIMUM_APP_VERSION: '1.0.0',
+          BLOCK_OLDER_VERSIONS: 'false',
+          MAP_RENDERER_PLATFORMS: ' Android , ios ,, android , Web ',
+        },
+      );
+      const configuredBody = (await configured.json()) as { mapRendererPlatforms: string[] };
+      expect(configuredBody.mapRendererPlatforms).toEqual(['android', 'ios', 'web']);
+
+      // An unset variable is not "every platform is capable": it is the default
+      // list, which leaves web out because the web build cannot mount the
+      // MapLibre worker yet.
+      const unset = await app.request(
+        '/test',
+        {},
+        { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false' },
+      );
+      const unsetBody = (await unset.json()) as { mapRendererPlatforms: string[] };
+      expect(unsetBody.mapRendererPlatforms).toEqual(['android', 'ios']);
+    });
+
     it('normalizes the per-device renderer lists into configEnv', async () => {
       const app = new Hono<{ Bindings: Env; Variables: Variables }>();
       app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));

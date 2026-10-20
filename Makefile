@@ -75,9 +75,21 @@ start-headless: ## Launch Expo dev server without interactive TTY
 dev-web: ## Launch Expo dev server for web
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun run web
 
+.PHONY: web-worker-asset
+web-worker-asset: ## Publish MapLibre's web worker, which the metro web build does not emit
+	cd apps/mobile && bun scripts/copy-maplibre-worker.mjs
+	@test -f apps/mobile/public/maplibre-gl-worker.js || { \
+		echo "✘ the MapLibre worker asset is missing; the web map would fail to load"; \
+		exit 1; \
+	}
+
 .PHONY: verify-web
-verify-web: ## Build web bundle and execute it to verify CJS interop (catches circular dependencies)
+verify-web: web-worker-asset ## Build web bundle and execute it to verify CJS interop (catches circular dependencies)
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bun expo export --platform web
+	@test -f apps/mobile/dist/maplibre-gl-worker.js || { \
+		echo "✘ the MapLibre worker did not reach the export; the web map would fail to load"; \
+		exit 1; \
+	}
 	node -e "require('fs').readdirSync('apps/mobile/dist/_expo/static/js/web').filter(f => f.endsWith('.js')).forEach(f => require('./apps/mobile/dist/_expo/static/js/web/' + f))"
 
 .PHONY: dev-android-local
@@ -1199,12 +1211,22 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
 
 .PHONY: eas-build-web-production
-eas-build-web-production: eas-whoami ## Export web app and deploy to EAS Hosting production
-	cd apps/mobile && export APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" && bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+eas-build-web-production: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting production
+	cd apps/mobile && export APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" && bunx expo export --clear --platform web
+	@test -f apps/mobile/dist/maplibre-gl-worker.js || { \
+		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
+		exit 1; \
+	}
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-web-staging
-eas-build-web-staging: eas-whoami ## Export web app and deploy to EAS Hosting staging (alias: staging)
-	cd apps/mobile && export APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" && bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+eas-build-web-staging: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting staging (alias: staging)
+	cd apps/mobile && export APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" && bunx expo export --clear --platform web
+	@test -f apps/mobile/dist/maplibre-gl-worker.js || { \
+		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
+		exit 1; \
+	}
+	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 .PHONY: eas-build-admin-production
 eas-build-admin-production: eas-whoami ## Export admin web app and deploy to EAS Hosting production

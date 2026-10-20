@@ -84,8 +84,11 @@ export const mockAddProtocol = jest.fn();
  * named exports, and the component imports it as a namespace, so the double
  * exposes the members both at the top level and under `default`.
  */
+/** `setWorkerUrl`: the component points MapLibre at the published worker on import. */
+export const mockSetWorkerUrl = jest.fn();
+
 export function fakeMaplibreModule() {
-  const members = { Map: FakeMap, addProtocol: mockAddProtocol };
+  const members = { Map: FakeMap, addProtocol: mockAddProtocol, setWorkerUrl: mockSetWorkerUrl };
   return { ...members, default: members };
 }
 

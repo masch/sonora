@@ -14,13 +14,15 @@ describe('GET /config', () => {
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
   });
 
-  it('tells caches the payload depends on the device header', async () => {
-    // The renderer can be overridden per device, so a shared cache that ignored
-    // X-Device-Id would hand one device's answer to another. The app keeps its own
-    // copy in storage, so there is nothing to gain from caching this over HTTP.
+  it('tells caches the payload depends on both device headers', async () => {
+    // The renderer can be overridden per device *and* is gated by platform, so a
+    // shared cache that ignored either header would hand one client's answer to
+    // another. The app keeps its own copy in storage, so there is nothing to gain
+    // from caching this over HTTP.
     const res = await app.request('/config', {}, BINDINGS);
 
     expect(res.headers.get('vary')).toContain('X-Device-Id');
+    expect(res.headers.get('vary')).toContain('X-Device-Platform');
     expect(res.headers.get('cache-control')).toBe('no-store');
   });
 
@@ -93,18 +95,79 @@ describe('GET /config', () => {
   });
 
   it('sends map.renderer from MAP_RENDERER', async () => {
-    const res = await app.request('/config', {}, { ...BINDINGS, MAP_RENDERER: 'maplibre' });
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'android' } },
+      { ...BINDINGS, MAP_RENDERER: 'maplibre' },
+    );
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('maplibre');
+  });
+
+  it('serves leaflet to the web even when the environment renders maplibre', async () => {
+    // The web export does not emit the MapLibre worker, so a browser cannot mount
+    // the new map (L37). Capability, not preference: no list can override it.
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'web', 'X-Device-Id': 'device-allowed' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
+        MAP_RENDERER_DEVICE_IDS: 'device-allowed',
+        MAP_RENDERER_PLATFORMS: 'android,ios',
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('leaflet');
+  });
+
+  it('serves maplibre to android on a maplibre environment', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'android' } },
+      { ...BINDINGS, MAP_RENDERER: 'maplibre', MAP_RENDERER_PLATFORMS: 'android,ios' },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('maplibre');
+  });
+
+  it('serves leaflet to a client that sends no platform header', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      { ...BINDINGS, MAP_RENDERER: 'maplibre', MAP_RENDERER_PLATFORMS: 'android,ios' },
+    );
+    const body = (await res.json()) as { map: { renderer: string } };
+    expect(body.map.renderer).toBe('leaflet');
+  });
+
+  it('lets MAP_RENDERER_PLATFORMS turn the new map on for the web', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'web' } },
+      { ...BINDINGS, MAP_RENDERER: 'maplibre', MAP_RENDERER_PLATFORMS: 'android,ios,web' },
+    );
     const body = (await res.json()) as { map: { renderer: string } };
     expect(body.map.renderer).toBe('maplibre');
   });
 
   it('falls back to leaflet when MAP_RENDERER is unset or unknown', async () => {
-    const unset = await app.request('/config', {}, BINDINGS);
+    const unset = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'android' } },
+      BINDINGS,
+    );
     const unsetBody = (await unset.json()) as { map: { renderer: string } };
     expect(unsetBody.map.renderer).toBe('leaflet');
 
     for (const value of ['', 'MapLibre', 'maplibre ', 'webgl']) {
-      const res = await app.request('/config', {}, { ...BINDINGS, MAP_RENDERER: value });
+      const res = await app.request(
+        '/config',
+        { headers: { 'X-Device-Platform': 'android' } },
+        { ...BINDINGS, MAP_RENDERER: value },
+      );
       const body = (await res.json()) as { map: { renderer: string } };
       expect({ value, renderer: body.map.renderer }).toEqual({ value, renderer: 'leaflet' });
     }
@@ -113,7 +176,7 @@ describe('GET /config', () => {
   it('serves maplibre to an allowed device on a leaflet environment', async () => {
     const res = await app.request(
       '/config',
-      { headers: { 'X-Device-Id': 'device-allowed' } },
+      { headers: { 'X-Device-Id': 'device-allowed', 'X-Device-Platform': 'android' } },
       {
         ...BINDINGS,
         MAP_RENDERER: 'leaflet',
@@ -128,7 +191,7 @@ describe('GET /config', () => {
   it('serves leaflet to a blocked device on a maplibre environment', async () => {
     const res = await app.request(
       '/config',
-      { headers: { 'X-Device-Id': 'device-blocked' } },
+      { headers: { 'X-Device-Id': 'device-blocked', 'X-Device-Platform': 'android' } },
       {
         ...BINDINGS,
         MAP_RENDERER: 'maplibre',
@@ -144,7 +207,7 @@ describe('GET /config', () => {
     for (const renderer of ['leaflet', 'maplibre'] as const) {
       const res = await app.request(
         '/config',
-        {},
+        { headers: { 'X-Device-Platform': 'android' } },
         {
           ...BINDINGS,
           MAP_RENDERER: renderer,
@@ -161,7 +224,7 @@ describe('GET /config', () => {
     for (const deviceId of ['{"garbage":true}', 'unknown-device', 'not a hash at all']) {
       const res = await app.request(
         '/config',
-        { headers: { 'X-Device-Id': deviceId } },
+        { headers: { 'X-Device-Id': deviceId, 'X-Device-Platform': 'android' } },
         {
           ...BINDINGS,
           MAP_RENDERER: 'maplibre',

@@ -14,6 +14,12 @@ import {
 import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+
+// MapLibre runs in a Web Worker that the metro web build does not emit, so the app
+// gets a request for a chunk that is not deployed and the map dies with "Worker
+// failed to load". `scripts/copy-maplibre-worker.mjs` publishes that worker into
+// `public/` at build time and this points MapLibre at it. It runs once per page load.
+maplibregl.setWorkerUrl('/maplibre-gl-worker.js');
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
