@@ -352,6 +352,31 @@ api-dev-staging: ## Run Hono API locally with wrangler dev connected to staging 
 	cd $(API_DIR) && bunx wrangler dev --config wrangler.staging.toml --env-file .env.staging
 
 
+# Per-device map renderer overrides. The lists are Cloudflare secrets: `wrangler
+# secret put` replaces the whole value and Cloudflare never returns it, so these
+# targets take the COMPLETE list every time — there is no way to append to a secret.
+# Pass an empty value to clear a list. Device ids are the SHA-256 hashes the app
+# sends, not raw device identifiers.
+.PHONY: map-devices-staging map-devices-production
+map-devices-staging: ## Set the map renderer device secrets for staging (ALLOW=h1,h2 BLOCK=h3)
+	@if [ -z "$(ALLOW)$(BLOCK)" ]; then \
+		echo "usage: make map-devices-staging ALLOW=hash1,hash2 BLOCK=hash3"; \
+		echo "       pass an empty value to clear a list; the full list is required every time"; \
+		exit 1; \
+	fi
+	cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.staging.toml
+	cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.staging.toml
+
+map-devices-production: ## Set the map renderer device secrets for production (ALLOW=h1,h2 BLOCK=h3)
+	@if [ -z "$(ALLOW)$(BLOCK)" ]; then \
+		echo "usage: make map-devices-production ALLOW=hash1,hash2 BLOCK=hash3"; \
+		echo "       pass an empty value to clear a list; the full list is required every time"; \
+		exit 1; \
+	fi
+	cd $(API_DIR) && printf '%s' '$(ALLOW)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS --config wrangler.toml
+	cd $(API_DIR) && printf '%s' '$(BLOCK)' | bunx wrangler secret put MAP_RENDERER_DEVICE_IDS_BLOCKED --config wrangler.toml
+
+
 .PHONY: api-test
 api-test: ## Run backend API tests (Vitest)
 	cd $(API_DIR) && bun run test
@@ -375,7 +400,7 @@ api-deploy: api-deploy-production ## Deploy Hono API to Cloudflare Workers (defa
 .PHONY: api-validate-wrangler-vars
 api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml [vars]
 	@for file in $(API_DIR)/wrangler.toml $(API_DIR)/wrangler.staging.toml; do \
-		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN HMAC_SECRET"; \
+		SECRETS="DATABASE_URL ADMIN_API_KEY MP_ACCESS_TOKEN MP_WEBHOOK_SECRET JWT_SECRET CLIENT_API_KEY ALLOWED_ORIGIN HMAC_SECRET MAP_RENDERER_DEVICE_IDS MAP_RENDERER_DEVICE_IDS_BLOCKED"; \
 		IN_VARS=0; \
 		while IFS= read -r line; do \
 			case "$$line" in \
@@ -383,8 +408,9 @@ api-validate-wrangler-vars: ## Fail if any secret name appears in wrangler.toml 
 				\[*\]*)   IN_VARS=0 ;; \
 			esac; \
 			if [ $$IN_VARS -eq 1 ]; then \
+				COMPACT=$$(printf '%s' "$$line" | tr -d '[:space:]'); \
 				for secret in $$SECRETS; do \
-					case "$$line" in \
+					case "$$COMPACT" in \
 						$$secret=*) \
 							echo ""; \
 							echo "✘ SECURITY BLOCKED: $$secret found in [vars] of $$file"; \
