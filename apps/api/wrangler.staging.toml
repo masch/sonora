@@ -35,7 +35,7 @@ MAP_ARCHIVE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/publi
 MAP_STYLE_URL = "https://sonora-api-staging.sonora-api.workers.dev/media/public/styles/v1.json"
 # Renderer served to this environment's clients. `maplibre` switches every build
 # that left the choice open; anything else keeps them on the Leaflet map.
-MAP_RENDERER = "maplibre"
+MAP_RENDERER = "leaflet"
 
 [define]
 MP_BYPASS_SIGNATURE = "true"
