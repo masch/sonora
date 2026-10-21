@@ -281,32 +281,16 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
   return `pmtiles://${archive.uri}`;
 }
 
-/**
- * How long one run may wait for the archive before it reports the download as the
- * stage that stalled. The transfer either finishes or it does not, and a screen must
- * never be left on the loading branch with nothing behind it: an unbounded wait is
- * what left the first visit to a trip on "Loading map…" until the walker left the
- * screen and came back, because by then the file was on disk and the run completed
- * without anyone telling the component.
- */
-export const ARCHIVE_TIMEOUT_MS = 20 * 1000;
-
-/**
- * What the caller is told when the transfer outlives the bound. It names the stage
- * on purpose: two waits feed the same spinner, and the message is how the failure
- * says which one hung.
- */
-const ARCHIVE_TIMEOUT_MESSAGE = 'the map archive did not finish downloading';
+/** No deadline here: a limit would turn a slow but valid transfer into an error. */
 
 /**
  * The archive the native map source points at, as a `pmtiles://file://…` uri.
  *
  * @param archiveUrl the archive the map config carries, with or without the
  *                   `pmtiles://` scheme, or undefined when none is configured.
- * @param attempt    which run this is: a caller that retries a failed archive bumps
- *                   it, and both the download and its bound start over. It is part
- *                   of a settled result's identity, so the failure of the attempt
- *                   that was given up is never answered for the one that replaced it.
+ * @param attempt    which run this is: a retry starts the download over, and a settled
+ *                   result belongs to the run that produced it, never to the run that
+ *                   replaced it.
  */
 export function useMapArchiveFile(
   archiveUrl: string | undefined,
@@ -325,21 +309,13 @@ export function useMapArchiveFile(
     // Cancellation is per run: a url change cancels only the run it started, so an
     // abandoned download can never settle the state of the run that replaced it.
     let cancelled = false;
-    let bound: ReturnType<typeof setTimeout> | undefined;
 
-    /** Settles this run once, and releases the bound it was racing. */
+    /** Settles this run once. */
     const settle = (value: MapArchiveFileState): void => {
       if (cancelled) return;
       cancelled = true;
-      if (bound !== undefined) clearTimeout(bound);
       setSettled({ key, attempt, value });
     };
-
-    // Armed before the transfer, so no way of finishing can outrun the bound and no
-    // failure can be answered by a timer that was never set.
-    bound = setTimeout(() => {
-      settle({ status: 'error', error: ARCHIVE_TIMEOUT_MESSAGE });
-    }, ARCHIVE_TIMEOUT_MS);
 
     downloadArchive(archiveUrl)
       .then((uri) => settle({ status: 'ready', uri }))
@@ -351,9 +327,9 @@ export function useMapArchiveFile(
       );
 
     return () => {
+      // Withdraws only this run's settle; the transfer keeps writing the same archive
+      // the map will want, so a late landing is not wasted.
       cancelled = true;
-      // An unmounted screen must not leave a minute-long timer behind it.
-      if (bound !== undefined) clearTimeout(bound);
     };
   }, [archiveUrl, key, attempt]);
 

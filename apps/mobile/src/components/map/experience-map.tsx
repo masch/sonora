@@ -313,16 +313,17 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t, language } = useAppTranslation();
-  // Which run of both waits this is: the retry below bumps it, and each wait starts
-  // over on a new attempt instead of replaying the failure that was given up.
-  const [attempt, setAttempt] = useState(0);
-  const archive = useMapArchiveFile(source.archiveUrl || undefined, attempt);
-  const remote = useRemoteStyle(source.styleUrl, attempt);
+  // One counter per wait, so the retry never restarts a wait that did not fail.
+  const [archiveAttempt, setArchiveAttempt] = useState(0);
+  const [styleAttempt, setStyleAttempt] = useState(0);
+  const archive = useMapArchiveFile(source.archiveUrl || undefined, archiveAttempt);
+  const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
 
   const retry = useCallback(() => {
-    setAttempt((previous) => previous + 1);
-  }, []);
+    if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
+    if (remote.status === 'error') setStyleAttempt((previous) => previous + 1);
+  }, [archive.status, remote.status]);
 
   const [centerLng, centerLat] = center;
 
@@ -419,8 +420,7 @@ export default function ExperienceMap({
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {archive.error ?? remote.error ?? t('map.offlineDescription')}
         </ThemedText>
-        {/* Both waits start over, so a failure caused by a cold start or a dropped
-            connection does not cost the walker the screen they came from. */}
+        {/* Each wait starts over on its own, so the other one is never thrown away. */}
         <Button
           label={t('common.retry')}
           accessibilityLabel={t('common.retry')}

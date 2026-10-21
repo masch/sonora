@@ -188,11 +188,7 @@ jest.mock('@/utils/logger', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-import {
-  useMapArchiveFile,
-  ARCHIVE_TIMEOUT_MS,
-  STALE_TEMPORARY_MS,
-} from '@/hooks/use-map-archive-file';
+import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
 import { logger } from '@/utils/logger';
 
 const ARCHIVE_V1 = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -222,14 +218,14 @@ function temporaryOf(archiveName: string, ageMs: number, sequence = 1): string {
 }
 
 /**
- * Records the timers of one length a run arms, and the handles it clears.
+ * Records the timers a run arms at or above `minDelay`, and the handles it clears.
  *
  * A jest spy over `clearTimeout` breaks the fake clock it is delegating to (clears
  * stop reaching it), so this wrapper delegates to whatever jest installed and
- * records on the way past: it can then tell a bound that was cleared from one that
- * was left armed, which is the whole point of the assertion.
+ * records on the way past. A delay of a second or more is what a deadline looks
+ * like; the runtime's own scheduling stays well under it.
  */
-function recordBounds(delay: number): {
+function recordLongTimers(minDelay = 1000): {
   armed: unknown[];
   cleared: unknown[];
   restore: () => void;
@@ -241,7 +237,7 @@ function recordBounds(delay: number): {
 
   globalThis.setTimeout = ((handler: () => void, timeout?: number, ...args: unknown[]) => {
     const handle = installedSetTimeout(handler, timeout, ...args);
-    if (timeout === delay) armed.push(handle);
+    if ((timeout ?? 0) >= minDelay) armed.push(handle);
     return handle;
   }) as unknown as typeof globalThis.setTimeout;
   globalThis.clearTimeout = ((handle?: number) => {
@@ -591,82 +587,35 @@ describe('useMapArchiveFile', () => {
     expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
   });
 
-  it('bounds the download and names the archive when the transfer never finishes', async () => {
+  it('waits for a transfer that outlives any fixed deadline', async () => {
     jest.useFakeTimers();
-    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
+    const timers = recordLongTimers();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     try {
-      // A transfer that never answers: the first-visit hang on the device, where the
-      // download completed eventually but the screen was never told.
-      mockDownloadGate = new Promise<void>(() => {});
-
+      mockDownloadGate = gate;
       const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
 
+      // No deadline of its own: nothing this run armed can fail the transfer.
+      expect(timers.armed).toHaveLength(0);
+
+      // Minutes pass with nothing moving, and the run is still waiting.
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60 * 1000);
+      });
       expect(result.current.status).toBe('loading');
-      // The wait is bounded, by exactly one timer of the documented length.
-      expect(bounds.armed).toHaveLength(1);
 
+      release();
       await act(async () => {
-        jest.advanceTimersByTime(ARCHIVE_TIMEOUT_MS);
+        await gate;
       });
-
-      expect(result.current.status).toBe('error');
-      // The message names the stage that stalled, so the two waits can be told apart.
-      expect(result.current.error).toBe('the map archive did not finish downloading');
-      expect(result.current.error).toContain('archive');
-      // Never a uri: the failure is reported instead of a path that is not there.
-      expect(result.current.uri).toBeUndefined();
-      // The bound is finished with, not left armed behind a settled state.
-      expect(bounds.cleared).toContain(bounds.armed[0]);
+      // One transfer, not a restart after the silence.
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
     } finally {
-      bounds.restore();
-      jest.useRealTimers();
-    }
-  });
-
-  it('clears the bound when the download succeeds', async () => {
-    jest.useFakeTimers();
-    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
-    try {
-      const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
-      expect(bounds.armed).toHaveLength(1);
-
-      // The transfer finishes well inside the bound.
-      await act(async () => {});
-
-      expect(result.current.status).toBe('ready');
-      // A run that settled has nothing left to wait for.
-      expect(bounds.cleared).toContain(bounds.armed[0]);
-
-      // And the settled state survives the moment the bound would have expired.
-      await act(async () => {
-        jest.advanceTimersByTime(ARCHIVE_TIMEOUT_MS);
-      });
-      expect(result.current.status).toBe('ready');
-      expect(result.current.error).toBeUndefined();
-    } finally {
-      bounds.restore();
-      jest.useRealTimers();
-    }
-  });
-
-  it('clears the bound when the screen unmounts mid-download', async () => {
-    jest.useFakeTimers();
-    const bounds = recordBounds(ARCHIVE_TIMEOUT_MS);
-    try {
-      mockDownloadGate = new Promise<void>(() => {});
-
-      const view = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
-      expect(bounds.armed).toHaveLength(1);
-
-      await act(async () => {
-        view.unmount();
-      });
-
-      // The run is cancelled, so its bound goes with it instead of waiting out the
-      // minute and settling a screen that is gone.
-      expect(bounds.cleared).toContain(bounds.armed[0]);
-    } finally {
-      bounds.restore();
+      timers.restore();
       jest.useRealTimers();
     }
   });

@@ -375,7 +375,7 @@ describe('ExperienceMap (native)', () => {
     mockedUseMapArchiveFile.mockImplementation((_archiveUrl, attempt) =>
       (attempt ?? 0) > 0
         ? { status: 'ready', uri: ARCHIVE_URI }
-        : { status: 'error', error: 'the map archive did not finish downloading' },
+        : { status: 'error', error: 'UnableToDownload: 503 Service Unavailable' },
     );
 
     const view = await render(
@@ -387,7 +387,7 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
     // The stage that failed stays visible next to the retry.
-    expect(view.queryByText('the map archive did not finish downloading')).toBeTruthy();
+    expect(view.queryByText('UnableToDownload: 503 Service Unavailable')).toBeTruthy();
     expect(mockMapProps).toHaveLength(0);
 
     await act(async () => {
@@ -412,6 +412,28 @@ describe('ExperienceMap (native)', () => {
     expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`);
     expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 1);
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
+  });
+
+  it('restarts only the wait that failed', async () => {
+    // A url of its own: the style cache is per page, so a url another case loaded
+    // would answer from it instead of failing.
+    const styleFetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      .mockResolvedValueOnce({ ok: true, json: async () => styleWith(true) });
+    globalThis.fetch = styleFetch as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?s` };
+
+    const view = await render(<ExperienceMap source={source} overlays={[document]} />);
+    await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
+    await act(() => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+
+    // The style was asked again; the archive was never restarted.
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    expect(styleFetch).toHaveBeenCalledTimes(2);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 0);
   });
 
   it('reports the tapped reference with the same shape the web build emits', async () => {
