@@ -14,6 +14,8 @@ export const es = {
     noTracksTitle: 'No hay audios disponibles',
     viewTrack: 'Ver audio',
     loadingMap: 'Cargando mapa…',
+    loadingArchive: 'Descargando el mapa…',
+    loadingStyle: 'Cargando el estilo del mapa…',
     mapLabel: 'Mapa',
     distanceFromYou: 'A {{distance}} de vos',
     distanceMeters: '{{value}} m',

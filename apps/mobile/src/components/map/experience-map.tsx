@@ -25,8 +25,8 @@ import {
 import LoadingView from '@/components/loading-view';
 import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
-import { useAppTranslation } from '@/hooks/use-translation';
+import { useMapArchiveFile, type MapArchiveFileState } from '@/hooks/use-map-archive-file';
+import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
 
@@ -45,7 +45,7 @@ const HITBOX_PIXELS = 22;
  * a small JSON document, so silence here is a failure long before a minute is up,
  * and a map that never draws is worse than one that says it could not.
  */
-const STYLE_TIMEOUT_MS = 15 * 1000;
+const STYLE_TIMEOUT_MS = 10 * 1000;
 
 /**
  * What the caller is told when the style request outlives the bound. It names the
@@ -145,6 +145,16 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
     return { status: 'loading' };
   }
   return { status: 'error', error: settled.error };
+}
+
+/**
+ * Which wait is pending while the map cannot draw yet.
+ *
+ * The archive is a file on the device and the style is one request, so naming the
+ * stalled stage is what turns a screenshot of this screen into a diagnosis.
+ */
+function pendingStageKey(archive: MapArchiveFileState): TranslationKeys {
+  return archive.status !== 'ready' || !archive.uri ? 'map.loadingArchive' : 'map.loadingStyle';
 }
 
 /**
@@ -417,7 +427,7 @@ export default function ExperienceMap({
   if (archive.status !== 'ready' || !archive.uri || remote.status === 'loading' || !style) {
     return (
       <TwView testID={testID} className={className}>
-        <LoadingView message={t('map.loadingMap')} />
+        <LoadingView message={t(pendingStageKey(archive))} />
       </TwView>
     );
   }

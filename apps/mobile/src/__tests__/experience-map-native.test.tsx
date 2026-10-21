@@ -244,7 +244,8 @@ describe('ExperienceMap (native)', () => {
       <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }} overlays={[]} />,
     );
 
-    expect(view.queryByText('map.loadingMap')).toBeTruthy();
+    // The loader names the stage that is pending, so a screenshot answers the question.
+    expect(view.queryByText('map.loadingArchive')).toBeTruthy();
     // Nothing can be drawn over an archive that does not exist yet.
     expect(mockMapProps).toHaveLength(0);
   });
@@ -313,11 +314,11 @@ describe('ExperienceMap (native)', () => {
         />,
       );
 
-      expect(view.queryByText('map.loadingMap')).toBeTruthy();
+      expect(view.queryByText('map.loadingStyle')).toBeTruthy();
 
-      // Fifteen seconds, no more and no less: still waiting one millisecond short.
+      // Ten seconds, no more and no less: still waiting one millisecond short.
       await act(async () => {
-        jest.advanceTimersByTime(14_999);
+        jest.advanceTimersByTime(9_999);
       });
       expect(view.queryByTestId('experience-map-error')).toBeNull();
 
@@ -369,8 +370,9 @@ describe('ExperienceMap (native)', () => {
       fireEvent.press(view.getByTestId('experience-map-retry'));
     });
 
-    // Back into loading, not into the failure that was just dismissed.
-    expect(view.queryByText('map.loadingMap')).toBeTruthy();
+    // Back into loading, not into the failure that was just dismissed — and now the
+    // stage that is pending is the style, because the archive came back on retry.
+    expect(view.queryByText('map.loadingStyle')).toBeTruthy();
     expect(view.queryByTestId('experience-map-error')).toBeNull();
 
     await act(async () => {

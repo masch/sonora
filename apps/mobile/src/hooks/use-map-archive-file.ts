@@ -289,7 +289,7 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
  * screen and came back, because by then the file was on disk and the run completed
  * without anyone telling the component.
  */
-export const ARCHIVE_TIMEOUT_MS = 60 * 1000;
+export const ARCHIVE_TIMEOUT_MS = 20 * 1000;
 
 /**
  * What the caller is told when the transfer outlives the bound. It names the stage
