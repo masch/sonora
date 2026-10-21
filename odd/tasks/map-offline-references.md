@@ -237,6 +237,26 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
 3. Keep the hardcoded `'Pt 1'` strings in `track-detail-map.web.tsx`, or fix them to `t('map.point')` before deleting the file.
 4. A reference that carries only a label now opens no card at all. Should the admin write path require `descriptionKey` (D8 says the card shows description, image and link), or is a silent label-only reference legitimate?
 
+**S8 — La primera visita dibuja el mapa igual que la segunda**
+
+> "pasa o mismo, la primera vez es la de la imagen y se queda ahi para siempre. entro por 2 vez y el mapa de muestra de una una bien"
+
+Causa medida en el dispositivo (L45-L46): el render deriva `loading` leyendo un `Map` de módulo que React no trackea, y su propio efecto, un commit después sobre la misma clave, ve el documento. Criterios de aceptación:
+
+- **R1** — un mount cuyo documento ya está en la caché de la página dibuja en su primer render, sin pasar por el spinner.
+- **R2** — la decisión `loading | ready | error` del estilo se toma desde estado de React keyed por `url`+`attempt`; el render no lee `styles` ni `styleRequests`.
+- **R3** — ninguna observación se vuelve permanente: el efecto que arma la espera no se cortocircuita por presencia de clave, y un fallo re-armable vuelve a pedir.
+- **R4** — el bound del estilo cancela la transferencia (`AbortController`), y el cleanup del efecto también; un retry no deja dos transferencias vivas.
+- **R5** — el error que llega a la vista es un código estable traducido en la vista; no hay frases en inglés renderizadas al usuario.
+
+### Phase 4 — Native map load readiness
+
+- [ ] **T-N1: The style readiness lives in React state, not in a module cache** — Refs: S8 (R1-R5), L45, L46.
+  - Path: `apps/mobile/src/components/map/experience-map.tsx`, `apps/mobile/src/__tests__/experience-map-native.test.tsx`, `packages/shared/src/locales/{es,en}.ts` (error keys), `apps/mobile/src/hooks/use-map-archive-file.ts` (error codes) — nothing else.
+  - Action: settle the style document in `useState` keyed by `url`+`attempt`; demote the module map to a mount-time prefill (`useState(() => styles.get(url))`) so a warm cache draws on the first render; delete the `styles.has(styleUrl)` early return in favour of the in-flight promise; pass an `AbortController` per run, aborted on the bound and in the effect cleanup; return a stable error code from the hook and translate it in the view; give the archive hook error codes on the same footing so `remote.error`/`archive.error` stop rendering English.
+  - Proof required: RED first for R1 (a mount whose style is already cached draws without the loading branch), R3 (a settled error is retryable and the retry re-arms the wait), R4 (the abort signal fires on the bound and on unmount), R5 (the English sentence no longer reaches the screen); each existing behaviour the change touches keeps its own test — the style still caches across a remount mid-flight, the retry still bumps only the wait that failed, and the loading message still names the stage. Then `tsc --noEmit`, `expo lint`, `prettier --check`, the mobile suite, and `make doctor`.
+  - Route: worker (bounded, single unit). Branch `fix/map-style-render-readiness` (chained on `fix/map-native-loading-bounds`).
+
 ## Log
 
 - **L1** (original request): "quiero agregar una funcionalidad nueva que en los maps de las experiencias se puedan cargar referencias a dibujar que no van a estar en OSM sino que van a hacer referencias sobre le mapa que pueda ir ajustando de forma externa que no tenga que recomilar la applicacion en cada cambio, como podemos encararlo?"

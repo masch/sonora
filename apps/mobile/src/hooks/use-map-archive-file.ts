@@ -15,12 +15,40 @@ import { logger } from '@/utils/logger';
 
 export type MapArchiveFileStatus = 'loading' | 'ready' | 'error';
 
+/**
+ * Stable codes for everything that can go wrong reaching the archive. The hook reports
+ * one of these and the map view translates it: a sentence from a transfer layer or from
+ * the filesystem is not something a walker should ever read on screen.
+ */
+export type MapArchiveErrorCode =
+  | 'archiveMissing'
+  | 'archiveDownloadFailed'
+  | 'archivePublishFailed'
+  | 'archiveEmpty'
+  | 'archiveNotPmtiles'
+  | 'archiveTruncated'
+  | 'archiveVersionUnsupported';
+
+/**
+ * A transfer that cannot be published, named by the code the view translates. The
+ * underlying platform error is logged where it happens: the log keeps the detail and
+ * the screen keeps a message we authored.
+ */
+class ArchiveFailure extends Error {
+  readonly code: MapArchiveErrorCode;
+
+  constructor(code: MapArchiveErrorCode) {
+    super(code);
+    this.code = code;
+  }
+}
+
 export interface MapArchiveFileState {
   status: MapArchiveFileStatus;
   /** `pmtiles://file://…` of the complete archive on disk. */
   uri?: string;
-  /** Why the archive could not be resolved; the caller shows its error state. */
-  error?: string;
+  /** Why the archive could not be resolved, as the code the caller translates. */
+  error?: MapArchiveErrorCode;
 }
 
 /** Subdirectory of the document directory: the cache may be reclaimed, this may not. */
@@ -212,15 +240,15 @@ function uint64(bytes: Uint8Array, offset: number): number {
  */
 async function assertArchive(temporary: File): Promise<void> {
   const fileSize = temporary.size;
-  if (fileSize === 0) throw new Error('downloaded archive is empty');
+  if (fileSize === 0) throw new ArchiveFailure('archiveEmpty');
 
   const header = await leadingBytes(temporary, PMTILES_HEADER_LENGTH);
   const magic = String.fromCharCode(...header.subarray(0, PMTILES_MAGIC.length));
-  if (magic !== PMTILES_MAGIC) throw new Error('downloaded archive is not a PMTiles archive');
+  if (magic !== PMTILES_MAGIC) throw new ArchiveFailure('archiveNotPmtiles');
   // Too short to hold a header at all: the rest of it cannot be trusted.
-  if (header.length < PMTILES_HEADER_LENGTH) throw new Error('downloaded archive is truncated');
+  if (header.length < PMTILES_HEADER_LENGTH) throw new ArchiveFailure('archiveTruncated');
   if (header[PMTILES_MAGIC.length] !== PMTILES_VERSION) {
-    throw new Error('downloaded archive has an unsupported PMTiles version');
+    throw new ArchiveFailure('archiveVersionUnsupported');
   }
 
   // The root directory and the tile data are all a reader has to reach; an archive
@@ -230,7 +258,7 @@ async function assertArchive(temporary: File): Promise<void> {
   const tileDataEnd =
     uint64(header, HEADER_TILE_DATA_OFFSET) + uint64(header, HEADER_TILE_DATA_OFFSET + 8);
   if (rootDirectoryEnd > fileSize || tileDataEnd > fileSize) {
-    throw new Error('downloaded archive is truncated');
+    throw new ArchiveFailure('archiveTruncated');
   }
 }
 
@@ -272,10 +300,22 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
   try {
     await File.downloadFileAsync(url, temporary);
     await assertArchive(temporary);
-    await temporary.move(archive, { overwrite: true });
   } catch (error) {
     discardTemporary(temporary);
-    throw error;
+    if (error instanceof ArchiveFailure) throw error;
+    // The platform's own message stays in the log: the view only ever shows a code.
+    logger.warn('map archive could not be downloaded', error);
+    throw new ArchiveFailure('archiveDownloadFailed');
+  }
+
+  try {
+    await temporary.move(archive, { overwrite: true });
+  } catch (error) {
+    // Out of space or out of permissions, discovered only when the file lands: the
+    // transfer itself was fine, so this is not reported as a download failure.
+    discardTemporary(temporary);
+    logger.warn('map archive could not be published', error);
+    throw new ArchiveFailure('archivePublishFailed');
   }
 
   return `pmtiles://${archive.uri}`;
@@ -322,7 +362,7 @@ export function useMapArchiveFile(
       .catch((error: unknown) =>
         settle({
           status: 'error',
-          error: error instanceof Error ? error.message : 'archive download failed',
+          error: error instanceof ArchiveFailure ? error.code : 'archiveDownloadFailed',
         }),
       );
 
@@ -333,7 +373,7 @@ export function useMapArchiveFile(
     };
   }, [archiveUrl, key, attempt]);
 
-  if (!key) return { status: 'error', error: 'no archive configured' };
+  if (!key) return { status: 'error', error: 'archiveMissing' };
   // A settled result for another archive — or for another attempt of this one —
   // says nothing about this run.
   if (settled?.key === key && settled.attempt === attempt) return settled.value;

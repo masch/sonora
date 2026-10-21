@@ -34,6 +34,14 @@ export const en = {
     showLabels: 'Show labels',
     fetchingLocation: 'Locating…',
     openLink: 'Open link',
+    // What a failure becomes on screen: the hooks report these codes, never prose.
+    errors: {
+      archiveMissing: 'No map is configured',
+      archiveUnavailable: "We couldn't download the map",
+      archiveInvalid: 'The downloaded map is damaged',
+      styleUnavailable: "We couldn't load the map style",
+      styleTimeout: 'The map style took too long to load',
+    },
   },
   tabs: {
     index: 'Home',

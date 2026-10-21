@@ -352,7 +352,9 @@ describe('useMapArchiveFile', () => {
 
     // No uri at all: never a path to a file that is not there, never the remote url.
     expect(second.result.current.uri).toBeUndefined();
-    expect(second.result.current.error).toContain('503');
+    // A stable code, not the platform's sentence: the map view translates it.
+    expect(second.result.current.error).toBe('archiveDownloadFailed');
+    expect(logger.warn).toHaveBeenCalled();
     // The usable file from before survived, and no partial file was left next to it.
     expect([...mockDisk.keys()]).toEqual([cachedFile]);
   });
@@ -369,7 +371,8 @@ describe('useMapArchiveFile', () => {
     await waitFor(() => expect(second.result.current.status).toBe('error'));
 
     expect(second.result.current.uri).toBeUndefined();
-    expect(second.result.current.error).toBe('ENOSPC: no space left on device');
+    // The transfer was fine, so the failure is the publication, not the download.
+    expect(second.result.current.error).toBe('archivePublishFailed');
     // The finished download was released instead of being kept as the largest file
     // this app writes, and the archive that was already usable is untouched.
     expect([...mockDisk.keys()]).toEqual([cachedFile]);
@@ -409,7 +412,7 @@ describe('useMapArchiveFile', () => {
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.error).toBe('downloaded archive is empty');
+    expect(result.current.error).toBe('archiveEmpty');
     expect(result.current.uri).toBeUndefined();
     // The empty file was deleted rather than published under the archive's name.
     expect([...mockDisk.keys()]).toEqual([]);
@@ -422,7 +425,7 @@ describe('useMapArchiveFile', () => {
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.error).toBe('downloaded archive is not a PMTiles archive');
+    expect(result.current.error).toBe('archiveNotPmtiles');
     expect(result.current.uri).toBeUndefined();
     expect([...mockDisk.keys()]).toEqual([]);
   });
@@ -444,7 +447,7 @@ describe('useMapArchiveFile', () => {
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.error).toBe('downloaded archive is truncated');
+    expect(result.current.error).toBe('archiveTruncated');
     expect(result.current.uri).toBeUndefined();
     expect([...mockDisk.keys()]).toEqual([]);
   });
@@ -455,7 +458,7 @@ describe('useMapArchiveFile', () => {
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.error).toBe('downloaded archive is truncated');
+    expect(result.current.error).toBe('archiveTruncated');
     expect(result.current.uri).toBeUndefined();
     expect([...mockDisk.keys()]).toEqual([]);
   });
@@ -466,7 +469,7 @@ describe('useMapArchiveFile', () => {
     const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
-    expect(result.current.error).toBe('downloaded archive has an unsupported PMTiles version');
+    expect(result.current.error).toBe('archiveVersionUnsupported');
     expect(result.current.uri).toBeUndefined();
     expect([...mockDisk.keys()]).toEqual([]);
   });

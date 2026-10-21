@@ -34,6 +34,12 @@ jest.mock('@/hooks/use-translation', () => {
   };
 });
 
+// The request layer keeps the detail of a failure for the log: what the screen shows
+// is a code it translates, never a sentence a request produced.
+jest.mock('@/utils/logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
 // `@maplibre/maplibre-react-native` is a native module; jest maps it to the
 // `src/test-utils/maplibre-react-native-double.tsx` components, and the recorders
 // the components write to — the style, the camera and the press handling the
@@ -251,14 +257,17 @@ describe('ExperienceMap (native)', () => {
   });
 
   it('shows the error state when the archive fails', async () => {
-    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archive download failed' });
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveDownloadFailed' });
 
     const view = await render(
       <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }} overlays={[]} />,
     );
 
     expect(view.queryByTestId('experience-map-error')).toBeTruthy();
-    expect(view.queryByText('archive download failed')).toBeTruthy();
+    // The hook reports a code and the view translates it: the sentence on screen is
+    // ours, and it is a key in both locales rather than prose from a transfer.
+    expect(view.queryByText('map.errors.archiveUnavailable')).toBeTruthy();
+    expect(view.queryByText('archiveDownloadFailed')).toBeNull();
     expect(mockMapProps).toHaveLength(0);
   });
 
@@ -279,7 +288,8 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
 
-    expect(fetchStyle).toHaveBeenCalledWith(STYLE_URL);
+    // The transfer is cancellable, and the archive file is what the style points at.
+    expect(fetchStyle).toHaveBeenCalledWith(STYLE_URL, { signal: expect.any(AbortSignal) });
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
     expect(drawnLayerIds()).toContain('refs:umepay:label');
   });
@@ -327,8 +337,9 @@ describe('ExperienceMap (native)', () => {
       });
 
       expect(view.queryByTestId('experience-map-error')).toBeTruthy();
-      // The message names the stage that stalled: the style, not the archive.
-      expect(view.queryByText('the map style did not load')).toBeTruthy();
+      // The message names the stage that stalled: the style, not the archive, and it
+      // is the translated message that code selects instead of the hook's sentence.
+      expect(view.queryByText('map.errors.styleTimeout')).toBeTruthy();
       expect(mockMapProps).toHaveLength(0);
     } finally {
       jest.useRealTimers();
@@ -375,7 +386,7 @@ describe('ExperienceMap (native)', () => {
     mockedUseMapArchiveFile.mockImplementation((_archiveUrl, attempt) =>
       (attempt ?? 0) > 0
         ? { status: 'ready', uri: ARCHIVE_URI }
-        : { status: 'error', error: 'UnableToDownload: 503 Service Unavailable' },
+        : { status: 'error', error: 'archiveDownloadFailed' },
     );
 
     const view = await render(
@@ -387,7 +398,7 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
     // The stage that failed stays visible next to the retry.
-    expect(view.queryByText('UnableToDownload: 503 Service Unavailable')).toBeTruthy();
+    expect(view.queryByText('map.errors.archiveUnavailable')).toBeTruthy();
     expect(mockMapProps).toHaveLength(0);
 
     await act(async () => {
@@ -409,7 +420,9 @@ describe('ExperienceMap (native)', () => {
     // Both waits really restarted: the style was fetched a second time and the
     // archive hook was asked again under a new attempt.
     expect(fetchStyle).toHaveBeenCalledTimes(2);
-    expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`);
+    expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`, {
+      signal: expect.any(AbortSignal),
+    });
     expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 1);
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
   });
@@ -434,6 +447,184 @@ describe('ExperienceMap (native)', () => {
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
     expect(styleFetch).toHaveBeenCalledTimes(2);
     expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 0);
+  });
+
+  it('draws a style already in the page cache on its first render, with no second transfer', async () => {
+    const fetchStyle = jest.fn().mockResolvedValue({ ok: true, json: async () => styleWith(true) });
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?warm` };
+
+    // A page-level load that already finished: this is the instant second visit.
+    const first = await render(<ExperienceMap source={source} overlays={[document]} />);
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    expect(fetchStyle).toHaveBeenCalledTimes(1);
+    await first.unmount();
+
+    const second = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    // The document is already on the page, so the very first render draws: the map is
+    // there, the spinner never appears, and the transfer is not repeated.
+    expect(second.queryByTestId('experience-map-map')).toBeTruthy();
+    expect(second.queryByText('map.loadingStyle')).toBeNull();
+    expect(fetchStyle).toHaveBeenCalledTimes(1);
+  });
+
+  it('never caches a body that is not a style, so a later mount still draws', async () => {
+    // A 200 carrying an error document instead of a style. The page cache is what the
+    // first render of every later mount draws from, so an entry that cannot be drawn
+    // would poison the page: the map would be handed a body with no layers on every
+    // visit, with no failure to see and nothing to retry.
+    const fetchStyle = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ error: 'not found' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => styleWith(true) });
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?poisoned` };
+
+    const first = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    await waitFor(() => expect(first.queryByTestId('experience-map-error')).toBeTruthy());
+    // Nothing was handed to MapLibre for a document that is not a style.
+    expect(mockMapProps).toHaveLength(0);
+    await first.unmount();
+
+    const second = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    await waitFor(() => expect(second.queryByTestId('experience-map-map')).toBeTruthy());
+    // The drawable document, with the base layers the style carries.
+    expect(drawnLayerIds()).toContain('background');
+    expect(fetchStyle).toHaveBeenCalledTimes(2);
+  });
+
+  it('turns a style that cannot be drawn into a retryable failure, not a permanent wait', async () => {
+    let resolveStyle = (_response: unknown) => {};
+    const gate = new Promise((resolve) => {
+      resolveStyle = resolve;
+    });
+    const fetchStyle = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => null })
+      .mockReturnValueOnce(gate);
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?undrawable` };
+
+    const view = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    // An empty body is a failure the screen reports and can retry, not a spinner that
+    // never ends: nothing about this observation may become permanent.
+    await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
+    expect(view.queryByText('map.errors.styleUnavailable')).toBeTruthy();
+    expect(mockMapProps).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+
+    // Waiting again, never replaying the failure of the attempt that was given up.
+    expect(view.queryByText('map.loadingStyle')).toBeTruthy();
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+
+    await act(async () => {
+      resolveStyle({ ok: true, json: async () => styleWith(true) });
+      await gate;
+    });
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    expect(fetchStyle).toHaveBeenCalledTimes(2);
+  });
+
+  it('cancels the style transfer when the bound is reached, and on the retry after it', async () => {
+    jest.useFakeTimers();
+    try {
+      const signals: AbortSignal[] = [];
+      globalThis.fetch = jest.fn((_url: string, init?: { signal?: AbortSignal }) => {
+        if (init?.signal) signals.push(init.signal);
+        return new Promise(() => {});
+      }) as never;
+
+      const view = await render(
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?bounded` }}
+          overlays={[]}
+        />,
+      );
+
+      // The transfer is cancellable from the start, which is what the bound uses.
+      expect(signals).toHaveLength(1);
+      expect(signals[0].aborted).toBe(false);
+
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      // The transfer itself was cancelled, not only the wait for it.
+      expect(signals[0].aborted).toBe(true);
+      expect(view.queryByTestId('experience-map-error')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(view.getByTestId('experience-map-retry'));
+      });
+
+      // The retry owns its own transfer: the cancelled one is not left alive next to it.
+      expect(signals).toHaveLength(2);
+      expect(signals[0].aborted).toBe(true);
+      expect(signals[1].aborted).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('cancels the style transfer when the screen goes away', async () => {
+    const signals: AbortSignal[] = [];
+    globalThis.fetch = jest.fn((_url: string, init?: { signal?: AbortSignal }) => {
+      if (init?.signal) signals.push(init.signal);
+      return new Promise(() => {});
+    }) as never;
+
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?unmounted` }}
+        overlays={[]}
+      />,
+    );
+    expect(signals).toHaveLength(1);
+    expect(signals[0].aborted).toBe(false);
+
+    await act(async () => {
+      view.unmount();
+    });
+
+    // Nothing waits for the transfer anymore, so it stops instead of streaming on
+    // behind a screen that is gone.
+    expect(signals[0].aborted).toBe(true);
+  });
+
+  it('shows a translated code instead of the English sentence the request layer produced', async () => {
+    jest.useFakeTimers();
+    try {
+      globalThis.fetch = jest.fn(() => new Promise(() => {})) as never;
+
+      const view = await render(
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?english` }}
+          overlays={[]}
+        />,
+      );
+
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      // The sentence the hook used to hand over never reaches the screen.
+      expect(view.queryByText('the map style did not load')).toBeNull();
+      // What does is the key of a translated message, chosen from a stable code.
+      expect(view.queryByText('map.errors.styleTimeout')).toBeTruthy();
+      // And that key carries real copy in both locales.
+      expect(es.map.errors.styleTimeout).not.toBe('map.errors.styleTimeout');
+      expect(en.map.errors.styleTimeout).not.toBe('map.errors.styleTimeout');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('reports the tapped reference with the same shape the web build emits', async () => {

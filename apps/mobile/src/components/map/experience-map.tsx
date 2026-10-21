@@ -25,7 +25,11 @@ import {
 import LoadingView from '@/components/loading-view';
 import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import { useMapArchiveFile, type MapArchiveFileState } from '@/hooks/use-map-archive-file';
+import {
+  useMapArchiveFile,
+  type MapArchiveErrorCode,
+  type MapArchiveFileState,
+} from '@/hooks/use-map-archive-file';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
@@ -48,114 +52,242 @@ const HITBOX_PIXELS = 22;
 const STYLE_TIMEOUT_MS = 10 * 1000;
 
 /**
- * What the caller is told when the style request outlives the bound. It names the
- * stage, so the two waits behind the same spinner are tellable apart.
+ * Stable codes for what can go wrong while the style is fetched. The hook reports one
+ * of these and the view translates it, so no sentence a request layer produced is ever
+ * drawn on screen for a walker to read.
  */
-const STYLE_TIMEOUT_MESSAGE = 'the map style did not load';
+type MapStyleErrorCode = 'styleTimeout' | 'styleRequestFailed' | 'styleInvalid';
 
-/** Style documents already fetched, keyed by url: a style is fetched once per page. */
-const styles = new Map<string, StyleSpecification>();
+/** Every stable failure code the map screen can render, from either of its two waits. */
+type MapLoadErrorCode = MapStyleErrorCode | MapArchiveErrorCode;
+
+/** The sentence each code becomes on screen; the words live here, not in the hooks. */
+const ERROR_MESSAGE_KEYS: Record<MapLoadErrorCode, TranslationKeys> = {
+  styleTimeout: 'map.errors.styleTimeout',
+  styleRequestFailed: 'map.errors.styleUnavailable',
+  styleInvalid: 'map.errors.styleUnavailable',
+  archiveMissing: 'map.errors.archiveMissing',
+  archiveDownloadFailed: 'map.errors.archiveUnavailable',
+  archivePublishFailed: 'map.errors.archiveUnavailable',
+  archiveEmpty: 'map.errors.archiveInvalid',
+  archiveNotPmtiles: 'map.errors.archiveInvalid',
+  archiveTruncated: 'map.errors.archiveInvalid',
+  archiveVersionUnsupported: 'map.errors.archiveInvalid',
+};
 
 /**
- * Style requests in flight, keyed by url.
+ * Style documents already fetched on this page, keyed by url.
  *
- * A request lives here rather than in the hook because a remount used to cancel the
- * previous run before it could cache anything: every mount started a new request,
- * abandoned it, and the map never received a style. One page, one request per url.
+ * This is a cache of finished documents and nothing else: it is read once, to prefill
+ * the first render of a mount, so a warm page draws immediately. Only a document that
+ * can be drawn is ever stored, because whatever is here becomes the map's style on
+ * every later visit.
  */
-const styleRequests = new Map<string, Promise<StyleSpecification>>();
+const styles = new Map<string, StyleSpecification>();
 
-/** Fetches a style once per url, with a bound that no remount can cancel. */
-function requestStyle(url: string): Promise<StyleSpecification> {
-  const inFlight = styleRequests.get(url);
-  if (inFlight) return inFlight;
+/** What one transfer settles to. It never rejects: a failure is an outcome with a code. */
+type StyleOutcome =
+  { status: 'ready'; style: StyleSpecification } | { status: 'error'; code: MapStyleErrorCode };
 
-  const request = new Promise<StyleSpecification>((resolve, reject) => {
-    const bound = setTimeout(() => reject(new Error(STYLE_TIMEOUT_MESSAGE)), STYLE_TIMEOUT_MS);
+/**
+ * One transfer of a style document, shared by every run that waits for the same url.
+ *
+ * A transfer lives here rather than inside the hook because a remount used to cancel
+ * the previous run before it could cache anything: every mount started a new request,
+ * abandoned it, and the map never received a style. One page, one transfer per url —
+ * cancelled when its bound is reached, or when the last run waiting for it leaves.
+ */
+interface StyleTransfer {
+  readonly promise: Promise<StyleOutcome>;
+  readonly controller: AbortController;
+  /** Runs waiting on this transfer: the last one to leave is what cancels it. */
+  waiting: number;
+}
 
-    fetch(url)
+/** Transfers in flight, keyed by url. */
+const styleTransfers = new Map<string, StyleTransfer>();
+
+/**
+ * The style document a response body carries, or null when it cannot be drawn.
+ *
+ * `version` is the one field every style this app consumes has, and MapLibre refuses a
+ * style without it, so it is what separates a document from a body that merely parsed.
+ * A 200 carrying an error document must fail here: cached, it would be handed to the
+ * map as its style on every visit, with no failure to see and nothing to retry.
+ */
+function drawableStyle(body: unknown): StyleSpecification | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const candidate = body as Partial<StyleSpecification>;
+  return typeof candidate.version === 'number' ? (candidate as StyleSpecification) : null;
+}
+
+/**
+ * Fetches one style document over a signal this page owns, bounded, and always settles
+ * with an outcome instead of rejecting: the code inside it is what the view translates.
+ */
+function requestStyleDocument(url: string, controller: AbortController): Promise<StyleOutcome> {
+  return new Promise<StyleOutcome>((resolve) => {
+    let finished = false;
+    let bound: ReturnType<typeof setTimeout> | undefined;
+
+    /** Settles this transfer once, and disarms the bound with it. */
+    const finish = (outcome: StyleOutcome): void => {
+      if (finished) return;
+      finished = true;
+      if (bound !== undefined) clearTimeout(bound);
+      resolve(outcome);
+    };
+
+    // The bound cancels the transfer itself, not only this wait: a style request that
+    // never answers must stop streaming once the screen has given up on it.
+    bound = setTimeout(() => {
+      controller.abort();
+      finish({ status: 'error', code: 'styleTimeout' });
+    }, STYLE_TIMEOUT_MS);
+
+    fetch(url, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-        return response.json() as Promise<StyleSpecification>;
+        return response.json() as Promise<unknown>;
       })
-      .then((style) => {
-        clearTimeout(bound);
-        styles.set(url, style);
-        resolve(style);
+      .then((body) => {
+        const style = drawableStyle(body);
+        if (style) finish({ status: 'ready', style });
+        else finish({ status: 'error', code: 'styleInvalid' });
       })
       .catch((error: unknown) => {
-        clearTimeout(bound);
-        reject(error);
+        // A cancelled transfer has nobody left to report to; a real failure keeps its
+        // detail in the log, because the screen only ever shows the code.
+        if (!controller.signal.aborted) logger.warn('map style request failed', error);
+        finish({ status: 'error', code: 'styleRequestFailed' });
       });
-  }).finally(() => {
-    styleRequests.delete(url);
   });
+}
 
-  styleRequests.set(url, request);
-  return request;
+/** Starts this page's transfer of `url`, owned by the run that calls this. */
+function startStyleTransfer(url: string): StyleTransfer {
+  const controller = new AbortController();
+  // A document the page already holds is not fetched again: the transfer settles at
+  // once, which is how a style url that changes to a warm document still draws without
+  // a request. The mount-time prefill covers the common case before this runs.
+  const cached = styles.get(url);
+  const settled = cached
+    ? Promise.resolve<StyleOutcome>({ status: 'ready', style: cached })
+    : requestStyleDocument(url, controller);
+
+  const transfer: StyleTransfer = {
+    controller,
+    waiting: 1,
+    promise: settled
+      .then((outcome) => {
+        // Only a document that can be drawn is cached: the cache is what the first
+        // render of every later mount draws from.
+        if (outcome.status === 'ready') styles.set(url, outcome.style);
+        return outcome;
+      })
+      .finally(() => {
+        // A newer transfer of the same url may already have replaced this entry.
+        if (styleTransfers.get(url) === transfer) styleTransfers.delete(url);
+      }),
+  };
+  styleTransfers.set(url, transfer);
+  return transfer;
+}
+
+/**
+ * The transfer `url` already has, or a new one for this run.
+ *
+ * A run that finds a transfer in flight for the same url joins it instead of starting a
+ * second one, which is what keeps a remount from paying for a request the page has
+ * already made. A transfer whose last run left keeps its entry until it settles: that
+ * entry is what a run mounting right after the leaving one adopts, and the abort it was
+ * given makes it settle at once, so the window is one commit wide and never a hang.
+ */
+function acquireStyleTransfer(url: string): StyleTransfer {
+  const existing = styleTransfers.get(url);
+  if (!existing) return startStyleTransfer(url);
+  existing.waiting += 1;
+  return existing;
+}
+
+/**
+ * Gives up one run's interest in a transfer.
+ *
+ * The transfer is cancelled when nothing waits for it anymore, so a style that was
+ * being fetched for a screen that is gone stops there instead of streaming to the end.
+ */
+function releaseStyleTransfer(transfer: StyleTransfer): void {
+  transfer.waiting -= 1;
+  if (transfer.waiting > 0) return;
+  transfer.controller.abort();
 }
 
 /** The base style the reference layers are drawn over. */
 interface BaseStyleState {
   status: 'loading' | 'ready' | 'error';
   style?: StyleSpecification;
-  error?: string;
+  /** The stable code of a failed run, translated where the screen shows it. */
+  error?: MapStyleErrorCode;
+}
+
+/** What one run settled, and which run — `url` plus `attempt` — it belongs to. */
+interface StyleSettlement {
+  url: string;
+  attempt: number;
+  outcome: StyleOutcome;
 }
 
 /**
- * Fetches the style document the remote config points at. The native map cannot
- * read the archive's own TileJSON into a style the way the web renderer does, so
- * the base layers (and the glyphs a label layer needs) come from this document.
- * A failed fetch fails loudly: an empty canvas would look like a working map.
+ * Fetches the style document the remote config points at. The native map cannot read
+ * the archive's own TileJSON into a style the way the web renderer does, so the base
+ * layers (and the glyphs a label layer needs) come from this document. A failed fetch
+ * fails loudly: an empty canvas would look like a working map.
  *
- * The wait is bounded, so a request that never answers becomes an error the screen
- * can show instead of a spinner that never ends, and `attempt` is what a retry
- * bumps: it restarts the request and identifies its own settled result, so the
- * failure of the attempt that was given up never answers for the new one.
+ * The outcome lives in React state keyed by `url` and `attempt`; the page registry is
+ * read only to prefill the first render of a mount. Nothing else in the render derives
+ * the status, which is what the device needed: deriving it from module-scope mutable
+ * state that React does not track left the screen on `loading` for a document that had
+ * already arrived, while this hook's own effect — one commit later, on the same key —
+ * saw it. A patched cache read cannot fix that; one render decision needs one source.
+ *
+ * `attempt` is what a retry bumps: it restarts the transfer and identifies its own
+ * settled result, so the failure of the attempt that was given up never answers for
+ * the new one.
  */
 function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyleState {
-  // `url` and `attempt` mark which run the settled outcome belongs to; the style
-  // itself is read back out of the page registry below, so this state never holds a
-  // document for a url that is no longer configured.
-  const [settled, setSettled] = useState<{
-    url: string;
-    attempt: number;
-    error?: string;
-  } | null>(null);
+  const [settled, setSettled] = useState<StyleSettlement | null>(() => {
+    const cached = styleUrl ? styles.get(styleUrl) : undefined;
+    if (!styleUrl || !cached) return null;
+    return { url: styleUrl, attempt, outcome: { status: 'ready', style: cached } };
+  });
 
   useEffect(() => {
-    if (!styleUrl || styles.has(styleUrl)) return;
+    if (!styleUrl) return;
+    // This run already settled: there is nothing to wait for, and re-arming is what
+    // made one observation permanent before (`styles.has` short-circuited the effect,
+    // so a key that existed but could not be drawn was never fetched again).
+    if (settled?.url === styleUrl && settled.attempt === attempt) return;
 
-    let cancelled = false;
+    const transfer = acquireStyleTransfer(styleUrl);
+    let waiting = true;
 
-    requestStyle(styleUrl)
-      .then(() => {
-        if (cancelled) return;
-        setSettled({ url: styleUrl, attempt });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setSettled({
-          url: styleUrl,
-          attempt,
-          error: error instanceof Error ? error.message : 'style request failed',
-        });
-      });
+    transfer.promise.then((outcome) => {
+      if (waiting) setSettled({ url: styleUrl, attempt, outcome });
+    });
 
     return () => {
-      cancelled = true;
+      waiting = false;
+      releaseStyleTransfer(transfer);
     };
-  }, [styleUrl, attempt]);
+  }, [styleUrl, attempt, settled]);
 
   if (!styleUrl) return { status: 'ready' };
-  const cached = styles.get(styleUrl);
-  if (cached) return { status: 'ready', style: cached };
-  // A settled result for another style — or for another attempt of this one — says
+  // A settled outcome for another style — or for another attempt of this one — says
   // nothing about this run.
-  if (settled?.url !== styleUrl || settled.attempt !== attempt || !settled.error) {
-    return { status: 'loading' };
-  }
-  return { status: 'error', error: settled.error };
+  if (settled?.url !== styleUrl || settled.attempt !== attempt) return { status: 'loading' };
+  return settled.outcome.status === 'ready'
+    ? { status: 'ready', style: settled.outcome.style }
+    : { status: 'error', error: settled.outcome.code };
 }
 
 /**
@@ -410,6 +542,8 @@ export default function ExperienceMap({
     [onFeaturePress, referenceLayerIds],
   );
 
+  const failure = archive.error ?? remote.error;
+
   if (archive.status === 'error' || remote.status === 'error') {
     return (
       <TwView
@@ -418,7 +552,9 @@ export default function ExperienceMap({
       >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
-          {archive.error ?? remote.error ?? t('map.offlineDescription')}
+          {/* Both waits report a code; the sentence is ours and it is translated here,
+              so no English text from a request or from the filesystem reaches the screen. */}
+          {failure ? t(ERROR_MESSAGE_KEYS[failure]) : t('map.offlineDescription')}
         </ThemedText>
         {/* Each wait starts over on its own, so the other one is never thrown away. */}
         <Button
