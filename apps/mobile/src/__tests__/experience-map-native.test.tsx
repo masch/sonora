@@ -40,6 +40,30 @@ jest.mock('@/utils/logger', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+// `LoadingView` is what the spinner is: recording its renders is the only way to ask
+// whether a mount ever passed through the loading branch, because `render()` from
+// RTL-RN flushes effects and microtasks before an assertion can look at the tree. The
+// double draws the same message the real component draws, so the stage names the other
+// tests read stay readable.
+jest.mock('@/components/loading-view', () => {
+  const { useEffect } = jest.requireActual<typeof import('react')>('react');
+  const { ThemedText } = jest.requireActual<typeof import('@/components/themed-text')>(
+    '@/components/themed-text',
+  );
+  const loadingMessages: string[] = [];
+
+  // Named as a component, because it is one: an anonymous arrow would be linted as a
+  // plain function that calls a hook.
+  const LoadingViewDouble = (props: { message?: string }) => {
+    useEffect(() => {
+      loadingMessages.push(props.message ?? '');
+    }, [props.message]);
+    return <ThemedText type="small">{props.message}</ThemedText>;
+  };
+
+  return { __esModule: true, loadingMessages, default: LoadingViewDouble };
+});
+
 // `@maplibre/maplibre-react-native` is a native module; jest maps it to the
 // `src/test-utils/maplibre-react-native-double.tsx` components, and the recorders
 // the components write to — the style, the camera and the press handling the
@@ -58,6 +82,11 @@ const mockedUseMapArchiveFile = jest.mocked(useMapArchiveFile);
 /** Every `t` the mocked hook handed to a component, in call order. */
 const { handedTranslate } = jest.requireMock('@/hooks/use-translation') as {
   handedTranslate: unknown[];
+};
+
+/** Every message the loading branch rendered, in order: the spinner's own record. */
+const { loadingMessages } = jest.requireMock('@/components/loading-view') as {
+  loadingMessages: string[];
 };
 
 const ARCHIVE_URL = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -98,6 +127,41 @@ function styleWith(glyphs: boolean): StyleSpecification {
   } as StyleSpecification;
 }
 
+/**
+ * A `fetch` double that honours its abort signal the way the platform does.
+ *
+ * The previous double ignored the signal, so a second request could hide behind an
+ * assertion that claimed there was one: this one rejects with an `AbortError` the
+ * moment its signal aborts, so an aborted transfer can never be mistaken for a live
+ * one. The test resolves or rejects the response itself.
+ */
+function abortAwareFetch(): {
+  fetchMock: jest.Mock;
+  signals: AbortSignal[];
+  urls: string[];
+  resolve: (response: unknown) => void;
+} {
+  const signals: AbortSignal[] = [];
+  const urls: string[] = [];
+  let settle: ((value: unknown) => void) | null = null;
+
+  const fetchMock = jest.fn((url: string, init?: { signal?: AbortSignal }) => {
+    urls.push(url);
+    const signal = init?.signal;
+    if (!signal) throw new Error('the style was fetched without a cancellable signal');
+    signals.push(signal);
+
+    return new Promise((resolve, reject) => {
+      settle = resolve;
+      signal.addEventListener('abort', () => {
+        reject(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }));
+      });
+    });
+  });
+
+  return { fetchMock, signals, urls, resolve: (response) => settle?.(response) };
+}
+
 /** The layer ids the map was told to draw, in draw order. */
 function drawnLayerIds(index = 0): string[] {
   return (mockMapProps[index].mapStyle.layers ?? []).map((layer) => layer.id);
@@ -115,6 +179,7 @@ describe('ExperienceMap (native)', () => {
     resetMapDouble();
     mockedUseMapArchiveFile.mockReset();
     mockedUseMapArchiveFile.mockReturnValue({ status: 'ready', uri: ARCHIVE_URI });
+    loadingMessages.length = 0;
   });
 
   it('draws the reference layers over the archive on disk', async () => {
@@ -574,29 +639,94 @@ describe('ExperienceMap (native)', () => {
     }
   });
 
-  it('cancels the style transfer when the screen goes away', async () => {
-    const signals: AbortSignal[] = [];
-    globalThis.fetch = jest.fn((_url: string, init?: { signal?: AbortSignal }) => {
-      if (init?.signal) signals.push(init.signal);
-      return new Promise(() => {});
-    }) as never;
+  it('draws a style already in the page cache without the spinner ever rendering', async () => {
+    const fetchStyle = jest.fn().mockResolvedValue({ ok: true, json: async () => styleWith(true) });
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?warm-spinner` };
 
-    const view = await render(
-      <ExperienceMap
-        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?unmounted` }}
-        overlays={[]}
-      />,
-    );
-    expect(signals).toHaveLength(1);
-    expect(signals[0].aborted).toBe(false);
+    // A cold page does show the spinner, which is what makes the next reading mean
+    // something: the recorder really does see the loading branch when it renders.
+    const first = await render(<ExperienceMap source={source} overlays={[document]} />);
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    expect(loadingMessages).toEqual(['map.loadingStyle']);
+    await first.unmount();
+
+    loadingMessages.length = 0;
+    const second = await render(<ExperienceMap source={source} overlays={[document]} />);
+
+    // The document is already on the page, so the mount draws on its first commit and
+    // never renders the spinner — not even for the commit the fetch used to need.
+    expect(second.queryByTestId('experience-map-map')).toBeTruthy();
+    expect(loadingMessages).toEqual([]);
+    expect(fetchStyle).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps one transfer for the page when the screen remounts mid-flight', async () => {
+    const page = abortAwareFetch();
+    globalThis.fetch = page.fetchMock as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?one-transfer` };
+
+    const first = await render(<ExperienceMap source={source} overlays={[document]} />);
+    expect(page.signals).toHaveLength(1);
 
     await act(async () => {
-      view.unmount();
+      first.unmount();
     });
 
-    // Nothing waits for the transfer anymore, so it stops instead of streaming on
-    // behind a screen that is gone.
-    expect(signals[0].aborted).toBe(true);
+    // The cleanup of the effect does not cancel the transfer: a remount of the same
+    // page must not pay a second request for a document the page is already fetching.
+    expect(page.signals[0].aborted).toBe(false);
+
+    const second = await render(<ExperienceMap source={source} overlays={[document]} />);
+    expect(page.fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      page.resolve({ ok: true, json: async () => styleWith(true) });
+    });
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    // One request answered both runs, and neither of them landed on an error.
+    expect(page.fetchMock).toHaveBeenCalledTimes(1);
+    expect(second.queryByTestId('experience-map-error')).toBeNull();
+  });
+
+  it('cancels the shared transfer at the bound and reports the timeout to the run that adopted it', async () => {
+    jest.useFakeTimers();
+    try {
+      const page = abortAwareFetch();
+      globalThis.fetch = page.fetchMock as unknown as typeof fetch;
+      const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?shared-bound` };
+
+      // Two runs, one transfer: the first leaves mid-flight and the second adopts it.
+      const first = await render(<ExperienceMap source={source} overlays={[]} />);
+      expect(page.signals).toHaveLength(1);
+      await act(async () => {
+        first.unmount();
+      });
+
+      const second = await render(<ExperienceMap source={source} overlays={[]} />);
+      // The adopted transfer is the page's single request, not a second one.
+      expect(page.fetchMock).toHaveBeenCalledTimes(1);
+      expect(second.queryByText('map.loadingStyle')).toBeTruthy();
+
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      // The bound cancels the shared transfer and settles it, so the run that adopted
+      // it gets the timeout it can retry instead of a dead request that never answers.
+      expect(page.signals[0].aborted).toBe(true);
+      expect(second.queryByText('map.errors.styleTimeout')).toBeTruthy();
+
+      // And whoever comes later starts a new one: the settled entry is gone.
+      await act(async () => {
+        fireEvent.press(second.getByTestId('experience-map-retry'));
+      });
+      expect(page.fetchMock).toHaveBeenCalledTimes(2);
+      expect(page.signals[1].aborted).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows a translated code instead of the English sentence the request layer produced', async () => {

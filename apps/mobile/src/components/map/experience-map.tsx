@@ -94,14 +94,12 @@ type StyleOutcome =
  *
  * A transfer lives here rather than inside the hook because a remount used to cancel
  * the previous run before it could cache anything: every mount started a new request,
- * abandoned it, and the map never received a style. One page, one transfer per url —
- * cancelled when its bound is reached, or when the last run waiting for it leaves.
+ * abandoned it, and the map never received a style. One page, one transfer per url,
+ * cancelled by its own bound — and only by it.
  */
 interface StyleTransfer {
   readonly promise: Promise<StyleOutcome>;
   readonly controller: AbortController;
-  /** Runs waiting on this transfer: the last one to leave is what cancels it. */
-  waiting: number;
 }
 
 /** Transfers in flight, keyed by url. */
@@ -177,7 +175,6 @@ function startStyleTransfer(url: string): StyleTransfer {
 
   const transfer: StyleTransfer = {
     controller,
-    waiting: 1,
     promise: settled
       .then((outcome) => {
         // Only a document that can be drawn is cached: the cache is what the first
@@ -199,27 +196,13 @@ function startStyleTransfer(url: string): StyleTransfer {
  *
  * A run that finds a transfer in flight for the same url joins it instead of starting a
  * second one, which is what keeps a remount from paying for a request the page has
- * already made. A transfer whose last run left keeps its entry until it settles: that
- * entry is what a run mounting right after the leaving one adopts, and the abort it was
- * given makes it settle at once, so the window is one commit wide and never a hang.
+ * already made — that is the whole point of the single flight, so an effect cleanup
+ * never cancels it. Nothing here has to ask whether a transfer is still alive: its own
+ * bound aborts it and settles it, and the `finally` in {@link startStyleTransfer} drops
+ * the entry as it settles, so an entry that exists is an entry still worth waiting for.
  */
 function acquireStyleTransfer(url: string): StyleTransfer {
-  const existing = styleTransfers.get(url);
-  if (!existing) return startStyleTransfer(url);
-  existing.waiting += 1;
-  return existing;
-}
-
-/**
- * Gives up one run's interest in a transfer.
- *
- * The transfer is cancelled when nothing waits for it anymore, so a style that was
- * being fetched for a screen that is gone stops there instead of streaming to the end.
- */
-function releaseStyleTransfer(transfer: StyleTransfer): void {
-  transfer.waiting -= 1;
-  if (transfer.waiting > 0) return;
-  transfer.controller.abort();
+  return styleTransfers.get(url) ?? startStyleTransfer(url);
 }
 
 /** The base style the reference layers are drawn over. */
@@ -250,6 +233,12 @@ interface StyleSettlement {
  * already arrived, while this hook's own effect — one commit later, on the same key —
  * saw it. A patched cache read cannot fix that; one render decision needs one source.
  *
+ * The effect has no cleanup on purpose. The transfer belongs to the page, so a remount
+ * adopts the request the page already sent instead of paying a second one, and the
+ * bound — which cancels the transfer and settles it — is what a request nobody comes
+ * back for is left to. A retry still starts fresh, because the entry is dropped as its
+ * transfer settles.
+ *
  * `attempt` is what a retry bumps: it restarts the transfer and identifies its own
  * settled result, so the failure of the attempt that was given up never answers for
  * the new one.
@@ -269,16 +258,13 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
     if (settled?.url === styleUrl && settled.attempt === attempt) return;
 
     const transfer = acquireStyleTransfer(styleUrl);
-    let waiting = true;
 
+    // No cleanup and no cancellation here: the settlement is keyed by `url` and
+    // `attempt`, so a result that arrives after this run stopped being the current one
+    // is ignored by the render instead of having to be withdrawn.
     transfer.promise.then((outcome) => {
-      if (waiting) setSettled({ url: styleUrl, attempt, outcome });
+      setSettled({ url: styleUrl, attempt, outcome });
     });
-
-    return () => {
-      waiting = false;
-      releaseStyleTransfer(transfer);
-    };
   }, [styleUrl, attempt, settled]);
 
   if (!styleUrl) return { status: 'ready' };
