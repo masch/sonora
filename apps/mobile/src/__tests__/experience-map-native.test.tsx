@@ -335,6 +335,30 @@ describe('ExperienceMap (native)', () => {
     }
   });
 
+  it('caches the style even when the screen remounts while it is loading', async () => {
+    // The device bug: leaving and returning was the only way to see the map, because
+    // each mount abandoned its own request before it could cache the style.
+    let resolveStyle = (_response: unknown) => {};
+    const pending = new Promise((resolve) => {
+      resolveStyle = resolve;
+    });
+    globalThis.fetch = jest.fn().mockReturnValueOnce(pending) as never;
+
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?remount` };
+    const first = await render(<ExperienceMap source={source} overlays={[]} />);
+    await first.unmount();
+
+    await render(<ExperienceMap source={source} overlays={[]} />);
+
+    await act(async () => {
+      resolveStyle({ ok: true, json: async () => styleWith(true) });
+    });
+
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+    // One request for the page, not one per mount.
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('retries both waits from the error state and draws once they resolve', async () => {
     let resolveStyle = (_response: unknown) => {};
     const styleGate = new Promise((resolve) => {

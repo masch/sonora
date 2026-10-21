@@ -56,6 +56,45 @@ const STYLE_TIMEOUT_MESSAGE = 'the map style did not load';
 /** Style documents already fetched, keyed by url: a style is fetched once per page. */
 const styles = new Map<string, StyleSpecification>();
 
+/**
+ * Style requests in flight, keyed by url.
+ *
+ * A request lives here rather than in the hook because a remount used to cancel the
+ * previous run before it could cache anything: every mount started a new request,
+ * abandoned it, and the map never received a style. One page, one request per url.
+ */
+const styleRequests = new Map<string, Promise<StyleSpecification>>();
+
+/** Fetches a style once per url, with a bound that no remount can cancel. */
+function requestStyle(url: string): Promise<StyleSpecification> {
+  const inFlight = styleRequests.get(url);
+  if (inFlight) return inFlight;
+
+  const request = new Promise<StyleSpecification>((resolve, reject) => {
+    const bound = setTimeout(() => reject(new Error(STYLE_TIMEOUT_MESSAGE)), STYLE_TIMEOUT_MS);
+
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
+        return response.json() as Promise<StyleSpecification>;
+      })
+      .then((style) => {
+        clearTimeout(bound);
+        styles.set(url, style);
+        resolve(style);
+      })
+      .catch((error: unknown) => {
+        clearTimeout(bound);
+        reject(error);
+      });
+  }).finally(() => {
+    styleRequests.delete(url);
+  });
+
+  styleRequests.set(url, request);
+  return request;
+}
+
 /** The base style the reference layers are drawn over. */
 interface BaseStyleState {
   status: 'loading' | 'ready' | 'error';
@@ -87,39 +126,15 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
   useEffect(() => {
     if (!styleUrl || styles.has(styleUrl)) return;
 
-    // Cancellation is per run: a url change only cancels the run it started.
     let cancelled = false;
-    let bound: ReturnType<typeof setTimeout> | undefined;
 
-    /** Ends this run: nothing may settle it again and its bound is released. */
-    const release = (): void => {
-      cancelled = true;
-      if (bound !== undefined) clearTimeout(bound);
-    };
-
-    // Armed before the request, so no outcome can outrun the bound. The guard stays
-    // written out on every path, including the bound's: an abandoned run must never
-    // publish anything, and a check buried in a helper reads as if it does not.
-    bound = setTimeout(() => {
-      if (cancelled) return;
-      release();
-      setSettled({ url: styleUrl, attempt, error: STYLE_TIMEOUT_MESSAGE });
-    }, STYLE_TIMEOUT_MS);
-
-    fetch(styleUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-        return response.json() as Promise<StyleSpecification>;
-      })
-      .then((style) => {
+    requestStyle(styleUrl)
+      .then(() => {
         if (cancelled) return;
-        release();
-        styles.set(styleUrl, style);
         setSettled({ url: styleUrl, attempt });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        release();
         setSettled({
           url: styleUrl,
           attempt,
@@ -128,11 +143,7 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
       });
 
     return () => {
-      // Written out here rather than left to `release()`: the teardown is where the
-      // cancellation flag is read, and an unmounted screen must not leave a timer
-      // behind it either way.
       cancelled = true;
-      if (bound !== undefined) clearTimeout(bound);
     };
   }, [styleUrl, attempt]);
 
