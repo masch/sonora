@@ -10,7 +10,7 @@ import type {
   VectorSourceSpecification,
 } from '@maplibre/maplibre-react-native';
 import { Camera, Map as MapLibreMap } from '@maplibre/maplibre-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
 
 import {
@@ -65,13 +65,63 @@ const styles = new Map<string, StyleSpecification>();
  */
 const styleRequests = new Map<string, Promise<StyleSpecification>>();
 
+// TEMP MAP TRACE — remove before merge (odd/tasks/map-offline-references.md, L44).
+// The first visit to a trip never leaves the style spinner while the second is
+// instant, and no code path explains it, so the screen has to report its own
+// sequence: how many times this module rendered and mounted, what the request did
+// and whether the render could see the cache. One screenshot then names the cause.
+const mapTrace = {
+  mounts: 0,
+  renders: 0,
+  settles: 0,
+  dropped: 0,
+  request: 'none',
+};
+
+/** TEMP MAP TRACE (remove before merge): the seconds this screen has been waiting. */
+function useMapTraceSeconds(): number {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    mapTrace.mounts += 1;
+    const tick = setInterval(() => setSeconds((previous) => previous + 1), 1000);
+    return () => clearInterval(tick);
+  }, []);
+  // Counted after each commit: a growing number proves the screen still renders.
+  useEffect(() => {
+    mapTrace.renders += 1;
+  });
+  return seconds;
+}
+
+/** TEMP MAP TRACE (remove before merge): what the wait looks like from this render. */
+function MapTraceLine(props: {
+  testID: string;
+  seconds: number;
+  cached: boolean;
+  remoteStatus: string;
+  archiveStatus: string;
+}): ReactElement {
+  const { testID, seconds, cached, remoteStatus, archiveStatus } = props;
+  const request = `req:${mapTrace.request}`;
+  return (
+    <ThemedText testID={testID} type="small" themeColor="textSecondary">
+      {`trace ${seconds}s r${mapTrace.renders} m${mapTrace.mounts} ${request} settled:${mapTrace.settles} dropped:${mapTrace.dropped} cache:${cached ? 'hit' : 'miss'} remote:${remoteStatus} archive:${archiveStatus}`}
+    </ThemedText>
+  );
+}
+
 /** Fetches a style once per url, with a bound that no remount can cancel. */
 function requestStyle(url: string): Promise<StyleSpecification> {
   const inFlight = styleRequests.get(url);
   if (inFlight) return inFlight;
 
+  mapTrace.request = 'pending';
+
   const request = new Promise<StyleSpecification>((resolve, reject) => {
-    const bound = setTimeout(() => reject(new Error(STYLE_TIMEOUT_MESSAGE)), STYLE_TIMEOUT_MS);
+    const bound = setTimeout(() => {
+      mapTrace.request = 'timeout';
+      reject(new Error(STYLE_TIMEOUT_MESSAGE));
+    }, STYLE_TIMEOUT_MS);
 
     fetch(url)
       .then((response) => {
@@ -80,11 +130,13 @@ function requestStyle(url: string): Promise<StyleSpecification> {
       })
       .then((style) => {
         clearTimeout(bound);
+        mapTrace.request = 'resolved';
         styles.set(url, style);
         resolve(style);
       })
       .catch((error: unknown) => {
         clearTimeout(bound);
+        mapTrace.request = `rejected:${error instanceof Error ? error.message : 'unknown'}`;
         reject(error);
       });
   }).finally(() => {
@@ -130,11 +182,19 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
 
     requestStyle(styleUrl)
       .then(() => {
-        if (cancelled) return;
+        mapTrace.settles += 1;
+        if (cancelled) {
+          mapTrace.dropped += 1;
+          return;
+        }
         setSettled({ url: styleUrl, attempt });
       })
       .catch((error: unknown) => {
-        if (cancelled) return;
+        mapTrace.settles += 1;
+        if (cancelled) {
+          mapTrace.dropped += 1;
+          return;
+        }
         setSettled({
           url: styleUrl,
           attempt,
@@ -313,6 +373,8 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t, language } = useAppTranslation();
+  // TEMP MAP TRACE — remove before merge.
+  const traceSeconds = useMapTraceSeconds();
   // One counter per wait, so the retry never restarts a wait that did not fail.
   const [archiveAttempt, setArchiveAttempt] = useState(0);
   const [styleAttempt, setStyleAttempt] = useState(0);
@@ -439,6 +501,14 @@ export default function ExperienceMap({
     return (
       <TwView testID={testID} className={className}>
         <LoadingView message={t(pendingStageKey(archive))} />
+        {/* TEMP MAP TRACE — remove before merge. */}
+        <MapTraceLine
+          testID={`${testID}-trace`}
+          seconds={traceSeconds}
+          cached={styles.has(source.styleUrl ?? '')}
+          remoteStatus={remote.status}
+          archiveStatus={archive.status}
+        />
       </TwView>
     );
   }
