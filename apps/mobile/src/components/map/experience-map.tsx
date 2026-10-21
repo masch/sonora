@@ -76,6 +76,8 @@ const mapTrace = {
   settles: 0,
   dropped: 0,
   request: 'none',
+  write: 'none',
+  read: 'none',
 };
 
 /** TEMP MAP TRACE (remove before merge): the seconds this screen has been waiting. */
@@ -100,12 +102,24 @@ function MapTraceLine(props: {
   cached: boolean;
   remoteStatus: string;
   archiveStatus: string;
+  styleBuilt: boolean;
+  documentKnown: boolean;
+  archiveUri: boolean;
 }): ReactElement {
-  const { testID, seconds, cached, remoteStatus, archiveStatus } = props;
+  const {
+    testID,
+    seconds,
+    cached,
+    remoteStatus,
+    archiveStatus,
+    styleBuilt,
+    documentKnown,
+    archiveUri,
+  } = props;
   const request = `req:${mapTrace.request}`;
   return (
     <ThemedText testID={testID} type="small" themeColor="textSecondary">
-      {`trace ${seconds}s r${mapTrace.renders} m${mapTrace.mounts} ${request} settled:${mapTrace.settles} dropped:${mapTrace.dropped} cache:${cached ? 'hit' : 'miss'} remote:${remoteStatus} archive:${archiveStatus}`}
+      {`trace ${seconds}s r${mapTrace.renders} m${mapTrace.mounts} ${request} settled:${mapTrace.settles} dropped:${mapTrace.dropped} cache:${cached ? 'hit' : 'miss'} remote:${remoteStatus} archive:${archiveStatus} write:${mapTrace.write} read:${mapTrace.read} uri:${archiveUri ? 'y' : 'n'} doc:${documentKnown ? 'y' : 'n'} style:${styleBuilt ? 'y' : 'n'}`}
     </ThemedText>
   );
 }
@@ -132,6 +146,8 @@ function requestStyle(url: string): Promise<StyleSpecification> {
         clearTimeout(bound);
         mapTrace.request = 'resolved';
         styles.set(url, style);
+        // TEMP MAP TRACE — remove before merge: what actually landed in the cache.
+        mapTrace.write = `${style ? 'obj' : String(style)} size:${styles.size} key:${url.slice(-10)}`;
         resolve(style);
       })
       .catch((error: unknown) => {
@@ -207,15 +223,27 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
     };
   }, [styleUrl, attempt]);
 
-  if (!styleUrl) return { status: 'ready' };
-  const cached = styles.get(styleUrl);
-  if (cached) return { status: 'ready', style: cached };
-  // A settled result for another style — or for another attempt of this one — says
-  // nothing about this run.
-  if (settled?.url !== styleUrl || settled.attempt !== attempt || !settled.error) {
-    return { status: 'loading' };
+  // TEMP MAP TRACE — remove before merge: the same derivation, with what this render saw.
+  let next: BaseStyleState;
+  if (!styleUrl) {
+    next = { status: 'ready' };
+  } else {
+    const cached = styles.get(styleUrl);
+    if (cached) {
+      next = { status: 'ready', style: cached };
+    } else if (settled?.url !== styleUrl || settled.attempt !== attempt || !settled.error) {
+      next = { status: 'loading' };
+    } else {
+      next = { status: 'error', error: settled.error };
+    }
   }
-  return { status: 'error', error: settled.error };
+  // Recorded after the commit, so the render itself stays free of side effects.
+  useEffect(() => {
+    mapTrace.read = `${next.status} has:${styleUrl && styles.has(styleUrl) ? 'y' : 'n'} get:${
+      styleUrl && styles.get(styleUrl) ? 'obj' : 'none'
+    } seen:${settled ? 'y' : 'n'} at:${settled?.attempt ?? '-'}/${attempt} size:${styles.size}`;
+  });
+  return next;
 }
 
 /**
@@ -508,6 +536,9 @@ export default function ExperienceMap({
           cached={styles.has(source.styleUrl ?? '')}
           remoteStatus={remote.status}
           archiveStatus={archive.status}
+          styleBuilt={style !== null}
+          documentKnown={styleDocument !== undefined}
+          archiveUri={Boolean(archiveUri)}
         />
       </TwView>
     );
