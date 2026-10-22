@@ -281,14 +281,26 @@ async function downloadArchive(archiveUrl: string): Promise<string> {
   return `pmtiles://${archive.uri}`;
 }
 
+/** No deadline here: a limit would turn a slow but valid transfer into an error. */
+
 /**
  * The archive the native map source points at, as a `pmtiles://file://…` uri.
  *
  * @param archiveUrl the archive the map config carries, with or without the
  *                   `pmtiles://` scheme, or undefined when none is configured.
+ * @param attempt    which run this is: a retry starts the download over, and a settled
+ *                   result belongs to the run that produced it, never to the run that
+ *                   replaced it.
  */
-export function useMapArchiveFile(archiveUrl: string | undefined): MapArchiveFileState {
-  const [settled, setSettled] = useState<{ key: string; value: MapArchiveFileState } | null>(null);
+export function useMapArchiveFile(
+  archiveUrl: string | undefined,
+  attempt = 0,
+): MapArchiveFileState {
+  const [settled, setSettled] = useState<{
+    key: string;
+    attempt: number;
+    value: MapArchiveFileState;
+  } | null>(null);
   const key = archiveUrl ? archiveKey(remoteUrl(archiveUrl)) : null;
 
   useEffect(() => {
@@ -298,28 +310,32 @@ export function useMapArchiveFile(archiveUrl: string | undefined): MapArchiveFil
     // abandoned download can never settle the state of the run that replaced it.
     let cancelled = false;
 
+    /** Settles this run once. */
+    const settle = (value: MapArchiveFileState): void => {
+      if (cancelled) return;
+      cancelled = true;
+      setSettled({ key, attempt, value });
+    };
+
     downloadArchive(archiveUrl)
-      .then((uri) => {
-        if (!cancelled) setSettled({ key, value: { status: 'ready', uri } });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setSettled({
-          key,
-          value: {
-            status: 'error',
-            error: error instanceof Error ? error.message : 'archive download failed',
-          },
-        });
-      });
+      .then((uri) => settle({ status: 'ready', uri }))
+      .catch((error: unknown) =>
+        settle({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'archive download failed',
+        }),
+      );
 
     return () => {
+      // Withdraws only this run's settle; the transfer keeps writing the same archive
+      // the map will want, so a late landing is not wasted.
       cancelled = true;
     };
-  }, [archiveUrl, key]);
+  }, [archiveUrl, key, attempt]);
 
   if (!key) return { status: 'error', error: 'no archive configured' };
-  // A settled result for another archive says nothing about this one.
-  if (settled?.key === key) return settled.value;
+  // A settled result for another archive — or for another attempt of this one —
+  // says nothing about this run.
+  if (settled?.key === key && settled.attempt === attempt) return settled.value;
   return { status: 'loading' };
 }

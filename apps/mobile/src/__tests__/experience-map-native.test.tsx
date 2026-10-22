@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import type { StyleSpecification } from 'maplibre-gl';
 import { en, es, type MapDocument } from '@sonora/shared';
@@ -244,7 +244,8 @@ describe('ExperienceMap (native)', () => {
       <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }} overlays={[]} />,
     );
 
-    expect(view.queryByText('map.loadingMap')).toBeTruthy();
+    // The loader names the stage that is pending, so a screenshot answers the question.
+    expect(view.queryByText('map.loadingArchive')).toBeTruthy();
     // Nothing can be drawn over an archive that does not exist yet.
     expect(mockMapProps).toHaveLength(0);
   });
@@ -297,6 +298,142 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
     expect(mockMapProps).toHaveLength(0);
+  });
+
+  it('bounds the style wait and names the style when the request never resolves', async () => {
+    jest.useFakeTimers();
+    try {
+      // A style request that never answers: the first-visit hang, where the only way
+      // out of the spinner was leaving the screen and coming back.
+      globalThis.fetch = jest.fn(() => new Promise(() => {})) as never;
+
+      const view = await render(
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?hang` }}
+          overlays={[]}
+        />,
+      );
+
+      expect(view.queryByText('map.loadingStyle')).toBeTruthy();
+
+      // Ten seconds, no more and no less: still waiting one millisecond short.
+      await act(async () => {
+        jest.advanceTimersByTime(9_999);
+      });
+      expect(view.queryByTestId('experience-map-error')).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+
+      expect(view.queryByTestId('experience-map-error')).toBeTruthy();
+      // The message names the stage that stalled: the style, not the archive.
+      expect(view.queryByText('the map style did not load')).toBeTruthy();
+      expect(mockMapProps).toHaveLength(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('caches the style even when the screen remounts while it is loading', async () => {
+    // The device bug: leaving and returning was the only way to see the map, because
+    // each mount abandoned its own request before it could cache the style.
+    let resolveStyle = (_response: unknown) => {};
+    const pending = new Promise((resolve) => {
+      resolveStyle = resolve;
+    });
+    globalThis.fetch = jest.fn().mockReturnValueOnce(pending) as never;
+
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?remount` };
+    const first = await render(<ExperienceMap source={source} overlays={[]} />);
+    await first.unmount();
+
+    await render(<ExperienceMap source={source} overlays={[]} />);
+
+    await act(async () => {
+      resolveStyle({ ok: true, json: async () => styleWith(true) });
+    });
+
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+    // One request for the page, not one per mount.
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries both waits from the error state and draws once they resolve', async () => {
+    let resolveStyle = (_response: unknown) => {};
+    const styleGate = new Promise((resolve) => {
+      resolveStyle = resolve;
+    });
+    const fetchStyle = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      .mockReturnValueOnce(styleGate);
+    globalThis.fetch = fetchStyle as unknown as typeof fetch;
+
+    // The archive failed on the first attempt; the retry has to start it over, so
+    // the double answers by attempt instead of always failing.
+    mockedUseMapArchiveFile.mockImplementation((_archiveUrl, attempt) =>
+      (attempt ?? 0) > 0
+        ? { status: 'ready', uri: ARCHIVE_URI }
+        : { status: 'error', error: 'UnableToDownload: 503 Service Unavailable' },
+    );
+
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?retry` }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
+    // The stage that failed stays visible next to the retry.
+    expect(view.queryByText('UnableToDownload: 503 Service Unavailable')).toBeTruthy();
+    expect(mockMapProps).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+
+    // Back into loading, not into the failure that was just dismissed — and now the
+    // stage that is pending is the style, because the archive came back on retry.
+    expect(view.queryByText('map.loadingStyle')).toBeTruthy();
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+
+    await act(async () => {
+      resolveStyle({ ok: true, json: async () => styleWith(true) });
+      await styleGate;
+    });
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // Both waits really restarted: the style was fetched a second time and the
+    // archive hook was asked again under a new attempt.
+    expect(fetchStyle).toHaveBeenCalledTimes(2);
+    expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 1);
+    expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
+  });
+
+  it('restarts only the wait that failed', async () => {
+    // A url of its own: the style cache is per page, so a url another case loaded
+    // would answer from it instead of failing.
+    const styleFetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' })
+      .mockResolvedValueOnce({ ok: true, json: async () => styleWith(true) });
+    globalThis.fetch = styleFetch as unknown as typeof fetch;
+    const source = { archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?s` };
+
+    const view = await render(<ExperienceMap source={source} overlays={[document]} />);
+    await waitFor(() => expect(view.queryByTestId('experience-map-retry')).toBeTruthy());
+    await act(() => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+
+    // The style was asked again; the archive was never restarted.
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    expect(styleFetch).toHaveBeenCalledTimes(2);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 0);
   });
 
   it('reports the tapped reference with the same shape the web build emits', async () => {

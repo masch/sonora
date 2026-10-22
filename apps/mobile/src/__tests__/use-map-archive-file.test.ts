@@ -217,6 +217,44 @@ function temporaryOf(archiveName: string, ageMs: number, sequence = 1): string {
   return `${ARCHIVE_DIR}/${archiveName}.${Date.now() - ageMs}-${sequence}.part`;
 }
 
+/**
+ * Records the timers a run arms at or above `minDelay`, and the handles it clears.
+ *
+ * A jest spy over `clearTimeout` breaks the fake clock it is delegating to (clears
+ * stop reaching it), so this wrapper delegates to whatever jest installed and
+ * records on the way past. A delay of a second or more is what a deadline looks
+ * like; the runtime's own scheduling stays well under it.
+ */
+function recordLongTimers(minDelay = 1000): {
+  armed: unknown[];
+  cleared: unknown[];
+  restore: () => void;
+} {
+  const installedSetTimeout = globalThis.setTimeout;
+  const installedClearTimeout = globalThis.clearTimeout;
+  const armed: unknown[] = [];
+  const cleared: unknown[] = [];
+
+  globalThis.setTimeout = ((handler: () => void, timeout?: number, ...args: unknown[]) => {
+    const handle = installedSetTimeout(handler, timeout, ...args);
+    if ((timeout ?? 0) >= minDelay) armed.push(handle);
+    return handle;
+  }) as unknown as typeof globalThis.setTimeout;
+  globalThis.clearTimeout = ((handle?: number) => {
+    cleared.push(handle);
+    installedClearTimeout(handle);
+  }) as unknown as typeof globalThis.clearTimeout;
+
+  return {
+    armed,
+    cleared,
+    restore: () => {
+      globalThis.setTimeout = installedSetTimeout;
+      globalThis.clearTimeout = installedClearTimeout;
+    },
+  };
+}
+
 describe('useMapArchiveFile', () => {
   beforeEach(() => {
     mockDisk.clear();
@@ -546,6 +584,61 @@ describe('useMapArchiveFile', () => {
     });
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+  });
+
+  it('waits for a transfer that outlives any fixed deadline', async () => {
+    jest.useFakeTimers();
+    const timers = recordLongTimers();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      mockDownloadGate = gate;
+      const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+
+      // No deadline of its own: nothing this run armed can fail the transfer.
+      expect(timers.armed).toHaveLength(0);
+
+      // Minutes pass with nothing moving, and the run is still waiting.
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60 * 1000);
+      });
+      expect(result.current.status).toBe('loading');
+
+      release();
+      await act(async () => {
+        await gate;
+      });
+      // One transfer, not a restart after the silence.
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
+    } finally {
+      timers.restore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('downloads again when the attempt changes, instead of replaying the failure', async () => {
+    mockDownloadFailure = new Error('UnableToDownload: 503 Service Unavailable');
+
+    const { result, rerender } = await renderHook(
+      ({ attempt }: { attempt: number }) => useMapArchiveFile(ARCHIVE_V1, attempt),
+      { initialProps: { attempt: 0 } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
+
+    // The connection is back: the retry has to start the transfer over, not hand
+    // back the settled error of the previous attempt.
+    mockDownloadFailure = null;
+    await act(async () => {
+      rerender({ attempt: 1 });
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1, ARCHIVE_V1]);
     expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
   });
 });

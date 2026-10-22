@@ -23,9 +23,10 @@ import {
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
-import { useAppTranslation } from '@/hooks/use-translation';
+import { useMapArchiveFile, type MapArchiveFileState } from '@/hooks/use-map-archive-file';
+import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
 
@@ -38,8 +39,61 @@ import {
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
 
+/**
+ * How long one run may wait for the style document before it reports the style as
+ * the stage that stalled. Shorter than the archive's bound on purpose: the style is
+ * a small JSON document, so silence here is a failure long before a minute is up,
+ * and a map that never draws is worse than one that says it could not.
+ */
+const STYLE_TIMEOUT_MS = 10 * 1000;
+
+/**
+ * What the caller is told when the style request outlives the bound. It names the
+ * stage, so the two waits behind the same spinner are tellable apart.
+ */
+const STYLE_TIMEOUT_MESSAGE = 'the map style did not load';
+
 /** Style documents already fetched, keyed by url: a style is fetched once per page. */
 const styles = new Map<string, StyleSpecification>();
+
+/**
+ * Style requests in flight, keyed by url.
+ *
+ * A request lives here rather than in the hook because a remount used to cancel the
+ * previous run before it could cache anything: every mount started a new request,
+ * abandoned it, and the map never received a style. One page, one request per url.
+ */
+const styleRequests = new Map<string, Promise<StyleSpecification>>();
+
+/** Fetches a style once per url, with a bound that no remount can cancel. */
+function requestStyle(url: string): Promise<StyleSpecification> {
+  const inFlight = styleRequests.get(url);
+  if (inFlight) return inFlight;
+
+  const request = new Promise<StyleSpecification>((resolve, reject) => {
+    const bound = setTimeout(() => reject(new Error(STYLE_TIMEOUT_MESSAGE)), STYLE_TIMEOUT_MS);
+
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
+        return response.json() as Promise<StyleSpecification>;
+      })
+      .then((style) => {
+        clearTimeout(bound);
+        styles.set(url, style);
+        resolve(style);
+      })
+      .catch((error: unknown) => {
+        clearTimeout(bound);
+        reject(error);
+      });
+  }).finally(() => {
+    styleRequests.delete(url);
+  });
+
+  styleRequests.set(url, request);
+  return request;
+}
 
 /** The base style the reference layers are drawn over. */
 interface BaseStyleState {
@@ -53,33 +107,37 @@ interface BaseStyleState {
  * read the archive's own TileJSON into a style the way the web renderer does, so
  * the base layers (and the glyphs a label layer needs) come from this document.
  * A failed fetch fails loudly: an empty canvas would look like a working map.
+ *
+ * The wait is bounded, so a request that never answers becomes an error the screen
+ * can show instead of a spinner that never ends, and `attempt` is what a retry
+ * bumps: it restarts the request and identifies its own settled result, so the
+ * failure of the attempt that was given up never answers for the new one.
  */
-function useRemoteStyle(styleUrl: string | undefined): BaseStyleState {
-  // `url` marks which style the settled outcome belongs to; the style itself is
-  // read back out of the page registry below, so this state never holds a
+function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyleState {
+  // `url` and `attempt` mark which run the settled outcome belongs to; the style
+  // itself is read back out of the page registry below, so this state never holds a
   // document for a url that is no longer configured.
-  const [settled, setSettled] = useState<{ url: string; error?: string } | null>(null);
+  const [settled, setSettled] = useState<{
+    url: string;
+    attempt: number;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!styleUrl || styles.has(styleUrl)) return;
 
-    // Cancellation is per run: a url change only cancels the run it started.
     let cancelled = false;
 
-    fetch(styleUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-        return response.json() as Promise<StyleSpecification>;
-      })
-      .then((style) => {
+    requestStyle(styleUrl)
+      .then(() => {
         if (cancelled) return;
-        styles.set(styleUrl, style);
-        setSettled({ url: styleUrl });
+        setSettled({ url: styleUrl, attempt });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         setSettled({
           url: styleUrl,
+          attempt,
           error: error instanceof Error ? error.message : 'style request failed',
         });
       });
@@ -87,14 +145,27 @@ function useRemoteStyle(styleUrl: string | undefined): BaseStyleState {
     return () => {
       cancelled = true;
     };
-  }, [styleUrl]);
+  }, [styleUrl, attempt]);
 
   if (!styleUrl) return { status: 'ready' };
   const cached = styles.get(styleUrl);
   if (cached) return { status: 'ready', style: cached };
-  // A settled result for another style says nothing about this one.
-  if (settled?.url !== styleUrl || !settled.error) return { status: 'loading' };
+  // A settled result for another style — or for another attempt of this one — says
+  // nothing about this run.
+  if (settled?.url !== styleUrl || settled.attempt !== attempt || !settled.error) {
+    return { status: 'loading' };
+  }
   return { status: 'error', error: settled.error };
+}
+
+/**
+ * Which wait is pending while the map cannot draw yet.
+ *
+ * The archive is a file on the device and the style is one request, so naming the
+ * stalled stage is what turns a screenshot of this screen into a diagnosis.
+ */
+function pendingStageKey(archive: MapArchiveFileState): TranslationKeys {
+  return archive.status !== 'ready' || !archive.uri ? 'map.loadingArchive' : 'map.loadingStyle';
 }
 
 /**
@@ -242,9 +313,17 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t, language } = useAppTranslation();
-  const archive = useMapArchiveFile(source.archiveUrl || undefined);
-  const remote = useRemoteStyle(source.styleUrl);
+  // One counter per wait, so the retry never restarts a wait that did not fail.
+  const [archiveAttempt, setArchiveAttempt] = useState(0);
+  const [styleAttempt, setStyleAttempt] = useState(0);
+  const archive = useMapArchiveFile(source.archiveUrl || undefined, archiveAttempt);
+  const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
+
+  const retry = useCallback(() => {
+    if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
+    if (remote.status === 'error') setStyleAttempt((previous) => previous + 1);
+  }, [archive.status, remote.status]);
 
   const [centerLng, centerLat] = center;
 
@@ -341,6 +420,15 @@ export default function ExperienceMap({
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {archive.error ?? remote.error ?? t('map.offlineDescription')}
         </ThemedText>
+        {/* Each wait starts over on its own, so the other one is never thrown away. */}
+        <Button
+          label={t('common.retry')}
+          accessibilityLabel={t('common.retry')}
+          testID="experience-map-retry"
+          variant="primary"
+          size="sm"
+          onPress={retry}
+        />
       </TwView>
     );
   }
@@ -350,7 +438,7 @@ export default function ExperienceMap({
   if (archive.status !== 'ready' || !archive.uri || remote.status === 'loading' || !style) {
     return (
       <TwView testID={testID} className={className}>
-        <LoadingView message={t('map.loadingMap')} />
+        <LoadingView message={t(pendingStageKey(archive))} />
       </TwView>
     );
   }

@@ -4,6 +4,14 @@ export default {
   ignore: {
     overrides: [
       {
+        files: ['public/maplibre-gl-worker.js'],
+        rules: ['insecure-crypto-risk', 'react-doctor/insecure-crypto-risk'],
+        // Vendored, not ours: this is MapLibre's own web worker, copied out of the
+        // pinned package by `make web-worker-asset` and gitignored. react-doctor scans
+        // the filesystem rather than git, so the generated file shows up; its internals
+        // cannot be changed here, and the map needs it to run at all.
+      },
+      {
         files: ['src/app/poetics/[id].tsx'],
         rules: [
           'no-loading-flag-reset-outside-finally',
