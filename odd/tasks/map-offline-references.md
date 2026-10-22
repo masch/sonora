@@ -146,6 +146,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
   - Action: `GET`/`POST`/`DELETE /map-documents` behind `adminAuthGuard()` + `validateJson()` + `dbGuard()`; the write validates the document, requires a bbox, rejects a global document that carries bindings, rejects a link outside the allowlist, requires a matching `social.instagramHandle` for instagram links, and requires every `labelKey`/`descriptionKey` to exist in `es` and `en`.
   - Proof: api suite 52 files / 585 tests; the new suite covers the missing translation, a non-allowlisted host, a foreign instagram profile, a global document with bindings, the stored bbox and the unauthenticated write; `tsc --noEmit` clean in api and mobile.
   - Route: inline. Commit: `c6b7780`.
+  - Authoring order, learned the hard way: the write path validates `labelKey`/`descriptionKey` against the **`translations` table**, not the bundled locales, so the translations have to exist in both languages _before_ the document is written (L39, L41).
 
 - [x] **T6b: Reference image upload** — Refs: S1, D11.
   - Path: `apps/api/src/routes/media.ts`, `packages/shared/src/schemas/map-document.ts`, `apps/api/src/routes/map-documents.ts`, `apps/api/src/__tests__/media.test.ts`
@@ -176,6 +177,7 @@ Both planes are rendered by one shared style, so mobile and web never diverge ag
     7. Number the retention policy needs: archive size on disk under `map-archives/`, and memory while panning a region.
   - Evidence so far (2026-10-20): **staging build `stg-v1.0.307`, Android: the map draws, and tapping a reference opens the content card whose link opens too.** The reference was authored for the test through the admin API (`prueba-tarjeta`, a Point carrying `labelKey: map.osm.node5816759017` — "Arroyo Mágico" — and an allowlisted Instagram `linkUrl`), because the only seeded document is label-only and the card needs content. That closes item 1 of the list below.
   - Earlier evidence (2026-10-19): **staging build `stg-v1.0.301`, Android: the MapLibre map drew.** That build predates the per-device override, so what it proves is the chain that matters most — the app read `map.renderer` from `/config` on a cold start after the API was deployed with `maplibre`, obeyed it, and the native module rendered. It does **not** yet prove: tapping a reference opens its card, tapping the itinerary opens nothing, airplane-mode zoom from the local archive, the OSM attribution being visible, the rounded-corner clipping (`GLSurfaceView`), the archive size and memory, or the release variant.
+  - Evidence (2026-10-21): **`stg-v1.0.316`, Android: the first visit to a trip draws the map**, same build that carries the readiness fix (L48). The earlier builds for this item never proved a first visit, because the bug fixed in #533/#535 made it hang.
   - Still owed: items 2 to 6 above — the itinerary guard, airplane mode, the OSM attribution, the rounded-corner clipping and the memory note — plus a browser pass now that web is capable in staging.
   - Route: human + device. Commit: pending.
 
@@ -251,10 +253,12 @@ Causa medida en el dispositivo (L45-L46): el render deriva `loading` leyendo un 
 
 ### Phase 4 — Native map load readiness
 
-- [ ] **T-N1: The style readiness lives in React state, not in a module cache** — Refs: S8 (R1-R5), L45, L46.
+- [x] **T-N1: The style readiness lives in React state, not in a module cache** — Refs: S8 (R1-R5), L45, L46.
   - Path: `apps/mobile/src/components/map/experience-map.tsx`, `apps/mobile/src/__tests__/experience-map-native.test.tsx`, `packages/shared/src/locales/{es,en}.ts` (error keys), `apps/mobile/src/hooks/use-map-archive-file.ts` (error codes) — nothing else.
   - Action: settle the style document in `useState` keyed by `url`+`attempt`; demote the module map to a mount-time prefill (`useState(() => styles.get(url))`) so a warm cache draws on the first render; delete the `styles.has(styleUrl)` early return in favour of the in-flight promise; pass an `AbortController` per run, aborted on the bound and in the effect cleanup; return a stable error code from the hook and translate it in the view; give the archive hook error codes on the same footing so `remote.error`/`archive.error` stop rendering English.
   - Proof required: RED first for R1 (a mount whose style is already cached draws without the loading branch), R3 (a settled error is retryable and the retry re-arms the wait), R4 (the abort signal fires on the bound and on unmount), R5 (the English sentence no longer reaches the screen); each existing behaviour the change touches keeps its own test — the style still caches across a remount mid-flight, the retry still bumps only the wait that failed, and the loading message still names the stage. Then `tsc --noEmit`, `expo lint`, `prettier --check`, the mobile suite, and `make doctor`.
+  - Proof: RED observed per rule before its implementation; the correction's own RED fails 2 tests against `49ef984` (a remount paying a second fetch, and a shared bound that never aborts). Mobile 107 suites / 902 tests, shared 18 files / 246 tests, `tsc --noEmit` clean, `expo lint` 0 errors, `make doctor` 100/100. Independent verification ran twice, with differential probes against `23edd03` and four mutations that each now fail a test.
+  - Delivered: `49ef984` + `b787920` + docs `fa0c69b`, PR #535 (merged as `3757212`, chained on #533). **Device: `stg-v1.0.316` → `b787920` draws the map on the first visit** (L48).
   - Route: worker (bounded, single unit). Branch `fix/map-style-render-readiness` (chained on `fix/map-native-loading-bounds`).
 
 ## Log
