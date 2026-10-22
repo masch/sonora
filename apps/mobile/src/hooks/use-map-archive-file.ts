@@ -13,7 +13,7 @@ import { logger } from '@/utils/logger';
  * the same file an offline pack needs, so nothing built here is thrown away later.
  */
 
-export type MapArchiveFileStatus = 'loading' | 'ready' | 'error';
+type MapArchiveFileStatus = 'loading' | 'ready' | 'error';
 
 /**
  * Stable codes for everything that can go wrong reaching the archive. The hook reports
