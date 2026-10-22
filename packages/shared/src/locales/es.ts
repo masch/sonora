@@ -34,6 +34,14 @@ export const es = {
     showLabels: 'Mostrar nombres',
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
+    // What a failure becomes on screen: the hooks report these codes, never prose.
+    errors: {
+      archiveMissing: 'No hay un mapa configurado',
+      archiveUnavailable: 'No pudimos descargar el mapa',
+      archiveInvalid: 'El mapa descargado está dañado',
+      styleUnavailable: 'No pudimos cargar el estilo del mapa',
+      styleTimeout: 'El estilo del mapa tardó demasiado',
+    },
   },
   tabs: {
     index: 'Inicio',
