@@ -16,9 +16,11 @@ const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
     bypassGeofence: APP_CONFIG.geofence.bypassGeofence,
     bypassIosBrowser: APP_CONFIG.geofence.bypassIosBrowser,
   },
-  // The build floor of the renderer chain (T10): before the server answers, and for
-  // any payload that predates the field, the build's own choice is what counts.
-  map: { ...APP_CONFIG.map, renderer: APP_CONFIG.mapRenderer },
+  // The build floor of the renderer chain (T10): before the server answers, and
+  // for any payload that predates the field, the build's own choice is what
+  // counts. The catalog itself has no compiled floor: the archive url is per
+  // region and only the server knows which regions it published.
+  map: { ...DEFAULT_REMOTE_CONFIG.map, renderer: APP_CONFIG.mapRenderer },
 };
 
 export type VersionStatus = 'ok' | 'warn' | 'block';

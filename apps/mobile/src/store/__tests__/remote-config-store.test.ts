@@ -190,7 +190,17 @@ describe('RemoteConfigStore', () => {
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
       social: { instagramHandle: 'sonora.derivapoetica' },
-      map: { archiveUrl: '', styleUrl: '', renderer: 'leaflet' },
+      map: {
+        renderer: 'leaflet',
+        styleUrl: 'https://api.example/media/public/styles/v1.json',
+        regions: {},
+        download: {
+          preload: [],
+          autoMaxBytes: 8_000_000,
+          cacheMaxBytes: 100_000_000,
+          cellular: 'ask',
+        },
+      },
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
     mockApiGet.mockRejectedValue(new Error('Offline'));

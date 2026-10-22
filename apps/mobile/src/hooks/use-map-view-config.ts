@@ -9,21 +9,30 @@ export interface MapViewConfig {
 }
 
 /**
- * The renderer this build runs and the artifact origins it draws from.
+ * The renderer this build runs and the region it draws.
  *
  * The renderer resolves as build-time env → remote config → leaflet: the env
  * value comes from `APP_CONFIG` (Expo only inlines literal `process.env` access,
  * so it cannot live here) and the remote half from `map.renderer`, which the API
- * normalizes per environment. The origins have always come from the remote
- * config, over the build-time floor the store starts from.
+ * normalizes per environment.
+ *
+ * The archive comes from the catalog the server published, never from a
+ * build-time url. Until T-B passes the experience's own coordinates, the region
+ * is the first entry of `download.preload`, else the first published region,
+ * else none; T-B replaces this heuristic with `regionForPoint`.
  */
 export function useMapViewConfig(): MapViewConfig {
   const map = useRemoteConfigStore((state) => state.config.map);
 
+  const regions = map?.regions ?? {};
+  const preloaded = map?.download?.preload?.[0];
+  const regionKey = preloaded && preloaded in regions ? preloaded : Object.keys(regions)[0];
+  const region = regionKey ? regions[regionKey] : undefined;
+
   return {
     renderer: resolveMapRenderer(APP_CONFIG.mapRenderer, map?.renderer),
     source: {
-      archiveUrl: map?.archiveUrl ?? '',
+      archiveUrl: region?.archiveUrl ?? '',
       styleUrl: map?.styleUrl || undefined,
     },
   };

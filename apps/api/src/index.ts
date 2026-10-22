@@ -32,8 +32,18 @@ export interface Env {
   ALLOWED_HEADERS?: string;
   PRIVATE_BUCKET?: R2Bucket;
   PUBLIC_BUCKET?: R2Bucket;
-  MAP_ARCHIVE_URL?: string;
-  MAP_STYLE_URL?: string;
+  /**
+   * Version of the published map artifacts. Defaults to
+   * `DEFAULT_MAP_ARTIFACT_VERSION`; the archive and style urls are derived from
+   * it, so no url is configured here.
+   */
+  MAP_ARTIFACT_VERSION?: string;
+  /**
+   * Comma-separated regions the app prefetches at startup. Defaults to
+   * `DEFAULT_MAP_REGION`; a region the public bucket does not hold is dropped
+   * from the payload instead of being handed to a client.
+   */
+  MAP_PRELOAD_REGIONS?: string;
   /** `maplibre` enables the new renderer; anything else stays on Leaflet. */
   MAP_RENDERER?: string;
   /**
@@ -89,9 +99,13 @@ export interface Variables {
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
     bypassIosBrowser: boolean;
-    /** Public map artifacts; empty when this environment publishes none. */
-    mapArchiveUrl: string;
-    mapStyleUrl: string;
+    /** Version the archive and style urls are derived from. */
+    mapArtifactVersion: string;
+    /**
+     * Regions the app prefetches at startup, normalized: only names this build
+     * knows, deduped, and the documented default when the variable is unset.
+     */
+    mapPreloadRegions: readonly import('@sonora/shared').MapRegionKey[];
     /**
      * Normalized renderer, never the raw variable: `maplibre` only for that
      * exact value, `leaflet` for anything else including unset.

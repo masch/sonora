@@ -25,6 +25,24 @@ const fullPayload: RemoteConfigPayload = {
   social: {
     instagramHandle: 'sonora.derivapoetica',
   },
+  map: {
+    renderer: 'leaflet',
+    styleUrl: 'https://api.example/media/public/styles/v1.json',
+    regions: {
+      calamuchita: {
+        bbox: [-64.83, -32.28, -64.66, -32.12],
+        label: 'Valle de Calamuchita',
+        archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+        archiveBytes: 1_234_567,
+      },
+    },
+    download: {
+      preload: ['calamuchita'],
+      autoMaxBytes: 8_000_000,
+      cacheMaxBytes: 100_000_000,
+      cellular: 'ask',
+    },
+  },
 };
 
 describe('RemoteConfigPayloadSchema', () => {
@@ -117,6 +135,7 @@ describe('RemoteConfigPayloadSchema', () => {
         feedback: { syncIntervalSec: 30 },
         appVersion: { minimumVersion: '1.0.0', blockOlderVersions: true },
         social: { instagramHandle: 'sonora.derivapoetica' },
+        map: fullPayload.map,
       };
       const result = RemoteConfigPayloadSchema.safeParse(payload);
       expect(result.success).toBe(true);
@@ -163,31 +182,120 @@ describe('RemoteConfigPayloadSchema', () => {
     });
   });
 
-  describe('map artifacts and renderer', () => {
+  describe('map catalog, renderer and download policy', () => {
     const withMap = (map: Record<string, unknown>): Record<string, unknown> => ({
       ...fullPayload,
       map,
     });
 
-    it('defaults renderer to leaflet on a payload that predates the field', () => {
-      // A config cached by a build older than this change carries the artifact
-      // urls but no renderer. It has to parse, and it has to mean leaflet.
+    const region = {
+      bbox: [-64.83, -32.28, -64.66, -32.12],
+      label: 'Valle de Calamuchita',
+      archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+      archiveBytes: 1_234_567,
+    };
+
+    const download = {
+      preload: ['calamuchita'],
+      autoMaxBytes: 8_000_000,
+      cacheMaxBytes: 100_000_000,
+      cellular: 'ask',
+    };
+
+    it('parses the region catalog with numeric bboxes and a size per region', () => {
+      const result = RemoteConfigPayloadSchema.safeParse(fullPayload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map.regions.calamuchita).toEqual(region);
+        expect(result.data.map.download).toEqual(download);
+        expect(result.data.map.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
+      }
+    });
+
+    it('accepts an empty catalog, which is what an environment with nothing published sends', () => {
       const result = RemoteConfigPayloadSchema.safeParse(
-        withMap({ archiveUrl: 'https://api.example/tiles/v1.pmtiles', styleUrl: '' }),
+        withMap({
+          renderer: 'leaflet',
+          styleUrl: '',
+          regions: {},
+          download: { ...download, preload: [] },
+        }),
       );
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.map?.renderer).toBe('leaflet');
+        expect(result.data.map.regions).toEqual({});
+        expect(result.data.map.download.preload).toEqual([]);
+      }
+    });
+
+    it('rejects the old payload that carried archiveUrl and styleUrl at the top of map', () => {
+      // The shape breaks cleanly: the archive url now lives per region, so a
+      // payload that still sends one top-level archive url has nowhere to put it
+      // and must not be accepted as if it did.
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({
+          archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+          styleUrl: 'https://api.example/media/public/styles/v1.json',
+          renderer: 'leaflet',
+        }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a stray legacy archiveUrl next to a complete catalog', () => {
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({
+          archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+          styleUrl: '',
+          renderer: 'leaflet',
+          regions: { calamuchita: region },
+          download,
+        }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a region whose bbox is still the string the tooling reads', () => {
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({
+          renderer: 'leaflet',
+          styleUrl: '',
+          regions: { calamuchita: { ...region, bbox: '-64.83,-32.28,-64.66,-32.12' } },
+          download,
+        }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a bbox that is not four numbers', () => {
+      const bboxSchema = RemoteConfigPayloadSchema.shape.map.shape.regions;
+      for (const bbox of [[1, 2, 3], [1, 2, 3, '4'], []]) {
+        const result = bboxSchema.safeParse({ calamuchita: { ...region, bbox } });
+        expect({ bbox, success: result.success }).toEqual({ bbox, success: false });
+      }
+    });
+
+    it('rejects a region with no archive url, no label or a negative size', () => {
+      const regionsSchema = RemoteConfigPayloadSchema.shape.map.shape.regions;
+      const invalid = [
+        { ...region, archiveUrl: '' },
+        { ...region, label: '' },
+        { ...region, archiveBytes: -1 },
+        { ...region, archiveBytes: 1.5 },
+      ];
+      for (const entry of invalid) {
+        const result = regionsSchema.safeParse({ calamuchita: entry });
+        expect({ entry, success: result.success }).toEqual({ entry, success: false });
       }
     });
 
     it('keeps maplibre when the payload asks for it', () => {
       const result = RemoteConfigPayloadSchema.safeParse(
-        withMap({ archiveUrl: '', styleUrl: '', renderer: 'maplibre' }),
+        withMap({ ...fullPayload.map, renderer: 'maplibre' }),
       );
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.map?.renderer).toBe('maplibre');
+        expect(result.data.map.renderer).toBe('maplibre');
       }
     });
 
@@ -195,13 +303,47 @@ describe('RemoteConfigPayloadSchema', () => {
       // The schema rejects; the API normalizes at the edge, so a rejected value
       // never travels. Asserted here so the choice is pinned.
       const result = RemoteConfigPayloadSchema.safeParse(
-        withMap({ archiveUrl: '', styleUrl: '', renderer: 'webgl' }),
+        withMap({ ...fullPayload.map, renderer: 'webgl' }),
       );
       expect(result.success).toBe(false);
     });
 
-    it('ships leaflet as the default map renderer', () => {
-      expect(DEFAULT_REMOTE_CONFIG.map?.renderer).toBe('leaflet');
+    it('rejects a cellular policy outside ask, auto and never', () => {
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({ ...fullPayload.map, download: { ...download, cellular: 'wifi' } }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-positive download budget', () => {
+      const downloadSchema = RemoteConfigPayloadSchema.shape.map.shape.download;
+      for (const value of [0, -1]) {
+        expect({
+          value,
+          ok: downloadSchema.safeParse({ ...download, autoMaxBytes: value }).success,
+        }).toEqual({
+          value,
+          ok: false,
+        });
+        expect({
+          value,
+          ok: downloadSchema.safeParse({ ...download, cacheMaxBytes: value }).success,
+        }).toEqual({
+          value,
+          ok: false,
+        });
+      }
+    });
+
+    it('ships leaflet, an empty catalog and the agreed download numbers as defaults', () => {
+      expect(DEFAULT_REMOTE_CONFIG.map.renderer).toBe('leaflet');
+      expect(DEFAULT_REMOTE_CONFIG.map.regions).toEqual({});
+      expect(DEFAULT_REMOTE_CONFIG.map.download).toEqual({
+        preload: ['calamuchita'],
+        autoMaxBytes: 8_000_000,
+        cacheMaxBytes: 100_000_000,
+        cellular: 'ask',
+      });
     });
   });
 

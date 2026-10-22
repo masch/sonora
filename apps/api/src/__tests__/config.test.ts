@@ -1,11 +1,49 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
+import { DEFAULT_MAP_ARTIFACT_VERSION, DEFAULT_REMOTE_CONFIG, MAP_REGIONS } from '@sonora/shared';
 import app from '../index';
 
 const BINDINGS = {
   MINIMUM_APP_VERSION: '0.0.0',
   BLOCK_OLDER_VERSIONS: 'false',
 };
+
+/**
+ * A public-bucket double whose `head` answers only for the keys it was given.
+ * `head` is all `/config` may do: it publishes what is already uploaded.
+ */
+function publicBucket(objects: Record<string, number | 'throws'>) {
+  const heads: string[] = [];
+  const bucket = {
+    head: async (key: string) => {
+      heads.push(key);
+      const size = objects[key];
+      if (size === undefined) return null;
+      if (size === 'throws') throw new Error('R2 unavailable');
+      return { key, size };
+    },
+  };
+
+  return { bucket: bucket as never, heads };
+}
+
+const CALAMUCHITA_V1_KEY = 'tiles/calamuchita/v1.pmtiles';
+
+interface MapBody {
+  map: {
+    renderer: string;
+    styleUrl: string;
+    regions: Record<
+      string,
+      { bbox: number[]; label: string; archiveUrl: string; archiveBytes: number }
+    >;
+    download: {
+      preload: string[];
+      autoMaxBytes: number;
+      cacheMaxBytes: number;
+      cellular: string;
+    };
+  };
+}
 
 describe('GET /config', () => {
   it('returns 200 with application/json content type', async () => {
@@ -77,21 +115,173 @@ describe('GET /config', () => {
     expect(bodyOn.geofence.bypassIosBrowser).toBe(true);
   });
 
-  it('honors MAP_ARCHIVE_URL and MAP_STYLE_URL env overrides', async () => {
-    const res = await app.request(
-      '/config',
-      {},
-      {
-        ...BINDINGS,
-        MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-        MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
+  it('lists a published region with the size the bucket reports', async () => {
+    const { bucket, heads } = publicBucket({ [CALAMUCHITA_V1_KEY]: 4_321_000 });
+
+    const res = await app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as MapBody;
+    // The bbox travels as numbers and the archive url is derived from the key the
+    // head just confirmed, so the client never builds a url out of a variable.
+    expect(body.map.regions).toEqual({
+      calamuchita: {
+        bbox: [-64.83, -32.28, -64.66, -32.12],
+        label: 'Valle de Calamuchita',
+        archiveUrl: 'http://localhost/media/public/tiles/calamuchita/v1.pmtiles',
+        archiveBytes: 4_321_000,
       },
-    );
-    const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };
-    expect(body.map.archiveUrl).toBe(
+    });
+    expect(heads).toEqual([CALAMUCHITA_V1_KEY]);
+  });
+
+  it('omits a region whose archive the bucket does not hold', async () => {
+    // A region that is not uploaded must never reach the client: it would name a
+    // download that cannot finish.
+    const { bucket } = publicBucket({});
+
+    const res = await app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.regions).toEqual({});
+    expect(body.map.download.preload).toEqual([]);
+  });
+
+  it('keeps a published region when another region is missing', async () => {
+    // Two regions in the catalog, one uploaded: the payload carries the one the
+    // bucket has and drops the other, instead of failing the whole bootstrap.
+    const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 10 });
+
+    const res = await app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(Object.keys(body.map.regions)).toEqual(['calamuchita']);
+  });
+
+  it('treats an unavailable bucket as publishing nothing instead of failing', async () => {
+    const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 'throws' });
+
+    const res = await app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as MapBody;
+    expect(body.map.regions).toEqual({});
+  });
+
+  it('derives the archive and style urls from the request origin', async () => {
+    const { bucket, heads } = publicBucket({ [CALAMUCHITA_V1_KEY]: 10 });
+
+    const res = await app.fetch(new Request('https://api.example/config'), {
+      ...BINDINGS,
+      PUBLIC_BUCKET: bucket,
+    } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
+    expect(body.map.regions.calamuchita.archiveUrl).toBe(
       'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
     );
-    expect(body.map.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
+    // The urls follow the same version the head read, so publishing v7 needs one
+    // variable and no url edits.
+    expect(heads).toEqual(['tiles/calamuchita/v1.pmtiles']);
+  });
+
+  it('uses MAP_ARTIFACT_VERSION for the head key, the archive url and the style url', async () => {
+    const { bucket, heads } = publicBucket({ 'tiles/calamuchita/v7.pmtiles': 10 });
+
+    const res = await app.request('/config', {}, {
+      ...BINDINGS,
+      MAP_ARTIFACT_VERSION: 'v7',
+      PUBLIC_BUCKET: bucket,
+    } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(heads).toEqual(['tiles/calamuchita/v7.pmtiles']);
+    expect(body.map.regions.calamuchita.archiveUrl).toBe(
+      'http://localhost/media/public/tiles/calamuchita/v7.pmtiles',
+    );
+    expect(body.map.styleUrl).toBe('http://localhost/media/public/styles/v7.json');
+  });
+
+  it('falls back to the compiled version when MAP_ARTIFACT_VERSION is unusable', async () => {
+    for (const value of ['', '   ', 'v7/../../private', '../v7']) {
+      const { bucket, heads } = publicBucket({ [CALAMUCHITA_V1_KEY]: 10 });
+
+      const res = await app.request('/config', {}, {
+        ...BINDINGS,
+        MAP_ARTIFACT_VERSION: value,
+        PUBLIC_BUCKET: bucket,
+      } as never);
+      const body = (await res.json()) as MapBody;
+
+      expect({ value, heads }).toEqual({ value, heads: [CALAMUCHITA_V1_KEY] });
+      expect({ value, styleUrl: body.map.styleUrl }).toEqual({
+        value,
+        styleUrl: `http://localhost/media/public/styles/${DEFAULT_MAP_ARTIFACT_VERSION}.json`,
+      });
+    }
+  });
+
+  it('sends the download policy: the preload set, the ceiling, the budget and the cellular rule', async () => {
+    const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 4_000_000 });
+
+    const res = await app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.download).toEqual({
+      preload: ['calamuchita'],
+      autoMaxBytes: 8_000_000,
+      cacheMaxBytes: 100_000_000,
+      cellular: 'ask',
+    });
+  });
+
+  it('takes the preload set from MAP_PRELOAD_REGIONS', async () => {
+    const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 4_000_000 });
+
+    const res = await app.request('/config', {}, {
+      ...BINDINGS,
+      MAP_PRELOAD_REGIONS: ' calamuchita ',
+      PUBLIC_BUCKET: bucket,
+    } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.download.preload).toEqual(['calamuchita']);
+  });
+
+  it('never asks a client to preload a region it did not publish', async () => {
+    const { bucket } = publicBucket({});
+
+    const res = await app.request('/config', {}, {
+      ...BINDINGS,
+      MAP_PRELOAD_REGIONS: 'calamuchita',
+      PUBLIC_BUCKET: bucket,
+    } as never);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.download.preload).toEqual([]);
+  });
+
+  it('publishes no region when no bucket is bound, and still derives the style url', async () => {
+    const res = await app.request('/config', {}, BINDINGS);
+    const body = (await res.json()) as MapBody;
+
+    expect(body.map.regions).toEqual({});
+    expect(body.map.download.preload).toEqual([]);
+    expect(body.map.styleUrl).toBe('http://localhost/media/public/styles/v1.json');
+  });
+
+  it('sends the renderer and every map field the defaults describe', async () => {
+    const res = await app.request('/config', {}, BINDINGS);
+    const body = (await res.json()) as MapBody;
+
+    // The route resolves the map payload over the shared defaults, so a field
+    // added to DEFAULT_REMOTE_CONFIG.map has to reach the client instead of being
+    // dropped by a literal built here.
+    expect(Object.keys(body.map).sort()).toEqual(Object.keys(DEFAULT_REMOTE_CONFIG.map).sort());
+    expect(body.map.renderer).toBe('leaflet');
+    expect(MAP_REGIONS.calamuchita.bbox.split(',').map(Number)).toEqual([
+      -64.83, -32.28, -64.66, -32.12,
+    ]);
   });
 
   it('sends map.renderer from MAP_RENDERER', async () => {
@@ -238,37 +428,18 @@ describe('GET /config', () => {
     }
   });
 
-  it('sends empty map urls when the environment publishes no artifacts', async () => {
-    const res = await app.request('/config', {}, BINDINGS);
-    const body = (await res.json()) as { map: { archiveUrl: string; styleUrl: string } };
-    expect(body.map.archiveUrl).toBe('');
-    expect(body.map.styleUrl).toBe('');
-  });
-
-  it('keeps every default map field in the response', async () => {
-    const res = await app.request(
-      '/config',
-      {},
-      {
-        ...BINDINGS,
-        MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-        MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
-      },
-    );
-    const body = (await res.json()) as { map: Record<string, unknown> };
-    // The route resolves the map payload field by field over the shared defaults,
-    // so a field added to DEFAULT_REMOTE_CONFIG.map has to reach the client
-    // instead of being dropped by a literal built here.
-    expect(Object.keys(body.map).sort()).toEqual(
-      Object.keys(DEFAULT_REMOTE_CONFIG.map ?? {}).sort(),
-    );
-  });
-
   it('does not include grace period fields when env vars are absent', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as { appVersion: Record<string, unknown> };
     expect(body.appVersion).not.toHaveProperty('gracePeriodStart');
     expect(body.appVersion).not.toHaveProperty('gracePeriodEnd');
+  });
+
+  it('returns default version values when env vars are set to gate-off defaults', async () => {
+    const res = await app.request('/config', {}, BINDINGS);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { appVersion: { minimumVersion: string } };
+    expect(body.appVersion.minimumVersion).toBe('0.0.0');
   });
 
   it('includes gracePeriodStart and gracePeriodEnd when env vars are set', async () => {

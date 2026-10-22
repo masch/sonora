@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
+import { DEFAULT_MAP_ARTIFACT_VERSION, DEFAULT_MAP_REGION } from '@sonora/shared';
 import { jwtGuard } from '../jwt-guard';
 import { hmacGuard } from '../hmac-guard';
 import { configGuard } from '../config-guard';
@@ -63,7 +64,7 @@ describe('Middleware Guards (c.var injection)', () => {
       expect(body.gracePeriodEnd).toBe('2026-02-01');
     });
 
-    it('normalizes the map artifact urls into configEnv', async () => {
+    it('normalizes MAP_ARTIFACT_VERSION into configEnv', async () => {
       const app = new Hono<{ Bindings: Env; Variables: Variables }>();
       app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
 
@@ -73,30 +74,70 @@ describe('Middleware Guards (c.var injection)', () => {
         {
           MINIMUM_APP_VERSION: '1.0.0',
           BLOCK_OLDER_VERSIONS: 'false',
-          MAP_ARCHIVE_URL: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-          MAP_STYLE_URL: 'https://api.example/media/public/styles/v1.json',
+          MAP_ARTIFACT_VERSION: ' v7 ',
         },
       );
-      const configuredBody = (await configured.json()) as {
-        mapArchiveUrl: string;
-        mapStyleUrl: string;
-      };
-      expect(configuredBody.mapArchiveUrl).toBe(
-        'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-      );
-      expect(configuredBody.mapStyleUrl).toBe('https://api.example/media/public/styles/v1.json');
+      const configuredBody = (await configured.json()) as { mapArtifactVersion: string };
+      expect(configuredBody.mapArtifactVersion).toBe('v7');
 
-      const unset = await app.request(
+      // An unset or unusable version is the compiled one: the version is a path
+      // segment in the bucket key, so anything that could escape it is dropped.
+      for (const value of [undefined, '', '   ', 'v7/../../private', '../v7', 'v7 pmtiles']) {
+        const res = await app.request(
+          '/test',
+          {},
+          {
+            MINIMUM_APP_VERSION: '1.0.0',
+            BLOCK_OLDER_VERSIONS: 'false',
+            MAP_ARTIFACT_VERSION: value,
+          },
+        );
+        const body = (await res.json()) as { mapArtifactVersion: string };
+        expect({ value, version: body.mapArtifactVersion }).toEqual({
+          value,
+          version: DEFAULT_MAP_ARTIFACT_VERSION,
+        });
+      }
+    });
+
+    it('normalizes MAP_PRELOAD_REGIONS into configEnv', async () => {
+      const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+      app.get('/test', configGuard(), (c) => c.json(c.var.configEnv));
+
+      const configured = await app.request(
         '/test',
         {},
         {
           MINIMUM_APP_VERSION: '1.0.0',
           BLOCK_OLDER_VERSIONS: 'false',
+          MAP_PRELOAD_REGIONS: ' calamuchita ,,, calamuchita ',
         },
       );
-      const unsetBody = (await unset.json()) as { mapArchiveUrl: string; mapStyleUrl: string };
-      expect(unsetBody.mapArchiveUrl).toBe('');
-      expect(unsetBody.mapStyleUrl).toBe('');
+      const configuredBody = (await configured.json()) as { mapPreloadRegions: string[] };
+      expect(configuredBody.mapPreloadRegions).toEqual(['calamuchita']);
+
+      // A name that is not a region cannot be preloaded, and guessing a region
+      // the operator did not ask for would be worse than preloading nothing.
+      const unknown = await app.request(
+        '/test',
+        {},
+        {
+          MINIMUM_APP_VERSION: '1.0.0',
+          BLOCK_OLDER_VERSIONS: 'false',
+          MAP_PRELOAD_REGIONS: 'otro-valle',
+        },
+      );
+      const unknownBody = (await unknown.json()) as { mapPreloadRegions: string[] };
+      expect(unknownBody.mapPreloadRegions).toEqual([]);
+
+      // Unset is the documented default: the region this build knows about.
+      const unset = await app.request(
+        '/test',
+        {},
+        { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false' },
+      );
+      const unsetBody = (await unset.json()) as { mapPreloadRegions: string[] };
+      expect(unsetBody.mapPreloadRegions).toEqual([DEFAULT_MAP_REGION]);
     });
 
     it('normalizes MAP_RENDERER into configEnv', async () => {

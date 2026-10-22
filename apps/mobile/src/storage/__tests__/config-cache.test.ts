@@ -1,3 +1,4 @@
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import AsyncStorage from 'expo-sqlite/kv-store';
 
 // We test the default (native) module resolution since
@@ -29,6 +30,7 @@ describe('config-cache', () => {
         feedback: { syncIntervalSec: 60 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
         social: { instagramHandle: 'sonora.derivapoetica' },
+        map: DEFAULT_REMOTE_CONFIG.map,
       };
 
       await setCachedConfig(config);
@@ -50,6 +52,7 @@ describe('config-cache', () => {
         feedback: { syncIntervalSec: 120 },
         appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
         social: { instagramHandle: 'sonora.derivapoetica' },
+        map: DEFAULT_REMOTE_CONFIG.map,
       };
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(config));
 
