@@ -30,6 +30,9 @@ const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
  * which answers 500 when no bucket is bound: `/config` bootstraps the whole app,
  * and an environment without artifacts still has to serve a payload.
  */
+/** How long one bucket lookup may hold `/config` before the region counts as unpublished. */
+const HEAD_TIMEOUT_MS = 1500;
+
 async function readPublishedRegions(
   bucket: R2Bucket | undefined,
   origin: string,
@@ -41,7 +44,13 @@ async function readPublishedRegions(
       if (!bbox || !bucket) return null;
 
       try {
-        const head = await bucket.head(mapArchiveKey(key, version));
+        // `/config` bootstraps the whole app, so a bucket that hangs answers as
+        // "not published" instead of holding the response. A timeout is not an
+        // error: the region simply is not in the catalog this time.
+        const head = await Promise.race([
+          bucket.head(mapArchiveKey(key, version)),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), HEAD_TIMEOUT_MS)),
+        ]);
         if (!head) return null;
 
         const region: MapRegionPayload = {

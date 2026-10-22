@@ -89,6 +89,15 @@ describe('useMapViewConfig', () => {
     expect(disabled.result.current.renderer).toBe('leaflet');
   });
 
+  it('draws no region the server did not name to preload', async () => {
+    mockMapConfig = { ...mockMapConfig!, download: { ...DOWNLOAD, preload: [] } };
+    const { result } = await renderHook(() => useMapViewConfig());
+
+    // A published region that nobody asked to preload is not guessed: R10 puts
+    // that decision on the server, and T-B resolves the real region per experience.
+    expect(result.current.source.archiveUrl).toBe('');
+  });
+
   it('lets the remote value reach the renderer when the build left it open', async () => {
     mockRenderer = 'leaflet';
     mockMapConfig = { ...mockMapConfig!, renderer: 'maplibre' };
@@ -130,30 +139,29 @@ describe('useMapViewConfig', () => {
     );
   });
 
-  it('falls back to the first published region when the payload preloads nothing', async () => {
+  it('draws nothing when the payload preloads nothing, even with a published region', async () => {
     mockMapConfig = {
-      styleUrl: '',
+      styleUrl: 'https://api.example/media/public/styles/v1.json',
       regions: { calamuchita: CALAMUCHITA },
       download: { ...DOWNLOAD, preload: [] },
     };
     const { result } = await renderHook(() => useMapViewConfig());
 
-    expect(result.current.source.archiveUrl).toBe(
-      'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-    );
+    // R10 keeps the choice on the server: a region nobody named is not guessed,
+    // and T-B replaces this with the experience's own coordinates.
+    expect(result.current.source.archiveUrl).toBe('');
+    expect(result.current.source.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
   });
 
   it('ignores a preload entry the catalog does not carry', async () => {
     mockMapConfig = {
-      styleUrl: '',
+      styleUrl: 'https://api.example/media/public/styles/v1.json',
       regions: { calamuchita: CALAMUCHITA },
       download: { ...DOWNLOAD, preload: ['otro-valle'] },
     };
     const { result } = await renderHook(() => useMapViewConfig());
 
-    expect(result.current.source.archiveUrl).toBe(
-      'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-    );
+    expect(result.current.source.archiveUrl).toBe('');
   });
 
   it('sends no archive when the catalog is empty', async () => {

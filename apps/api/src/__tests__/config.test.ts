@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DEFAULT_MAP_ARTIFACT_VERSION, DEFAULT_REMOTE_CONFIG, MAP_REGIONS } from '@sonora/shared';
 import app from '../index';
 
@@ -11,7 +11,7 @@ const BINDINGS = {
  * A public-bucket double whose `head` answers only for the keys it was given.
  * `head` is all `/config` may do: it publishes what is already uploaded.
  */
-function publicBucket(objects: Record<string, number | 'throws'>) {
+function publicBucket(objects: Record<string, number | 'throws' | 'hangs'>) {
   const heads: string[] = [];
   const bucket = {
     head: async (key: string) => {
@@ -19,6 +19,7 @@ function publicBucket(objects: Record<string, number | 'throws'>) {
       const size = objects[key];
       if (size === undefined) return null;
       if (size === 'throws') throw new Error('R2 unavailable');
+      if (size === 'hangs') return new Promise<never>(() => {});
       return { key, size };
     },
   };
@@ -268,6 +269,24 @@ describe('GET /config', () => {
     expect(body.map.regions).toEqual({});
     expect(body.map.download.preload).toEqual([]);
     expect(body.map.styleUrl).toBe('http://localhost/media/public/styles/v1.json');
+  });
+
+  it('answers the bootstrap when the bucket hangs, with an empty catalog', async () => {
+    // `/config` bootstraps the app: a bucket that never answers must cost a
+    // bounded wait, not the whole startup.
+    vi.useFakeTimers();
+    try {
+      const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 'hangs' });
+      const pending = app.request('/config', {}, { ...BINDINGS, PUBLIC_BUCKET: bucket } as never);
+      await vi.advanceTimersByTimeAsync(2_000);
+      const res = await pending;
+      const body = (await res.json()) as MapBody;
+
+      expect(res.status).toBe(200);
+      expect(body.map.regions).toEqual({});
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sends the renderer and every map field the defaults describe', async () => {
