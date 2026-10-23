@@ -11,7 +11,36 @@ jest.mock('pmtiles', () => ({
   },
 }));
 
+/**
+ * The storage the client cache writes to, in memory.
+ *
+ * The cache the style now relies on lives in `BaseApiClient` (`cacheKey`), so the base
+ * client is what has to stay under test: only the platform storage is replaced, and the
+ * write-on-success and read-on-failure it performs are the real ones.
+ */
+const mockCache: Record<string, string> = {};
+
+jest.mock('@/storage/app-storage', () => ({
+  appStorage: {
+    getItem: jest.fn((key: string) => Promise.resolve(mockCache[key] ?? null)),
+    setItem: jest.fn((key: string, value: string) => {
+      mockCache[key] = value;
+      return Promise.resolve();
+    }),
+    removeItem: jest.fn((key: string) => {
+      delete mockCache[key];
+      return Promise.resolve();
+    }),
+    clear: jest.fn(() => Promise.resolve()),
+  },
+  getDeviceId: jest.fn(() => Promise.resolve('test-device-id')),
+}));
+
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+// The one key rule, shared with the native renderer: the web renderer and the device
+// cache a style document in the same place, under the same name.
+import { fetchStyleDocument, styleCacheKey } from '@/services/map-style-cache';
+import { appStorage } from '@/storage/app-storage';
 
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const ARCHIVE_ERROR = 'https://api.example/media/public/tiles/broken/v1.pmtiles';
@@ -22,6 +51,27 @@ const ARCHIVE_SWAP_SECOND = 'https://api.example/media/public/tiles/swap-second/
 const STYLE_ONE = 'https://api.example/media/public/styles/one.json';
 const STYLE_TWO = 'https://api.example/media/public/styles/two.json';
 
+// One archive and one style url per case: the page keeps both registries in memory, and
+// a case that reused a url would observe the earlier case's cached document.
+const ARCHIVE_WRITE = 'https://api.example/media/public/tiles/write/v1.pmtiles';
+const ARCHIVE_CACHED = 'https://api.example/media/public/tiles/cached-style/v1.pmtiles';
+const ARCHIVE_NONE = 'https://api.example/media/public/tiles/no-network/v1.pmtiles';
+const ARCHIVE_UNDRAWABLE = 'https://api.example/media/public/tiles/undrawable/v1.pmtiles';
+const ARCHIVE_RAW = 'https://api.example/media/public/tiles/style-raw/v1.pmtiles';
+const STYLE_WRITE = 'https://api.example/media/public/styles/write.json';
+const STYLE_CACHED = 'https://api.example/media/public/styles/cached.json';
+const STYLE_NONE = 'https://api.example/media/public/styles/none.json';
+const STYLE_UNDRAWABLE = 'https://api.example/media/public/styles/undrawable.json';
+const STYLE_RAW = 'https://api.example/media/public/styles/raw.json';
+const STYLE_POISON = 'https://api.example/media/public/styles/poison.json';
+const ARCHIVE_RETRY = 'https://api.example/media/public/tiles/retry/v1.pmtiles';
+const STYLE_RETRY = 'https://api.example/media/public/styles/retry.json';
+
+/** The storage key each of the styles above is cached under (see `styleCacheKey`). */
+const KEY_WRITE = 'map_style_cache_29842252';
+const KEY_CACHED = 'map_style_cache_ea9748bb';
+const KEY_UNDRAWABLE = 'map_style_cache_fd9f7a16';
+
 /** Resolves a `fetch` call by hand, so a run can be left genuinely in flight. */
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -29,6 +79,21 @@ function deferred<T>() {
     resolve = res;
   });
   return { promise, resolve };
+}
+
+/** An archive response: the hook reads the bytes and the PMTiles header, nothing else. */
+function archiveResponse(size = 1024) {
+  return { ok: true, arrayBuffer: async () => new ArrayBuffer(size) };
+}
+
+/** A style response, as the client reads it. */
+function styleResponse(document: unknown) {
+  return { ok: true, json: async () => document };
+}
+
+/** A network that is not there: what the browser throws when the request cannot leave. */
+function networkFailure() {
+  return Promise.reject(new TypeError('Network request failed'));
 }
 
 function fakeMaplibre() {
@@ -212,5 +277,185 @@ describe('the local protocol', () => {
     mockGetZxy.mockResolvedValueOnce(undefined);
     const empty = (await handler?.({ url: `sonora://${key}/14/0/0` })) as { data: Uint8Array };
     expect(empty.data.byteLength).toBe(0);
+  });
+});
+
+/**
+ * The style the web renderer draws with, across a reload with no network (R12, L7).
+ *
+ * The style is fetched through the client cache instead of a raw `fetch`, because that
+ * cache is what the experiences list already survives offline with. The archive is a
+ * separate transfer and is left alone: every case here lets the archive answer so the
+ * observation is about the style, which is what this slice owns.
+ */
+describe('the style the web renderer keeps across a reload', () => {
+  const cacheStorage = appStorage as unknown as { getItem: jest.Mock; setItem: jest.Mock };
+
+  beforeEach(() => {
+    for (const key of Object.keys(mockCache)) delete mockCache[key];
+    cacheStorage.getItem.mockClear();
+    cacheStorage.setItem.mockClear();
+    mockGetHeader.mockReset().mockResolvedValue({
+      minZoom: 0,
+      maxZoom: 15,
+      minLon: -64.83,
+      minLat: -32.28,
+      maxLon: -64.66,
+      maxLat: -32.12,
+    });
+    mockGetZxy.mockReset();
+  });
+
+  it('derives the documented key from the whole style url', () => {
+    // The format is pinned, not just the behaviour: a key that changed shape would orphan
+    // every document a previous build had stored.
+    expect(styleCacheKey(STYLE_WRITE)).toBe(KEY_WRITE);
+    // Same url, same key — that is what makes the next launch find these bytes again.
+    expect(styleCacheKey(STYLE_WRITE)).toBe(styleCacheKey(STYLE_WRITE));
+    // A republished style and another origin are different documents, never one key.
+    expect(styleCacheKey(STYLE_WRITE.replace('/write.', '/published.'))).not.toBe(KEY_WRITE);
+    expect(styleCacheKey(STYLE_WRITE.replace('api.example', 'staging.example'))).not.toBe(
+      KEY_WRITE,
+    );
+  });
+
+  it('caches a successful style fetch under the documented key', async () => {
+    const style = { version: 8, sources: {}, layers: [{ id: 'water' }] };
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_WRITE) return Promise.resolve(archiveResponse());
+      if (url === STYLE_WRITE) return Promise.resolve(styleResponse(style));
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_WRITE, STYLE_WRITE));
+
+    // The document still reaches the map…
+    await waitFor(() => expect(result.current.style).toEqual(style));
+    // …and the same bytes are stored under the key this url is documented to use, which
+    // is what the next cold start reads when the network cannot answer.
+    await waitFor(() =>
+      expect(cacheStorage.setItem).toHaveBeenCalledWith(KEY_WRITE, JSON.stringify(style)),
+    );
+    expect(cacheStorage.setItem).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the cached document instead of failing when the network is gone', async () => {
+    const cached = { version: 8, sources: { basemap: {} }, layers: [{ id: 'land' }] };
+    mockCache[KEY_CACHED] = JSON.stringify(cached);
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_CACHED) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_CACHED, STYLE_CACHED));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.style).toEqual(cached);
+    expect(result.current.error).toBeUndefined();
+    expect(cacheStorage.getItem).toHaveBeenCalledWith(KEY_CACHED);
+  });
+
+  it('still reports the failure on a first visit with no network and nothing cached', async () => {
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_NONE) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_NONE, STYLE_NONE));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    // The error the network produced, unwrapped: the storage read found nothing, so the
+    // first visit fails exactly as it did before the cache existed.
+    expect(result.current.error).toBe('Network request failed');
+    expect(result.current.style).toBeUndefined();
+  });
+
+  it('treats a cached document that is not drawable as absent', async () => {
+    // No `version`: a body MapLibre cannot draw, which must never reach the map.
+    mockCache[KEY_UNDRAWABLE] = JSON.stringify({ sources: {}, layers: [{ id: 'land' }] });
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_UNDRAWABLE) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_UNDRAWABLE, STYLE_UNDRAWABLE));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.style).toBeUndefined();
+    // Nothing drawable was kept, so the failure the walker sees is the one that really
+    // happened: the network. The undrawable body never even reaches the drawable check.
+    expect(result.current.error).toBe('Network request failed');
+  });
+
+  it('never lets an undrawable 200 replace the document the device already kept', async () => {
+    const good = { version: 8, sources: { basemap: {} }, layers: [{ id: 'land' }] };
+    const portal = '<html><body>Sign in to the wifi</body></html>';
+    let respond: 'good' | 'portal' = 'good';
+    globalThis.fetch = jest.fn(() =>
+      Promise.resolve(
+        respond === 'good'
+          ? styleResponse(good)
+          : ({
+              ok: true,
+              status: 200,
+              statusText: 'OK',
+              json: async () => portal,
+              text: async () => portal,
+            } as unknown as Response),
+      ),
+    ) as unknown as typeof fetch;
+
+    // A good document is kept first: that is the state a walker has after one online visit.
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
+    expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
+
+    // A captive portal answers 200 with a page that is not a style. The visit may fail,
+    // but it may not take the document away: that is what broke R12 before the cache
+    // owned its own write.
+    respond = 'portal';
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toBe(portal);
+    expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
+
+    // With no network at all, the kept document is what the map gets.
+    globalThis.fetch = jest.fn(() => networkFailure()) as unknown as typeof fetch;
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
+  });
+
+  it('finds the document through the same key after a retry url', async () => {
+    const kept = { version: 8, sources: {}, layers: [{ id: 'water' }] };
+    // The renderer retries by asking for the same document under a cache-busting query;
+    // what a path holds does not depend on that query, so it is one document and one key.
+    mockCache[styleCacheKey(`${STYLE_RETRY}?retry`)] = JSON.stringify(kept);
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_RETRY) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_RETRY, STYLE_RETRY));
+
+    await waitFor(() => expect(result.current.style).toEqual(kept));
+    expect(styleCacheKey(`${STYLE_RETRY}?retry`)).toBe(styleCacheKey(STYLE_RETRY));
+  });
+
+  it('leaves the archive transfer reading the network directly', async () => {
+    const style = { version: 8, sources: {}, layers: [] };
+    const fetchMock = jest.fn((url: string) => {
+      if (url === ARCHIVE_RAW) return Promise.resolve(archiveResponse(2048));
+      if (url === STYLE_RAW) return Promise.resolve(styleResponse(style));
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_RAW, STYLE_RAW));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.bytes).toBe(2048);
+    expect(result.current.sourceUrl).toMatch(/^sonora:\/\//);
+
+    // The archive is still one raw, whole download, with no client and no cache in front
+    // of it: exactly the transfer this slice did not touch.
+    const archiveCalls = fetchMock.mock.calls.filter(([url]) => url === ARCHIVE_RAW);
+    expect(archiveCalls).toHaveLength(1);
+    expect(archiveCalls[0]).toHaveLength(1);
   });
 });

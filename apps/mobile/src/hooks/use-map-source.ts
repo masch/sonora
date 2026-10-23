@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import type { StyleSpecification } from 'maplibre-gl';
 import { PMTiles } from 'pmtiles';
 
+import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
+
 /**
  * Loads a PMTiles archive **whole** and serves its tiles from memory.
  *
@@ -34,7 +36,15 @@ export interface MapSourceState {
   status: MapSourceStatus;
   /** `sonora://<key>`, ready to be used as a vector source url. */
   sourceUrl?: string;
-  /** Style fetched from R2, when a url is configured. */
+  /**
+   * The style document handed to MapLibre, from the network or from the client cache.
+   *
+   * Cached or freshly fetched, its `glyphs` and `sprite` are still fetched over HTTP by
+   * MapLibre itself: only the document is kept, so a reload with no network draws land,
+   * water and roads from the archive and **no names and no icons**. That is the honest
+   * state of this renderer (L7, L14): names would need the font ranges and the sprite
+   * sheet kept as well, and caching them is not what this module does.
+   */
   style?: StyleSpecification;
   /** Size of the downloaded archive, for the UI and for tests. */
   bytes?: number;
@@ -56,12 +66,26 @@ function keyFor(url: string): string {
 /**
  * Fetches a style document, failing loudly instead of handing back a partial one.
  * Returns undefined when no style is configured.
+ *
+ * The document travels through the client's cache (`map-style-cache.ts`, the L7
+ * decision): a successful GET is written under `styleCacheKey(url)` and read back when
+ * the request cannot answer, which is how a reload with no connectivity draws the style
+ * it drew last time. The native renderer reads and writes the same key, so a device and
+ * a browser cannot disagree about where a style lives.
+ *
+ * A first visit with no network and nothing stored behaves exactly as it did before: the
+ * storage read finds nothing and the original fetch error is what surfaces. A body the
+ * cache hands back without the `version` MapLibre reads first is absent, never a style
+ * — the one rule both renderers apply, so a poisoned cache entry costs a retry instead
+ * of a permanently blank map.
  */
 async function fetchStyle(url?: string): Promise<StyleSpecification | undefined> {
   if (!url) return undefined;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-  return (await response.json()) as StyleSpecification;
+  const document = await fetchStyleDocument(url);
+  if (!isDrawableStyle<StyleSpecification>(document)) {
+    throw new Error(`style ${url} is not a drawable document`);
+  }
+  return document;
 }
 
 /**

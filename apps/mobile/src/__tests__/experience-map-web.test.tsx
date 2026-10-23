@@ -89,7 +89,12 @@ describe('ExperienceMap (web)', () => {
     await waitFor(() => expect(mockMapInstances).toHaveLength(1));
 
     expect(globalThis.fetch).toHaveBeenCalledWith(ARCHIVE);
-    expect(globalThis.fetch).toHaveBeenCalledWith(STYLE_URL);
+    // The style travels through ApiClient so its cacheKey applies (L7): one fetch call,
+    // with the client's method and headers.
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      STYLE_URL,
+      expect.objectContaining({ method: 'GET' }),
+    );
 
     const style = mockMapInstances[0].options.style as {
       sources: { basemap: { url: string; type: string } };
