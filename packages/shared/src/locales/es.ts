@@ -44,6 +44,11 @@ export const es = {
       'Es {{count}} región de mapa, {{size}} en total. Si decís que ahora no, no descargamos nada y el mapa sigue funcionando cuando tengas conexión.',
     downloadPromptAccept: 'Descargar ahora',
     downloadPromptDismiss: 'Ahora no',
+    // La acción por recorrido: preparar la región de este recorrido antes de salir.
+    downloadAction: 'Prepará este mapa',
+    downloadInProgress: 'Descargando el mapa…',
+    downloadAvailable: 'Mapa disponible sin conexión',
+    downloadFailure: 'No pudimos descargar el mapa. Probá de nuevo.',
     // What a failure becomes on screen: the hooks report these codes, never prose.
     errors: {
       archiveMissing: 'No hay un mapa configurado',

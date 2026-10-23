@@ -9,6 +9,7 @@ import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
 import TripMap from '@/components/map/trip-map';
+import { MapDownloadButton } from '@/components/map/map-download-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
 import { ExperienceCredits } from '@/components/experience-credits';
@@ -223,8 +224,10 @@ export default function TripDetailView({
               subtextColor={colors.homeCardSubtext}
             />
 
-            {/* Mini map */}
+            {/* Mini map, and the decision to take it with you: the region the
+                trip's own coordinates resolve to, prepared before leaving. */}
             <TripMap experience={track} userCoordinates={geofence.userCoordinates ?? undefined} />
+            <MapDownloadButton point={{ latitude: track.latitude, longitude: track.longitude }} />
 
             {/* GPS precision */}
             {showGPSDetails && (

@@ -95,10 +95,11 @@ What the rewrite deletes: the top-level `map.archiveUrl`, `MAP_ARCHIVE_URL` and 
   - Delivered: `useMapPrefetch` (payload signature, one decision for the whole set, already-downloaded regions excluded from the price) + `MapDownloadPrompt` (one `BottomModal`, `formatBytes` in the reader's language) mounted in the root layout. Proof: 10 new tests over the seven cases above, full mobile suite 109/944, `tsc` clean, lint 0 errors. A verifier-leg of the review found the hook marked a payload handled _before_ the run decided, which under React's development double-invoke would have downloaded nothing and asked nothing: the mark moved after the cancellation check. Commit: pending.
   - Advisories accepted, not fixed here: a dismissed prompt is remembered by the hook instance, so a remount in the same session asks again; a silent download that fails is not retried until the payload changes, and the map's own error is the only surface.
 
-- [ ] **T-C3: "Prepare this trip" as an explicit action** — Refs: S1, S4; R3.
+- [x] **T-C3: "Prepare this trip" as an explicit action** — Refs: S1, S4; R3.
   - Path: `apps/mobile/src/components/map/` (trip surface), locales
   - Action: a button on the trip screen that downloads that trip's region on demand, for a walker who wants the map prepared before leaving. The startup prefetch already covers the set the payload names; this is the per-trip decision, and it must not become a second policy engine — it reuses `ensureArchiveOnDisk` with the payload's budget.
   - Proof: the button downloads the trip's region once, reports when it is already there, and does nothing under `leaflet`.
+  - Delivered: `MapDownloadButton` — self-contained (its own state, no `useState` in the trip view), silent under `leaflet` and for a point in no region, `available` and disabled when the archive is already on the device, one transfer with the payload's budget, and a retryable failure line. Placed under the mini map in the trip details card. Proof: 6 tests over those states, full mobile suite 110/950, `tsc` clean, lint 0 errors, doctor 100/100. It is not a second policy engine: no network decision and no prompt — a tap is the answer.
 
 - [ ] **T-E: The map survives a cold start with no network** — Refs: S1; R12.
   - Path: `apps/mobile/src/components/map/experience-map.tsx`, `apps/mobile/src/hooks/use-map-archive-file.ts`, `apps/mobile/src/services/` (style persistence), locales

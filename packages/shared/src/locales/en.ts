@@ -44,6 +44,11 @@ export const en = {
       'That is {{count}} map region, {{size}} in total. Say not now and nothing is downloaded; the map still works when you are online.',
     downloadPromptAccept: 'Download now',
     downloadPromptDismiss: 'Not now',
+    // The per-trip action: prepare this trip's own region before leaving.
+    downloadAction: 'Prepare this map',
+    downloadInProgress: 'Downloading the map…',
+    downloadAvailable: 'Map available offline',
+    downloadFailure: "We couldn't download the map. Try again.",
     // What a failure becomes on screen: the hooks report these codes, never prose.
     errors: {
       archiveMissing: 'No map is configured',
