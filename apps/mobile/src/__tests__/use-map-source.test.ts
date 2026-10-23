@@ -39,7 +39,7 @@ jest.mock('@/storage/app-storage', () => ({
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
 // The one key rule, shared with the native renderer: the web renderer and the device
 // cache a style document in the same place, under the same name.
-import { styleCacheKey } from '@/services/map-style-cache';
+import { fetchStyleDocument, styleCacheKey } from '@/services/map-style-cache';
 import { appStorage } from '@/storage/app-storage';
 
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -63,6 +63,9 @@ const STYLE_CACHED = 'https://api.example/media/public/styles/cached.json';
 const STYLE_NONE = 'https://api.example/media/public/styles/none.json';
 const STYLE_UNDRAWABLE = 'https://api.example/media/public/styles/undrawable.json';
 const STYLE_RAW = 'https://api.example/media/public/styles/raw.json';
+const STYLE_POISON = 'https://api.example/media/public/styles/poison.json';
+const ARCHIVE_RETRY = 'https://api.example/media/public/tiles/retry/v1.pmtiles';
+const STYLE_RETRY = 'https://api.example/media/public/styles/retry.json';
 
 /** The storage key each of the styles above is cached under (see `styleCacheKey`). */
 const KEY_WRITE = 'map_style_cache_29842252';
@@ -379,7 +382,59 @@ describe('the style the web renderer keeps across a reload', () => {
 
     await waitFor(() => expect(result.current.status).toBe('error'));
     expect(result.current.style).toBeUndefined();
-    expect(result.current.error).toContain('not a drawable document');
+    // Nothing drawable was kept, so the failure the walker sees is the one that really
+    // happened: the network. The undrawable body never even reaches the drawable check.
+    expect(result.current.error).toBe('Network request failed');
+  });
+
+  it('never lets an undrawable 200 replace the document the device already kept', async () => {
+    const good = { version: 8, sources: { basemap: {} }, layers: [{ id: 'land' }] };
+    const portal = '<html><body>Sign in to the wifi</body></html>';
+    let respond: 'good' | 'portal' = 'good';
+    globalThis.fetch = jest.fn(() =>
+      Promise.resolve(
+        respond === 'good'
+          ? styleResponse(good)
+          : ({
+              ok: true,
+              status: 200,
+              statusText: 'OK',
+              json: async () => portal,
+              text: async () => portal,
+            } as unknown as Response),
+      ),
+    ) as unknown as typeof fetch;
+
+    // A good document is kept first: that is the state a walker has after one online visit.
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
+    expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
+
+    // A captive portal answers 200 with a page that is not a style. The visit may fail,
+    // but it may not take the document away: that is what broke R12 before the cache
+    // owned its own write.
+    respond = 'portal';
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toBe(portal);
+    expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
+
+    // With no network at all, the kept document is what the map gets.
+    globalThis.fetch = jest.fn(() => networkFailure()) as unknown as typeof fetch;
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
+  });
+
+  it('finds the document through the same key after a retry url', async () => {
+    const kept = { version: 8, sources: {}, layers: [{ id: 'water' }] };
+    // The renderer retries by asking for the same document under a cache-busting query;
+    // what a path holds does not depend on that query, so it is one document and one key.
+    mockCache[styleCacheKey(`${STYLE_RETRY}?retry`)] = JSON.stringify(kept);
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_RETRY) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_RETRY, STYLE_RETRY));
+
+    await waitFor(() => expect(result.current.style).toEqual(kept));
+    expect(styleCacheKey(`${STYLE_RETRY}?retry`)).toBe(styleCacheKey(STYLE_RETRY));
   });
 
   it('leaves the archive transfer reading the network directly', async () => {

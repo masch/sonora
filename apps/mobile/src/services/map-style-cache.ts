@@ -1,3 +1,4 @@
+import { appStorage } from '@/storage/app-storage';
 import { ApiClient } from '@/services/api-client';
 import { fingerprint } from '@/utils/fingerprint';
 
@@ -38,7 +39,21 @@ export interface CachedStyleDocument {
  * storage as dead weight (one style document per published version, 268 KB each, L7).
  */
 export function styleCacheKey(styleUrl: string): string {
-  return `map_style_cache_${fingerprint(styleUrl)}`;
+  return `map_style_cache_${fingerprint(styleIdentity(styleUrl))}`;
+}
+
+/**
+ * The url without its query or its fragment.
+ *
+ * A style's identity is its origin and its path: `…/styles/v1.json` holds one document,
+ * and a query — a cache buster a caller added, a retry marker — cannot change which
+ * document that path is. Hashing the raw url meant a fetch that only succeeded on a
+ * `?retry` attempt was stored under a key the next cold start never asked for, so the
+ * walker who had the document on the phone still got a blank map.
+ */
+function styleIdentity(styleUrl: string): string {
+  const withoutFragment = styleUrl.split('#')[0] ?? '';
+  return withoutFragment.split('?')[0] ?? '';
 }
 
 /**
@@ -62,19 +77,61 @@ export function isDrawableStyle<T extends object = CachedStyleDocument>(
 }
 
 /**
- * Fetches a style document through the client's cache, on whichever platform asks.
+ * The document kept for this url, if the device or the browser holds one MapLibre can
+ * draw.
  *
- * Why through `ApiClient` and not a raw `fetch` (L7): the base client writes the body of a
- * successful GET to storage under its `cacheKey` and reads that storage back when the
- * request cannot answer. That is the offline fallback the experiences list already uses,
- * so a cold start with no connectivity draws the style it drew last time and no second
- * cache mechanism is written. The client accepts an absolute url, which is what a style
- * url is.
+ * A stored body that does not pass {@link isDrawableStyle} is reported as absent rather
+ * than returned: an older build wrote whatever a 200 carried, and this read is where
+ * such a document stops being able to blank the map.
+ */
+export async function readCachedStyleDocument(
+  styleUrl: string,
+): Promise<CachedStyleDocument | null> {
+  try {
+    const stored = await appStorage.getItem(styleCacheKey(styleUrl));
+    if (stored === null) return null;
+    const parsed: unknown = JSON.parse(stored);
+    return isDrawableStyle(parsed) ? parsed : null;
+  } catch {
+    // Unreadable storage and unparsable bodies are the same answer here: nothing kept.
+    return null;
+  }
+}
+
+/**
+ * Keeps a document the renderer actually accepted.
+ *
+ * Written after validation on purpose. The client's own `cacheKey` path stores the body
+ * of any 2xx response before the caller can look at it, so a captive portal or an error
+ * page served with 200 replaced the last good style and the next cold start had nothing
+ * to draw. Only a document that passed {@link isDrawableStyle} is ever written here.
+ */
+async function writeCachedStyleDocument(
+  styleUrl: string,
+  document: CachedStyleDocument,
+): Promise<void> {
+  try {
+    await appStorage.setItem(styleCacheKey(styleUrl), JSON.stringify(document));
+  } catch {
+    // Best effort: failing to keep the document only costs the next cold start.
+  }
+}
+
+/**
+ * Fetches a style document, keeping the client's transport and owning the cache.
+ *
+ * The request still goes through `ApiClient` (L7): the same transport, the same device
+ * headers, the same error shape the rest of the app reads. What it does not use is the
+ * client's `cacheKey`, because that path writes before anyone can validate — see
+ * {@link writeCachedStyleDocument}. The cache is therefore this module's, on the same
+ * storage (`appStorage`: SQLite on the phone, local storage in the browser) and under the
+ * one key rule above, so both renderers agree about where the document lives and only a
+ * drawable document is ever kept.
  *
  * A first visit with no network and nothing stored behaves exactly as it did before: the
- * storage read finds nothing and the original fetch error is what surfaces. The body is
- * returned untyped on purpose — the caller decides with {@link isDrawableStyle}, so no
- * renderer can hand the map a body that was never checked.
+ * read finds nothing and the original error is what surfaces. The body is returned
+ * untyped on purpose — the caller decides with {@link isDrawableStyle}, so no renderer
+ * can hand the map a body that was never checked.
  *
  * `signal` is forwarded so a renderer that bounds its wait can cancel the transfer itself
  * rather than only walking away from it.
@@ -83,8 +140,18 @@ export async function fetchStyleDocument(
   styleUrl: string,
   options: { signal?: AbortSignal } = {},
 ): Promise<unknown> {
-  return ApiClient.get<unknown>(styleUrl, {
-    cacheKey: styleCacheKey(styleUrl),
-    ...(options.signal ? { signal: options.signal } : {}),
-  });
+  try {
+    const document = await ApiClient.get<unknown>(styleUrl, {
+      skipCache: true,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    if (isDrawableStyle(document)) await writeCachedStyleDocument(styleUrl, document);
+    return document;
+  } catch (error) {
+    // The request could not answer. What the device kept is the answer, if it can be
+    // drawn; otherwise the original failure is what the walker's screen reports.
+    const kept = await readCachedStyleDocument(styleUrl);
+    if (kept) return kept;
+    throw error;
+  }
 }
