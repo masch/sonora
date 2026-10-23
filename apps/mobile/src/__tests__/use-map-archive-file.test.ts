@@ -189,6 +189,7 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { logger } from '@/utils/logger';
 
 const ARCHIVE_V1 = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -344,6 +345,35 @@ describe('useMapArchiveFile', () => {
     expect([...mockDisk.keys()].sort()).toEqual(
       [fileOf(api.result.current.uri), fileOf(cdn.result.current.uri)].sort(),
     );
+  });
+
+  it('brings the directory back under the payload budget before a transfer', async () => {
+    // Two archives of a previous version are already on the device; the budget the
+    // payload carries leaves room for only one of them.
+    const oldest = `${ARCHIVE_DIR}/calamuchita-v0-aaaaaaaa.pmtiles`;
+    const newer = `${ARCHIVE_DIR}/calamuchita-v0-bbbbbbbb.pmtiles`;
+    seedFile(oldest, new Uint8Array(100));
+    seedFile(newer, new Uint8Array(100));
+    const configured = useRemoteConfigStore.getState().config;
+    useRemoteConfigStore.setState({
+      config: {
+        ...configured,
+        map: { ...configured.map, download: { ...configured.map.download, cacheMaxBytes: 120 } },
+      },
+    });
+
+    try {
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      // The oldest went; the one next to it stayed, and the archive this run wanted
+      // landed.
+      expect(mockDisk.has(oldest)).toBe(false);
+      expect(mockDisk.has(newer)).toBe(true);
+      expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+    } finally {
+      useRemoteConfigStore.setState({ config: configured });
+    }
   });
 
   it('downloads nothing when the point fell in no region', async () => {
