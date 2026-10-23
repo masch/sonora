@@ -573,6 +573,90 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
 
+# ── Self-hosted map assets: glyphs + sprite (public bucket) ────
+# The published style used to point `glyphs` and `sprite` at a third party
+# (protomaps.github.io), so a slow or blocked host degraded labels even with full
+# connectivity. These targets publish our own copy once. The version is not part
+# of the path: fonts and the sprite sheet are content shared by every artifact
+# version, not per-release builds.
+#
+# The directory mirrors the bucket exactly — <dir>/glyphs/<fontstack>/<range>.pbf
+# and <dir>/sprites/light/sprite{,@2x}.{json,png} — because those paths are the
+# ones the style template asks for, so nothing is renamed on the way up. Same
+# rules as the archives above: immutable per object, and --remote is required, or
+# wrangler writes to its local Miniflare simulation and the deployed Worker keeps
+# seeing an empty bucket.
+
+MAP_ASSETS_DIR ?= ./map-assets
+
+.PHONY: api-upload-map-assets-staging
+api-upload-map-assets-staging: ## Upload self-hosted map glyphs + sprite to the staging public bucket. Usage: make api-upload-map-assets-staging [MAP_ASSETS_DIR=./map-assets]
+	@set -eu; \
+	ASSETS="$(abspath $(MAP_ASSETS_DIR))"; \
+	if [ ! -d "$$ASSETS" ]; then \
+		echo "Error: map assets directory not found: $$ASSETS"; \
+		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light/sprite{,@2x}.{json,png}"; \
+		echo "  Pass MAP_ASSETS_DIR=/path/to/map-assets to upload another directory."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$(find "$$ASSETS" -type f | head -n 1)" ]; then \
+		echo "Error: no files under $$ASSETS — nothing to upload."; \
+		exit 1; \
+	fi; \
+	echo "Uploading to the staging public bucket (sonora-staging-public-audio):"; \
+	(cd "$$ASSETS" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r FILE; do \
+		case "$$FILE" in \
+			*.pbf) TYPE=application/x-protobuf ;; \
+			*.json) TYPE=application/json ;; \
+			*.png) TYPE=image/png ;; \
+			*) echo "Error: no content type for $$FILE (only .pbf, .json and .png are map assets)"; exit 1 ;; \
+		esac; \
+		echo "  $$TYPE  $$FILE"; \
+	done; \
+	(cd "$$ASSETS" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r FILE; do \
+		case "$$FILE" in \
+			*.pbf) TYPE=application/x-protobuf ;; \
+			*.json) TYPE=application/json ;; \
+			*.png) TYPE=image/png ;; \
+		esac; \
+		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-staging-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote); \
+	done; \
+	echo "Uploaded the glyphs and the sprite to the staging public bucket"
+
+.PHONY: api-upload-map-assets-production
+api-upload-map-assets-production: ## Upload self-hosted map glyphs + sprite to the production public bucket. Usage: make api-upload-map-assets-production [MAP_ASSETS_DIR=./map-assets]
+	@set -eu; \
+	ASSETS="$(abspath $(MAP_ASSETS_DIR))"; \
+	if [ ! -d "$$ASSETS" ]; then \
+		echo "Error: map assets directory not found: $$ASSETS"; \
+		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light/sprite{,@2x}.{json,png}"; \
+		echo "  Pass MAP_ASSETS_DIR=/path/to/map-assets to upload another directory."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$(find "$$ASSETS" -type f | head -n 1)" ]; then \
+		echo "Error: no files under $$ASSETS — nothing to upload."; \
+		exit 1; \
+	fi; \
+	echo "Uploading to the production public bucket (sonora-production-public-audio):"; \
+	(cd "$$ASSETS" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r FILE; do \
+		case "$$FILE" in \
+			*.pbf) TYPE=application/x-protobuf ;; \
+			*.json) TYPE=application/json ;; \
+			*.png) TYPE=image/png ;; \
+			*) echo "Error: no content type for $$FILE (only .pbf, .json and .png are map assets)"; exit 1 ;; \
+		esac; \
+		echo "  $$TYPE  $$FILE"; \
+	done; \
+	(cd "$$ASSETS" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r FILE; do \
+		case "$$FILE" in \
+			*.pbf) TYPE=application/x-protobuf ;; \
+			*.json) TYPE=application/json ;; \
+			*.png) TYPE=image/png ;; \
+		esac; \
+		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-production-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=31536000, immutable" --remote); \
+	done; \
+	echo "Uploaded the glyphs and the sprite to the production public bucket"
+
 # ── OSM reference ingestion (map documents) ──────
 # Turns OSM objects the basemap schema cannot carry (named buildings, tourism,
 # historic, amenities, shops) into one global reference document, with its i18n

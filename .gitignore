@@ -82,3 +82,5 @@ example
 # Local Pi runtime state
 .atl/
 .codegraph/
+# Self-hosted map assets (glyphs + sprite) staged for upload, never committed
+map-assets/
