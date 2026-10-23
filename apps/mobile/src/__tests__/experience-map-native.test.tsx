@@ -321,8 +321,11 @@ describe('ExperienceMap (native)', () => {
     expect(view.queryByText('map.noRegion')).toBeTruthy();
     expect(view.queryByText('map.errors.archiveMissing')).toBeNull();
     expect(view.queryByTestId('experience-map-error')).toBeNull();
-    // No archive means no download: the hook was handed nothing to fetch.
-    expect(mockedUseMapArchiveFile.mock.calls[0][0]).toBeUndefined();
+    // No archive means no download: the source handed to the hook names none.
+    expect(mockedUseMapArchiveFile.mock.calls[0][0]).toMatchObject({
+      archiveUrl: '',
+      regionKey: null,
+    });
     // The reference plane still draws, over a style that carries no basemap.
     expect(mockMapProps[0].mapStyle.sources?.basemap).toBeUndefined();
     expect(drawnLayerIds()).toContain('refs:umepay:circle');
@@ -547,7 +550,10 @@ describe('ExperienceMap (native)', () => {
     expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`, {
       signal: expect.any(AbortSignal),
     });
-    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 1);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ archiveUrl: ARCHIVE_URL }),
+      1,
+    );
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
   });
 
@@ -570,7 +576,10 @@ describe('ExperienceMap (native)', () => {
     // The style was asked again; the archive was never restarted.
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
     expect(styleFetch).toHaveBeenCalledTimes(2);
-    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(ARCHIVE_URL, 0);
+    expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ archiveUrl: ARCHIVE_URL }),
+      0,
+    );
   });
 
   it('draws a style already in the page cache on its first render, with no second transfer', async () => {
