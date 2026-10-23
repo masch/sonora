@@ -38,3 +38,46 @@ export function mapArchivePath(
 export function mapStylePath(version: string = DEFAULT_MAP_ARTIFACT_VERSION): string {
   return `${PUBLIC_MEDIA_PREFIX}${mapStyleKey(version)}`;
 }
+
+// Glyphs and sprites are content shared by every published version — three font
+// stacks and one icon sheet, the same bytes whatever `MAP_ARTIFACT_VERSION`
+// names — so unlike the archives and the style they carry no version segment.
+
+/**
+ * Bucket key template of a font glyph range, the same layout the upload target
+ * reads from `MAP_ASSETS_DIR`.
+ *
+ * `{fontstack}` and `{range}` are left in place on purpose: MapLibre substitutes
+ * them from the style's `glyphs` url, so one template describes every range of
+ * every font stack instead of enumerating them here.
+ */
+export function mapGlyphsKey(): string {
+  return 'glyphs/{fontstack}/{range}.pbf';
+}
+
+/**
+ * Bucket key of the sprite *base*, the same layout the upload target reads.
+ *
+ * The base is a name, not a file: MapLibre appends `.json`, `.png` and
+ * `@2x.png` to it, so a base that ended in a filename would ask for
+ * `sprite.json.json`.
+ */
+export function mapSpriteKey(): string {
+  return 'sprites/light';
+}
+
+/**
+ * Public path of the glyphs template, the url the style's `glyphs` field must
+ * carry. The placeholders survive into the url because MapLibre fills them.
+ */
+export function mapGlyphsPath(): string {
+  return `${PUBLIC_MEDIA_PREFIX}${mapGlyphsKey()}`;
+}
+
+/**
+ * Public path of the sprite base, the url the style's `sprite` field must
+ * carry. No extension: MapLibre derives the three files from this base.
+ */
+export function mapSpritePath(): string {
+  return `${PUBLIC_MEDIA_PREFIX}${mapSpriteKey()}`;
+}
