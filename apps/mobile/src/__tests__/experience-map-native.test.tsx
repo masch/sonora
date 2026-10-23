@@ -200,8 +200,7 @@ function drawnLayerIds(index = 0): string[] {
 /** The GeoJSON data the style carries for a reference document. */
 function drawnFeatures(documentKey: string) {
   const source = mockMapProps[0].mapStyle.sources?.[`refs:${documentKey}`] as
-    | { data?: { features?: { properties?: Record<string, unknown> }[] } }
-    | undefined;
+    { data?: { features?: { properties?: Record<string, unknown> }[] } } | undefined;
   return source?.data?.features ?? [];
 }
 

@@ -88,8 +88,7 @@ const styles = new Map<string, StyleSpecification>();
 
 /** What one transfer settles to. It never rejects: a failure is an outcome with a code. */
 type StyleOutcome =
-  | { status: 'ready'; style: StyleSpecification }
-  | { status: 'error'; code: MapStyleErrorCode };
+  { status: 'ready'; style: StyleSpecification } | { status: 'error'; code: MapStyleErrorCode };
 
 /**
  * One transfer of a style document, shared by every run that waits for the same url.
