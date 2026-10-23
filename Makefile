@@ -581,8 +581,9 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 # version, not per-release builds.
 #
 # The directory mirrors the bucket exactly — <dir>/glyphs/<fontstack>/<range>.pbf
-# and <dir>/sprites/light/sprite{,@2x}.{json,png} — because those paths are the
-# ones the style template asks for, so nothing is renamed on the way up. Same
+# and <dir>/sprites/light{,@2x}.{json,png} — because those paths are the ones the
+# style template asks for, so nothing is renamed on the way up. The sprite is a
+# base, not a directory: MapLibre appends `.json`, `.png` and `@2x.png` itself. Same
 # rules as the archives above: immutable per object, and --remote is required, or
 # wrangler writes to its local Miniflare simulation and the deployed Worker keeps
 # seeing an empty bucket.
@@ -595,7 +596,7 @@ api-upload-map-assets-staging: ## Upload self-hosted map glyphs + sprite to the 
 	ASSETS="$(abspath $(MAP_ASSETS_DIR))"; \
 	if [ ! -d "$$ASSETS" ]; then \
 		echo "Error: map assets directory not found: $$ASSETS"; \
-		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light/sprite{,@2x}.{json,png}"; \
+		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light{,@2x}.{json,png}"; \
 		echo "  Pass MAP_ASSETS_DIR=/path/to/map-assets to upload another directory."; \
 		exit 1; \
 	fi; \
@@ -629,7 +630,7 @@ api-upload-map-assets-production: ## Upload self-hosted map glyphs + sprite to t
 	ASSETS="$(abspath $(MAP_ASSETS_DIR))"; \
 	if [ ! -d "$$ASSETS" ]; then \
 		echo "Error: map assets directory not found: $$ASSETS"; \
-		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light/sprite{,@2x}.{json,png}"; \
+		echo "  Expected glyphs/<fontstack>/<range>.pbf and sprites/light{,@2x}.{json,png}"; \
 		echo "  Pass MAP_ASSETS_DIR=/path/to/map-assets to upload another directory."; \
 		exit 1; \
 	fi; \
