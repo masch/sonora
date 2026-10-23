@@ -1,12 +1,12 @@
-import { mapSpritePath, mapStylePath, mapGlyphsPath } from '@sonora/shared';
+import { mapSpritePath, mapGlyphsPath } from '@sonora/shared';
 
 /**
  * An in-memory stand-in for the installed `expo-file-system` 56.0.8 class API.
  *
- * The store needs `Paths.document`, `Directory.create`, `File.exists`, `File.write`,
- * `File.text`, `File.move`, `File.delete`, `File.parentDirectory` and
- * `File.downloadFileAsync`, so the double keeps exactly those and keeps the bytes: a
- * document is only worth anything if it can be read back, and a partial asset is only
+ * The asset store needs `Paths.document`, `Directory.create`, `File.exists`,
+ * `File.write`, `File.move`, `File.delete`, `File.parentDirectory` and
+ * `File.downloadFileAsync`, so the double keeps exactly those and keeps the bytes:
+ * a file is only worth anything if it can be found again, and a partial asset is only
  * detectable if the double remembers what a failed transfer streamed. It keeps no
  * directory tree — the style directory is `create`d idempotently and a path is a path —
  * so a name that the store forgets to create would still be written here. The device
@@ -18,14 +18,9 @@ const mockDownloads: { url: string; uri: string }[] = [];
 let mockDownloadFailure: Error | null = null;
 let mockDirectoryFailure: Error | null = null;
 
-/** Bytes of a string, as a written document or a download body would deliver them. */
+/** Bytes of a string, as a download body would deliver them. */
 function mockBytesOf(text: string): Uint8Array {
   return Uint8Array.from(text, (character) => character.charCodeAt(0));
-}
-
-/** The text of a body the double wrote. */
-function mockTextOf(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
 }
 
 jest.mock('expo-file-system', () => {
@@ -87,7 +82,7 @@ jest.mock('expo-file-system', () => {
     async text() {
       const inode = mockDisk.get(this.uri);
       if (!inode) throw new Error(`no such file: ${this.uri}`);
-      return mockTextOf(inode);
+      return Array.from(inode, (byte) => String.fromCharCode(byte)).join('');
     }
 
     delete() {
@@ -130,24 +125,17 @@ jest.mock('@/utils/logger', () => ({
 import { Directory, File, Paths } from 'expo-file-system';
 
 import {
-  cacheStyleOnDisk,
   downloadStyleAssets,
   GLYPH_RANGES,
   localizeStyle,
-  persistStyle,
   planFontAssets,
-  readPersistedStyle,
   rewriteStyleAssetsToDisk,
   SPRITE_PATHS,
-  styleFileName,
   type StyleAssets,
 } from '@/services/map-styles';
 import { logger } from '@/utils/logger';
 
 const API_ORIGIN = 'https://sonora-api-staging.sonora-api.workers.dev';
-const CDN_ORIGIN = 'https://cdn.example';
-const STYLE_URL = `${API_ORIGIN}${mapStylePath('v1')}`;
-const CDN_STYLE_URL = `${CDN_ORIGIN}${mapStylePath('v1')}`;
 
 /** The style directory on the fake device disk. */
 const STYLE_DIR = 'file:///document/map-styles';
@@ -226,92 +214,6 @@ function diskPaths(): string[] {
     .map((uri) => uri.slice(STYLE_DIR.length + 1))
     .sort();
 }
-
-/** The document the store persisted for a url, as the fake disk holds it. */
-function persistedBytes(styleUrl: string): string | undefined {
-  const name = styleFileName(styleUrl);
-  const bytes = name ? mockDisk.get(`${STYLE_DIR}/${name}`) : undefined;
-  return bytes ? mockTextOf(bytes) : undefined;
-}
-
-describe('styleFileName', () => {
-  it('names the file after the host and the version the shared generator writes', () => {
-    // The version is not in the payload: it is the segment the shared generator puts
-    // before the extension, so the name is checked against that generator.
-    const name = styleFileName(STYLE_URL);
-    expect(name).toMatch(/^[0-9a-f]{8}-v1\.json$/);
-    expect(styleFileName(`${API_ORIGIN}${mapStylePath('v7')}`)).toMatch(/-v7\.json$/);
-  });
-
-  it('is stable for the same url and separates two hosts that publish the same version', () => {
-    expect(styleFileName(STYLE_URL)).toBe(styleFileName(STYLE_URL));
-    // Staging, production and a CDN can publish v1 with different documents, so their
-    // bytes may never answer for each other.
-    expect(styleFileName(STYLE_URL)).not.toBe(styleFileName(CDN_STYLE_URL));
-  });
-
-  it('has no name for a url that does not end in a version', () => {
-    expect(styleFileName(`${API_ORIGIN}/media/public/styles/light`)).toBeNull();
-    expect(styleFileName('')).toBeNull();
-  });
-});
-
-describe('persistStyle and readPersistedStyle', () => {
-  beforeEach(() => {
-    mockDisk.clear();
-    mockDownloads.length = 0;
-  });
-
-  it('writes the document under the name the url earns, and reads it back', async () => {
-    const document = publishedStyle();
-
-    expect(await persistStyle(STYLE_URL, document)).toBe(true);
-
-    // One file, no temporary: publication is a single move onto the final name.
-    expect(diskPaths()).toEqual([styleFileName(STYLE_URL) as string]);
-    expect(await readPersistedStyle(STYLE_URL)).toMatchObject({
-      version: 8,
-      glyphs: REMOTE_GLYPHS,
-    });
-    // The version the url names is part of the identity: another one is another file.
-    expect(await readPersistedStyle(`${API_ORIGIN}${mapStylePath('v2')}`)).toBeNull();
-  });
-
-  it('reports nothing when the device kept nothing for this url', async () => {
-    expect(await readPersistedStyle(STYLE_URL)).toBeNull();
-    expect(logger.warn).not.toHaveBeenCalled();
-  });
-
-  it('refuses a document that is not one this store wrote', async () => {
-    // A body without the `version` MapLibre reads first is not a style, and handing it
-    // to the map as one is worse than having nothing to hand over.
-    putOnDisk(styleFileName(STYLE_URL) as string, JSON.stringify({ error: 'not found' }));
-    expect(await readPersistedStyle(STYLE_URL)).toBeNull();
-
-    putOnDisk(styleFileName(STYLE_URL) as string, '{"version":');
-    expect(await readPersistedStyle(STYLE_URL)).toBeNull();
-  });
-
-  it('never throws when the store cannot be read at all', async () => {
-    // A device with no file access is a device that has to fetch the style: the read
-    // reports absence instead of taking the map down with it.
-    mockDirectoryFailure = new Error('no access to the document directory');
-    try {
-      expect(await readPersistedStyle(STYLE_URL)).toBeNull();
-      expect(await persistStyle(STYLE_URL, publishedStyle())).toBe(false);
-      expect(logger.warn).toHaveBeenCalled();
-    } finally {
-      mockDirectoryFailure = null;
-    }
-  });
-
-  it('refuses to write a document for a url that names no version', async () => {
-    expect(await persistStyle(`${API_ORIGIN}/media/public/styles/light`, publishedStyle())).toBe(
-      false,
-    );
-    expect(diskPaths()).toEqual([]);
-  });
-});
 
 describe('planFontAssets', () => {
   it('collects every font stack the style names, however the layer writes it', () => {
@@ -494,35 +396,19 @@ describe('downloadStyleAssets', () => {
     expect(mockDownloads).toEqual([]);
     expect(diskPaths()).toEqual([]);
   });
-});
 
-describe('cacheStyleOnDisk', () => {
-  beforeEach(() => {
-    mockDisk.clear();
-    mockDownloads.length = 0;
-    mockDownloadFailure = null;
-  });
+  it('keeps the style directory to the glyph ranges and the sprite', async () => {
+    // The style document is not this store's to keep: it is one document with one key
+    // rule, cached by `ApiClient` on both platforms (`map-style-cache.ts`). What the
+    // filesystem holds is exactly what MapLibre reads as a real path, so a document
+    // written here would be a second copy of the same bytes with a second failure mode.
+    await downloadStyleAssets(publishedStyle());
 
-  it('keeps the document and the assets a cold start needs', async () => {
-    await cacheStyleOnDisk(STYLE_URL, publishedStyle());
-
-    // The document a cold start reads, with its bytes intact.
-    expect(JSON.parse(persistedBytes(STYLE_URL) as string)).toMatchObject({
-      version: 8,
-      glyphs: REMOTE_GLYPHS,
-    });
-    expect(diskPaths()).toEqual([styleFileName(STYLE_URL) as string, ...allAssetPaths()].sort());
-  });
-
-  it('still keeps the document when the asset transfers fail', async () => {
-    // The document is what the map draws; the assets only decide whether labels come
-    // from the device. A failed font download may not cost the style itself.
-    mockDownloadFailure = new Error('disk is full');
-
-    await expect(cacheStyleOnDisk(STYLE_URL, publishedStyle())).resolves.toBeUndefined();
-
-    expect(diskPaths()).toEqual([styleFileName(STYLE_URL) as string]);
-    expect(await readPersistedStyle(STYLE_URL)).toMatchObject({ version: 8 });
+    expect(diskPaths()).toEqual(allAssetPaths().sort());
+    // One statement of the same fact, so a stray file cannot hide behind a sorted list.
+    expect(
+      diskPaths().every((path) => path.startsWith('glyphs/') || SPRITE_PATHS.includes(path)),
+    ).toBe(true);
   });
 });
 
@@ -567,5 +453,16 @@ describe('localizeStyle', () => {
     const style = publishedStyle();
     await expect(localizeStyle(style)).resolves.toBe(style);
     expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('writes no document next to the assets it localizes', async () => {
+    // The whole pipeline, as a cold start runs it: whatever the disk holds after the
+    // asset pass and the existence check is assets — `glyphs/**` and `sprite*`.
+    await downloadStyleAssets(publishedStyle());
+    await localizeStyle(publishedStyle());
+
+    expect(
+      diskPaths().every((path) => path.startsWith('glyphs/') || SPRITE_PATHS.includes(path)),
+    ).toBe(true);
   });
 });

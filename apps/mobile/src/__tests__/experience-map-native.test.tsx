@@ -7,20 +7,49 @@ import ExperienceMap from '@/components/map/experience-map';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
 import type { TripExperience } from '@/data/experiences';
 import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
+import { styleCacheKey } from '@/services/map-style-cache';
+import { appStorage } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
 
 // The archive lives on the device: `use-map-archive-file` owns the download (and
 // its own suite), so this suite only drives the states it hands back.
 jest.mock('@/hooks/use-map-archive-file', () => ({ useMapArchiveFile: jest.fn() }));
 
-// The style store has its own suite (`map-styles.test.ts`): what this suite is about is
-// the chain the map draws through, so the disk is a set of answers it can arrange —
-// a document that was kept, nothing kept, an asset transfer that failed.
+// The asset store has its own suite (`map-styles.test.ts`): what this suite is about is
+// the chain the map draws through, so the device side is a set of answers it can
+// arrange — an asset pass that landed, an asset transfer that failed. The style
+// *document* is not on the disk at all: it is cached by the client, as on the web.
 jest.mock('@/services/map-styles', () => ({
-  readPersistedStyle: jest.fn(async () => null),
-  cacheStyleOnDisk: jest.fn(async () => {}),
+  downloadStyleAssets: jest.fn(async () => {}),
   localizeStyle: jest.fn(async (style: unknown) => style),
 }));
+
+/**
+ * The client's cache, in memory: `BaseApiClient` writes the body of a successful GET
+ * here and reads it back when the request cannot answer, which is the one place a
+ * style document is kept on either platform.
+ */
+const mockStorage: Record<string, string> = {};
+
+jest.mock('@/storage/app-storage', () => {
+  const actual = jest.requireActual('@/storage/app-storage');
+  return {
+    ...actual,
+    appStorage: {
+      getItem: jest.fn(async (key: string) => mockStorage[key] ?? null),
+      setItem: jest.fn(async (key: string, value: string) => {
+        mockStorage[key] = value;
+      }),
+      removeItem: jest.fn(async (key: string) => {
+        delete mockStorage[key];
+      }),
+      clear: jest.fn(async () => {
+        for (const key of Object.keys(mockStorage)) delete mockStorage[key];
+      }),
+    },
+    getDeviceId: jest.fn(async () => 'test-device-id'),
+  };
+});
 
 // The switch still renders the Leaflet branch for `renderer="leaflet"`; its WebView
 // is a native module and is not what this suite is about.
@@ -89,22 +118,24 @@ import {
 
 const mockedUseMapArchiveFile = jest.mocked(useMapArchiveFile);
 
-/** The style store's doubles, as this suite arranges them per test. */
+/** The asset store's doubles, as this suite arranges them per test. */
 const mockedStyleStore = jest.requireMock('@/services/map-styles') as {
-  readPersistedStyle: jest.Mock<Promise<unknown>, [string]>;
-  cacheStyleOnDisk: jest.Mock<Promise<void>, [string, unknown]>;
+  downloadStyleAssets: jest.Mock<Promise<void>, [unknown]>;
   localizeStyle: jest.Mock<Promise<unknown>, [unknown]>;
 };
 
-/** The document a previous run left on the device, with a layer only it carries. */
-function persistedStyle(): StyleSpecification {
+/** The client's cache, as jest sees it. */
+const cacheStorage = appStorage as unknown as { getItem: jest.Mock; setItem: jest.Mock };
+
+/** The document a previous run left in the client's cache, with a layer only it has. */
+function cachedStyle(): StyleSpecification {
   return {
     version: 8,
     glyphs: 'https://api.example/media/public/glyphs/{fontstack}/{range}.pbf',
     sources: { basemap: { type: 'vector', url: ARCHIVE_URL } },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#ffffff' } },
-      { id: 'persisted-water', type: 'background', paint: { 'background-color': '#00f' } },
+      { id: 'cached-water', type: 'background', paint: { 'background-color': '#00f' } },
     ],
   } as StyleSpecification;
 }
@@ -210,17 +241,20 @@ describe('ExperienceMap (native)', () => {
     mockedUseMapArchiveFile.mockReset();
     mockedUseMapArchiveFile.mockReturnValue({ status: 'ready', uri: ARCHIVE_URI });
     loadingMessages.length = 0;
-    mockedStyleStore.readPersistedStyle.mockReset().mockResolvedValue(null);
-    mockedStyleStore.cacheStyleOnDisk.mockReset().mockResolvedValue(undefined);
+    for (const key of Object.keys(mockStorage)) delete mockStorage[key];
+    cacheStorage.getItem.mockClear();
+    cacheStorage.setItem.mockClear();
+    mockedStyleStore.downloadStyleAssets.mockReset().mockResolvedValue(undefined);
     mockedStyleStore.localizeStyle.mockReset().mockImplementation(async (style) => style);
   });
 
-  it('draws the style the device kept when the request fails (R12)', async () => {
+  it('draws the style the client cached when the request fails (R12)', async () => {
     // The cold start R12 is about: no network, an archive on the device, and the
-    // document the last run persisted.
+    // document the last run left in the client's cache — the same storage the
+    // experiences list already survives offline with.
     globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
-    mockedStyleStore.readPersistedStyle.mockResolvedValue(persistedStyle());
-    const styleUrl = `${STYLE_URL}?persisted`;
+    const styleUrl = `${STYLE_URL}?cached`;
+    mockStorage[styleCacheKey(styleUrl)] = JSON.stringify(cachedStyle());
 
     const view = await render(
       <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, styleUrl }} overlays={[document]} />,
@@ -228,25 +262,28 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
 
-    // The map draws, and it draws the document from the disk, not the fallback style:
-    // the base layers of the persisted document are all there.
+    // The map draws, and it draws the document from storage, not the fallback style:
+    // the base layer only the cached document carries is there. Nothing on this
+    // device's filesystem holds a document, so nothing else could have answered.
     expect(view.queryByTestId('experience-map-error')).toBeNull();
-    expect(drawnLayerIds()).toEqual(expect.arrayContaining(['background', 'persisted-water']));
+    expect(drawnLayerIds()).toEqual(expect.arrayContaining(['background', 'cached-water']));
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
-    // Read under the url this map asked for, never through the page cache.
-    expect(mockedStyleStore.readPersistedStyle).toHaveBeenCalledWith(styleUrl);
-    expect(globalThis.fetch).toHaveBeenCalledWith(styleUrl, { signal: expect.any(AbortSignal) });
+    // Read under the url this map asked for, through the client's own fallback.
+    expect(cacheStorage.getItem).toHaveBeenCalledWith(styleCacheKey(styleUrl));
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      styleUrl,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
-  it('keeps reporting the style failure when the device kept nothing', async () => {
-    // T-E2 adds a rung before the failure, it does not remove it: a style that never
-    // arrived is still a map that says so and can be retried.
+  it('reports the style failure when the cache holds nothing for this url', async () => {
+    // The cache adds a rung before the failure, it does not remove it: a style that
+    // never arrived is still a map that says so and can be retried.
     globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
-    mockedStyleStore.readPersistedStyle.mockResolvedValue(null);
 
     const view = await render(
       <ExperienceMap
-        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?nothing-kept` }}
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?nothing-cached` }}
         overlays={[document]}
       />,
     );
@@ -255,10 +292,32 @@ describe('ExperienceMap (native)', () => {
     expect(view.queryByText('map.errors.styleUnavailable')).toBeTruthy();
     expect(view.queryByTestId('experience-map-retry')).toBeTruthy();
     expect(mockMapProps).toHaveLength(0);
-    expect(mockedStyleStore.cacheStyleOnDisk).not.toHaveBeenCalled();
+    // Nothing was handed to MapLibre, so there was nothing to download assets for.
+    expect(mockedStyleStore.downloadStyleAssets).not.toHaveBeenCalled();
   });
 
-  it('keeps a fetched document and its assets, and draws the localized style', async () => {
+  it('treats a cached document without a version as absent, not as a style', async () => {
+    // A body without the `version` MapLibre reads first cannot be drawn, and the
+    // client's cache is the only place it survives: reporting it as absent is what
+    // keeps a poisoned cold start retryable instead of a permanently blank map.
+    globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
+    const styleUrl = `${STYLE_URL}?undrawable-cached`;
+    mockStorage[styleCacheKey(styleUrl)] = JSON.stringify({
+      sources: {},
+      layers: [{ id: 'land' }],
+    });
+
+    const view = await render(
+      <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, styleUrl }} overlays={[document]} />,
+    );
+
+    await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
+    expect(view.queryByText('map.errors.styleUnavailable')).toBeTruthy();
+    expect(mockMapProps).toHaveLength(0);
+    expect(mockedStyleStore.downloadStyleAssets).not.toHaveBeenCalled();
+  });
+
+  it('keeps a fetched document in the client cache, and draws the localized style', async () => {
     const styleUrl = `${STYLE_URL}?keep`;
     const fetched = styleWith(true);
     globalThis.fetch = jest
@@ -276,10 +335,9 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
 
-    // The drawable document is what gets kept, under the url it was fetched from.
-    await waitFor(() =>
-      expect(mockedStyleStore.cacheStyleOnDisk).toHaveBeenCalledWith(styleUrl, fetched),
-    );
+    // The document the next cold start reads is the client's, under this url's key —
+    // the same bytes, on the same platform storage the web renderer writes to.
+    await waitFor(() => expect(mockStorage[styleCacheKey(styleUrl)]).toBe(JSON.stringify(fetched)));
     expect(mockedStyleStore.localizeStyle).toHaveBeenCalledWith(fetched);
     // And the map was handed the localized document, never the published urls.
     expect(mockMapProps[0].mapStyle.glyphs).toBe(
@@ -294,7 +352,7 @@ describe('ExperienceMap (native)', () => {
     globalThis.fetch = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => styleWith(true) }) as never;
-    mockedStyleStore.cacheStyleOnDisk.mockRejectedValue(new Error('disk is full'));
+    mockedStyleStore.downloadStyleAssets.mockRejectedValue(new Error('disk is full'));
 
     const view = await render(
       <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, styleUrl }} overlays={[document]} />,
@@ -541,7 +599,10 @@ describe('ExperienceMap (native)', () => {
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
 
     // The transfer is cancellable, and the archive file is what the style points at.
-    expect(fetchStyle).toHaveBeenCalledWith(STYLE_URL, { signal: expect.any(AbortSignal) });
+    expect(fetchStyle).toHaveBeenCalledWith(
+      STYLE_URL,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
     expect(drawnLayerIds()).toContain('refs:umepay:label');
   });
@@ -672,9 +733,10 @@ describe('ExperienceMap (native)', () => {
     // Both waits really restarted: the style was fetched a second time and the
     // archive hook was asked again under a new attempt.
     expect(fetchStyle).toHaveBeenCalledTimes(2);
-    expect(fetchStyle).toHaveBeenLastCalledWith(`${STYLE_URL}?retry`, {
-      signal: expect.any(AbortSignal),
-    });
+    expect(fetchStyle).toHaveBeenLastCalledWith(
+      `${STYLE_URL}?retry`,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(mockedUseMapArchiveFile).toHaveBeenLastCalledWith(
       expect.objectContaining({ archiveUrl: ARCHIVE_URL }),
       1,

@@ -3,18 +3,23 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { logger } from '@/utils/logger';
 
 /**
- * The map style document and the assets its labels and icons come from, on the device.
+ * The binary assets a map style's labels and icons come from, on the device.
  *
- * The archive is only half a map. The style document is fetched raw and kept in a
- * module-scope memory map, and its `glyphs`/`sprite` urls point at our media bucket,
- * so a cold start with no network used to draw nothing at all — an archive with no
- * style is a blank canvas (L6). Keeping the document and the asset files on the
- * device is what R12 asks for: a cold start draws the map the walker last saw.
+ * The native renderer has no protocol API (`@maplibre/maplibre-react-native` 11.5.0
+ * exposes no `addProtocol`, L15), so the only way MapLibre can read a font range or a
+ * sprite sheet without a network is a real path: the files stay on the device and the
+ * style is handed `file://` urls (R12 — a cold start draws the map the walker last saw).
+ * That is all this module is.
  *
- * The rules that decide which file a style lives in, which glyph ranges a style needs
- * and whether a document may be pointed at the disk are pure, like `map-archives.ts`;
- * the file I/O around them is thin and every failure is swallowed into a log line,
- * because none of this is worth losing the map over.
+ * The style **document** is deliberately not here. It is one document with one key rule,
+ * cached by `ApiClient` on both platforms (`map-style-cache.ts`); writing it to the disk
+ * as well would be a second copy of the same bytes with a second key and a second
+ * failure mode, for no answer the client's cache does not already give.
+ *
+ * The rules that decide which glyph ranges a style needs and whether a document may be
+ * pointed at the disk are pure, like `map-archives.ts`; the file I/O around them is thin
+ * and every failure is swallowed into a log line, because none of this is worth losing
+ * the map over.
  */
 
 /** The parts of a style document this module reads. */
@@ -27,22 +32,16 @@ export interface StyleAssets {
   layers?: unknown;
 }
 
-/** A style document as this module reads it back: an object MapLibre can draw. */
-export interface StyleDocument extends StyleAssets {
-  /** The one field every style carries and MapLibre refuses to draw without. */
-  version: number;
-}
-
 /** The files a style's assets were found in, relative to the style directory. */
-export interface StyleAssetsOnDisk {
-  /** `file://…/map-styles`, the directory the document and its assets live in. */
+interface StyleAssetsOnDisk {
+  /** `file://…/map-styles`, the directory the asset files live in. */
   baseUri: string;
   /** The paths, relative to `baseUri`, that really exist on the device. */
   present: ReadonlySet<string>;
 }
 
 /** One glyph file a style needs: a font stack and one Unicode range of it. */
-export interface GlyphAsset {
+interface GlyphAsset {
   /** The stack as MapLibre writes it into the url: the `text-font` names, comma joined. */
   fontstack: string;
   /** A range as MapLibre writes it, e.g. `0-255`. */
@@ -52,7 +51,7 @@ export interface GlyphAsset {
 }
 
 /** What the style's labels need from the disk. */
-export interface FontAssetPlan {
+interface FontAssetPlan {
   /** Every font stack the style names, in the order the layers name them. */
   fontstacks: string[];
   /** The Unicode ranges downloaded for every stack. */
@@ -68,12 +67,6 @@ const STYLE_DIRECTORY = 'map-styles';
 
 /** Subdirectory of the style directory the font ranges live in. */
 const GLYPHS_DIRECTORY = 'glyphs';
-
-/** The version segment of a url the shared generator built: `…/<version>.json`. */
-const URL_VERSION = /([^/]+)\.json(?:\?.*)?$/;
-
-/** Scheme, host and port of an absolute url. */
-const URL_ORIGIN = /^([a-z][a-z0-9+.-]*:\/\/[^/]+)/i;
 
 /**
  * The Unicode ranges downloaded for every font stack the style names.
@@ -158,49 +151,7 @@ const EXPRESSION_OPERATORS: ReadonlySet<string> = new Set([
   '%',
 ]);
 
-/**
- * Fingerprint of a string, as 8 lowercase hex digits: FNV-1a over the whole value, so
- * it is stable across runs, devices and platforms. The same function `map-archives.ts`
- * uses, and repeated here rather than imported because the two stores are independent
- * and neither should be able to break the other's file names.
- */
-function fingerprint(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
-
-/**
- * The host a style came from.
- *
- * Staging, production, a CDN and a local wrangler can publish the same version and
- * their documents point at different origins, so the host is part of the file's
- * identity for the same reason it is for an archive. A url without an origin is
- * fingerprinted whole: the app never builds one, and a wrong-but-stable key only
- * costs one re-download.
- */
-function originOf(url: string): string {
-  return fingerprint(URL_ORIGIN.exec(url)?.[1] ?? url);
-}
-
-/**
- * The file one style url lives in: `<origin fingerprint>-<version>.json`, or null when
- * the url names no version at all.
- *
- * The version is the segment the shared generator puts before the extension, and a url
- * that does not end in one has no identity this module could reason about — it is
- * reported as absent instead of being given a key nobody can explain.
- */
-export function styleFileName(styleUrl: string): string | null {
-  const version = URL_VERSION.exec(styleUrl)?.[1];
-  if (!version) return null;
-  return `${originOf(styleUrl)}-${version}.json`;
-}
-
-/** The directory the style documents and their assets live in. */
+/** The directory the style's asset files live in. */
 function styleDirectory(): Directory {
   return new Directory(Paths.document, STYLE_DIRECTORY);
 }
@@ -352,70 +303,6 @@ export function rewriteStyleAssetsToDisk<T extends StyleAssets>(
   } as T;
 }
 
-/**
- * Writes one style document to the device, atomically.
- *
- * A style is written once and read on every cold start, so a half-written document
- * would be drawn as a style: the bytes land in `<name>.part` and the publication is
- * one move onto the final name. A deterministic temporary name is safe here because a
- * run is the only writer of one style url (the page keeps a single transfer per url),
- * and a leftover from a killed run is overwritten by the next one instead of
- * accumulating.
- *
- * Never throws: a style that could not be persisted is a cold start that has to fetch
- * it, which is what the app did before this store existed.
- */
-export async function persistStyle(styleUrl: string, document: unknown): Promise<boolean> {
-  const name = styleFileName(styleUrl);
-  if (!name) return false;
-
-  let temporary: File | undefined;
-  try {
-    const directory = styleDirectory();
-    directory.create({ idempotent: true, intermediates: true });
-    const target = new File(directory, name);
-    temporary = new File(directory, `${name}.part`);
-    temporary.write(JSON.stringify(document));
-    await temporary.move(target, { overwrite: true });
-    return true;
-  } catch (error) {
-    logger.warn('map style could not be persisted', error);
-    try {
-      if (temporary?.exists) temporary.delete();
-    } catch {
-      // The write that failed is what the caller has to hear about; a cleanup that
-      // fails itself may not replace it.
-    }
-    return false;
-  }
-}
-
-/**
- * The style document the device kept for this url, or null when it kept none.
- *
- * Never throws, and never returns something the map cannot draw: a body without the
- * `version` MapLibre reads first is a document this store did not write (or one a
- * failed move left behind), and reporting it as absent is what lets the caller fall
- * back instead of handing the map a document that cannot render.
- */
-export async function readPersistedStyle(styleUrl: string): Promise<StyleDocument | null> {
-  const name = styleFileName(styleUrl);
-  if (!name) return null;
-
-  try {
-    const file = new File(styleDirectory(), name);
-    if (!file.exists) return null;
-    const parsed: unknown = JSON.parse(await file.text());
-    if (parsed === null || typeof parsed !== 'object') return null;
-    const candidate = parsed as Partial<StyleDocument>;
-    if (typeof candidate.version !== 'number') return null;
-    return candidate as StyleDocument;
-  } catch (error) {
-    logger.warn('map style could not be read from the device', error);
-    return null;
-  }
-}
-
 /** The url a glyph file is downloaded from: the style's template, placeholders filled. */
 function glyphFileUrl(template: string, asset: GlyphAsset): string {
   const filled = template.replace('{fontstack}', asset.fontstack).replace('{range}', asset.range);
@@ -495,18 +382,6 @@ export async function downloadStyleAssets(style: StyleAssets): Promise<void> {
   } catch (error) {
     logger.warn('map style assets could not be downloaded', error);
   }
-}
-
-/**
- * Keeps a drawable document and the assets it needs on the device.
- *
- * Called after a fetch that succeeded, where nothing may interrupt the draw: the
- * document is written first (that is what the next cold start needs most) and the
- * assets follow. Resolves even when everything failed.
- */
-export async function cacheStyleOnDisk(styleUrl: string, document: unknown): Promise<void> {
-  await persistStyle(styleUrl, document);
-  await downloadStyleAssets(document as StyleAssets);
 }
 
 /** The style's asset paths that really exist on the device, relative to its directory. */

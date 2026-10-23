@@ -1,3 +1,5 @@
+import { fingerprint } from '@/utils/fingerprint';
+
 /**
  * Identity and lifetime of the map archives on the device.
  *
@@ -47,19 +49,6 @@ const URL_VERSION = /([^/]+)\.pmtiles(?:\?.*)?$/;
 
 /** Scheme, host and port of an absolute url. */
 const URL_ORIGIN = /^([a-z][a-z0-9+.-]*:\/\/[^/]+)/i;
-
-/**
- * Fingerprint of a string, as 8 lowercase hex digits: FNV-1a over the whole value,
- * so it is stable across runs, devices and platforms.
- */
-function fingerprint(value: string): string {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
 
 /**
  * The host an archive came from.

@@ -31,7 +31,8 @@ import {
   type MapArchiveFileState,
 } from '@/hooks/use-map-archive-file';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
-import { cacheStyleOnDisk, localizeStyle, readPersistedStyle } from '@/services/map-styles';
+import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
+import { downloadStyleAssets, localizeStyle } from '@/services/map-styles';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
 
@@ -107,20 +108,6 @@ interface StyleTransfer {
 const styleTransfers = new Map<string, StyleTransfer>();
 
 /**
- * The style document a response body carries, or null when it cannot be drawn.
- *
- * `version` is the one field every style this app consumes has, and MapLibre refuses a
- * style without it, so it is what separates a document from a body that merely parsed.
- * A 200 carrying an error document must fail here: cached, it would be handed to the
- * map as its style on every visit, with no failure to see and nothing to retry.
- */
-function drawableStyle(body: unknown): StyleSpecification | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const candidate = body as Partial<StyleSpecification>;
-  return typeof candidate.version === 'number' ? (candidate as StyleSpecification) : null;
-}
-
-/**
  * Fetches one style document over a signal this page owns, bounded, and always settles
  * with an outcome instead of rejecting: the code inside it is what the view translates.
  */
@@ -144,15 +131,20 @@ function requestStyleDocument(url: string, controller: AbortController): Promise
       finish({ status: 'error', code: 'styleTimeout' });
     }, STYLE_TIMEOUT_MS);
 
-    fetch(url, { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-        return response.json() as Promise<unknown>;
-      })
+    // The document travels through the client's cache (`map-style-cache.ts`), exactly as
+    // it does on the web renderer: a successful fetch is what every later cold start
+    // reads, and a failed one is answered from that store before it is reported. So this
+    // page keeps no document of its own on the filesystem: the only I/O a style costs
+    // here is the asset pass in `resolveStyleOutcome`.
+    fetchStyleDocument(url, { signal: controller.signal })
       .then((body) => {
-        const style = drawableStyle(body);
-        if (style) finish({ status: 'ready', style });
-        else finish({ status: 'error', code: 'styleInvalid' });
+        // A 200 carrying an error document must fail here: whatever the cache stored is
+        // handed to the map as its style on every later visit, with no failure to see.
+        if (!isDrawableStyle<StyleSpecification>(body)) {
+          finish({ status: 'error', code: 'styleInvalid' });
+          return;
+        }
+        finish({ status: 'ready', style: body });
       })
       .catch((error: unknown) => {
         // A cancelled transfer has nobody left to report to; a real failure keeps its
@@ -164,38 +156,25 @@ function requestStyleDocument(url: string, controller: AbortController): Promise
 }
 
 /**
- * The document this run draws, in the order it may be found: the network's answer, then
- * the document the device kept, then the failure the screen reports.
+ * The style this run draws: the document the transfer settled on — the network's answer,
+ * or the client's cache when the network could not answer — with its asset urls pointed
+ * at the device when the files are really there.
  *
- * A fetch that succeeded is kept for the next cold start — the document first, because
- * that is what a cold start reads, and its font ranges and sprite after it. Both are
- * best effort: the draw never waits for them and a failure is a log line, never a map
- * that went away.
- *
- * A fetch that failed still draws if the device kept a document (R12: a cold start with
- * no network draws the map the walker last saw). The asset pass runs again before it is
- * drawn, because a previous run's transfers may have been interrupted, and the style is
- * then localized to the files that really exist. When nothing was kept, the outcome is
- * the failure it already was: a style that never arrived is still retryable.
+ * The document needs nothing more from this page. The client stored it on success and
+ * answered from that store on failure, which is R12 (a cold start with no network draws
+ * the map the walker last saw) with one copy of the bytes instead of two. What is left is
+ * the asset pass — the font ranges and the sprite MapLibre reads as real paths — run
+ * again even for a cached document, because a previous run's transfers may have been
+ * interrupted. Deliberately not awaited: the draw does not wait for files a *later* cold
+ * start reads, and a failure there is a log line, never a map that went away.
  */
-async function resolveStyleOutcome(url: string, outcome: StyleOutcome): Promise<StyleOutcome> {
-  if (outcome.status === 'ready') {
-    // Deliberately not awaited: the first visit draws as soon as the document arrives,
-    // and these files are what a *later* cold start reads.
-    void cacheStyleOnDisk(url, outcome.style).catch((error: unknown) => {
-      logger.warn('map style could not be cached', error);
-    });
-    return { status: 'ready', style: await localizeStyle(outcome.style) };
-  }
+async function resolveStyleOutcome(outcome: StyleOutcome): Promise<StyleOutcome> {
+  if (outcome.status !== 'ready') return outcome;
 
-  const kept = drawableStyle(await readPersistedStyle(url));
-  if (!kept) return outcome;
-
-  // The document is on the disk already; only its assets were ever missing.
-  void cacheStyleOnDisk(url, kept).catch((error: unknown) => {
-    logger.warn('map style could not be cached', error);
+  void downloadStyleAssets(outcome.style).catch((error: unknown) => {
+    logger.warn('map style assets could not be cached', error);
   });
-  return { status: 'ready', style: await localizeStyle(kept) };
+  return { status: 'ready', style: await localizeStyle(outcome.style) };
 }
 
 /** Starts this page's transfer of `url`, owned by the run that calls this. */
@@ -212,7 +191,7 @@ function startStyleTransfer(url: string): StyleTransfer {
   const transfer: StyleTransfer = {
     controller,
     promise: settled
-      .then((outcome) => resolveStyleOutcome(url, outcome))
+      .then(resolveStyleOutcome)
       .then((outcome) => {
         // Only a document that can be drawn is cached: the cache is what the first
         // render of every later mount draws from.

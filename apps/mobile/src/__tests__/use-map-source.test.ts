@@ -36,7 +36,10 @@ jest.mock('@/storage/app-storage', () => ({
   getDeviceId: jest.fn(() => Promise.resolve('test-device-id')),
 }));
 
-import { ensureLocalProtocol, styleCacheKey, useMapSource } from '@/hooks/use-map-source';
+import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+// The one key rule, shared with the native renderer: the web renderer and the device
+// cache a style document in the same place, under the same name.
+import { styleCacheKey } from '@/services/map-style-cache';
 import { appStorage } from '@/storage/app-storage';
 
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
