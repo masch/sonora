@@ -23,6 +23,17 @@ export const DEFAULT_MAP_REGION: MapRegionKey = 'calamuchita';
 /** A box the client can place, in the order every map library expects. */
 export type MapBbox = [west: number, south: number, east: number, north: number];
 
+/** A place on the map, in the order the app already carries coordinates. */
+export interface MapPoint {
+  latitude: number;
+  longitude: number;
+}
+
+/** What resolution reads from a published region: its box, and nothing else. */
+export interface MapRegionBox {
+  bbox: MapBbox;
+}
+
 export function isMapRegionKey(value: string): value is MapRegionKey {
   return value in MAP_REGIONS;
 }
@@ -44,4 +55,40 @@ export function bboxTuple(bbox: string): MapBbox | null {
   if (!(west < east) || !(south < north)) return null;
 
   return [west, south, east, north];
+}
+
+/**
+ * The region a point belongs to, or `null` when no published box holds it.
+ *
+ * The experience decides the map: the region is the one whose bbox contains the
+ * experience's own coordinates, never a global default and never the nearest one.
+ * A point outside every published box resolves nothing on purpose — a map of
+ * somewhere else is worse than a map that says so.
+ *
+ * The box is inclusive on every edge: a point exactly on the boundary is inside,
+ * because the published box is exactly what the ingest downloaded.
+ *
+ * When two boxes overlap, the first region in catalog order wins. The catalog is
+ * ordered (it is the payload's `regions` record), so the same point always
+ * resolves the same archive instead of flickering with iteration order.
+ *
+ * `null` or non-finite coordinates resolve nothing: a broken value must not fall
+ * into the first box that happens to compare favourably.
+ */
+export function regionForPoint(
+  regions: Readonly<Record<string, MapRegionBox>>,
+  point: MapPoint | null | undefined,
+): string | null {
+  if (!point) return null;
+  const { latitude, longitude } = point;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  for (const [key, region] of Object.entries(regions)) {
+    const [west, south, east, north] = region.bbox;
+    if (longitude >= west && longitude <= east && latitude >= south && latitude <= north) {
+      return key;
+    }
+  }
+
+  return null;
 }

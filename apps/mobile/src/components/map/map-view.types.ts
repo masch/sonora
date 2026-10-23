@@ -7,6 +7,16 @@ export { resolveMapRenderer, MAP_RENDERER_ENV, type MapRenderer } from './resolv
 export interface MapSourceConfig {
   /** PMTiles archive: `pmtiles://https://…` online, `pmtiles://file://…` offline. */
   archiveUrl: string;
+  /**
+   * The region `archiveUrl` belongs to, or `null` when the experience's point
+   * falls in no published region.
+   *
+   * It rides with the archive because both are the same decision: the map draws
+   * this archive, so it is this region, and the download layer keys the file it
+   * stores as `<region>-<version>.pmtiles`. Absent only for a source a caller
+   * assembled without resolving one (the Leaflet path never reads either field).
+   */
+  regionKey?: string | null;
   /** MapLibre style URL served from R2. */
   styleUrl?: string;
   /** Inline style, used when no URL is configured yet. */

@@ -34,6 +34,8 @@ export const es = {
     showLabels: 'Mostrar nombres',
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
+    // Not a failure: the place is real, it is simply outside every region we publish.
+    noRegion: 'Este lugar queda fuera de las regiones de mapa disponibles',
     // What a failure becomes on screen: the hooks report these codes, never prose.
     errors: {
       archiveMissing: 'No hay un mapa configurado',

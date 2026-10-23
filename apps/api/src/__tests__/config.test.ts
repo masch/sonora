@@ -289,6 +289,26 @@ describe('GET /config', () => {
     }
   });
 
+  it('disarms the bucket bound once the lookup answers', async () => {
+    // The bound only exists for a bucket that hangs. A lookup that answers first
+    // must clear it: an armed timer outlives the response it was protecting and
+    // keeps the runtime awake for nothing.
+    vi.useFakeTimers();
+    try {
+      const { bucket } = publicBucket({ [CALAMUCHITA_V1_KEY]: 4_000_000 });
+      const res = await app.request('/config', {}, {
+        ...BINDINGS,
+        PUBLIC_BUCKET: bucket,
+      } as never);
+      const body = (await res.json()) as MapBody;
+
+      expect(body.map.regions.calamuchita.archiveBytes).toBe(4_000_000);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends the renderer and every map field the defaults describe', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as MapBody;

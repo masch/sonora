@@ -34,6 +34,8 @@ export const en = {
     showLabels: 'Show labels',
     fetchingLocation: 'Locating…',
     openLink: 'Open link',
+    // Not a failure: the place is real, it is simply outside every region we publish.
+    noRegion: 'This place is outside the map regions we cover',
     // What a failure becomes on screen: the hooks report these codes, never prose.
     errors: {
       archiveMissing: 'No map is configured',

@@ -43,13 +43,17 @@ async function readPublishedRegions(
       const bbox = bboxTuple(MAP_REGIONS[key].bbox);
       if (!bbox || !bucket) return null;
 
+      /** The bound of this one lookup, disarmed as soon as it settles. */
+      let bound: ReturnType<typeof setTimeout> | undefined;
       try {
         // `/config` bootstraps the whole app, so a bucket that hangs answers as
         // "not published" instead of holding the response. A timeout is not an
         // error: the region simply is not in the catalog this time.
         const head = await Promise.race([
           bucket.head(mapArchiveKey(key, version)),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), HEAD_TIMEOUT_MS)),
+          new Promise<null>((resolve) => {
+            bound = setTimeout(() => resolve(null), HEAD_TIMEOUT_MS);
+          }),
         ]);
         if (!head) return null;
 
@@ -64,6 +68,10 @@ async function readPublishedRegions(
         // A bucket that cannot answer publishes nothing for this region; the
         // bootstrap still answers, with a smaller catalog.
         return null;
+      } finally {
+        // A bucket that answers first must not leave its timer behind: an armed
+        // timer keeps the runtime awake after the response has already been sent.
+        if (bound !== undefined) clearTimeout(bound);
       }
     }),
   );
