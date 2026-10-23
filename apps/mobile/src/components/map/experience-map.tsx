@@ -484,7 +484,7 @@ export default function ExperienceMap({
   // One counter per wait, so the retry never restarts a wait that did not fail.
   const [archiveAttempt, setArchiveAttempt] = useState(0);
   const [styleAttempt, setStyleAttempt] = useState(0);
-  const archive = useMapArchiveFile(source.archiveUrl || undefined, archiveAttempt);
+  const archive = useMapArchiveFile(source, archiveAttempt);
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
 

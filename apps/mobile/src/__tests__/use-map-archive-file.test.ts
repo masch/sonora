@@ -189,6 +189,7 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { logger } from '@/utils/logger';
 
 const ARCHIVE_V1 = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
@@ -196,6 +197,11 @@ const ARCHIVE_V2 = 'https://api.example/media/public/tiles/calamuchita/v2.pmtile
 
 /** The archive directory on the fake device disk. */
 const ARCHIVE_DIR = 'file:///document/map-archives';
+
+/** A map source pointing at `archiveUrl`, in the region these tests draw. */
+function source(archiveUrl: string, regionKey: string | null = 'calamuchita') {
+  return { archiveUrl, regionKey };
+}
 
 /** The path the hook handed back, without the `pmtiles://` transport scheme. */
 function fileOf(uri: string | undefined): string {
@@ -269,7 +275,7 @@ describe('useMapArchiveFile', () => {
   });
 
   it('downloads the archive once and hands back the file it wrote', async () => {
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
@@ -282,10 +288,10 @@ describe('useMapArchiveFile', () => {
   });
 
   it('accepts an archive url that already carries the transport scheme', async () => {
-    const plain = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const plain = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(plain.result.current.status).toBe('ready'));
 
-    const scheme = await renderHook(() => useMapArchiveFile(`pmtiles://${ARCHIVE_V1}`));
+    const scheme = await renderHook(() => useMapArchiveFile(source(`pmtiles://${ARCHIVE_V1}`)));
     await waitFor(() => expect(scheme.result.current.status).toBe('ready'));
 
     expect(scheme.result.current.uri).toBe(plain.result.current.uri);
@@ -293,11 +299,11 @@ describe('useMapArchiveFile', () => {
   });
 
   it('reuses the cached file for the same archive instead of downloading again', async () => {
-    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(first.result.current.status).toBe('ready'));
     const firstUri = first.result.current.uri;
 
-    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(second.result.current.status).toBe('ready'));
 
     expect(second.result.current.uri).toBe(firstUri);
@@ -305,10 +311,10 @@ describe('useMapArchiveFile', () => {
   });
 
   it('downloads a different archive version to its own path', async () => {
-    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(first.result.current.status).toBe('ready'));
 
-    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V2));
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V2)));
     await waitFor(() => expect(second.result.current.status).toBe('ready'));
 
     expect(fileOf(second.result.current.uri)).not.toBe(fileOf(first.result.current.uri));
@@ -327,10 +333,10 @@ describe('useMapArchiveFile', () => {
     const apiHost = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
     const cdnHost = 'https://cdn.example/media/public/tiles/calamuchita/v1.pmtiles';
 
-    const api = await renderHook(() => useMapArchiveFile(apiHost));
+    const api = await renderHook(() => useMapArchiveFile(source(apiHost)));
     await waitFor(() => expect(api.result.current.status).toBe('ready'));
 
-    const cdn = await renderHook(() => useMapArchiveFile(cdnHost));
+    const cdn = await renderHook(() => useMapArchiveFile(source(cdnHost)));
     await waitFor(() => expect(cdn.result.current.status).toBe('ready'));
 
     expect(fileOf(cdn.result.current.uri)).not.toBe(fileOf(api.result.current.uri));
@@ -341,13 +347,69 @@ describe('useMapArchiveFile', () => {
     );
   });
 
+  it('brings the directory back under the payload budget before a transfer', async () => {
+    // Two archives of a previous version are already on the device; the budget the
+    // payload carries leaves room for only one of them.
+    const oldest = `${ARCHIVE_DIR}/calamuchita-v0-aaaaaaaa.pmtiles`;
+    const newer = `${ARCHIVE_DIR}/calamuchita-v0-bbbbbbbb.pmtiles`;
+    seedFile(oldest, new Uint8Array(100));
+    seedFile(newer, new Uint8Array(100));
+    const configured = useRemoteConfigStore.getState().config;
+    useRemoteConfigStore.setState({
+      config: {
+        ...configured,
+        map: { ...configured.map, download: { ...configured.map.download, cacheMaxBytes: 120 } },
+      },
+    });
+
+    try {
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      // The oldest went; the one next to it stayed, and the archive this run wanted
+      // landed.
+      expect(mockDisk.has(oldest)).toBe(false);
+      expect(mockDisk.has(newer)).toBe(true);
+      expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
+    } finally {
+      useRemoteConfigStore.setState({ config: configured });
+    }
+  });
+
+  it('downloads nothing when the point fell in no region', async () => {
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1, null)));
+
+    // A map of nowhere draws its reference plane over the fallback style: it has no
+    // archive to ask the device for, and asking would fetch a region the walker is not
+    // in.
+    expect(result.current).toEqual({ status: 'error', error: 'archiveMissing' });
+    expect(mockDownloadUrls).toEqual([]);
+    expect([...mockDisk.keys()]).toEqual([]);
+  });
+
+  it('gives two regions at the same version their own files', async () => {
+    const south = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1, 'calamuchita')));
+    await waitFor(() => expect(south.result.current.status).toBe('ready'));
+
+    const north = await renderHook(() =>
+      useMapArchiveFile(source(ARCHIVE_V1, 'calamuchita-norte')),
+    );
+    await waitFor(() => expect(north.result.current.status).toBe('ready'));
+
+    expect(fileOf(south.result.current.uri)).not.toBe(fileOf(north.result.current.uri));
+    // The name carries the region, so eviction can reason per region and a reader can
+    // see what is on the device.
+    expect(fileOf(south.result.current.uri)).toContain('calamuchita-v1-');
+    expect(fileOf(north.result.current.uri)).toContain('calamuchita-norte-v1-');
+  });
+
   it('keeps the previous file and reports the failure when a download fails', async () => {
-    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(first.result.current.status).toBe('ready'));
     const cachedFile = fileOf(first.result.current.uri);
 
     mockDownloadFailure = new Error('UnableToDownload: 503 Service Unavailable');
-    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V2));
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V2)));
     await waitFor(() => expect(second.result.current.status).toBe('error'));
 
     // No uri at all: never a path to a file that is not there, never the remote url.
@@ -360,14 +422,14 @@ describe('useMapArchiveFile', () => {
   });
 
   it('releases the downloaded file when publishing the archive fails', async () => {
-    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(first.result.current.status).toBe('ready'));
     const cachedFile = fileOf(first.result.current.uri);
 
     // Out of space or out of permissions: the move onto the archive path rejects
     // after the whole archive has already been downloaded.
     mockMoveFailure = new Error('ENOSPC: no space left on device');
-    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V2));
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V2)));
     await waitFor(() => expect(second.result.current.status).toBe('error'));
 
     expect(second.result.current.uri).toBeUndefined();
@@ -385,8 +447,8 @@ describe('useMapArchiveFile', () => {
     });
     mockDownloadGate = gate;
 
-    const first = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
-    const second = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
 
     // Both really transfer, and both are still in flight: each run owns its
     // temporary file, so neither can delete or overwrite what the other is writing.
@@ -409,7 +471,7 @@ describe('useMapArchiveFile', () => {
   it('rejects an empty download without publishing anything', async () => {
     mockDownloadBytes = new Uint8Array(0);
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
     expect(result.current.error).toBe('archiveEmpty');
@@ -422,7 +484,7 @@ describe('useMapArchiveFile', () => {
     // An error page or a proxy's HTML answer arriving where the archive should be.
     mockDownloadBytes = mockBytesOf('<html><body>404 Not Found</body></html>');
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
     expect(result.current.error).toBe('archiveNotPmtiles');
@@ -433,7 +495,7 @@ describe('useMapArchiveFile', () => {
   it('publishes a v3 archive whose header and tile data fit the file', async () => {
     mockDownloadBytes = mockArchiveBody();
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
@@ -444,7 +506,7 @@ describe('useMapArchiveFile', () => {
     // stopped early: publishing it would break every read that follows.
     mockDownloadBytes = mockArchiveBody(4096, { tileDataLength: 8192 });
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
     expect(result.current.error).toBe('archiveTruncated');
@@ -455,7 +517,7 @@ describe('useMapArchiveFile', () => {
   it('rejects a body whose root directory ends beyond the file size', async () => {
     mockDownloadBytes = mockArchiveBody(4096, { rootDirLength: 8192 });
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
     expect(result.current.error).toBe('archiveTruncated');
@@ -466,7 +528,7 @@ describe('useMapArchiveFile', () => {
   it('rejects an archive announced as another PMTiles version', async () => {
     mockDownloadBytes = mockArchiveBody(4096, { version: 4 });
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('error'));
 
     expect(result.current.error).toBe('archiveVersionUnsupported');
@@ -482,7 +544,7 @@ describe('useMapArchiveFile', () => {
     const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
     seedFile(stale, mockArchiveBody(1024));
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     // The leftover of the process that died is gone; only this run's archive stays.
@@ -500,7 +562,7 @@ describe('useMapArchiveFile', () => {
     );
     seedFile(otherArchive, mockArchiveBody(2048));
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect(mockDisk.has(otherArchive)).toBe(false);
@@ -515,7 +577,7 @@ describe('useMapArchiveFile', () => {
     const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS, 1);
     seedFile(stale);
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect(mockDisk.has(stale)).toBe(false);
@@ -535,7 +597,7 @@ describe('useMapArchiveFile', () => {
     const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
     seedFile(stale);
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect(mockDisk.has(stale)).toBe(false);
@@ -547,7 +609,7 @@ describe('useMapArchiveFile', () => {
   it('downloads anyway when the stale sweep cannot list the directory', async () => {
     mockListFailure = new Error('EACCES: permission denied, scandir map-archives');
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     // Best effort: the sweep is housekeeping, so its failure is logged and the
@@ -561,7 +623,7 @@ describe('useMapArchiveFile', () => {
     const stale = temporaryOf('0123abcd-calamuchita-media-v1.pmtiles', 2 * STALE_TEMPORARY_MS);
     seedFile(stale);
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
@@ -576,7 +638,7 @@ describe('useMapArchiveFile', () => {
     });
     mockDownloadGate = gate;
 
-    const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
 
     expect(result.current.status).toBe('loading');
     expect(result.current.uri).toBeUndefined();
@@ -599,7 +661,7 @@ describe('useMapArchiveFile', () => {
     });
     try {
       mockDownloadGate = gate;
-      const { result } = await renderHook(() => useMapArchiveFile(ARCHIVE_V1));
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
 
       // No deadline of its own: nothing this run armed can fail the transfer.
       expect(timers.armed).toHaveLength(0);
@@ -627,7 +689,7 @@ describe('useMapArchiveFile', () => {
     mockDownloadFailure = new Error('UnableToDownload: 503 Service Unavailable');
 
     const { result, rerender } = await renderHook(
-      ({ attempt }: { attempt: number }) => useMapArchiveFile(ARCHIVE_V1, attempt),
+      ({ attempt }: { attempt: number }) => useMapArchiveFile(source(ARCHIVE_V1), attempt),
       { initialProps: { attempt: 0 } },
     );
     await waitFor(() => expect(result.current.status).toBe('error'));
