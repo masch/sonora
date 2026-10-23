@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import type { StyleSpecification } from 'maplibre-gl';
 import { PMTiles } from 'pmtiles';
 
+import { ApiClient } from '@/services/api-client';
+
 /**
  * Loads a PMTiles archive **whole** and serves its tiles from memory.
  *
@@ -34,7 +36,15 @@ export interface MapSourceState {
   status: MapSourceStatus;
   /** `sonora://<key>`, ready to be used as a vector source url. */
   sourceUrl?: string;
-  /** Style fetched from R2, when a url is configured. */
+  /**
+   * The style document handed to MapLibre, from the network or from the client cache.
+   *
+   * Cached or freshly fetched, its `glyphs` and `sprite` are still fetched over HTTP by
+   * MapLibre itself: only the document is kept, so a reload with no network draws land,
+   * water and roads from the archive and **no names and no icons**. That is the honest
+   * state of this renderer (L7, L14): names would need the font ranges and the sprite
+   * sheet kept as well, and caching them is not what this module does.
+   */
   style?: StyleSpecification;
   /** Size of the downloaded archive, for the UI and for tests. */
   bytes?: number;
@@ -54,14 +64,74 @@ function keyFor(url: string): string {
 }
 
 /**
+ * FNV-1a over the whole value, as 8 lowercase hex digits.
+ *
+ * Stable across runs, devices and platforms, which is what a cache key needs: a key that
+ * changed between two launches would never find the document the previous launch wrote.
+ * The same fingerprint the on-device stores use, repeated here rather than imported so a
+ * storage key and a file name cannot break each other.
+ */
+function fingerprint(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * The storage key a style document is cached under: `map_style_cache_<fingerprint of url>`.
+ *
+ * Derived from the style url and from nothing else, so the same url always finds the same
+ * bytes. The url changes exactly when the document is republished (`…/styles/v1.json`), so
+ * a cached key never answers with a different version's style — and because the whole url
+ * is fingerprinted, staging, production and a local wrangler keep their documents apart
+ * instead of serving each other's cold start.
+ *
+ * The consequence, stated rather than hidden: when the payload starts naming a new style
+ * version, the first load has to reach the network, and the superseded key stays in
+ * storage as dead weight (one style document per published version, 268 KB each, L7).
+ */
+export function styleCacheKey(styleUrl: string): string {
+  return `map_style_cache_${fingerprint(styleUrl)}`;
+}
+
+/**
+ * Whether MapLibre could draw this document.
+ *
+ * `version` is the one field every style carries and the first one the renderer reads, so
+ * a body without it — an error page some cache stored, a document a failed write left
+ * behind — is not a style at all. Reporting it as absent is what lets the caller fail the
+ * way it already fails instead of handing the map something it cannot render; the same
+ * rule the on-device store applies (T-E2), so the two paths cannot disagree.
+ */
+function isDrawableStyle(document: unknown): document is StyleSpecification {
+  return (
+    document !== null &&
+    typeof document === 'object' &&
+    typeof (document as { version?: unknown }).version === 'number'
+  );
+}
+
+/**
  * Fetches a style document, failing loudly instead of handing back a partial one.
  * Returns undefined when no style is configured.
+ *
+ * Why through `ApiClient` and not a raw `fetch` (L7): the base client writes the body of a
+ * successful GET to storage under its `cacheKey` and reads that storage back when the
+ * request cannot answer. That is the offline fallback the experiences list already uses,
+ * so a reload with no connectivity draws the style it drew last time and no second cache
+ * mechanism is written. The client accepts an absolute url, which is what a style url is.
+ *
+ * A first visit with no network and nothing stored behaves exactly as it did before: the
+ * storage read finds nothing and the original fetch error is what surfaces.
  */
 async function fetchStyle(url?: string): Promise<StyleSpecification | undefined> {
   if (!url) return undefined;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`style ${response.status} ${response.statusText}`);
-  return (await response.json()) as StyleSpecification;
+  const document: unknown = await ApiClient.get<unknown>(url, { cacheKey: styleCacheKey(url) });
+  if (!isDrawableStyle(document)) throw new Error(`style ${url} is not a drawable document`);
+  return document;
 }
 
 /**
