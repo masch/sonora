@@ -97,7 +97,13 @@ export default function TrackDetailView({
 }: TrackDetailViewProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const { renderer: mapRenderer, source: mapSource } = useMapViewConfig();
+  // The map draws the region this experience belongs to, resolved from its own
+  // coordinates: an experience outside every published box says so instead of
+  // showing a map of somewhere else.
+  const { renderer: mapRenderer, source: mapSource } = useMapViewConfig({
+    latitude: track.latitude,
+    longitude: track.longitude,
+  });
   const feedback = useFeedbackSubmit();
   const [showManualFeedback, setShowManualFeedback] = useState(false);
   const userInitiatedPlayRef = useRef(false);

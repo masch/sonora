@@ -92,6 +92,12 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t } = useAppTranslation();
+  /**
+   * The experience belongs to no published region: there is no archive to draw, and
+   * that is a fact about the place, not a failure to report. `null` is the resolved
+   * answer; an absent key means the caller never resolved one.
+   */
+  const noRegion = source.regionKey === null;
   // The archive is downloaded whole and its tiles are read from memory: the route
   // that serves the bucket supports no byte ranges.
   const archive = useMapSource(source.archiveUrl, source.styleUrl);
@@ -163,36 +169,43 @@ export default function ExperienceMap({
     function init() {
       try {
         if (cancelledRef.current || !containerRef.current) return;
-        if (archive.status !== 'ready' || !archive.sourceUrl) return;
+        if (!noRegion && (archive.status !== 'ready' || !archive.sourceUrl)) return;
 
         ensureLocalProtocol(maplibregl);
 
-        const inlineStyle: StyleSpecification = {
-          version: 8,
-          sources: {
-            basemap: {
-              type: 'vector',
-              url: archive.sourceUrl,
-              ...(source.attribution ? { attribution: source.attribution } : {}),
+        // With no region the reference plane is the whole map: no basemap is drawn at
+        // all instead of one whose tiles nobody downloaded.
+        let style: StyleSpecification;
+        if (noRegion) {
+          style = { version: 8, sources: {}, layers: [] };
+        } else {
+          const inlineStyle: StyleSpecification = {
+            version: 8,
+            sources: {
+              basemap: {
+                type: 'vector',
+                url: archive.sourceUrl,
+                ...(source.attribution ? { attribution: source.attribution } : {}),
+              },
             },
-          },
-          layers: [],
-        };
+            layers: [],
+          };
 
-        const baseStyle = source.style ?? archive.style ?? inlineStyle;
+          const baseStyle = source.style ?? archive.style ?? inlineStyle;
 
-        // The archive is already in memory: the style points at the local protocol.
-        const style: StyleSpecification = {
-          ...baseStyle,
-          sources: {
-            ...baseStyle.sources,
-            basemap: {
-              ...(baseStyle.sources.basemap as VectorSourceSpecification),
-              type: 'vector',
-              url: archive.sourceUrl,
+          // The archive is already in memory: the style points at the local protocol.
+          style = {
+            ...baseStyle,
+            sources: {
+              ...baseStyle.sources,
+              basemap: {
+                ...(baseStyle.sources.basemap as VectorSourceSpecification),
+                type: 'vector',
+                url: archive.sourceUrl,
+              },
             },
-          },
-        };
+          };
+        }
         glyphsAvailableRef.current = Boolean(style.glyphs);
 
         const map = new maplibregl.Map({
@@ -252,6 +265,7 @@ export default function ExperienceMap({
     archive.status,
     archive.sourceUrl,
     archive.style,
+    noRegion,
     source.style,
     source.styleUrl,
     source.attribution,
@@ -272,7 +286,7 @@ export default function ExperienceMap({
     applyOverlays(map);
   }, [overlays, ready, showLabels, applyOverlays]);
 
-  if (error || archive.status === 'error') {
+  if (error || (!noRegion && archive.status === 'error')) {
     return (
       <TwView
         testID={`${testID}-error`}
@@ -288,8 +302,19 @@ export default function ExperienceMap({
 
   return (
     <TwView testID={testID} className={`${className} relative overflow-hidden`}>
-      {archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
+      {!noRegion && archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
       <div ref={containerRef} className="h-full w-full z-0" />
+      {/* The same one honest line the native renderer draws over its reference plane. */}
+      {noRegion && (
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
+          testID={`${testID}-no-region`}
+        >
+          {t('map.noRegion')}
+        </ThemedText>
+      )}
     </TwView>
   );
 }

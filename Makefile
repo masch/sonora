@@ -443,7 +443,7 @@ api-login: ## Authenticate wrangler with Cloudflare (opens browser)
 	cd $(API_DIR) && bunx wrangler login
 
 .PHONY: api-deploy-production
-api-deploy-production: api-validate-wrangler-vars ## Deploy production Worker to Cloudflare (name: sonora-api, config: wrangler.toml)
+api-deploy-production: api-validate-wrangler-vars ## Deploy production Worker to Cloudflare (name: sonora-api, config: wrangler.toml) — deploy BEFORE an app build that reads map.regions
 	cd $(API_DIR) && bunx wrangler deploy
 	@echo ""
 	@echo "=== Secrets (set individually) ==="
@@ -456,7 +456,7 @@ api-deploy-production: api-validate-wrangler-vars ## Deploy production Worker to
 	@echo ""
 
 .PHONY: api-deploy-staging
-api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloudflare (name: sonora-api-staging, config: wrangler.staging.toml)
+api-deploy-staging: api-validate-wrangler-vars ## Deploy staging Worker to Cloudflare (name: sonora-api-staging, config: wrangler.staging.toml) — deploy BEFORE an app build that reads map.regions
 	cd $(API_DIR) && bunx wrangler deploy --config wrangler.staging.toml
 	@echo ""
 	@echo "=== Secrets (set individually) ==="

@@ -308,6 +308,65 @@ describe('ExperienceMap (native)', () => {
     ]);
   });
 
+  it('draws the reference plane and says the point belongs to no region', async () => {
+    const view = await render(
+      <ExperienceMap
+        source={{ regionKey: null, archiveUrl: '', style: styleWith(true) }}
+        overlays={[document]}
+      />,
+    );
+
+    // The honest line, not the "no map is configured" error: the map is not broken,
+    // this point simply belongs to no published region (S1, T-B).
+    expect(view.queryByText('map.noRegion')).toBeTruthy();
+    expect(view.queryByText('map.errors.archiveMissing')).toBeNull();
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+    // No archive means no download: the hook was handed nothing to fetch.
+    expect(mockedUseMapArchiveFile.mock.calls[0][0]).toBeUndefined();
+    // The reference plane still draws, over a style that carries no basemap.
+    expect(mockMapProps[0].mapStyle.sources?.basemap).toBeUndefined();
+    expect(drawnLayerIds()).toContain('refs:umepay:circle');
+    // And the line is real copy in both locales, not a key left untranslated.
+    expect(es.map.noRegion).not.toBe('map.noRegion');
+    expect(en.map.noRegion).not.toBe('map.noRegion');
+  });
+
+  it('keeps the no-region line even when the style cannot be fetched', async () => {
+    // The reference plane needs no style document, so a style failure is not the
+    // reason this map looks the way it does: the honest line stays on screen.
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' }) as never;
+
+    const view = await render(
+      <ExperienceMap
+        source={{ regionKey: null, archiveUrl: '', styleUrl: `${STYLE_URL}?no-region` }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(view.queryByText('map.noRegion')).toBeTruthy());
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+    expect(mockMapProps[0].mapStyle.sources?.basemap).toBeUndefined();
+  });
+
+  it('still reports a missing archive as a failure when the region is known', async () => {
+    // The region resolved but its archive is gone: that is a broken map, not a point
+    // outside the catalog, and the two reasons never collapse into one message.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveMissing' });
+
+    const view = await render(
+      <ExperienceMap
+        source={{ regionKey: 'calamuchita', archiveUrl: '', style: styleWith(true) }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(view.queryByText('map.errors.archiveMissing')).toBeTruthy();
+    expect(view.queryByText('map.noRegion')).toBeNull();
+    expect(mockMapProps).toHaveLength(0);
+  });
+
   it('shows the loading state while the archive is not ready', async () => {
     mockedUseMapArchiveFile.mockReturnValue({ status: 'loading' });
 

@@ -2,12 +2,62 @@ import { renderHook } from '@testing-library/react-native';
 
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 
+interface MockRegion {
+  bbox: number[];
+  label: string;
+  archiveUrl: string;
+  archiveBytes: number;
+}
+
+interface MockMapConfig {
+  renderer?: 'leaflet' | 'maplibre';
+  styleUrl: string;
+  regions: Record<string, MockRegion>;
+  download: {
+    preload: string[];
+    autoMaxBytes: number;
+    cacheMaxBytes: number;
+    cellular: 'ask' | 'auto' | 'never';
+  };
+}
+
+const CALAMUCHITA: MockRegion = {
+  bbox: [-64.83, -32.28, -64.66, -32.12],
+  label: 'Valle de Calamuchita',
+  archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+  archiveBytes: 4_000_000,
+};
+
+const OTRO_VALLE: MockRegion = {
+  bbox: [-65.5, -33.5, -65.1, -33.1],
+  label: 'Otro Valle',
+  archiveUrl: 'https://api.example/media/public/tiles/otro-valle/v1.pmtiles',
+  archiveBytes: 2_000_000,
+};
+
+/** A point inside `calamuchita`'s box. */
+const IN_CALAMUCHITA = { latitude: -32.2, longitude: -64.7 };
+
+/** A point inside `otro-valle`'s box. */
+const IN_OTRO_VALLE = { latitude: -33.3, longitude: -65.3 };
+
+/** A point no published box holds. */
+const OUTSIDE_EVERY_REGION = { latitude: 0, longitude: 0 };
+
+const DOWNLOAD: MockMapConfig['download'] = {
+  preload: ['calamuchita'],
+  autoMaxBytes: 8_000_000,
+  cacheMaxBytes: 100_000_000,
+  cellular: 'ask',
+};
+
 let mockRenderer: 'leaflet' | 'maplibre' = 'maplibre';
 
-let mockMapConfig:
-  { archiveUrl: string; styleUrl?: string; renderer?: 'leaflet' | 'maplibre' } | undefined = {
-  archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+let mockMapConfig: MockMapConfig | undefined = {
+  renderer: 'maplibre',
   styleUrl: 'https://api.example/media/public/styles/v1.json',
+  regions: { calamuchita: CALAMUCHITA },
+  download: DOWNLOAD,
 };
 
 jest.mock('@/config/app-config', () => ({
@@ -27,8 +77,10 @@ describe('useMapViewConfig', () => {
   afterEach(() => {
     mockRenderer = 'maplibre';
     mockMapConfig = {
-      archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+      renderer: 'maplibre',
       styleUrl: 'https://api.example/media/public/styles/v1.json',
+      regions: { calamuchita: CALAMUCHITA },
+      download: DOWNLOAD,
     };
   });
 
@@ -37,64 +89,126 @@ describe('useMapViewConfig', () => {
     const enabled = await renderHook(() => useMapViewConfig());
     expect(enabled.result.current.renderer).toBe('maplibre');
 
+    // A build that left the choice open falls back to Leaflet only when the
+    // remote value does not claim MapLibre: the env wins by asking for MapLibre,
+    // never by asking for Leaflet.
     mockRenderer = 'leaflet';
+    mockMapConfig = { ...mockMapConfig!, renderer: 'leaflet' };
     const disabled = await renderHook(() => useMapViewConfig());
     expect(disabled.result.current.renderer).toBe('leaflet');
   });
 
+  it("resolves the region whose box holds the experience's point, whatever the payload preloads", async () => {
+    // R10 decides what the app *downloads*; it does not decide what the map draws.
+    // The experience's own coordinates pick the region, so a preload list that
+    // names nothing still draws the region the walker is standing in.
+    mockMapConfig = { ...mockMapConfig!, download: { ...DOWNLOAD, preload: [] } };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.regionKey).toBe('calamuchita');
+    expect(result.current.source.archiveUrl).toBe(CALAMUCHITA.archiveUrl);
+    expect(result.current.source.regionKey).toBe('calamuchita');
+  });
+
+  it('draws the region the point is in, not the one the payload preloads', async () => {
+    mockMapConfig = {
+      styleUrl: 'https://api.example/media/public/styles/v1.json',
+      regions: { calamuchita: CALAMUCHITA, 'otro-valle': OTRO_VALLE },
+      download: { ...DOWNLOAD, preload: ['calamuchita'] },
+    };
+    const { result } = await renderHook(() => useMapViewConfig(IN_OTRO_VALLE));
+
+    expect(result.current.regionKey).toBe('otro-valle');
+    expect(result.current.source.archiveUrl).toBe(OTRO_VALLE.archiveUrl);
+  });
+
+  it('resolves no region when the point falls outside every published box', async () => {
+    mockMapConfig = {
+      styleUrl: 'https://api.example/media/public/styles/v1.json',
+      regions: { calamuchita: CALAMUCHITA, 'otro-valle': OTRO_VALLE },
+      download: DOWNLOAD,
+    };
+    const { result } = await renderHook(() => useMapViewConfig(OUTSIDE_EVERY_REGION));
+
+    // No nearest-region guess: the map says the point belongs to no region and
+    // draws its reference plane over the fallback style.
+    expect(result.current.regionKey).toBeNull();
+    expect(result.current.source.regionKey).toBeNull();
+    expect(result.current.source.archiveUrl).toBe('');
+    // The style is region-independent, so it is still the one the server published.
+    expect(result.current.source.styleUrl).toBe('https://api.example/media/public/styles/v1.json');
+  });
+
+  it('resolves no region when the caller has no point to place', async () => {
+    const { result } = await renderHook(() => useMapViewConfig());
+
+    expect(result.current.regionKey).toBeNull();
+    expect(result.current.source.archiveUrl).toBe('');
+  });
+
+  it('resolves no region when the catalog is empty, even for a point inside its box', async () => {
+    mockMapConfig = { styleUrl: '', regions: {}, download: { ...DOWNLOAD, preload: [] } };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.regionKey).toBeNull();
+    expect(result.current.source.archiveUrl).toBe('');
+  });
+
   it('lets the remote value reach the renderer when the build left it open', async () => {
     mockRenderer = 'leaflet';
-    mockMapConfig = {
-      archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
-      renderer: 'maplibre',
-    };
-    const { result } = await renderHook(() => useMapViewConfig());
+    mockMapConfig = { ...mockMapConfig!, renderer: 'maplibre' };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
 
     expect(result.current.renderer).toBe('maplibre');
   });
 
   it('keeps the build-time choice when the remote value disagrees', async () => {
     mockRenderer = 'maplibre';
-    mockMapConfig = { archiveUrl: 'https://api.example/tiles/a.pmtiles', renderer: 'leaflet' };
-    const { result } = await renderHook(() => useMapViewConfig());
+    mockMapConfig = { ...mockMapConfig!, renderer: 'leaflet' };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
 
     expect(result.current.renderer).toBe('maplibre');
   });
 
   it('resolves leaflet when neither the build nor the server asks for maplibre', async () => {
     mockRenderer = 'leaflet';
-    mockMapConfig = { archiveUrl: 'https://api.example/tiles/a.pmtiles' };
-    const withoutRenderer = await renderHook(() => useMapViewConfig());
-    expect(withoutRenderer.result.current.renderer).toBe('leaflet');
+    const { renderer: _renderer, ...withoutRenderer } = mockMapConfig!;
+    mockMapConfig = withoutRenderer;
+    const withoutRemote = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+    expect(withoutRemote.result.current.renderer).toBe('leaflet');
 
     mockMapConfig = undefined;
-    const withoutMap = await renderHook(() => useMapViewConfig());
+    const withoutMap = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
     expect(withoutMap.result.current.renderer).toBe('leaflet');
   });
 
-  it('reads the origins from the remote config', async () => {
-    const { result } = await renderHook(() => useMapViewConfig());
+  it('sends no archive and no region when the config carries no map at all', async () => {
+    mockMapConfig = undefined;
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.regionKey).toBeNull();
+    expect(result.current.source).toEqual({
+      archiveUrl: '',
+      styleUrl: undefined,
+      regionKey: null,
+    });
+  });
+
+  it('reads the archive and the style url from the remote config', async () => {
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
 
     expect(result.current.source).toEqual({
       archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
       styleUrl: 'https://api.example/media/public/styles/v1.json',
+      regionKey: 'calamuchita',
     });
-  });
-
-  it('sends an empty archive url and no style when the config carries no map', async () => {
-    mockMapConfig = undefined;
-    const { result } = await renderHook(() => useMapViewConfig());
-
-    expect(result.current.source).toEqual({ archiveUrl: '', styleUrl: undefined });
   });
 
   it('drops a style url the config left empty', async () => {
-    mockMapConfig = { archiveUrl: 'https://api.example/tiles/a.pmtiles', styleUrl: '' };
-    const { result } = await renderHook(() => useMapViewConfig());
+    mockMapConfig = { ...mockMapConfig!, styleUrl: '' };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
 
-    expect(result.current.source).toEqual({
-      archiveUrl: 'https://api.example/tiles/a.pmtiles',
-      styleUrl: undefined,
-    });
+    expect(result.current.source.styleUrl).toBeUndefined();
+    expect(result.current.source.archiveUrl).toBe(CALAMUCHITA.archiveUrl);
   });
 });

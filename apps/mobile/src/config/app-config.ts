@@ -4,7 +4,6 @@ import { Platform } from 'react-native';
 import { SPLASH_ICONS } from '@/constants/images';
 import { SPLASH_COLORS } from '@/constants/theme';
 import { resolveMapRenderer } from '@/components/map/resolve-renderer';
-import { resolveMapArtifacts } from './map-artifacts';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -116,20 +115,6 @@ export const APP_CONFIG = {
      */
     syncIntervalSec: DEFAULT_REMOTE_CONFIG.feedback.syncIntervalSec,
   },
-  /**
-   * Public map artifacts, derived from the API origin this build talks to (like
-   * the instructions audio url) and empty for a local origin. The remote config
-   * wins over this: it is the floor for a cold start without network, and the way
-   * a new artifact version reaches the app without a release.
-   *
-   * Override with EXPO_PUBLIC_MAP_ARCHIVE_URL / EXPO_PUBLIC_MAP_STYLE_URL to point
-   * a local run at a deployed environment.
-   */
-  map: resolveMapArtifacts({
-    apiBaseUrl: getApiBaseUrl(),
-    archiveUrlOverride: process.env.EXPO_PUBLIC_MAP_ARCHIVE_URL,
-    styleUrlOverride: process.env.EXPO_PUBLIC_MAP_STYLE_URL,
-  }),
   /**
    * Which map implementation this build mounts. A build-time choice today; the
    * remote flag with a version gate replaces it (T10).

@@ -280,10 +280,52 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
  * Which wait is pending while the map cannot draw yet.
  *
  * The archive is a file on the device and the style is one request, so naming the
- * stalled stage is what turns a screenshot of this screen into a diagnosis.
+ * stalled stage is what turns a screenshot of this screen into a diagnosis. A
+ * point that belongs to no region never waits for an archive.
  */
-function pendingStageKey(archive: MapArchiveFileState): TranslationKeys {
-  return archive.status !== 'ready' || !archive.uri ? 'map.loadingArchive' : 'map.loadingStyle';
+/** Which wait is still pending, or `null` when the map can draw. */
+function pendingWait(input: {
+  noRegion: boolean;
+  hasArchive: boolean;
+  remote: BaseStyleState;
+  hasStyle: boolean;
+}): 'archive' | 'style' | null {
+  if (!input.noRegion && !input.hasArchive) return 'archive';
+  if (input.remote.status === 'loading' || !input.hasStyle) return 'style';
+  return null;
+}
+
+/**
+ * The failure this map would report, if any.
+ *
+ * A point outside every region has no archive on purpose, so `archiveMissing` is not
+ * a failure there, and the remote style is not drawn either, so a style that failed
+ * is not one there either — the honest line says what is happening instead. Every
+ * other reason (a download that failed, a damaged file, a style that never arrived
+ * for a map that needs it) is still reported.
+ */
+function failureCode(input: {
+  noRegion: boolean;
+  archive: MapArchiveFileState;
+  remote: BaseStyleState;
+}): MapLoadErrorCode | undefined {
+  if (input.noRegion) return undefined;
+  if (input.archive.status === 'error') return input.archive.error;
+  return input.remote.status === 'error' ? input.remote.error : undefined;
+}
+
+/**
+ * The style drawn when the experience belongs to no published region: no basemap at
+ * all, so the reference plane is the whole map. Deliberately not the remote style —
+ * its `basemap` points at an archive this device never downloaded, and a canvas that
+ * fails to fetch tiles looks broken instead of saying the truth.
+ */
+function referencePlaneStyle(): StyleSpecification {
+  return { version: 8, sources: {}, layers: [] };
+}
+
+function pendingStageKey(archivePending: boolean): TranslationKeys {
+  return archivePending ? 'map.loadingArchive' : 'map.loadingStyle';
 }
 
 /**
@@ -369,7 +411,8 @@ function toPressReference(
 function buildMapStyle(
   base: StyleSpecification,
   options: {
-    archiveUri: string;
+    /** Absent when the point belongs to no region: there is no basemap to draw. */
+    archiveUri?: string;
     documents: readonly MapDocument[];
     showLabels: boolean;
     translate: TranslateKey;
@@ -385,8 +428,8 @@ function buildMapStyle(
     ...base.sources,
     // The archive is a file on the device: its transport url replaces the remote
     // one the style was authored with, exactly as the web renderer swaps in its
-    // in-memory one.
-    basemap: { ...basemap, type: 'vector', url: archiveUri },
+    // in-memory one. Without an archive there is no basemap at all.
+    ...(archiveUri ? { basemap: { ...basemap, type: 'vector', url: archiveUri } } : {}),
   };
 
   const layers: MapStyleLayer[] = [...(base.layers ?? [])] as unknown as MapStyleLayer[];
@@ -431,6 +474,13 @@ export default function ExperienceMap({
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
   const { t, language } = useAppTranslation();
+  /**
+   * The experience belongs to no published region: there is no archive to draw, and
+   * that is a fact about the place, not a failure to report. `null` is the resolved
+   * answer — an absent key means the caller never resolved one, which is not the same
+   * thing and keeps the archive-missing error for a map that really lost its archive.
+   */
+  const noRegion = source.regionKey === null;
   // One counter per wait, so the retry never restarts a wait that did not fail.
   const [archiveAttempt, setArchiveAttempt] = useState(0);
   const [styleAttempt, setStyleAttempt] = useState(0);
@@ -449,7 +499,9 @@ export default function ExperienceMap({
   // carry them: the switch hands a rebuilt `overlays` array (and a rebuilt
   // itinerary document) and the translation hook a new `t` on every render.
   const documentsKey = documentsSignature(overlays);
-  const archiveUri = archive.status === 'ready' ? archive.uri : undefined;
+  // The basemap is the region's archive and nothing else: with no region there is
+  // no archive to draw, whatever the hook happens to hand back.
+  const archiveUri = !noRegion && archive.status === 'ready' ? archive.uri : undefined;
   const styleDocument =
     (source.style as unknown as StyleSpecification | undefined) ??
     (remote.status === 'ready' ? remote.style : undefined);
@@ -468,6 +520,16 @@ export default function ExperienceMap({
   );
 
   const style = useMemo<StyleSpecification | null>(() => {
+    // Without a region the reference plane is the whole map: an archive nobody
+    // downloaded is not a style to draw, so neither the remote style nor the inline
+    // one is used — both carry a basemap this device cannot serve.
+    if (noRegion) {
+      return buildMapStyle(referencePlaneStyle(), {
+        documents: overlays,
+        showLabels,
+        translate,
+      });
+    }
     if (!archiveUri) return null;
     return buildMapStyle(styleDocument ?? fallbackStyle(archiveUri, attribution), {
       archiveUri,
@@ -476,7 +538,7 @@ export default function ExperienceMap({
       translate,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents are an input by content (`documentsKey`), not by array identity
-  }, [archiveUri, styleDocument, attribution, showLabels, translate, documentsKey]);
+  }, [archiveUri, noRegion, styleDocument, attribution, showLabels, translate, documentsKey]);
 
   /** Layer ids one of the drawn documents owns, in draw order. */
   const referenceLayerIds = useMemo(
@@ -528,9 +590,9 @@ export default function ExperienceMap({
     [onFeaturePress, referenceLayerIds],
   );
 
-  const failure = archive.error ?? remote.error;
+  const failure = failureCode({ noRegion, archive, remote });
 
-  if (archive.status === 'error' || remote.status === 'error') {
+  if (failure) {
     return (
       <TwView
         testID={`${testID}-error`}
@@ -556,14 +618,25 @@ export default function ExperienceMap({
   }
 
   // `style` is only absent while the archive is not ready, which the same guard
-  // covers: nothing can be drawn over an archive that does not exist yet.
-  if (archive.status !== 'ready' || !archive.uri || remote.status === 'loading' || !style) {
+  // covers: nothing can be drawn over an archive that does not exist yet. A point
+  // with no region waits for no archive, so only the style can still be pending.
+  const pending = pendingWait({
+    noRegion,
+    hasArchive: Boolean(archiveUri),
+    remote,
+    hasStyle: Boolean(style),
+  });
+  if (pending) {
     return (
       <TwView testID={testID} className={className}>
-        <LoadingView message={t(pendingStageKey(archive))} />
+        <LoadingView message={t(pendingStageKey(pending === 'archive'))} />
       </TwView>
     );
   }
+
+  // Every path that yields no style is covered by the guards above; this keeps the
+  // type honest instead of asserting it away.
+  if (!style) return null;
 
   const camera: Partial<CameraCenterStop & CameraBoundsStop> = bounds
     ? { bounds: [bounds.west, bounds.south, bounds.east, bounds.north] }
@@ -582,6 +655,18 @@ export default function ExperienceMap({
       >
         <Camera {...camera} />
       </MapLibreMap>
+      {/* One honest line over the reference plane: the map is not broken, this place
+          is outside the regions the app publishes. */}
+      {noRegion && (
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
+          testID={`${testID}-no-region`}
+        >
+          {t('map.noRegion')}
+        </ThemedText>
+      )}
     </TwView>
   );
 }

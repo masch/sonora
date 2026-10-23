@@ -21,7 +21,12 @@ export interface TripMapProps {
  */
 export default function TripMap({ experience, userCoordinates }: TripMapProps) {
   const { t } = useAppTranslation();
-  const { renderer, source } = useMapViewConfig();
+  // The experience's own coordinates decide the region, so the map draws the archive
+  // of the place the walker is going to, not the one the server preloads.
+  const { renderer, source } = useMapViewConfig({
+    latitude: experience.latitude,
+    longitude: experience.longitude,
+  });
   const [showLabels, setShowLabels] = useState(true);
 
   return (
