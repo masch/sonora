@@ -29,6 +29,7 @@ import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useTranslationStore } from '@/store/translation-store';
 import { useTermsCheck } from '@/hooks/use-terms-check';
 import { TermsModal } from '@/components/terms-modal';
+import { MapDownloadPrompt } from '@/components/map/map-download-prompt';
 import { AndroidWebGate } from '@/components/android-web-gate';
 import { logger } from '@/utils/logger';
 import { TwView, TwText, TwPressable } from '@/tw';
@@ -151,6 +152,7 @@ export default function RootLayout() {
         onRetry={termsCheck.retry}
       />
       <AndroidWebGate />
+      <MapDownloadPrompt />
     </ThemeProvider>
   );
 }

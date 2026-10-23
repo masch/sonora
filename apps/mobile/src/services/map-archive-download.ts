@@ -5,6 +5,7 @@ import {
   listArchives,
   planEviction,
   type ArchiveIdentity,
+  type StoredArchive,
 } from '@/services/map-archives';
 import { logger } from '@/utils/logger';
 
@@ -285,6 +286,35 @@ export async function ensureArchiveOnDisk({
   }
 
   return `pmtiles://${archive.uri}`;
+}
+
+/**
+ * The archives this app has already downloaded.
+ *
+ * A prefetch asks this before it prices anything: an archive that is already on the
+ * device costs nothing to "download" again, so it must not appear in the asking
+ * total. A directory that cannot be listed is reported as empty — the prefetch then
+ * prices everything, downloads over the files that exist, and reuses them.
+ */
+export function listDownloadedArchives(): StoredArchive[] {
+  const directory = new Directory(Paths.document, ARCHIVE_DIRECTORY);
+  let entries: (Directory | File)[];
+  try {
+    entries = directory.list();
+  } catch (error) {
+    logger.warn('map archive listing failed', error);
+    return [];
+  }
+
+  return listArchives(
+    entries
+      .filter((entry): entry is File => entry instanceof File)
+      .map((file) => ({
+        name: file.name,
+        size: file.size,
+        modificationTime: file.modificationTime ?? undefined,
+      })),
+  );
 }
 
 /**

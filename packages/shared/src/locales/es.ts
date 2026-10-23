@@ -36,6 +36,14 @@ export const es = {
     openLink: 'Abrir enlace',
     // Not a failure: the place is real, it is simply outside every region we publish.
     noRegion: 'Este lugar queda fuera de las regiones de mapa disponibles',
+    // The one question the startup prefetch asks before spending a metered connection.
+    downloadPromptTitle: 'Mapa sin conexión',
+    downloadPromptBodyMany:
+      'Son {{count}} regiones de mapa, {{size}} en total. Si decís que ahora no, no descargamos nada y el mapa sigue funcionando cuando tengas conexión.',
+    downloadPromptBodyOne:
+      'Es {{count}} región de mapa, {{size}} en total. Si decís que ahora no, no descargamos nada y el mapa sigue funcionando cuando tengas conexión.',
+    downloadPromptAccept: 'Descargar ahora',
+    downloadPromptDismiss: 'Ahora no',
     // What a failure becomes on screen: the hooks report these codes, never prose.
     errors: {
       archiveMissing: 'No hay un mapa configurado',
