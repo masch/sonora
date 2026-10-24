@@ -677,11 +677,11 @@ ORIGIN ?=
 
 .PHONY: map-assets-fetch
 map-assets-fetch: ## Download the glyphs + sprite the style names into $(MAP_ASSETS_DIR) (uploads nothing). [STYLE_URL=url|path] [MAP_ASSETS_DIR=path] [FORCE=1]
-	bun scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
+	bun run scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
 
 .PHONY: map-assets-verify
 map-assets-verify: ## Probe the public glyphs + sprite urls the style requests; names what is missing. [STYLE_URL=url|path] [ORIGIN=url]
-	bun scripts/map-assets.ts verify --style="$(STYLE_URL)" $(if $(ORIGIN),--origin="$(ORIGIN)",)
+	bun run scripts/map-assets.ts verify --style="$(STYLE_URL)" $(if $(ORIGIN),--origin="$(ORIGIN)",)
 
 # ── OSM reference ingestion (map documents) ──────
 # Turns OSM objects the basemap schema cannot carry (named buildings, tourism,
