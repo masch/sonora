@@ -45,10 +45,28 @@ jest.mock('expo-file-system', () => {
       return true;
     }
 
+    get name() {
+      return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+    }
+
     create() {}
 
+    // One level down, the way the platform lists: the glyphs sit one directory deeper
+    // than the sprite, and the sweep walks both.
     list() {
-      throw new Error('the style store never lists its directory');
+      const prefix = `${this.uri}/`;
+      const entries = new Map<string, MockDirectory | MockFile>();
+      const uris = [...mockDisk.keys()].sort();
+      for (const uri of uris) {
+        if (!uri.startsWith(prefix)) continue;
+        const rest = uri.slice(prefix.length);
+        const slash = rest.indexOf('/');
+        entries.set(
+          rest.slice(0, slash === -1 ? undefined : slash),
+          slash === -1 ? new MockFile(uri) : new MockDirectory(`${prefix}${rest.slice(0, slash)}`),
+        );
+      }
+      return [...entries.values()];
     }
   }
 

@@ -145,8 +145,17 @@ export async function fetchStyleDocument(
       skipCache: true,
       ...(options.signal ? { signal: options.signal } : {}),
     });
-    if (isDrawableStyle(document)) await writeCachedStyleDocument(styleUrl, document);
-    return document;
+    if (isDrawableStyle(document)) {
+      await writeCachedStyleDocument(styleUrl, document);
+      return document;
+    }
+
+    // A 200 that is not a style: a captive portal's sign-in page, an error document a
+    // proxy answered with. It never replaces what the device kept, and the kept document
+    // is still the better answer — failing the visit would take away a map the walker
+    // had. Without one, the body is returned and the renderer reports it as invalid.
+    const kept = await readCachedStyleDocument(styleUrl);
+    return kept ?? document;
   } catch (error) {
     // The request could not answer. What the device kept is the answer, if it can be
     // drawn; otherwise the original failure is what the walker's screen reports.
