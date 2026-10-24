@@ -13,8 +13,6 @@ import { mapSpritePath, mapGlyphsPath } from '@sonora/shared';
  * check is what covers that, and the store creates both directories it writes into.
  */
 const mockDisk = new Map<string, Uint8Array>();
-/** When each file was last written, which is what the asset sweep ages a temporary by. */
-const mockTimes = new Map<string, number>();
 /** Every url the store asked to download, with the path it landed on. */
 const mockDownloads: { url: string; uri: string }[] = [];
 let mockDownloadFailure: Error | null = null;
@@ -97,11 +95,6 @@ jest.mock('expo-file-system', () => {
 
     write(content: string | Uint8Array) {
       mockDisk.set(this.uri, typeof content === 'string' ? mockBytesOf(content) : content);
-      mockTimes.set(this.uri, Date.now());
-    }
-
-    get modificationTime() {
-      return mockTimes.get(this.uri) ?? null;
     }
 
     async text() {
