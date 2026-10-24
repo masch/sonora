@@ -26,10 +26,10 @@ const ENV_CONFIG = {
     appId: APP_IDENTIFIERS.production.appId,
     domain: 'sonora-api.sonora-api.workers.dev',
     scheme: APP_IDENTIFIERS.production.scheme,
-    icon: './assets/images/icon.png',
-    adaptiveIconForeground: './assets/images/android-icon-foreground.png',
+    icon: './assets/images/sonora/logo.png',
+    adaptiveIconForeground: './assets/images/sonora/logo.png',
     splashColor: '#208AEF',
-    splashIcon: './assets/images/splash-icon.png',
+    splashIcon: './assets/images/sonora/logo.png',
   },
 };
 
@@ -96,7 +96,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#E6F4FE',
         foregroundImage: activeEnv.adaptiveIconForeground,
         backgroundImage: './assets/images/android-icon-background.png',
-        monochromeImage: './assets/images/android-icon-monochrome.png',
+        monochromeImage: './assets/images/sonora/logo.png',
       },
       predictiveBackGestureEnabled: false,
       package: activeEnv.appId,
@@ -119,7 +119,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     web: {
       output: 'single',
-      favicon: './assets/images/favicon.png',
+      favicon: './assets/images/sonora/logo.png',
     },
     plugins: [
       '@react-native-firebase/app',
