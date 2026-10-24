@@ -13,6 +13,8 @@ import { mapSpritePath, mapGlyphsPath } from '@sonora/shared';
  * check is what covers that, and the store creates both directories it writes into.
  */
 const mockDisk = new Map<string, Uint8Array>();
+/** When each file was last written, which is what the asset sweep ages a temporary by. */
+const mockTimes = new Map<string, number>();
 /** Every url the store asked to download, with the path it landed on. */
 const mockDownloads: { url: string; uri: string }[] = [];
 let mockDownloadFailure: Error | null = null;
@@ -45,10 +47,28 @@ jest.mock('expo-file-system', () => {
       return true;
     }
 
+    get name() {
+      return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+    }
+
     create() {}
 
+    // One level down, the way the platform lists: the glyphs sit one directory deeper
+    // than the sprite, and the sweep walks both.
     list() {
-      throw new Error('the style store never lists its directory');
+      const prefix = `${this.uri}/`;
+      const entries = new Map<string, MockDirectory | MockFile>();
+      const uris = [...mockDisk.keys()].sort();
+      for (const uri of uris) {
+        if (!uri.startsWith(prefix)) continue;
+        const rest = uri.slice(prefix.length);
+        const slash = rest.indexOf('/');
+        entries.set(
+          rest.slice(0, slash === -1 ? undefined : slash),
+          slash === -1 ? new MockFile(uri) : new MockDirectory(`${prefix}${rest.slice(0, slash)}`),
+        );
+      }
+      return [...entries.values()];
     }
   }
 
@@ -77,6 +97,11 @@ jest.mock('expo-file-system', () => {
 
     write(content: string | Uint8Array) {
       mockDisk.set(this.uri, typeof content === 'string' ? mockBytesOf(content) : content);
+      mockTimes.set(this.uri, Date.now());
+    }
+
+    get modificationTime() {
+      return mockTimes.get(this.uri) ?? null;
     }
 
     async text() {
@@ -453,6 +478,51 @@ describe('localizeStyle', () => {
     const style = publishedStyle();
     await expect(localizeStyle(style)).resolves.toBe(style);
     expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('sweeps the assets a republished style no longer asks for', async () => {
+    // What a device that ran an older style holds: the files this style needs, plus a
+    // stack it dropped and a range it stopped using.
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    const dropped = glyphPath('Noto Sans Bold', '0-255');
+    const unusedRange = glyphPath('Noto Sans Regular', '512-767');
+    putOnDisk(dropped, 'stale');
+    putOnDisk(unusedRange, 'stale');
+
+    await localizeStyle(publishedStyle());
+
+    // The files it needs are all still there, and the two it does not are gone: nothing
+    // else would ever name them again.
+    for (const path of allAssetPaths()) expect(mockDisk.has(`${STYLE_DIR}/${path}`)).toBe(true);
+    expect(mockDisk.has(`${STYLE_DIR}/${dropped}`)).toBe(false);
+    expect(mockDisk.has(`${STYLE_DIR}/${unusedRange}`)).toBe(false);
+  });
+
+  it('sweeps a killed transfer but leaves a temporary a live one may be writing', async () => {
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    const stuck = `${glyphPath('Noto Sans Regular', '0-255')}.part`;
+    const inFlight = `${glyphPath('Noto Sans Medium', '0-255')}.part`;
+    putOnDisk(stuck, 'half');
+    putOnDisk(inFlight, 'half');
+    // An hour ago is past what a transfer of an asset can take; a fresh one may be alive.
+    mockTimes.set(`${STYLE_DIR}/${stuck}`, Date.now() - 60 * 60 * 1000 - 1000);
+
+    await localizeStyle(publishedStyle());
+
+    expect(mockDisk.has(`${STYLE_DIR}/${stuck}`)).toBe(false);
+    expect(mockDisk.has(`${STYLE_DIR}/${inFlight}`)).toBe(true);
+  });
+
+  it('sweeps nothing while the style still needs the network for its assets', async () => {
+    // One range is missing, so the rewrite does not fire and the plan cannot be trusted
+    // as the complete set: deleting anything now would throw away files the walker has.
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    mockDisk.delete(`${STYLE_DIR}/${glyphPath('Noto Sans Regular', '256-511')}`);
+    putOnDisk(glyphPath('Noto Sans Bold', '0-255'), 'stale-but-untouchable');
+
+    const style = publishedStyle();
+    await expect(localizeStyle(style)).resolves.toBe(style);
+    expect(mockDisk.has(`${STYLE_DIR}/${glyphPath('Noto Sans Bold', '0-255')}`)).toBe(true);
   });
 
   it('writes no document next to the assets it localizes', async () => {

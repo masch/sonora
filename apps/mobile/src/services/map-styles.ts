@@ -396,6 +396,72 @@ async function assetsOnDisk(style: StyleAssets): Promise<Set<string>> {
   return present;
 }
 
+/** How old a `.part` has to be before it is a killed transfer's leftover and not a live one. */
+const STALE_TEMPORARY_MS = 60 * 60 * 1000;
+
+/**
+ * The files under the asset directory, as paths relative to it.
+ *
+ * Recursive because the glyphs live one directory deeper than the sprite
+ * (`glyphs/<fontstack>/<range>.pbf`), and a sweep that only looked at the top level would
+ * leave exactly the files that accumulate.
+ */
+function listAssetFiles(directory: Directory, prefix = ''): { path: string; file: File }[] {
+  const found: { path: string; file: File }[] = [];
+  for (const entry of directory.list()) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry instanceof Directory) {
+      found.push(...listAssetFiles(entry, path));
+      continue;
+    }
+    found.push({ path, file: entry });
+  }
+  return found;
+}
+
+/**
+ * Deletes the assets this style does not ask for.
+ *
+ * The directory is keyed by what a style needs, not by when it arrived, so a republished
+ * style that drops a font stack or changes the ranges leaves the old files behind forever
+ * — nothing else names them again, and they are the only thing in `map-styles/` that
+ * grows without a bound. A `.part` from a killed transfer has the same problem, which is
+ * why the age check exists instead of deleting every temporary it sees: a recent one may
+ * belong to a transfer that is still writing.
+ *
+ * Only called once the whole plan is on the device, so a file that is missing because a
+ * download failed can never be mistaken for one that is no longer needed. Best effort,
+ * like the rest of the asset pass: a listing or a deletion that fails is logged, and the
+ * map keeps drawing what it has.
+ */
+async function sweepUnplannedAssets(
+  directory: Directory,
+  planned: readonly string[],
+): Promise<void> {
+  const keep = new Set(planned);
+  const now = Date.now();
+  let files: { path: string; file: File }[];
+  try {
+    files = listAssetFiles(directory);
+  } catch (error) {
+    logger.warn('map style assets could not be listed for the sweep', error);
+    return;
+  }
+
+  for (const { path, file } of files) {
+    const staleTemporary =
+      path.endsWith('.part') &&
+      typeof file.modificationTime === 'number' &&
+      now - file.modificationTime > STALE_TEMPORARY_MS;
+    if (keep.has(path) || (path.endsWith('.part') && !staleTemporary)) continue;
+    try {
+      file.delete();
+    } catch (error) {
+      logger.warn('map style asset could not be swept', error);
+    }
+  }
+}
+
 /**
  * The style with its `glyphs`/`sprite` pointed at the files this device really holds.
  *
@@ -407,7 +473,13 @@ async function assetsOnDisk(style: StyleAssets): Promise<Set<string>> {
 export async function localizeStyle<T extends StyleAssets>(style: T): Promise<T> {
   try {
     const present = await assetsOnDisk(style);
-    return rewriteStyleAssetsToDisk(style, { baseUri: styleDirectory().uri, present });
+    const localized = rewriteStyleAssetsToDisk(style, { baseUri: styleDirectory().uri, present });
+    // The rewrite fires only when every planned file is there, which is the one moment
+    // the plan can be trusted as the complete set this style needs.
+    if (localized !== style) {
+      await sweepUnplannedAssets(styleDirectory(), plannedAssets(style).paths);
+    }
+    return localized;
   } catch (error) {
     logger.warn('map style assets could not be read from the device', error);
     return style;

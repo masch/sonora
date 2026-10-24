@@ -409,11 +409,11 @@ describe('the style the web renderer keeps across a reload', () => {
     await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
     expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
 
-    // A captive portal answers 200 with a page that is not a style. The visit may fail,
-    // but it may not take the document away: that is what broke R12 before the cache
-    // owned its own write.
+    // A captive portal answers 200 with a page that is not a style. It may not take the
+    // document away, and it may not take the map away either: the kept document is what
+    // this visit gets, which is what R12 promises.
     respond = 'portal';
-    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toBe(portal);
+    await expect(fetchStyleDocument(STYLE_POISON)).resolves.toEqual(good);
     expect(mockCache[styleCacheKey(STYLE_POISON)]).toBe(JSON.stringify(good));
 
     // With no network at all, the kept document is what the map gets.
