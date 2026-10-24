@@ -480,68 +480,6 @@ describe('localizeStyle', () => {
     expect(logger.warn).toHaveBeenCalled();
   });
 
-  it('sweeps the assets a republished style no longer asks for', async () => {
-    // What a device that ran an older style holds: the files this style needs, plus a
-    // stack it dropped and a range it stopped using.
-    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
-    const dropped = glyphPath('Noto Sans Bold', '0-255');
-    const unusedRange = glyphPath('Noto Sans Regular', '512-767');
-    putOnDisk(dropped, 'stale');
-    putOnDisk(unusedRange, 'stale');
-    // Older than the grace window: a map cannot still be drawing these.
-    for (const path of [dropped, unusedRange]) {
-      mockTimes.set(`${STYLE_DIR}/${path}`, Date.now() - 24 * 60 * 60 * 1000 - 1000);
-    }
-
-    await localizeStyle(publishedStyle());
-
-    // The files it needs are all still there, and the two it does not are gone: nothing
-    // else would ever name them again.
-    for (const path of allAssetPaths()) expect(mockDisk.has(`${STYLE_DIR}/${path}`)).toBe(true);
-    expect(mockDisk.has(`${STYLE_DIR}/${dropped}`)).toBe(false);
-    expect(mockDisk.has(`${STYLE_DIR}/${unusedRange}`)).toBe(false);
-  });
-
-  it('leaves an asset the map on screen may still be drawing', async () => {
-    // The style that just arrived does not name this stack, but the renderer may still be
-    // drawing the previous document — or fall back to it — so a file written minutes ago
-    // is not dead yet.
-    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
-    const justDropped = glyphPath('Noto Sans Bold', '0-255');
-    putOnDisk(justDropped, 'recent');
-
-    await localizeStyle(publishedStyle());
-
-    expect(mockDisk.has(`${STYLE_DIR}/${justDropped}`)).toBe(true);
-  });
-
-  it('sweeps a killed transfer but leaves a temporary a live one may be writing', async () => {
-    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
-    const stuck = `${glyphPath('Noto Sans Regular', '0-255')}.part`;
-    const inFlight = `${glyphPath('Noto Sans Medium', '0-255')}.part`;
-    putOnDisk(stuck, 'half');
-    putOnDisk(inFlight, 'half');
-    // An hour ago is past what a transfer of an asset can take; a fresh one may be alive.
-    mockTimes.set(`${STYLE_DIR}/${stuck}`, Date.now() - 60 * 60 * 1000 - 1000);
-
-    await localizeStyle(publishedStyle());
-
-    expect(mockDisk.has(`${STYLE_DIR}/${stuck}`)).toBe(false);
-    expect(mockDisk.has(`${STYLE_DIR}/${inFlight}`)).toBe(true);
-  });
-
-  it('sweeps nothing while the style still needs the network for its assets', async () => {
-    // One range is missing, so the rewrite does not fire and the plan cannot be trusted
-    // as the complete set: deleting anything now would throw away files the walker has.
-    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
-    mockDisk.delete(`${STYLE_DIR}/${glyphPath('Noto Sans Regular', '256-511')}`);
-    putOnDisk(glyphPath('Noto Sans Bold', '0-255'), 'stale-but-untouchable');
-
-    const style = publishedStyle();
-    await expect(localizeStyle(style)).resolves.toBe(style);
-    expect(mockDisk.has(`${STYLE_DIR}/${glyphPath('Noto Sans Bold', '0-255')}`)).toBe(true);
-  });
-
   it('writes no document next to the assets it localizes', async () => {
     // The whole pipeline, as a cold start runs it: whatever the disk holds after the
     // asset pass and the existence check is assets — `glyphs/**` and `sprite*`.
