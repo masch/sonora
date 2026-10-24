@@ -24,7 +24,7 @@ export const SONORA_MESSAGES_BG = require('@/assets/images/sonora/messages-backg
 export const SONORA_HOME_MAP = require('@/assets/images/sonora/home-map.jpg');
 export const EXPO_BADGE = require('@/assets/images/expo-badge.png');
 export const EXPO_BADGE_WHITE = require('@/assets/images/expo-badge-white.png');
-export const SPLASH_ICON = require('@/assets/images/splash-icon.png');
+export const SPLASH_ICON = require('@/assets/images/sonora/logo.png');
 export const INSTAGRAM_ICON = require('@/assets/images/instagram-icon.png');
 
 export const SPLASH_ICONS = {
