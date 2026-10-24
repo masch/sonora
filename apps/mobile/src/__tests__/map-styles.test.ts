@@ -488,6 +488,10 @@ describe('localizeStyle', () => {
     const unusedRange = glyphPath('Noto Sans Regular', '512-767');
     putOnDisk(dropped, 'stale');
     putOnDisk(unusedRange, 'stale');
+    // Older than the grace window: a map cannot still be drawing these.
+    for (const path of [dropped, unusedRange]) {
+      mockTimes.set(`${STYLE_DIR}/${path}`, Date.now() - 24 * 60 * 60 * 1000 - 1000);
+    }
 
     await localizeStyle(publishedStyle());
 
@@ -496,6 +500,19 @@ describe('localizeStyle', () => {
     for (const path of allAssetPaths()) expect(mockDisk.has(`${STYLE_DIR}/${path}`)).toBe(true);
     expect(mockDisk.has(`${STYLE_DIR}/${dropped}`)).toBe(false);
     expect(mockDisk.has(`${STYLE_DIR}/${unusedRange}`)).toBe(false);
+  });
+
+  it('leaves an asset the map on screen may still be drawing', async () => {
+    // The style that just arrived does not name this stack, but the renderer may still be
+    // drawing the previous document — or fall back to it — so a file written minutes ago
+    // is not dead yet.
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    const justDropped = glyphPath('Noto Sans Bold', '0-255');
+    putOnDisk(justDropped, 'recent');
+
+    await localizeStyle(publishedStyle());
+
+    expect(mockDisk.has(`${STYLE_DIR}/${justDropped}`)).toBe(true);
   });
 
   it('sweeps a killed transfer but leaves a temporary a live one may be writing', async () => {

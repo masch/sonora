@@ -400,6 +400,18 @@ async function assetsOnDisk(style: StyleAssets): Promise<Set<string>> {
 const STALE_TEMPORARY_MS = 60 * 60 * 1000;
 
 /**
+ * How long an asset this style does not need is kept anyway.
+ *
+ * The sweep runs while a map may still be drawing the *previous* style: a renderer that
+ * has not applied the new document yet, or one that falls back to the style it already
+ * held when the new one fails, is reading the old glyphs and the old sprite. Deleting them
+ * under it would blank labels and icons on a live screen. A day is long enough for any of
+ * those paths to finish and short enough that a republish still reclaims the space inside
+ * a session or two.
+ */
+const ASSET_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
  * The files under the asset directory, as paths relative to it.
  *
  * Recursive because the glyphs live one directory deeper than the sprite
@@ -449,11 +461,14 @@ async function sweepUnplannedAssets(
   }
 
   for (const { path, file } of files) {
-    const staleTemporary =
-      path.endsWith('.part') &&
-      typeof file.modificationTime === 'number' &&
-      now - file.modificationTime > STALE_TEMPORARY_MS;
-    if (keep.has(path) || (path.endsWith('.part') && !staleTemporary)) continue;
+    const writtenAt = typeof file.modificationTime === 'number' ? file.modificationTime : null;
+    const age = writtenAt === null ? Number.POSITIVE_INFINITY : now - writtenAt;
+    // A temporary is only a leftover once no live transfer could still be writing it.
+    const staleTemporary = path.endsWith('.part') && age > STALE_TEMPORARY_MS;
+    // Anything a map may still be drawing is left alone, which is why the plan is not the
+    // only input: age is.
+    const withinGrace = age < ASSET_GRACE_MS;
+    if (keep.has(path) || (path.endsWith('.part') ? !staleTemporary : withinGrace)) continue;
     try {
       file.delete();
     } catch (error) {
