@@ -171,6 +171,7 @@ sonora/
 - **[Admin Auth Architecture](docs/admin_auth_architecture.md)** — Admin portal HttpOnly cookie session management, environment-driven security (`SameSite`/`Secure`), and XSS immunity.
 - **[Payment Flow Architecture](docs/payment_flow_architecture.md)** — Detailed sequence flows, Web vs Native redirection logic, SSOT app scheme resolution (`app-identifiers.json`), and Mercado Pago webhook synchronization.
 - **[API Logging Redaction](docs/api_logging_redaction.md)** — How the API sanitizes request/response logging: shared redaction helper, allowlists, and the `ENABLE_API_LOGGING` toggle.
+- **[Map Assets Pipeline](docs/map-assets-pipeline.md)** — How the base-map style reaches a device: the serve-time rewrite, and the `map-assets-fetch` / `api-upload-map-assets-*` / `map-assets-verify` steps that keep the self-hosted glyphs and sprite in the bucket, with when to re-run them and what breaks if one is skipped.
 
 ## API — Feedback Database
 
