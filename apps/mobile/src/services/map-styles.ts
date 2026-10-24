@@ -1,5 +1,14 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
+import {
+  GLYPH_RANGES,
+  glyphsUrl,
+  SPRITE_SUFFIXES,
+  spriteUrl,
+  styleFontStacks,
+  type StyleAssets,
+} from '@sonora/shared';
+
 import { logger } from '@/utils/logger';
 
 /**
@@ -21,16 +30,6 @@ import { logger } from '@/utils/logger';
  * and every failure is swallowed into a log line, because none of this is worth losing
  * the map over.
  */
-
-/** The parts of a style document this module reads. */
-export interface StyleAssets {
-  /** MapLibre's glyphs url *template*: it substitutes `{fontstack}` and `{range}`. */
-  glyphs?: unknown;
-  /** The sprite *base*: MapLibre appends `.json`, `.png` and `@2x.png` to it. */
-  sprite?: unknown;
-  /** The layers, where every `text-font` the glyph ranges are planned for lives. */
-  layers?: unknown;
-}
 
 /** The files a style's assets were found in, relative to the style directory. */
 interface StyleAssetsOnDisk {
@@ -69,32 +68,23 @@ const STYLE_DIRECTORY = 'map-styles';
 const GLYPHS_DIRECTORY = 'glyphs';
 
 /**
- * The Unicode ranges downloaded for every font stack the style names.
- *
- * How this list was chosen, because a range list is a claim about the places the app
- * publishes: every region is Spanish-speaking Latin script, so `0-255` (Basic Latin +
- * Latin-1 Supplement) is where every accent of a name lives — `á é í ó ú ñ ü ¿ ¡` —
- * and `256-511` (Latin Extended-A/B) covers the names that come over from Portuguese
- * and other Latin-script neighbours. Two ranges per stack is the honest size of that
- * claim: a range outside the list (Cyrillic, CJK) is not shipped, so a label needing
- * one draws without its glyphs instead of the map failing, and widening the list is
- * the one-line change if a region ever publishes those characters.
- *
- * 256 codepoints per range is what MapLibre asks for: it derives the range from the
- * fontstack and the codepoint, so these two strings are the ones it would request.
+ * The Unicode ranges and the sprite files, which are facts about the whole pipeline
+ * rather than about this store: the bucket the upload publishes, the style the server
+ * rewrites and these files all have to agree, so the definition lives in
+ * `@sonora/shared` (`map/glyphs.ts`) and `scripts/map-assets.ts` reads the same one.
+ * Re-exported here because they are this module's public vocabulary too.
  */
-export const GLYPH_RANGES = ['0-255', '256-511'] as const;
+export { GLYPH_RANGES };
+export type { StyleAssets };
 
 /**
  * The three files a sprite *base* stands for. MapLibre appends these suffixes itself,
  * so the directory keeps the same layout the bucket publishes (T-E1) and one rewrite
- * describes them all.
+ * describes them all. The names are the on-disk ones: a sprite base called `light`
+ * in the bucket lands as `sprite{suffix}` next to the style, because MapLibre is
+ * handed that base as a path.
  */
-const SPRITE_ASSETS = [
-  { suffix: '.json', path: 'sprite.json' },
-  { suffix: '.png', path: 'sprite.png' },
-  { suffix: '@2x.png', path: 'sprite@2x.png' },
-] as const;
+const SPRITE_ASSETS = SPRITE_SUFFIXES.map((suffix) => ({ suffix, path: `sprite${suffix}` }));
 
 /** Every sprite path, in the order they are downloaded. */
 export const SPRITE_PATHS: readonly string[] = SPRITE_ASSETS.map((asset) => asset.path);
@@ -105,112 +95,9 @@ const LOCAL_GLYPHS_TEMPLATE = `/${GLYPHS_DIRECTORY}/{fontstack}/{range}.pbf`;
 /** The sprite base handed to MapLibre once the three files are on the device. */
 const LOCAL_SPRITE_BASE = '/sprite';
 
-/**
- * Operators that make an array an *expression* instead of a font stack.
- *
- * A `text-font` is either a stack (an array of font names) or an expression that
- * evaluates to one, and `['get', 'font']` must not be read as the stack "get, font":
- * the strings an operator takes are property names and literals, never font names, so
- * an operator array contributes only the stacks written inside its nested arrays.
- */
-const EXPRESSION_OPERATORS: ReadonlySet<string> = new Set([
-  'literal',
-  'get',
-  'has',
-  'in',
-  'match',
-  'case',
-  'coalesce',
-  'step',
-  'interpolate',
-  'zoom',
-  'let',
-  'var',
-  'concat',
-  'format',
-  'string',
-  'to-string',
-  'number',
-  'boolean',
-  'upcase',
-  'downcase',
-  'array',
-  'any',
-  'all',
-  'not',
-  '==',
-  '!=',
-  '<',
-  '<=',
-  '>',
-  '>=',
-  '+',
-  '-',
-  '*',
-  '/',
-  '%',
-]);
-
 /** The directory the style's asset files live in. */
 function styleDirectory(): Directory {
   return new Directory(Paths.document, STYLE_DIRECTORY);
-}
-
-/**
- * Collects every font stack a `text-font` value names, in first-seen order.
- *
- * The value is walked rather than read because a style may write it three ways: a
- * plain stack (`['Noto Sans Regular']`), an expression that picks a stack by zoom or
- * by feature (`['step', ['zoom'], ['Noto Sans Regular'], 12, ['Noto Sans Medium']]`),
- * or a `literal` array. A bare string is accepted too — it is not what the spec asks
- * for, but a style that carries one still means the same font.
- */
-function collectFontStacks(value: unknown, into: Set<string>): void {
-  if (typeof value === 'string') {
-    const stack = value.trim();
-    if (stack) into.add(stack);
-    return;
-  }
-  if (!Array.isArray(value) || value.length === 0) return;
-
-  const operator = value[0];
-  if (typeof operator === 'string' && EXPRESSION_OPERATORS.has(operator)) {
-    // The operator's own strings are property names and literals, never font names, so
-    // only the arrays nested inside the expression can be a stack: `['get', 'font']`
-    // names the property `font`, and reading it as the stack "font" would download a
-    // font that does not exist on every run.
-    for (const member of value.slice(1)) {
-      if (Array.isArray(member)) collectFontStacks(member, into);
-    }
-    return;
-  }
-
-  if (value.every((member) => typeof member === 'string')) {
-    const stack = value
-      .map((member) => (member as string).trim())
-      .filter(Boolean)
-      .join(',');
-    if (stack) into.add(stack);
-    return;
-  }
-
-  for (const member of value) collectFontStacks(member, into);
-}
-
-/** Every font stack the style's layers name, in the order the layers name them. */
-function styleFontStacks(style: StyleAssets): string[] {
-  const stacks = new Set<string>();
-  const layers = (style as { layers?: unknown }).layers;
-  if (!Array.isArray(layers)) return [];
-
-  for (const layer of layers) {
-    if (layer === null || typeof layer !== 'object') continue;
-    // `text-font` lives in `layout` for every symbol layer the style spec allows.
-    const layout = (layer as { layout?: unknown }).layout;
-    if (layout === null || typeof layout !== 'object') continue;
-    collectFontStacks((layout as Record<string, unknown>)['text-font'], stacks);
-  }
-  return [...stacks];
 }
 
 /**
@@ -305,10 +192,9 @@ export function rewriteStyleAssetsToDisk<T extends StyleAssets>(
 
 /** The url a glyph file is downloaded from: the style's template, placeholders filled. */
 function glyphFileUrl(template: string, asset: GlyphAsset): string {
-  const filled = template.replace('{fontstack}', asset.fontstack).replace('{range}', asset.range);
   // A font stack carries spaces (`Noto Sans Regular`): the filesystem keeps the names
-  // as they are, but the request has to encode them.
-  return encodeURI(filled);
+  // as they are, but the request has to encode them, which `glyphsUrl` does.
+  return glyphsUrl(template, asset.fontstack, asset.range);
 }
 
 /**
@@ -368,7 +254,7 @@ export async function downloadStyleAssets(style: StyleAssets): Promise<void> {
         : []),
       ...(spriteBase
         ? SPRITE_ASSETS.map((sprite) => ({
-            url: `${spriteBase}${sprite.suffix}`,
+            url: spriteUrl(spriteBase, sprite.suffix),
             path: sprite.path,
           }))
         : []),

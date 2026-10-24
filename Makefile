@@ -658,6 +658,31 @@ api-upload-map-assets-production: ## Upload self-hosted map glyphs + sprite to t
 	done; \
 	echo "Uploaded the glyphs and the sprite to the production public bucket"
 
+# ── Self-hosted map assets: fetch + verify ──────
+# The style publishes our own glyphs and sprite paths, so the bucket has to hold the
+# files behind them: the font ranges of every stack the style names and the three
+# files of the sprite base. The bytes are Protomaps' own assets, pinned by revision
+# in packages/shared/src/map/glyphs.ts, and which of them are needed is read from the
+# style — so this is event-driven, not periodic. Re-run fetch when the style names a
+# new font stack, when GLYPH_RANGES widens, when the upstream revision is bumped, or
+# for a fresh bucket; re-run verify after any of those, and after an upload.
+#
+# `fetch` downloads into $(MAP_ASSETS_DIR) (gitignored) and uploads nothing, so a
+# human still decides when the bucket changes. `verify` probes the public urls the
+# style would request and exits non-zero naming exactly what to upload, which is what
+# a client sees as a 404 for every label and every icon.
+
+STYLE_URL ?= $(API_STAGING_URL)/media/public/styles/v1.json
+ORIGIN ?=
+
+.PHONY: map-assets-fetch
+map-assets-fetch: ## Download the glyphs + sprite the style names into $(MAP_ASSETS_DIR) (uploads nothing). [STYLE_URL=url|path] [MAP_ASSETS_DIR=path] [FORCE=1]
+	bun run scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
+
+.PHONY: map-assets-verify
+map-assets-verify: ## Probe the public glyphs + sprite urls the style requests; names what is missing. [STYLE_URL=url|path] [ORIGIN=url]
+	bun run scripts/map-assets.ts verify --style="$(STYLE_URL)" $(if $(ORIGIN),--origin="$(ORIGIN)",)
+
 # ── OSM reference ingestion (map documents) ──────
 # Turns OSM objects the basemap schema cannot carry (named buildings, tourism,
 # historic, amenities, shops) into one global reference document, with its i18n
