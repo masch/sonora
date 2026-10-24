@@ -90,6 +90,34 @@ describe('MapAssetClient.download', () => {
     expect(calls).toHaveLength(3);
   });
 
+  it('times out a body that stalls after the headers arrive', async () => {
+    // The host answers 200 and then stops sending: the headers resolve, the body never
+    // does. The timer has to still be armed at that point, or the run hangs.
+    const { fetch } = transport((call) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/x-protobuf' }),
+        arrayBuffer: () =>
+          new Promise<ArrayBuffer>((_resolve, reject) => {
+            const abort = () => {
+              const error = new Error('the body was aborted');
+              error.name = 'AbortError';
+              reject(error);
+            };
+            if (call.signal?.aborted) abort();
+            else call.signal?.addEventListener('abort', abort);
+          }),
+      } as unknown as Response),
+    );
+    const client = new MapAssetClient({ fetch, retries: 0, timeoutMs: 10 });
+
+    const error: unknown = await client.download(GLYPH_URL).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(MapAssetError);
+    expect(error).toMatchObject({ kind: 'timeout', url: GLYPH_URL });
+  });
+
   it('aborts a request that never answers', async () => {
     // The transport only ever settles when the signal fires, which is exactly the
     // read that hangs forever on a stalled connection.

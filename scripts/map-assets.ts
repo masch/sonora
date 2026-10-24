@@ -114,11 +114,19 @@ async function loadStyle(style: string, client: MapAssetClient): Promise<StyleAs
 
   const path = resolve(style);
   const text = await readFile(path, 'utf8');
+  let document: unknown;
   try {
-    return JSON.parse(text) as StyleAssets;
+    document = JSON.parse(text);
   } catch {
     throw new Error(`${path} is not valid JSON`);
   }
+  // The remote branch checks this, so the local one does too: `null`, a number or a
+  // string are all valid JSON, and letting one through surfaces as a TypeError from
+  // `assetKeysForStyle` instead of a sentence about the file that is wrong.
+  if (document === null || typeof document !== 'object') {
+    throw new Error(`${path} is not a style document`);
+  }
+  return document as StyleAssets;
 }
 
 /** The size of a file, or `null` when there is no file at that path. */

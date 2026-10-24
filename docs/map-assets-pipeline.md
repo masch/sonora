@@ -33,7 +33,7 @@ style published ──▶ fetch ──▶ upload ──▶ verify ──▶ devi
 
 ```bash
 make map-assets-fetch                                  # staging style by default
-make map-assets-fetch STYLE_URL=<url> OUT=map-assets   # another style, another directory
+make map-assets-fetch STYLE_URL=<url> MAP_ASSETS_DIR=map-assets   # another style, another directory
 ```
 
 Reads the style document, works out every file a client would request from it — the font stacks its layers name, crossed with the ranges the app downloads, plus the three sprite files — and writes them into `map-assets/` laid out exactly as the bucket expects:

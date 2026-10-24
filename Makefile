@@ -676,8 +676,8 @@ STYLE_URL ?= $(API_STAGING_URL)/media/public/styles/v1.json
 ORIGIN ?=
 
 .PHONY: map-assets-fetch
-map-assets-fetch: ## Download the glyphs + sprite the style names into ./map-assets (uploads nothing). [STYLE_URL=url|path] [FORCE=1]
-	bun scripts/map-assets.ts fetch --style="$(STYLE_URL)" $(if $(FORCE),--force,)
+map-assets-fetch: ## Download the glyphs + sprite the style names into $(MAP_ASSETS_DIR) (uploads nothing). [STYLE_URL=url|path] [MAP_ASSETS_DIR=path] [FORCE=1]
+	bun scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
 
 .PHONY: map-assets-verify
 map-assets-verify: ## Probe the public glyphs + sprite urls the style requests; names what is missing. [STYLE_URL=url|path] [ORIGIN=url]

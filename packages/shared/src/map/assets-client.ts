@@ -148,7 +148,11 @@ export class MapAssetClient {
    * error, a timeout or a 5xx is retried, and the last of those three is what is
    * thrown once the attempts run out.
    */
-  private async send(url: string, init: RequestInit): Promise<Response> {
+  private async send<T>(
+    url: string,
+    init: RequestInit,
+    read: (response: Response) => Promise<T>,
+  ): Promise<T> {
     let failure: MapAssetError | null = null;
 
     for (let attempt = 0; attempt <= this.retries; attempt += 1) {
@@ -168,8 +172,15 @@ export class MapAssetClient {
           this.logWarning(`${url} answered ${response.status}; retrying`);
           continue;
         }
-        return response;
+        // The body is read here, before the timer is cleared: a host that sends
+        // headers and then stalls mid-body must not hang the run, and it is exactly
+        // the failure the timeout exists for.
+        return await read(response);
       } catch (error) {
+        // An answer our own read already judged — a 404, a body that is not the asset —
+        // is a verdict, not a transport failure: it must reach the caller unchanged and
+        // must not be retried as if the network had hiccuped.
+        if (error instanceof MapAssetError) throw error;
         const aborted = error instanceof Error && error.name === 'AbortError';
         const reason = error instanceof Error ? error.message : String(error);
         failure = aborted
@@ -202,22 +213,23 @@ export class MapAssetClient {
    * JSON at all, which is how a host that answers 200 with an error page is caught.
    */
   async getJson<T = unknown>(url: string): Promise<T> {
-    const response = await this.send(url, {
-      method: 'GET',
-      headers: { accept: 'application/json' },
-    });
-    const text = await this.readText(url, response);
-
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new MapAssetError(
-        'body',
-        url,
-        `response body is not JSON (${text.length} characters received)`,
-        response.status,
-      );
-    }
+    return this.send(
+      url,
+      { method: 'GET', headers: { accept: 'application/json' } },
+      async (response) => {
+        const text = await this.readText(url, response);
+        try {
+          return JSON.parse(text) as T;
+        } catch {
+          throw new MapAssetError(
+            'body',
+            url,
+            `response body is not JSON (${text.length} characters received)`,
+            response.status,
+          );
+        }
+      },
+    );
   }
 
   /**
@@ -229,29 +241,30 @@ export class MapAssetClient {
    * because writing them would publish a file MapLibre cannot read.
    */
   async download(url: string): Promise<Uint8Array> {
-    const response = await this.send(url, { method: 'GET' });
-    if (response.status !== 200) {
-      throw new MapAssetError(
-        'status',
-        url,
-        `expected status 200, got ${response.status}`,
-        response.status,
-      );
-    }
+    return this.send(url, { method: 'GET' }, async (response) => {
+      if (response.status !== 200) {
+        throw new MapAssetError(
+          'status',
+          url,
+          `expected status 200, got ${response.status}`,
+          response.status,
+        );
+      }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length === 0) {
-      throw new MapAssetError('body', url, 'response body is empty', response.status);
-    }
-    if (!looksLikeAsset(url, bytes)) {
-      throw new MapAssetError(
-        'body',
-        url,
-        'response body is not the asset the url names',
-        response.status,
-      );
-    }
-    return bytes;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.length === 0) {
+        throw new MapAssetError('body', url, 'response body is empty', response.status);
+      }
+      if (!looksLikeAsset(url, bytes)) {
+        throw new MapAssetError(
+          'body',
+          url,
+          'response body is not the asset the url names',
+          response.status,
+        );
+      }
+      return bytes;
+    });
   }
 
   /**
@@ -269,48 +282,38 @@ export class MapAssetClient {
    */
   async probe(url: string): Promise<MapAssetProbe> {
     const headers: Record<string, string> = { 'accept-encoding': 'identity' };
-    const head = await this.send(url, { method: 'HEAD', headers });
-    const headContentType = head.headers.get('content-type');
-    if (head.status === 200) {
-      return {
-        ok: true,
-        status: 200,
-        contentType: headContentType,
-        contentLength: lengthOf(head.headers.get('content-length')),
-      };
-    }
-    if (!HEAD_REFUSED.has(head.status)) {
-      return {
-        ok: false,
-        status: head.status,
-        contentType: headContentType,
-        contentLength: lengthOf(head.headers.get('content-length')),
-      };
-    }
-
-    const ranged = await this.send(url, {
-      method: 'GET',
-      headers: { ...headers, range: 'bytes=0-0' },
+    /** A HEAD answer, or the refusal that makes the ranged GET worth trying. */
+    const answerOf = (response: Response): MapAssetProbe => ({
+      ok: response.status === 200 || response.status === 206,
+      status: response.status,
+      contentType: response.headers.get('content-type'),
+      contentLength:
+        response.status === 206
+          ? totalFromContentRange(response.headers.get('content-range'))
+          : lengthOf(response.headers.get('content-length')),
     });
-    const ok = ranged.status === 200 || ranged.status === 206;
-    const total =
-      ranged.status === 206
-        ? totalFromContentRange(ranged.headers.get('content-range'))
-        : lengthOf(ranged.headers.get('content-length'));
 
-    // The body of the ranged request is one byte and is never used; dropping it keeps
-    // the connection from holding a stream nobody reads.
-    try {
-      await ranged.arrayBuffer();
-    } catch {
-      // A body that cannot be read does not change what the headers already said.
-    }
+    const head = await this.send(url, { method: 'HEAD', headers }, async (response) =>
+      answerOf(response),
+    );
+    if (head.status !== 200 && !HEAD_REFUSED.has(head.status)) return head;
+    if (head.status === 200) return head;
 
-    return {
-      ok,
-      status: ranged.status,
-      contentType: ranged.headers.get('content-type'),
-      contentLength: total,
-    };
+    return this.send(
+      url,
+      { method: 'GET', headers: { ...headers, range: 'bytes=0-0' } },
+      async (response) => {
+        const answer = answerOf(response);
+        // The body of the ranged request is one byte and is never used; dropping it keeps
+        // the connection from holding a stream nobody reads. It is read inside the
+        // timeout window, so a stalled body is reported instead of hanging the run.
+        try {
+          await response.arrayBuffer();
+        } catch {
+          // A body that cannot be read does not change what the headers already said.
+        }
+        return answer;
+      },
+    );
   }
 }
