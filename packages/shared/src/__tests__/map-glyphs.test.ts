@@ -197,6 +197,21 @@ describe('assetKeysForStyle', () => {
     );
   });
 
+  it('joins an origin to the paths whatever slashes it carries', () => {
+    // An origin from the command line may carry one, none, or a run of them, and a
+    // run is exactly what a `/+$` pattern backtracks over. The url must not end up
+    // with a doubled slash in any of those cases.
+    const style = publishedStyle();
+    const plain = assetKeysForStyle(style, { origin: 'https://api.example' });
+    for (const origin of [
+      'https://api.example/',
+      'https://api.example//',
+      `https://api.example${'/'.repeat(200)}`,
+    ]) {
+      expect(assetKeysForStyle(style, { origin })).toEqual(plain);
+    }
+  });
+
   it('targets the origin it is given instead of the one the style names', () => {
     // `verify --origin` probes production with the same style: the keys do not
     // move, only the origin the request goes to.

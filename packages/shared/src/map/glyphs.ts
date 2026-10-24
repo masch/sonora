@@ -244,18 +244,31 @@ function spriteKey(suffix: SpriteSuffix): string {
   return spriteUrl(mapSpriteKey(), suffix);
 }
 
+/**
+ * An origin without its trailing slashes.
+ *
+ * Written as a scan rather than `replace(/\/+$/, '')` on purpose: that pattern is
+ * quadratic on a long run of slashes that ends in something else, and the origin comes
+ * from a command line argument, which is untrusted input for a tool that fetches urls.
+ */
+function withoutTrailingSlashes(origin: string): string {
+  let end = origin.length;
+  while (end > 0 && origin.charCodeAt(end - 1) === 0x2f /* / */) end -= 1;
+  return origin.slice(0, end);
+}
+
 /** The glyphs template a request goes to, honouring an origin override. */
 function publicGlyphsTemplate(style: StyleAssets, origin: string | undefined): string | null {
   if (typeof style.glyphs !== 'string' || style.glyphs.length === 0) return null;
   if (origin === undefined) return style.glyphs;
-  return `${origin.replace(/\/+$/, '')}${mapGlyphsPath()}`;
+  return `${withoutTrailingSlashes(origin)}${mapGlyphsPath()}`;
 }
 
 /** The sprite base a request goes to, honouring an origin override. */
 function publicSpriteBase(style: StyleAssets, origin: string | undefined): string | null {
   if (typeof style.sprite !== 'string' || style.sprite.length === 0) return null;
   if (origin === undefined) return style.sprite;
-  return `${origin.replace(/\/+$/, '')}${mapSpritePath()}`;
+  return `${withoutTrailingSlashes(origin)}${mapSpritePath()}`;
 }
 
 /**
