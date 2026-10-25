@@ -5,6 +5,8 @@ import {
   boundsOfDocuments,
   buildReferenceStyleLayers,
   isAllowedHttpsUrl,
+  ITINERARY_DOCUMENT_KEY,
+  labelAnchorForDocument,
   MAP_LINK_ALLOWED_HOSTS,
   MAP_REFERENCE_LIMITS,
   mapDocumentSchema,
@@ -257,6 +259,36 @@ describe('reference style layers', () => {
     for (const layer of layers) {
       expect(layer.filter).toContainEqual(['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]]);
     }
+  });
+
+  it('culls a label that would land on another one', () => {
+    // With overlap allowed, two documents describing the same place draw their
+    // labels into the same pixels and the result reads as a corrupted word.
+    const label = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`).find((layer) =>
+      layer.id.endsWith(':label'),
+    );
+
+    expect(label?.layout?.['text-allow-overlap']).toBe(false);
+  });
+
+  it('anchors the itinerary on the opposite side of a reference', () => {
+    // The two can describe the same point: the first stop of a walk and the place
+    // it enters. Opposing anchors are what makes both readable.
+    const labelOf = (anchor: 'top' | 'bottom') =>
+      buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, { labelAnchor: anchor }).find(
+        (layer) => layer.id.endsWith(':label'),
+      );
+
+    expect(labelOf('top')?.layout?.['text-anchor']).toBe('top');
+    expect(labelOf('bottom')?.layout?.['text-anchor']).toBe('bottom');
+    // The offset follows the anchor, or the text would sit on the point it names.
+    expect(labelOf('top')?.layout?.['text-offset']).toEqual([0, 0.8]);
+    expect(labelOf('bottom')?.layout?.['text-offset']).toEqual([0, -0.8]);
+  });
+
+  it('gives each document the anchor its content asks for', () => {
+    expect(labelAnchorForDocument(ITINERARY_DOCUMENT_KEY)).toBe('bottom');
+    expect(labelAnchorForDocument('referencias')).toBe('top');
   });
 
   it('omits the label layer when the style has no glyphs source', () => {

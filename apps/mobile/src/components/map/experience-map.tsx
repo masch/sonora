@@ -15,6 +15,7 @@ import type { NativeSyntheticEvent } from 'react-native';
 
 import {
   buildReferenceStyleLayers,
+  labelAnchorForDocument,
   referenceSourceId,
   withResolvedLabels,
   type MapDocument,
@@ -456,7 +457,12 @@ function buildMapStyle(
       type: 'geojson',
       data: withResolvedLabels(document, translate).collection,
     };
-    layers.push(...buildReferenceStyleLayers(sourceId, { includeLabels }));
+    layers.push(
+      ...buildReferenceStyleLayers(sourceId, {
+        includeLabels,
+        labelAnchor: labelAnchorForDocument(document.key),
+      }),
+    );
   }
 
   // The shared builder types `filter` as `unknown[]` because it has no dependency

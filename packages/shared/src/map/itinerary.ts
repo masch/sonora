@@ -1,5 +1,17 @@
 import type { MapDocument, MapReferenceFeature } from './document';
 
+/**
+ * Which side of a point a document's labels belong on.
+ *
+ * The itinerary and a reference can describe the same place — the first stop of a
+ * walk next to the wooded area it enters — and a map that anchors both above the
+ * point draws two labels into the same pixels. Whichever document is not the
+ * itinerary keeps the side every reference always had.
+ */
+export function labelAnchorForDocument(documentKey: string): 'top' | 'bottom' {
+  return documentKey === ITINERARY_DOCUMENT_KEY ? 'bottom' : 'top';
+}
+
 /** A geographic position in degrees, the shape every experience already carries. */
 export interface ItineraryCoordinates {
   latitude: number;
