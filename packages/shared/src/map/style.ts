@@ -25,6 +25,12 @@ export function referenceSourceId(key: string): string {
 export interface ReferenceLayerOptions {
   /** Labels need a glyphs source in the style; omit them when there is none. */
   includeLabels?: boolean;
+  /**
+   * Which side of the point the label sits on. Two documents that describe the same
+   * place — a reference and the itinerary stop that lands on it — read as one
+   * corrupted word when both anchor the same way, so they are given opposite sides.
+   */
+  labelAnchor?: 'top' | 'bottom';
 }
 
 export function buildReferenceStyleLayers(
@@ -67,6 +73,7 @@ export function buildReferenceStyleLayers(
   ];
 
   if (options.includeLabels !== false) {
+    const anchor = options.labelAnchor ?? 'top';
     layers.push({
       id: `${sourceId}:label`,
       type: 'symbol',
@@ -76,9 +83,12 @@ export function buildReferenceStyleLayers(
         'text-field': ['get', 'label'],
         'text-font': LABEL_FONT,
         'text-size': 12,
-        'text-anchor': 'top',
-        'text-offset': [0, 0.8],
-        'text-allow-overlap': true,
+        'text-anchor': anchor,
+        'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
+        // Culling is the point, not a limitation: with overlap allowed, two labels
+        // that land on the same pixel draw on top of each other and read as a
+        // corrupted word. A crowded map is expected to drop the loser.
+        'text-allow-overlap': false,
       },
       paint: {
         'text-color': color,
