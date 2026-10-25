@@ -8,7 +8,7 @@ import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import TripMap from '@/components/map/trip-map';
+import ExperienceMapSwitch from '@/components/map/experience-map-switch';
 import { MapDownloadButton } from '@/components/map/map-download-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
@@ -16,6 +16,7 @@ import { ExperienceCredits } from '@/components/experience-credits';
 import { LeadCaptureButton } from '@/components/lead-capture-button';
 import type { TripExperience } from '@/data/experiences';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
+import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useOfflineGeofence } from '@/hooks/use-offline-geofence';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -112,6 +113,12 @@ export default function TripDetailView({
   );
 
   const download = useTrackDownload(track.id, track.audioUrl, track.title);
+  // The experience's own coordinates decide the region, so the map draws the archive
+  // of the place the walker is going to, not the one the server preloads.
+  const { renderer: mapRenderer, source: mapSource } = useMapViewConfig({
+    latitude: track.latitude,
+    longitude: track.longitude,
+  });
   const player = useImmersionPlayer(download.localAudioUri, {
     title: track.title,
     id: track.id,
@@ -226,7 +233,13 @@ export default function TripDetailView({
 
             {/* Mini map, and the decision to take it with you: the region the
                 trip's own coordinates resolve to, prepared before leaving. */}
-            <TripMap experience={track} userCoordinates={geofence.userCoordinates ?? undefined} />
+            <ExperienceMapSwitch
+              renderer={mapRenderer}
+              source={mapSource}
+              experience={track}
+              userCoordinates={geofence.userCoordinates ?? undefined}
+              surface="card"
+            />
             <MapDownloadButton point={{ latitude: track.latitude, longitude: track.longitude }} />
 
             {/* GPS precision */}

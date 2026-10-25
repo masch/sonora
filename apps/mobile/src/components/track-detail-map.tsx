@@ -37,6 +37,12 @@ interface TrackDetailMapProps {
   userLatitude?: number;
   userLongitude?: number;
   showLabels?: boolean;
+  /**
+   * The id of the WebView itself, deliberately not the surface's: the component that
+   * mounts this map owns the map's own test id, and two nodes answering the same one
+   * make every query ambiguous the moment this renderer draws.
+   */
+  testID?: string;
   waypoints?: { latitude: number; longitude: number }[];
 }
 
@@ -87,15 +93,20 @@ if (wps && wps.length > 0) {
 
   L.polyline(latlngs, {color: '#10b981', weight: 4, opacity: 0.8}).addTo(map);
 
+  window.waypointMarkers = [];
   wps.forEach(function(wp, idx) {
     var label = "${pointTemplate}".replace('INDEX_PLACEHOLDER', (idx + 2));
-    L.circleMarker([wp.latitude, wp.longitude], {
+    var marker = L.circleMarker([wp.latitude, wp.longitude], {
       radius: 6,
       color: '#10b981',
       fillColor: '#ffffff',
       fillOpacity: 1,
       weight: 3
-    }).addTo(map).bindTooltip(label, {permanent: true, direction: 'top'});
+    }).addTo(map);
+    marker.bindTooltip(label, {permanent: true, direction: 'top'});
+    // Kept with its label so the toggle can unbind and rebind it later: a marker
+    // whose tooltip is never touched keeps announcing a name the walker hid.
+    window.waypointMarkers.push({ marker: marker, label: label });
   });
 
   var bounds = L.latLngBounds(latlngs);
@@ -130,6 +141,7 @@ export default function TrackDetailMap({
   userLatitude,
   userLongitude,
   showLabels = true,
+  testID = 'track-detail-map-leaflet',
   waypoints = EMPTY_WAYPOINTS,
 }: TrackDetailMapProps) {
   const { t } = useAppTranslation();
@@ -163,6 +175,14 @@ export default function TrackDetailMap({
           if (${showLabels}) {
             window.userMarker.bindTooltip("${userLocLabel}", { permanent: true, direction: 'top' });
           }
+        }
+        if (window.waypointMarkers) {
+          window.waypointMarkers.forEach(function(entry) {
+            entry.marker.unbindTooltip();
+            if (${showLabels}) {
+              entry.marker.bindTooltip(entry.label, { permanent: true, direction: 'top' });
+            }
+          });
         }
         true;
       `;
@@ -254,7 +274,7 @@ export default function TrackDetailMap({
             source={{ uri }}
             className="flex-1 bg-transparent"
             accessibilityLabel={t('map.loadingMap')}
-            testID="track-detail-map"
+            testID={testID}
             userAgent={mapUserAgent}
             scrollEnabled={false}
             bounces={false}
