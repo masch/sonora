@@ -473,6 +473,43 @@ describe('localizeStyle', () => {
     expect(logger.warn).toHaveBeenCalled();
   });
 
+  it('says which urls it handed the map, once per decision', async () => {
+    // The failure this exists for is silent: a local read that MapLibre cannot do logs
+    // "Failed to load sprite:" with nothing after the colon, because there is no HTTP
+    // status. The urls chosen here are what turn that into a cause.
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    // A style of its own, so the decision cannot be silenced by an earlier test's.
+    const style = { ...publishedStyle(), sprite: `${REMOTE_SPRITE}-reported` };
+
+    const localized = await localizeStyle(style);
+
+    expect(logger.info).toHaveBeenCalledWith('map style assets localized', {
+      glyphs: localized.glyphs,
+      sprite: localized.sprite,
+    });
+    const calls = jest.mocked(logger.info).mock.calls.length;
+    // A second map on the same screen does not repeat it.
+    await localizeStyle(style);
+    expect(jest.mocked(logger.info).mock.calls).toHaveLength(calls);
+  });
+
+  it('names the files that kept the map on the network', async () => {
+    for (const path of allAssetPaths()) putOnDisk(path, 'kept');
+    const absent = glyphPath('Noto Sans Medium', '256-511');
+    mockDisk.delete(`${STYLE_DIR}/${absent}`);
+
+    const style = publishedStyle();
+    await expect(localizeStyle(style)).resolves.toBe(style);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'map style assets not localized, missing from the device',
+      {
+        missing: [absent],
+        sprite: style.sprite,
+      },
+    );
+  });
+
   it('writes no document next to the assets it localizes', async () => {
     // The whole pipeline, as a cold start runs it: whatever the disk holds after the
     // asset pass and the existence check is assets — `glyphs/**` and `sprite*`.
