@@ -18,7 +18,7 @@ Consequences worth holding in mind:
 
 - **The bucket object keeps third-party urls; clients never see them.** Editing the style to "point at our bucket" would be undone by the rewrite, and editing it to keep protomaps urls is pointless.
 - The urls a client requests are **ours**, so the objects behind them have to exist in **our** bucket. That is the whole reason for this pipeline.
-- The sprite is a **base**, not a directory: MapLibre appends `.json`, `.png` and `@2x.png` itself, so the keys are `sprites/light.json`, `sprites/light.png`, `sprites/light@2x.png`. A tree shaped like `sprites/light/sprite.json` uploads happily and 404s forever.
+- The sprite is a **base**, not a directory: MapLibre appends `.json`, `.png`, `@2x.json` and `@2x.png` itself, so the keys are `sprites/light.json`, `sprites/light.png`, `sprites/light@2x.json` and `sprites/light@2x.png`. A tree shaped like `sprites/light/sprite.json` uploads happily and 404s forever, and shipping three of the four leaves every high-density phone asking for a file that was never uploaded — a device log is what caught that one.
 
 ---
 
@@ -36,15 +36,15 @@ make map-assets-fetch                                  # staging style by defaul
 make map-assets-fetch STYLE_URL=<url> MAP_ASSETS_DIR=map-assets   # another style, another directory
 ```
 
-Reads the style document, works out every file a client would request from it — the font stacks its layers name, crossed with the ranges the app downloads, plus the three sprite files — and writes them into `map-assets/` laid out exactly as the bucket expects:
+Reads the style document, works out every file a client would request from it — the font stacks its layers name, crossed with the ranges the app downloads, plus the four sprite files — and writes them into `map-assets/` laid out exactly as the bucket expects:
 
 ```
 map-assets/
 ├── glyphs/<fontstack>/<range>.pbf     # e.g. glyphs/Noto Sans Regular/0-255.pbf
-└── sprites/light.json | light.png | light@2x.png
+└── sprites/light.json | light.png | light@2x.json | light@2x.png
 ```
 
-It skips a file already on disk with the same size (use `--force` to re-download), prints one line per file with its size, and exits non-zero if any file failed. **Nothing is hardcoded**: the stacks come from the style, the ranges and keys come from `packages/shared/src/map/glyphs.ts`, and the upstream revision is the single constant `MAP_ASSET_SOURCE_VERSION` there.
+Ten files, not nine: the `@2x` sprite is a document _and_ an image. It skips a file already on disk with the same size (use `--force` to re-download), prints one line per file with its size, and exits non-zero if any file failed. **Nothing is hardcoded**: the stacks come from the style, the ranges and keys come from `packages/shared/src/map/glyphs.ts`, and the upstream revision is the single constant `MAP_ASSET_SOURCE_VERSION` there.
 
 Why the list is derived rather than written down: the day the style names a fourth font stack, a hand-written list is silently wrong and the only symptom is missing labels on a device.
 

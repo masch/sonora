@@ -135,19 +135,21 @@ describe('glyphsUrl', () => {
 });
 
 describe('spriteUrl', () => {
-  it('appends each of the three suffixes MapLibre derives from a sprite base', () => {
-    // The style publishes a base, not a directory: MapLibre asks for these three
-    // files itself, so they are the three that have to be in the bucket.
+  it('appends each of the four suffixes MapLibre derives from a sprite base', () => {
+    // The style publishes a base, not a directory: MapLibre asks for these files
+    // itself, and on a @2x device it asks for the 2x document too, not only the 2x
+    // image. A device log found that missing file.
     expect(SPRITE_SUFFIXES.map((suffix) => spriteUrl(REMOTE_SPRITE, suffix))).toEqual([
       `${REMOTE_SPRITE}.json`,
       `${REMOTE_SPRITE}.png`,
+      `${REMOTE_SPRITE}@2x.json`,
       `${REMOTE_SPRITE}@2x.png`,
     ]);
   });
 });
 
 describe('assetKeysForStyle', () => {
-  it('names the nine files the published style makes a client request', () => {
+  it('names the ten files the published style makes a client request', () => {
     const requests = assetKeysForStyle(publishedStyle());
 
     expect(requests.map((request) => request.key)).toEqual([
@@ -159,9 +161,10 @@ describe('assetKeysForStyle', () => {
       'glyphs/Noto Sans Italic/256-511.pbf',
       'sprites/light.json',
       'sprites/light.png',
+      'sprites/light@2x.json',
       'sprites/light@2x.png',
     ]);
-    // Three stacks × two ranges, plus the three files of the sprite base.
+    // Three stacks × two ranges, plus the four files of the sprite base.
     expect(requests).toHaveLength(3 * GLYPH_RANGES.length + SPRITE_SUFFIXES.length);
   });
 
@@ -193,6 +196,9 @@ describe('assetKeysForStyle', () => {
       `${MAP_ASSET_SOURCE_ORIGIN}/sprites/${MAP_ASSET_SOURCE_VERSION}/light.json`,
     );
     expect(requests[8].downloadUrl).toBe(
+      `${MAP_ASSET_SOURCE_ORIGIN}/sprites/${MAP_ASSET_SOURCE_VERSION}/light@2x.json`,
+    );
+    expect(requests[9].downloadUrl).toBe(
       `${MAP_ASSET_SOURCE_ORIGIN}/sprites/${MAP_ASSET_SOURCE_VERSION}/light@2x.png`,
     );
   });
@@ -222,7 +228,7 @@ describe('assetKeysForStyle', () => {
     expect(production[0].url).toBe(
       'https://sonora-api.sonora-api.workers.dev/media/public/glyphs/Noto%20Sans%20Regular/0-255.pbf',
     );
-    expect(production[8].url).toBe(
+    expect(production[9].url).toBe(
       'https://sonora-api.sonora-api.workers.dev/media/public/sprites/light@2x.png',
     );
     expect(production.map((request) => request.key)).toEqual(
@@ -237,6 +243,7 @@ describe('assetKeysForStyle', () => {
     expect(typeOf('glyphs/Noto Sans Regular/0-255.pbf')).toBe('application/x-protobuf');
     expect(typeOf('sprites/light.json')).toBe('application/json');
     expect(typeOf('sprites/light.png')).toBe('image/png');
+    expect(typeOf('sprites/light@2x.json')).toBe('application/json');
     expect(typeOf('sprites/light@2x.png')).toBe('image/png');
   });
 
@@ -252,6 +259,7 @@ describe('assetKeysForStyle', () => {
     expect(requests.map((request) => request.key)).toEqual([
       'sprites/light.json',
       'sprites/light.png',
+      'sprites/light@2x.json',
       'sprites/light@2x.png',
     ]);
   });
@@ -266,6 +274,7 @@ describe('assetKeysForStyle', () => {
     expect(requests.map((request) => request.key)).toEqual([
       'sprites/light.json',
       'sprites/light.png',
+      'sprites/light@2x.json',
       'sprites/light@2x.png',
     ]);
   });
