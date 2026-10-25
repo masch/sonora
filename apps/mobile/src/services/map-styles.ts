@@ -290,10 +290,53 @@ async function assetsOnDisk(style: StyleAssets): Promise<Set<string>> {
  * present keeps its `file://` urls for the rest of the page; a style missing any of
  * them is returned untouched and MapLibre goes to the network.
  */
+/** The last localization decision this process reported, so a mount does not repeat it. */
+let lastReport: string | null = null;
+
+/**
+ * Says what the map was handed, once per decision.
+ *
+ * A `file://` that MapLibre cannot read is the one failure this module can produce
+ * silently: the native renderer logs "Failed to load sprite:" and nothing after the
+ * colon, because a local read has no HTTP status to print. A device log with the urls
+ * this function chose turns that into a cause in one line, and the missing list says
+ * which half of the plan never arrived. Logged on a change of decision only, so a
+ * screen that re-mounts a map does not flood the log.
+ */
+function reportLocalization(style: StyleAssets, missing: readonly string[]): void {
+  // The urls are part of the signature on purpose: "localized" for one style and
+  // "localized" for another are different facts, and a test that changes the style
+  // must not be silenced by the decision the previous one reported.
+  const signature =
+    missing.length === 0
+      ? `localized:${String(style.glyphs)}:${String(style.sprite)}`
+      : `missing:${[...missing].sort().join(',')}`;
+  if (signature === lastReport) return;
+  lastReport = signature;
+
+  if (missing.length === 0) {
+    logger.info('map style assets localized', {
+      glyphs: style.glyphs,
+      sprite: style.sprite,
+    });
+    return;
+  }
+  logger.info('map style assets not localized, missing from the device', {
+    missing,
+    sprite: style.sprite,
+  });
+}
+
 export async function localizeStyle<T extends StyleAssets>(style: T): Promise<T> {
   try {
     const present = await assetsOnDisk(style);
-    return rewriteStyleAssetsToDisk(style, { baseUri: styleDirectory().uri, present });
+    const localized = rewriteStyleAssetsToDisk(style, { baseUri: styleDirectory().uri, present });
+    // The rewrite is all-or-nothing, so an absent file means the style kept its
+    // published urls: reporting which ones are absent is what explains a map that
+    // draws without names or icons.
+    const missing = plannedAssets(style).paths.filter((path) => !present.has(path));
+    reportLocalization(localized, missing);
+    return localized;
   } catch (error) {
     logger.warn('map style assets could not be read from the device', error);
     return style;
