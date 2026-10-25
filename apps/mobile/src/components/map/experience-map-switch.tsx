@@ -4,19 +4,34 @@ import { ITINERARY_DOCUMENT_KEY, itineraryDocument, type MapDocument } from '@so
 
 import TrackDetailMap from '@/components/track-detail-map';
 import ReferenceCard from '@/components/reference-card';
+import { IconButton } from '@/components/ui/icon-button';
 import type { PlayableExperience } from '@/data/experiences';
+import { useAppTranslation } from '@/hooks/use-translation';
+import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
 import type { MapReferencePress, MapSourceConfig } from './map-view.types';
 import type { MapRenderer } from './resolve-renderer';
+
+/**
+ * Where the switch is mounted. The surface owns the wrapper's geometry and
+ * nothing else: a trip draws the map inside its rounded card, a track draws it
+ * on the page. Which controls a map has never depends on this.
+ */
+export type ExperienceMapSurface = 'card' | 'full';
+
+const SURFACE_CLASSES: Record<ExperienceMapSurface, string> = {
+  card: '-mx-3 relative',
+  full: 'mt-3 -mx-3 relative rounded-xl overflow-hidden',
+};
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;
   source: MapSourceConfig;
   experience: PlayableExperience;
   userCoordinates?: { latitude: number; longitude: number };
-  /** Draw the map labels: labels toggle on the trip screen. Defaults to true. */
-  showLabels?: boolean;
+  /** The wrapper geometry only. Defaults to `'full'`, the page-mounted map. */
+  surface?: ExperienceMapSurface;
   testID?: string;
 }
 
@@ -26,7 +41,8 @@ function waypointsOf(experience: PlayableExperience) {
 }
 
 /**
- * The map for an experience, whichever implementation is enabled.
+ * The map for an experience, whichever implementation is enabled, together with
+ * its controls.
  *
  * Extracted from the track screen so a trip mounts the same renderer. The switch
  * hands the itinerary to whichever branch runs: the origin, the numbered stops
@@ -41,56 +57,82 @@ function waypointsOf(experience: PlayableExperience) {
  * The itinerary this switch injects is drawing, not content: a tap on the origin,
  * a numbered stop, the path or the walker position reports the derived document's
  * key, and that never opens a card.
+ *
+ * The labels control is defined here and nowhere else, so every screen that
+ * mounts a map shows it the same way: the screen says which experience and which
+ * surface, never which controls.
  */
 export default function ExperienceMapSwitch({
   renderer,
   source,
   experience,
   userCoordinates,
-  showLabels = true,
+  surface = 'full',
   testID,
 }: ExperienceMapSwitchProps) {
+  const { t } = useAppTranslation();
   const waypoints = waypointsOf(experience);
   const [pressedReference, setPressedReference] = useState<MapReferencePress | null>(null);
+  const [showLabels, setShowLabels] = useState(true);
 
   function handleFeaturePress(reference: MapReferencePress) {
     if (reference.documentKey === ITINERARY_DOCUMENT_KEY) return;
     setPressedReference(reference);
   }
 
-  if (renderer === 'maplibre') {
-    const itinerary = itineraryDocument({
-      origin: { latitude: experience.latitude, longitude: experience.longitude },
-      waypoints,
-      userCoordinates,
-    });
-    const overlays: MapDocument[] = [itinerary, ...(experience.mapDocuments ?? [])];
+  function drawMap() {
+    if (renderer === 'maplibre') {
+      const itinerary = itineraryDocument({
+        origin: { latitude: experience.latitude, longitude: experience.longitude },
+        waypoints,
+        userCoordinates,
+      });
+      const overlays: MapDocument[] = [itinerary, ...(experience.mapDocuments ?? [])];
+
+      return (
+        <>
+          <ExperienceMap
+            source={source}
+            overlays={overlays}
+            center={[experience.longitude, experience.latitude]}
+            userCoordinates={userCoordinates}
+            waypoints={waypoints}
+            showLabels={showLabels}
+            onFeaturePress={handleFeaturePress}
+          />
+          <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
+        </>
+      );
+    }
 
     return (
-      <>
-        <ExperienceMap
-          source={source}
-          overlays={overlays}
-          center={[experience.longitude, experience.latitude]}
-          userCoordinates={userCoordinates}
-          waypoints={waypoints}
-          showLabels={showLabels}
-          onFeaturePress={handleFeaturePress}
-          testID={testID}
-        />
-        <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
-      </>
+      <TrackDetailMap
+        latitude={experience.latitude}
+        longitude={experience.longitude}
+        userLatitude={userCoordinates?.latitude}
+        userLongitude={userCoordinates?.longitude}
+        showLabels={showLabels}
+        waypoints={waypoints}
+      />
     );
   }
 
   return (
-    <TrackDetailMap
-      latitude={experience.latitude}
-      longitude={experience.longitude}
-      userLatitude={userCoordinates?.latitude}
-      userLongitude={userCoordinates?.longitude}
-      showLabels={showLabels}
-      waypoints={waypoints}
-    />
+    <TwView className={SURFACE_CLASSES[surface]} testID={testID}>
+      {drawMap()}
+      <IconButton
+        onPress={() => setShowLabels(!showLabels)}
+        variant="outline"
+        size="sm"
+        className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
+        accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+        testID="toggle-map-labels"
+        icon={{
+          ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+          android: showLabels ? 'label_off' : 'label',
+          web: showLabels ? 'label_off' : 'label',
+        }}
+      />
+    </TwView>
   );
 }

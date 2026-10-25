@@ -213,17 +213,14 @@ export default function TrackDetailView({
 
             {/* Map for track origin point */}
             {track.latitude != null && track.longitude != null && (
-              <TwView
-                className="mt-3 -mx-3 relative rounded-xl overflow-hidden"
+              <ExperienceMapSwitch
+                renderer={mapRenderer}
+                source={mapSource}
+                experience={track}
+                userCoordinates={geofence.userCoordinates ?? undefined}
+                surface="full"
                 testID="track-detail-map"
-              >
-                <ExperienceMapSwitch
-                  renderer={mapRenderer}
-                  source={mapSource}
-                  experience={track}
-                  userCoordinates={geofence.userCoordinates ?? undefined}
-                />
-              </TwView>
+              />
             )}
 
             {/* Block playback banner if the track geo gate says not playable */}
