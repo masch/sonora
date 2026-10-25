@@ -877,12 +877,12 @@ api-test-production: ## Test production Worker health (GET /health)
 	curl -s -o /dev/null -w "HTTP %{http_code} — %{time_total}s\n" '$(API_PRODUCTION_URL)/health'
 
 .PHONY: api-logs-staging
-api-logs-staging: ## Tail staging Worker logs (Ctrl+C to stop)
-	cd $(API_DIR) && bunx wrangler tail --config wrangler.staging.toml
+api-logs-staging: ## Tail staging Worker logs, one line per request (Ctrl+C to stop)
+	cd $(API_DIR) && bunx wrangler tail --format pretty --config wrangler.staging.toml
 
 .PHONY: api-logs-production
-api-logs-production: ## Tail production Worker logs (Ctrl+C to stop)
-	cd $(API_DIR) && bunx wrangler tail
+api-logs-production: ## Tail production Worker logs, one line per request (Ctrl+C to stop)
+	cd $(API_DIR) && bunx wrangler tail --format pretty
 
 .PHONY: api-secrets-staging
 api-secrets-staging: ## List staging Worker secrets (names only)
