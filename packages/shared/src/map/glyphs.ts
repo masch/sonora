@@ -48,7 +48,15 @@ export type GlyphRange = (typeof GLYPH_RANGES)[number];
  * itself, so the base is a name, not a directory and not a filename: a base that
  * ended in `.png` would make the renderer ask for `light.png.png`.
  */
-export const SPRITE_SUFFIXES = ['.json', '.png', '@2x.png'] as const;
+/**
+ * The four files a sprite base stands for.
+ *
+ * MapLibre builds both the document and the image from the base, and for a `@2x`
+ * device it asks for `@2x.json` **and** `@2x.png` — not the 1x document with a 2x
+ * image. Shipping three left every high-density phone requesting a file that was
+ * never uploaded, and the map drew without icons: a device log is what found it.
+ */
+export const SPRITE_SUFFIXES = ['.json', '.png', '@2x.json', '@2x.png'] as const;
 
 export type SpriteSuffix = (typeof SPRITE_SUFFIXES)[number];
 
@@ -84,6 +92,22 @@ export const MAP_ASSET_CONTENT_TYPES = {
   '.json': 'application/json',
   '.png': 'image/png',
 } as const;
+
+/**
+ * The content type one sprite suffix has to be served with, read from its extension.
+ *
+ * Comparing the whole suffix against `.json` looked right while there were three and
+ * was wrong for `@2x.json`, which would have been uploaded as a `png`: a device would
+ * then receive the sprite document with the wrong type. The extension is the fact that
+ * decides, and an unknown one is a programming error rather than a guess.
+ */
+function spriteContentType(suffix: string): string {
+  const dot = suffix.lastIndexOf('.');
+  const extension = dot === -1 ? '' : suffix.slice(dot);
+  const type = MAP_ASSET_CONTENT_TYPES[extension as keyof typeof MAP_ASSET_CONTENT_TYPES];
+  if (!type) throw new Error(`no content type for the sprite suffix ${suffix}`);
+  return type;
+}
 
 /** One file a style needs: where it belongs, where to get it, where it is served. */
 export interface MapAssetRequest {
@@ -307,8 +331,7 @@ export function assetKeysForStyle(
         key: spriteKey(suffix),
         url: spriteUrl(spriteBase, suffix),
         downloadUrl: spriteUrl(SOURCE_SPRITE_BASE, suffix),
-        contentType:
-          suffix === '.json' ? MAP_ASSET_CONTENT_TYPES['.json'] : MAP_ASSET_CONTENT_TYPES['.png'],
+        contentType: spriteContentType(suffix),
       });
     }
   }
