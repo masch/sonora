@@ -258,45 +258,30 @@ describe('ExperienceMapSwitch', () => {
     expect(features.some((feature) => feature.geometry.type === 'LineString')).toBe(false);
   });
 
-  // The labels control is the switch's, not the screen's: whichever surface wraps
-  // the map, the same single control is there and it drives the same state.
-  it.each(['card', 'full'] as const)(
-    'renders exactly one labels control on the %s surface',
-    async (surface) => {
-      const view = await render(
-        <ExperienceMapSwitch
-          renderer="leaflet"
-          source={source}
-          experience={trip}
-          surface={surface}
-        />,
-      );
+  // The labels control is the switch's, not the screen's, and there is one
+  // presentation: the map a trip mounts and the map a track mounts are the same
+  // component with the same control, so neither can drift from the other.
+  it('renders exactly one labels control', async () => {
+    const view = await render(
+      <ExperienceMapSwitch renderer="leaflet" source={source} experience={trip} />,
+    );
 
-      expect(view.getAllByTestId('toggle-map-labels')).toHaveLength(1);
-    },
-  );
+    expect(view.getAllByTestId('toggle-map-labels')).toHaveLength(1);
+  });
 
-  it.each(['card', 'full'] as const)(
-    'flips the labels handed to the renderer on the %s surface',
-    async (surface) => {
-      const view = await render(
-        <ExperienceMapSwitch
-          renderer="leaflet"
-          source={source}
-          experience={trip}
-          surface={surface}
-        />,
-      );
+  it('flips the labels handed to the renderer', async () => {
+    const view = await render(
+      <ExperienceMapSwitch renderer="leaflet" source={source} experience={trip} />,
+    );
 
-      expect(mockTrackDetailMapProps[0].showLabels).toBe(true);
+    expect(mockTrackDetailMapProps[0].showLabels).toBe(true);
 
-      await fireEvent.press(view.getByTestId('toggle-map-labels'));
-      expect(mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1].showLabels).toBe(false);
+    await fireEvent.press(view.getByTestId('toggle-map-labels'));
+    expect(mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1].showLabels).toBe(false);
 
-      await fireEvent.press(view.getByTestId('toggle-map-labels'));
-      expect(mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1].showLabels).toBe(true);
-    },
-  );
+    await fireEvent.press(view.getByTestId('toggle-map-labels'));
+    expect(mockTrackDetailMapProps[mockTrackDetailMapProps.length - 1].showLabels).toBe(true);
+  });
 
   it('flips the labels handed to the maplibre renderer too', async () => {
     const view = await render(
@@ -318,7 +303,6 @@ describe('ExperienceMapSwitch', () => {
         renderer="leaflet"
         source={source}
         experience={trip}
-        surface="full"
         testID="track-detail-map"
       />,
     );

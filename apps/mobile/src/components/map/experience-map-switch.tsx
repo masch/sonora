@@ -14,24 +14,20 @@ import type { MapReferencePress, MapSourceConfig } from './map-view.types';
 import type { MapRenderer } from './resolve-renderer';
 
 /**
- * Where the switch is mounted. The surface owns the wrapper's geometry and
- * nothing else: a trip draws the map inside its rounded card, a track draws it
- * on the page. Which controls a map has never depends on this.
+ * The map's own frame, the same wherever the map is mounted.
+ *
+ * It used to take a surface prop, so a trip drew the map flush inside its card and
+ * a track drew it rounded on the page — two presentations of one screen's worth of
+ * data, and the reason the same place could look different depending on how the
+ * walker got there. There is one presentation now.
  */
-export type ExperienceMapSurface = 'card' | 'full';
-
-const SURFACE_CLASSES: Record<ExperienceMapSurface, string> = {
-  card: '-mx-3 relative',
-  full: 'mt-3 -mx-3 relative rounded-xl overflow-hidden',
-};
+const SURFACE_CLASS = 'mt-3 -mx-3 relative rounded-xl overflow-hidden';
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;
   source: MapSourceConfig;
   experience: PlayableExperience;
   userCoordinates?: { latitude: number; longitude: number };
-  /** The wrapper geometry only. Defaults to `'full'`, the page-mounted map. */
-  surface?: ExperienceMapSurface;
   testID?: string;
 }
 
@@ -60,14 +56,14 @@ function waypointsOf(experience: PlayableExperience) {
  *
  * The labels control is defined here and nowhere else, so every screen that
  * mounts a map shows it the same way: the screen says which experience and which
- * surface, never which controls.
+ * frame, and the frame is the same everywhere: which controls a map has must not
+ * depend on where it is mounted.
  */
 export default function ExperienceMapSwitch({
   renderer,
   source,
   experience,
   userCoordinates,
-  surface = 'full',
   testID,
 }: ExperienceMapSwitchProps) {
   const { t } = useAppTranslation();
@@ -118,7 +114,7 @@ export default function ExperienceMapSwitch({
   }
 
   return (
-    <TwView className={SURFACE_CLASSES[surface]} testID={testID}>
+    <TwView className={SURFACE_CLASS} testID={testID}>
       {drawMap()}
       <IconButton
         onPress={() => setShowLabels(!showLabels)}

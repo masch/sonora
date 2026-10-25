@@ -238,7 +238,6 @@ export default function TripDetailView({
               source={mapSource}
               experience={track}
               userCoordinates={geofence.userCoordinates ?? undefined}
-              surface="card"
             />
             <MapDownloadButton point={{ latitude: track.latitude, longitude: track.longitude }} />
 

@@ -218,7 +218,6 @@ export default function TrackDetailView({
                 source={mapSource}
                 experience={track}
                 userCoordinates={geofence.userCoordinates ?? undefined}
-                surface="full"
                 testID="track-detail-map"
               />
             )}
