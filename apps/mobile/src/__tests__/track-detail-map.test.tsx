@@ -24,7 +24,7 @@ describe('TrackDetailMap OSM tile policy', () => {
   it('requests tiles from the exact OSM tile host, without subdomains', async () => {
     const { getByTestId } = await render(<TrackDetailMap {...props} />);
 
-    const source = getByTestId('track-detail-map').props.source as { uri: string };
+    const source = getByTestId('track-detail-map-leaflet').props.source as { uri: string };
     const html = decodeDataUri(source.uri);
 
     expect(html).toContain("L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'");
@@ -34,7 +34,7 @@ describe('TrackDetailMap OSM tile policy', () => {
   it('shows the OpenStreetMap attribution with a link', async () => {
     const { getByTestId } = await render(<TrackDetailMap {...props} />);
 
-    const source = getByTestId('track-detail-map').props.source as { uri: string };
+    const source = getByTestId('track-detail-map-leaflet').props.source as { uri: string };
 
     expect(decodeDataUri(source.uri)).toContain(
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -44,10 +44,45 @@ describe('TrackDetailMap OSM tile policy', () => {
   it('identifies the app in the WebView User-Agent', async () => {
     const { getByTestId } = await render(<TrackDetailMap {...props} />);
 
-    const userAgent = String(getByTestId('track-detail-map').props.userAgent);
+    const userAgent = String(getByTestId('track-detail-map-leaflet').props.userAgent);
 
     // Names the app, carries the app version and a contact URL in one stable token.
     expect(userAgent).toMatch(/^Sonora\/\S+ \(\+https:\/\/\S+\)$/);
     expect(userAgent).toContain(getAppVersion().versionName);
+  });
+});
+
+describe('TrackDetailMap labels toggle', () => {
+  const props = { latitude: -32.211913, longitude: -64.73809 };
+
+  it('keeps the waypoint markers reachable for the labels toggle', async () => {
+    // The toggle runs later, as injected JavaScript, and can only unbind what the
+    // page kept a reference to. A waypoint marker left out of that list keeps its
+    // permanent tooltip after the walker hides the labels.
+    const { getByTestId } = await render(
+      <TrackDetailMap
+        {...props}
+        waypoints={[
+          { latitude: -32.212, longitude: -64.738 },
+          { latitude: -32.213, longitude: -64.739 },
+        ]}
+      />,
+    );
+
+    const html = decodeDataUri(
+      (getByTestId('track-detail-map-leaflet').props.source as { uri: string }).uri,
+    );
+
+    expect(html).toContain('window.waypointMarkers = [];');
+    expect(html).toContain('window.waypointMarkers.push({ marker: marker, label: label });');
+  });
+
+  it('answers to its own test id, not the surface', async () => {
+    // The surface that mounts this map owns the screen's id; when both answer the
+    // same one, every query matches two nodes the moment this renderer draws.
+    const { getByTestId, queryByTestId } = await render(<TrackDetailMap {...props} />);
+
+    expect(getByTestId('track-detail-map-leaflet')).toBeTruthy();
+    expect(queryByTestId('track-detail-map')).toBeNull();
   });
 });
