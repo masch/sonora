@@ -1113,7 +1113,6 @@ describe('ExperienceMap (native)', () => {
         source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
         experience={trip}
         userCoordinates={{ latitude: -34.61, longitude: -58.39 }}
-        showLabels={false}
       />,
     );
 
@@ -1131,7 +1130,10 @@ describe('ExperienceMap (native)', () => {
       null,
       null,
     ]);
-    expect(drawnLayerIds().filter((id) => id.endsWith(':label'))).toEqual([]);
+    // Labels are part of every surface now, so the itinerary's own label layer is
+    // there; switching them off is the control's job and is pinned in the switch's
+    // own suite, where pressing it is the thing being tested.
+    expect(drawnLayerIds()).toContain('refs:itinerary:label');
   });
 });
 
