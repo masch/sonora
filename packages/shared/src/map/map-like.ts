@@ -1,4 +1,5 @@
 import type { MapDocument } from './document';
+import { labelAnchorForDocument } from './itinerary';
 import {
   buildReferenceStyleLayers,
   REFERENCE_SOURCE_PREFIX,
@@ -68,7 +69,10 @@ export function applyMapDocuments(
       map.addSource(sourceId, { type: 'geojson', data: document.collection });
     }
 
-    for (const layer of buildReferenceStyleLayers(sourceId, options)) {
+    for (const layer of buildReferenceStyleLayers(sourceId, {
+      ...options,
+      labelAnchor: labelAnchorForDocument(document.key),
+    })) {
       if (!existingLayers.includes(layer.id)) map.addLayer(layer);
     }
   }
