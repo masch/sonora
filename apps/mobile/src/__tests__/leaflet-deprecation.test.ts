@@ -23,10 +23,17 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+/**
+ * Every way a module can reach the package: static and side-effect imports, dynamic
+ * ones, `require`, a subpath such as `leaflet/dist/leaflet-src`, with either quote.
+ */
+const LEAFLET_IMPORT = /(?:\bfrom|\brequire|\bimport)\s*\(?\s*['"]leaflet(?:\/[^'"]*)?['"]/;
+const LEAFLET_CDN = /unpkg\.com\/leaflet/;
+
 /** A file consumes Leaflet when it imports the package or loads its script remotely. */
 function consumesLeaflet(path: string): boolean {
   const source = readFileSync(path, 'utf8');
-  return /from 'leaflet'/.test(source) || /unpkg\.com\/leaflet/.test(source);
+  return LEAFLET_IMPORT.test(source) || LEAFLET_CDN.test(source);
 }
 
 describe('Leaflet is frozen', () => {
