@@ -1,5 +1,5 @@
 import type { StyleSpecification } from 'maplibre-gl';
-import type { GeoBounds, MapDocument } from '@sonora/shared';
+import type { GeoBounds, MapDocument, MapLayerGroupConfig } from '@sonora/shared';
 
 export { resolveMapRenderer, MAP_RENDERER_ENV, type MapRenderer } from './resolve-renderer';
 
@@ -21,6 +21,15 @@ export interface MapSourceConfig {
   styleUrl?: string;
   /** Inline style, used when no URL is configured yet. */
   style?: StyleSpecification;
+  /**
+   * The basemap layer groups `/config` asks for, in payload order.
+   *
+   * It rides with the source for the same reason `regionKey` does: the map
+   * components take the source as their only input, and this is a decision about
+   * what the map draws. Absent means the payload named no group, and every group
+   * then draws as the style authored it.
+   */
+  layers?: readonly MapLayerGroupConfig[];
   attribution?: string;
 }
 

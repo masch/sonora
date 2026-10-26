@@ -158,6 +158,76 @@ export function resolveLayerSelection(
 }
 
 /**
+ * Applies a selection to a style's own layers, as a pure transform.
+ *
+ * Both adapters are declarative: MapLibre Native is handed a whole style
+ * specification and re-applies it when the object changes, and Leaflet's OSM
+ * raster tiles have no layer to poke at at all. So the adapter is not
+ * `setLayoutProperty`, it is this function — which is also why it can be proved
+ * without a map. The selection is the one `resolveLayerSelection` decided, so a
+ * group in it that this build does not implement is simply not one of
+ * `MAP_LAYER_GROUPS` and is ignored here too.
+ *
+ * - a hidden group's layers get `layout.visibility: 'none'`;
+ * - a visible group's layers lose that key (a style layer without it is visible,
+ *   so writing `'visible'` would freeze a decision the style never made);
+ * - the canvas and every layer no group claims keep what they had: a group can
+ *   never blank the map it is drawn on, and a `refs:*` layer of ours belongs to a
+ *   document, not to a basemap group.
+ *
+ * Nothing is mutated: a changed layer, and its `layout`, are copies. When every
+ * group is drawn — the payload's default — the array is returned as the **same
+ * reference**, so a caller that keys its memoisation on this result does not
+ * rebuild a style nobody asked to change.
+ */
+export function applyLayerGroups<T extends { id: string; layout?: Record<string, unknown> }>(
+  layers: readonly T[],
+  selection: readonly MapLayerSelection[],
+): T[] {
+  const hidden = new Set<MapLayerGroupId>();
+  const shown = new Set<MapLayerGroupId>();
+  for (const entry of selection) {
+    if (!isMapLayerGroupId(entry.id)) continue;
+    if (entry.visible) shown.add(entry.id);
+    else hidden.add(entry.id);
+  }
+
+  let changed = false;
+  const applied = layers.map((layer) => {
+    // Always-on and unclaimed layers are resolved first, so a canvas layer or a
+    // reference layer never reaches either branch below.
+    const group = groupOfLayer(layer.id);
+    if (group === null) return layer;
+
+    const visibility = layer.layout?.visibility;
+
+    if (hidden.has(group)) {
+      if (visibility === 'none') return layer;
+      changed = true;
+      return { ...layer, layout: { ...layer.layout, visibility: 'none' } };
+    }
+
+    // A group the selection never mentions is left as the style drew it: only an
+    // explicit `none` is ours to undo.
+    if (!shown.has(group) || visibility !== 'none') return layer;
+    const layout = { ...layer.layout };
+    delete layout.visibility;
+    changed = true;
+    return { ...layer, layout };
+  });
+
+  return changed ? applied : (layers as T[]);
+}
+
+/**
+ * Whether `id` is one of the groups this build implements. The wire carries any
+ * string (S2), so this is where an id from a newer server stops.
+ */
+function isMapLayerGroupId(id: string): id is MapLayerGroupId {
+  return (MAP_LAYER_GROUPS as readonly string[]).includes(id);
+}
+
+/**
  * Whether the selector button is offered at all.
  *
  * Off when the payload says off **or** when the renderer supports no group: a

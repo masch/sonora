@@ -14,11 +14,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
 
 import {
+  MAPLIBRE_LAYER_CAPABILITIES,
+  applyLayerGroups,
   buildReferenceStyleLayers,
   labelAnchorForDocument,
   referenceSourceId,
+  resolveLayerSelection,
   withResolvedLabels,
   type MapDocument,
+  type MapLayerSelection,
   type MapStyleLayer,
   type TranslateKey,
 } from '@sonora/shared';
@@ -431,11 +435,13 @@ function buildMapStyle(
     /** Absent when the point belongs to no region: there is no basemap to draw. */
     archiveUri?: string;
     documents: readonly MapDocument[];
+    /** Which basemap groups draw, resolved once by the view. */
+    selection: readonly MapLayerSelection[];
     showLabels: boolean;
     translate: TranslateKey;
   },
 ): StyleSpecification {
-  const { archiveUri, documents, showLabels, translate } = options;
+  const { archiveUri, documents, selection, showLabels, translate } = options;
   // A label layer is a symbol layer: without a glyphs source MapLibre fails to
   // draw it, so labels only exist when the base style can serve them.
   const includeLabels = showLabels && Boolean(base.glyphs);
@@ -449,7 +455,13 @@ function buildMapStyle(
     ...(archiveUri ? { basemap: { ...basemap, type: 'vector', url: archiveUri } } : {}),
   };
 
-  const layers: MapStyleLayer[] = [...(base.layers ?? [])] as unknown as MapStyleLayer[];
+  // The groups are applied to the basemap's own layers, before any document layer
+  // is appended: our references are not a basemap group and no group may blank them.
+  // The transform is pure, so this stays a declarative rebuild of the style.
+  const layers: MapStyleLayer[] = applyLayerGroups(
+    [...(base.layers ?? [])] as unknown as MapStyleLayer[],
+    selection,
+  );
 
   for (const document of orderedDocuments(documents)) {
     const sourceId = referenceSourceId(document.key);
@@ -510,6 +522,23 @@ export default function ExperienceMap({
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
 
+  /**
+   * Which basemap groups draw, from the payload this build already consumes
+   * (`map.layers`, S2) resolved against what MapLibre can actually toggle (T3).
+   *
+   * The group list is an input by content, like `documentsKey`: the store hands back
+   * the same object until the config changes, but `resolveLayerSelection` builds a new
+   * array, and a new array in the style's dependencies would rebuild the style — which
+   * on native re-applies it and re-fetches its tiles.
+   */
+  const groups = source.layers ?? [];
+  const groupsKey = groups.map((group) => `${group.id}:${group.defaultVisible ? 1 : 0}`).join(',');
+  const layerSelection = useMemo<MapLayerSelection[]>(
+    () => resolveLayerSelection(groups, MAPLIBRE_LAYER_CAPABILITIES),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the payload is an input by content (`groupsKey`), not by array identity
+    [groupsKey],
+  );
+
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
     if (remote.status === 'error') setStyleAttempt((previous) => previous + 1);
@@ -548,6 +577,7 @@ export default function ExperienceMap({
     if (noRegion) {
       return buildMapStyle(referencePlaneStyle(), {
         documents: overlays,
+        selection: layerSelection,
         showLabels,
         translate,
       });
@@ -556,11 +586,21 @@ export default function ExperienceMap({
     return buildMapStyle(styleDocument ?? fallbackStyle(archiveUri, attribution), {
       archiveUri,
       documents: overlays,
+      selection: layerSelection,
       showLabels,
       translate,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents are an input by content (`documentsKey`), not by array identity
-  }, [archiveUri, noRegion, styleDocument, attribution, showLabels, translate, documentsKey]);
+  }, [
+    archiveUri,
+    noRegion,
+    styleDocument,
+    attribution,
+    showLabels,
+    translate,
+    documentsKey,
+    layerSelection,
+  ]);
 
   /** Layer ids one of the drawn documents owns, in draw order. */
   const referenceLayerIds = useMemo(
