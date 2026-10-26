@@ -121,6 +121,7 @@ function setMapConfig({
       styleUrl: `${ARCHIVE_ORIGIN}/media/public/styles/v1.json`,
       regions: REGIONS,
       download: { preload, autoMaxBytes, cacheMaxBytes: 100_000_000, cellular },
+      layers: { showControl: false, groups: [] },
     },
   };
   useRemoteConfigStore.setState({ config });

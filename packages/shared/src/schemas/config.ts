@@ -69,11 +69,54 @@ export const MapDownloadPolicySchema = z
 export type MapDownloadPolicy = z.infer<typeof MapDownloadPolicySchema>;
 
 /**
+ * One group of basemap layers a client can show or hide. `id` is an open string,
+ * not an enum: the server may announce a group before every published build knows
+ * it, so validation must accept it and the consumer ignores what it does not
+ * implement. Freezing the list here would turn a forward-compatible payload into a
+ * rejected one.
+ */
+export const MapLayerGroupSchema = z.object({
+  id: z.string().min(1),
+  /** Draws it when the experience opens; the control can still switch it. */
+  defaultVisible: z.boolean().default(true),
+});
+
+/**
+ * Deliberately not strict. A mistyped key inside a selection is dropped and the
+ * documented default applies, which errs towards hiding the control rather than
+ * drawing something nobody asked for; making it strict would resurrect, one level
+ * deeper, the whole-object rejection this contract exists to prevent.
+ */
+export const MapLayerSelectionSchema = z.object({
+  /**
+   * Whether the selector is offered at all. Off by default: the control does not
+   * exist yet in every published build, and a payload must never change behaviour
+   * the app did not ship.
+   */
+  showControl: z.boolean().default(false),
+  /** Order is the server's: the control renders it as received. */
+  groups: z.array(MapLayerGroupSchema).default([]),
+});
+
+/**
  * The catalog of published regions plus the renderer and download policy.
  *
  * `regions` is keyed by region (`calamuchita`) and holds only what the server
  * confirmed is published: an archive the bucket does not have never reaches a
  * client that would fail to download it.
+ *
+ * Passthrough, not strict, on purpose. The store validates every top-level field
+ * of `/config` on its own and keeps the default for the ones that fail, so a
+ * strict `map` meant a field this build has never heard of discarded the whole
+ * object: an old build lost its renderer, its region catalog and its download
+ * policy the moment the server added a nested field. An unknown key is tolerated
+ * and carried instead: it travels in the parsed output — the mobile store
+ * persists it into the config cache as it does every field — but nothing reads
+ * it, so it costs nothing, which is what makes adding a field safe. Rejecting it
+ * cost the whole object.
+ *
+ * `layers` is deliberately absent from the wire until the installed base carries
+ * this schema, and `apps/api/src/routes/config.ts` strips it for that reason.
  */
 export const MapConfigSchema = z
   .object({
@@ -81,8 +124,9 @@ export const MapConfigSchema = z
     styleUrl: z.string(),
     regions: z.record(z.string(), MapRegionPayloadSchema),
     download: MapDownloadPolicySchema,
+    layers: MapLayerSelectionSchema.default({}),
   })
-  .strict();
+  .passthrough();
 
 export type MapConfig = z.infer<typeof MapConfigSchema>;
 
@@ -139,6 +183,9 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
       cacheMaxBytes: 100_000_000,
       cellular: 'ask',
     },
+    // The schema default, so an untouched config changes nothing: the layer
+    // control stays hidden until the server turns it on.
+    layers: { showControl: false, groups: [] },
   },
 };
 

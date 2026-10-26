@@ -84,6 +84,7 @@ function setMapConfig({ renderer = 'maplibre' }: { renderer?: 'leaflet' | 'mapli
         cacheMaxBytes: CACHE_MAX_BYTES,
         cellular: 'ask',
       },
+      layers: { showControl: false, groups: [] },
     },
   };
   useRemoteConfigStore.setState({ config });

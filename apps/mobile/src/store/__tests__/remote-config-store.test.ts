@@ -200,6 +200,7 @@ describe('RemoteConfigStore', () => {
           cacheMaxBytes: 100_000_000,
           cellular: 'ask',
         },
+        layers: { showControl: false, groups: [] },
       },
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
@@ -238,6 +239,45 @@ describe('RemoteConfigStore', () => {
     expect(state.config.geofence.trip.radiusMeters).toBe(50);
     expect(state.config.geofence.track.radiusMeters).toBe(50);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
+  });
+
+  it('keeps the remote map when its payload carries a nested field this build does not know', async () => {
+    // The user-visible consequence of `map` being `.passthrough()`: an unknown
+    // sibling field must not cost the app the renderer, the style, the region
+    // catalog or the download policy. Every value below differs from
+    // DEFAULT_REMOTE_CONFIG.map, so a test that quietly fell back would fail.
+    const regions = {
+      calamuchita: {
+        bbox: [-64.83, -32.28, -64.66, -32.12] as [number, number, number, number],
+        label: 'Valle de Calamuchita',
+        archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+        archiveBytes: 1_234_567,
+      },
+    };
+    const download = {
+      preload: ['calamuchita', 'punilla'],
+      autoMaxBytes: 42_000_000,
+      cacheMaxBytes: 512_000_000,
+      cellular: 'never' as const,
+    };
+    const styleUrl = 'https://api.example/media/public/styles/v9.json';
+    mockApiGet.mockResolvedValue({
+      map: {
+        renderer: 'maplibre',
+        styleUrl,
+        regions,
+        download,
+        futureField: { anything: true },
+      },
+    });
+
+    await useRemoteConfigStore.getState().init();
+
+    const state = useRemoteConfigStore.getState();
+    expect(state.config.map.renderer).toBe('maplibre');
+    expect(state.config.map.styleUrl).toBe(styleUrl);
+    expect(state.config.map.regions).toEqual(regions);
+    expect(state.config.map.download).toEqual(download);
   });
 
   it('handles type mismatch — discards invalid field, keeps default', async () => {
