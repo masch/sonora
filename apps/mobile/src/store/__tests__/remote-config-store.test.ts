@@ -200,6 +200,7 @@ describe('RemoteConfigStore', () => {
           cacheMaxBytes: 100_000_000,
           cellular: 'ask',
         },
+        layers: { showControl: false, groups: [] },
       },
     };
     mockGetCachedConfig.mockResolvedValue(cachedConfig);
@@ -238,6 +239,39 @@ describe('RemoteConfigStore', () => {
     expect(state.config.geofence.trip.radiusMeters).toBe(50);
     expect(state.config.geofence.track.radiusMeters).toBe(50);
     expect(state.config.audio.rewindOffsetMs).toBe(10000);
+  });
+
+  it('keeps the remote map when its payload carries a nested field this build does not know', async () => {
+    // The user-visible consequence of `map` being `.passthrough()`: an unknown
+    // sibling field must not cost the app the renderer or the region catalog.
+    const regions = {
+      calamuchita: {
+        bbox: [-64.83, -32.28, -64.66, -32.12] as [number, number, number, number],
+        label: 'Valle de Calamuchita',
+        archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+        archiveBytes: 1_234_567,
+      },
+    };
+    mockApiGet.mockResolvedValue({
+      map: {
+        renderer: 'maplibre',
+        styleUrl: 'https://api.example/media/public/styles/v1.json',
+        regions,
+        download: {
+          preload: ['calamuchita'],
+          autoMaxBytes: 8_000_000,
+          cacheMaxBytes: 100_000_000,
+          cellular: 'ask',
+        },
+        futureField: { anything: true },
+      },
+    });
+
+    await useRemoteConfigStore.getState().init();
+
+    const state = useRemoteConfigStore.getState();
+    expect(state.config.map.renderer).toBe('maplibre');
+    expect(state.config.map.regions).toEqual(regions);
   });
 
   it('handles type mismatch — discards invalid field, keeps default', async () => {

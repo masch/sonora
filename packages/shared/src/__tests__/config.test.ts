@@ -42,6 +42,7 @@ const fullPayload: RemoteConfigPayload = {
       cacheMaxBytes: 100_000_000,
       cellular: 'ask',
     },
+    layers: { showControl: false, groups: [] },
   },
 };
 
@@ -242,7 +243,10 @@ describe('RemoteConfigPayloadSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects a stray legacy archiveUrl next to a complete catalog', () => {
+    it('ignores a stray map-level field and keeps the complete catalog', () => {
+      // Reversed by forward tolerance: `map` is `.passthrough()`, so an unknown
+      // sibling is dropped instead of costing the client the catalog it did
+      // understand.
       const result = RemoteConfigPayloadSchema.safeParse(
         withMap({
           archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
@@ -252,7 +256,55 @@ describe('RemoteConfigPayloadSchema', () => {
           download,
         }),
       );
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map.regions).toEqual({ calamuchita: region });
+        expect(result.data.map.download).toEqual(download);
+      }
+    });
+
+    it('ignores a nested field this build does not know and keeps the rest of map intact', () => {
+      // The compatibility guarantee: the server may add a field to `map` before
+      // every published build knows it. Rejecting the whole object would cost an
+      // old build its renderer, the region catalog and the download policy.
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({ ...fullPayload.map, futureField: { anything: true } }),
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map.renderer).toBe(fullPayload.map.renderer);
+        expect(result.data.map.styleUrl).toBe(fullPayload.map.styleUrl);
+        expect(result.data.map.regions).toEqual(fullPayload.map.regions);
+        expect(result.data.map.download).toEqual(fullPayload.map.download);
+      }
+    });
+
+    it('accepts a layer group the build does not implement yet', () => {
+      // `id` is an open string, not an enum: the server can announce a group
+      // before the app knows it, and the consumer ignores what it cannot draw.
+      const result = RemoteConfigPayloadSchema.safeParse(
+        withMap({
+          ...fullPayload.map,
+          layers: { showControl: true, groups: [{ id: 'future-group', defaultVisible: false }] },
+        }),
+      );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map.layers).toEqual({
+          showControl: true,
+          groups: [{ id: 'future-group', defaultVisible: false }],
+        });
+      }
+    });
+
+    it('hides the layer control and lists no groups when the payload omits layers', () => {
+      const { layers: _layers, ...mapWithoutLayers } = fullPayload.map;
+      const result = RemoteConfigPayloadSchema.safeParse(withMap(mapWithoutLayers));
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.map.layers).toEqual({ showControl: false, groups: [] });
+      }
+      expect(DEFAULT_REMOTE_CONFIG.map.layers).toEqual({ showControl: false, groups: [] });
     });
 
     it('rejects a region whose bbox is still the string the tooling reads', () => {
