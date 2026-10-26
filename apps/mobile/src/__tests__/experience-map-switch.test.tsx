@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render } from '@testing-library/react-native';
 
 import type { MapDocument } from '@sonora/shared';
@@ -308,6 +311,52 @@ describe('ExperienceMapSwitch', () => {
     );
 
     expect(view.getByTestId('track-detail-map')).toBeTruthy();
+  });
+
+  it('bleeds to the card edge by cancelling exactly the card gutter', () => {
+    // The map has no strip of card around it, which means the surface nulls the card's
+    // horizontal padding — the number one file cannot drift from the number in the
+    // other. The rendered View does not expose className, so the rule is read from the
+    // source, the way the module-state guard reads it.
+    const source_ = readFileSync(
+      join(__dirname, '../components/map/experience-map-switch.tsx'),
+      'utf8',
+    );
+    // The whole number, not one digit: a gutter of px-10 has to cancel as -mx-10.
+    const gutter = /MAP_CARD_GUTTER_CLASS = 'px-(\d+)'/.exec(source_)?.[1];
+    const bleed = /MAP_SURFACE_BLEED_CLASS = '-mx-(\d+)'/.exec(source_)?.[1];
+    const surface = /const SURFACE_CLASS = `([^`]+)`/.exec(source_)?.[1] ?? '';
+
+    const bleedClass = /MAP_SURFACE_BLEED_CLASS = '([^']+)'/.exec(source_)?.[1];
+
+    expect(gutter).toBeDefined();
+    expect(bleed).toBe(gutter);
+    // The surface carries the same class as a static literal, because NativeWind only
+    // generates a utility it can read; this is what keeps that literal honest.
+    expect(bleedClass).toBe(`-mx-${gutter}`);
+    expect(surface).toContain(String(bleedClass));
+    // And it owns its height, so two screens cannot give the map two boxes.
+    expect(surface).toContain('h-80');
+    // A width of 100% does not stretch under a negative margin: it shifts the box and
+    // leaves a strip of card on the right, which web showed and native did not.
+    expect(surface).not.toContain('w-full');
+    // No vertical negative margin: the card's vertical padding is not cancelled.
+    expect(surface).not.toContain('-my-');
+  });
+
+  it('has both detail cards read the same gutter the map cancels', () => {
+    for (const view of ['trip-detail-view.tsx', 'track-detail-view.tsx']) {
+      const source_ = readFileSync(join(__dirname, `../components/${view}`), 'utf8');
+      expect(source_).toContain('${MAP_CARD_GUTTER_CLASS}');
+      // A literal padding next to the constant is how the two drifted apart before.
+      expect(source_).not.toMatch(/rounded-\[24px\][^`]*\bpx-\d/);
+    }
+  });
+
+  it('gives the map the whole box it just defined', async () => {
+    await render(<ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />);
+
+    expect(mockExperienceMapProps[0].className).toBe('h-full w-full');
   });
 });
 

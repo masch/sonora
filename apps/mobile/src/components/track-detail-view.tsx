@@ -6,7 +6,7 @@ import UnifiedAudioController from '@/components/unified-audio-controller';
 import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
-import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import ExperienceMapSwitch, { MAP_CARD_GUTTER_CLASS } from '@/components/map/experience-map-switch';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
 import { ExperienceCredits } from '@/components/experience-credits';
@@ -201,7 +201,7 @@ export default function TrackDetailView({
           {/* Main Details Card */}
           <TwView
             style={{ backgroundColor: cardBg, borderColor: colors.border }}
-            className="w-full border px-4 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-6 z-10"
+            className={`w-full border ${MAP_CARD_GUTTER_CLASS} py-6 rounded-[24px] shadow-md backdrop-blur-md gap-6 z-10`}
           >
             <TrackCardHeader
               title={track.title}

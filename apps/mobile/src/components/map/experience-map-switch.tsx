@@ -16,12 +16,31 @@ import type { MapRenderer } from './resolve-renderer';
 /**
  * The map's own frame, the same wherever the map is mounted.
  *
- * It used to take a surface prop, so a trip drew the map flush inside its card and
- * a track drew it rounded on the page — two presentations of one screen's worth of
- * data, and the reason the same place could look different depending on how the
- * walker got there. There is one presentation now.
+ * The map bleeds to the edges of the card it lives in, with no strip of card around
+ * it, and the surface still owns its box: one width, one height, one rounding. The
+ * one assumption left — the card's gutter — is a constant the cards read too, so the
+ * cancellation cannot drift out of step.
  */
-const SURFACE_CLASS = 'mt-3 -mx-3 relative rounded-xl overflow-hidden';
+/**
+ * The horizontal gutter a detail card gives its content, and the margin that nulls it.
+ *
+ * Both live here, as literals, because NativeWind only generates a utility it can read
+ * as a static class — a value computed at runtime would style nothing. The pair is the
+ * contract: the map bleeds to the card's edges exactly to the step the card pads, and
+ * a test reads both numbers and fails when they stop agreeing.
+ */
+export const MAP_CARD_GUTTER_CLASS = 'px-4';
+export const MAP_SURFACE_BLEED_CLASS = '-mx-4';
+
+// A complete literal on purpose: NativeWind generates a utility only from a class it
+// can read statically, so the surface cannot be assembled from pieces at runtime. The
+// test keeps this literal equal to the constant above.
+//
+// Deliberately no width: a width of 100% does not stretch under a negative margin — it
+// shifts the box and leaves the same width, which showed as a strip of card on the
+// right on web. Without a width the surface stretches to the parent and the negative
+// margin is what makes it reach both edges.
+const SURFACE_CLASS = `relative h-80 -mx-4 overflow-hidden rounded-xl`;
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;
@@ -88,6 +107,7 @@ export default function ExperienceMapSwitch({
       return (
         <>
           <ExperienceMap
+            className="h-full w-full"
             source={source}
             overlays={overlays}
             center={[experience.longitude, experience.latitude]}
