@@ -16,12 +16,12 @@ import type { MapRenderer } from './resolve-renderer';
 /**
  * The map's own frame, the same wherever the map is mounted.
  *
- * It used to take a surface prop, so a trip drew the map flush inside its card and
- * a track drew it rounded on the page — two presentations of one screen's worth of
- * data, and the reason the same place could look different depending on how the
- * walker got there. There is one presentation now.
+ * It used to take a surface prop, and before that a negative margin that cancelled
+ * the padding of the card it expected to sit in — which meant a card that padded
+ * differently left a strip of itself around the map. The surface owns its box now:
+ * one width, one height, one rounding, and no assumption about whoever mounts it.
  */
-const SURFACE_CLASS = 'mt-3 -mx-3 relative rounded-xl overflow-hidden';
+const SURFACE_CLASS = 'relative w-full h-80 overflow-hidden rounded-xl';
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;
@@ -88,6 +88,7 @@ export default function ExperienceMapSwitch({
       return (
         <>
           <ExperienceMap
+            className="h-full w-full"
             source={source}
             overlays={overlays}
             center={[experience.longitude, experience.latitude]}

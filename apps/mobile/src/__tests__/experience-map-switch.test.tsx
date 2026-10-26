@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render } from '@testing-library/react-native';
 
 import type { MapDocument } from '@sonora/shared';
@@ -308,6 +311,31 @@ describe('ExperienceMapSwitch', () => {
     );
 
     expect(view.getByTestId('track-detail-map')).toBeTruthy();
+  });
+
+  it('owns its box instead of assuming the padding of whoever mounts it', () => {
+    // A negative margin that cancels the parent's padding works only while every
+    // parent pads the same: a card that padded more left a strip of itself around
+    // the map, which is exactly the difference this replaced. The rendered View does
+    // not expose className, so the rule is read from the source, the way the
+    // module-state guard reads it.
+    const source_ = readFileSync(
+      join(__dirname, '../components/map/experience-map-switch.tsx'),
+      'utf8',
+    );
+    const surfaceClass = /const SURFACE_CLASS = '([^']+)'/.exec(source_)?.[1] ?? '';
+
+    expect(surfaceClass).not.toContain('-mx-');
+    expect(surfaceClass).not.toContain('-my-');
+    // One width and one height, so two screens cannot give the map two boxes.
+    expect(surfaceClass).toContain('w-full');
+    expect(surfaceClass).toContain('h-80');
+  });
+
+  it('gives the map the whole box it just defined', async () => {
+    await render(<ExperienceMapSwitch renderer="maplibre" source={source} experience={trip} />);
+
+    expect(mockExperienceMapProps[0].className).toBe('h-full w-full');
   });
 });
 
