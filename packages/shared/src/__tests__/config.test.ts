@@ -243,10 +243,11 @@ describe('RemoteConfigPayloadSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('ignores a stray map-level field and keeps the complete catalog', () => {
+    it('tolerates a stray map-level field and keeps the complete catalog', () => {
       // Reversed by forward tolerance: `map` is `.passthrough()`, so an unknown
-      // sibling is dropped instead of costing the client the catalog it did
-      // understand.
+      // sibling is carried through the parse instead of costing the client the
+      // catalog it did understand. It is never read, but it is kept — not
+      // dropped — which is what the parsed object below would show.
       const result = RemoteConfigPayloadSchema.safeParse(
         withMap({
           archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
@@ -263,7 +264,7 @@ describe('RemoteConfigPayloadSchema', () => {
       }
     });
 
-    it('ignores a nested field this build does not know and keeps the rest of map intact', () => {
+    it('tolerates a nested field this build does not know and keeps the rest of map intact', () => {
       // The compatibility guarantee: the server may add a field to `map` before
       // every published build knows it. Rejecting the whole object would cost an
       // old build its renderer, the region catalog and the download policy.

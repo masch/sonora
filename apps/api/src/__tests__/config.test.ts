@@ -309,14 +309,28 @@ describe('GET /config', () => {
     }
   });
 
+  it('serves the map keys the published builds parse, without the pending layer field', async () => {
+    const res = await app.request('/config', {}, BINDINGS);
+    const body = (await res.json()) as { map: Record<string, unknown> };
+
+    // Every published build carries the strict `MapConfigSchema` from before the
+    // layer selector existed: one extra key there rejects the whole object, and
+    // the client loses its renderer, region catalog and download policy. The
+    // served contract is therefore the pre-change one until the installed base
+    // parses the new field.
+    expect(Object.keys(body.map).sort()).toEqual(['download', 'regions', 'renderer', 'styleUrl']);
+  });
+
   it('sends the renderer and every map field the defaults describe', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as MapBody;
 
     // The route resolves the map payload over the shared defaults, so a field
     // added to DEFAULT_REMOTE_CONFIG.map has to reach the client instead of being
-    // dropped by a literal built here.
-    expect(Object.keys(body.map).sort()).toEqual(Object.keys(DEFAULT_REMOTE_CONFIG.map).sort());
+    // dropped by a literal built here — except the one the wire withholds on
+    // purpose, covered by the contract test above.
+    const served = Object.keys(DEFAULT_REMOTE_CONFIG.map).filter((key) => key !== 'layers');
+    expect(Object.keys(body.map).sort()).toEqual(served.sort());
     expect(body.map.renderer).toBe('leaflet');
     expect(MAP_REGIONS.calamuchita.bbox.split(',').map(Number)).toEqual([
       -64.83, -32.28, -64.66, -32.12,

@@ -33,6 +33,18 @@ const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 /** How long one bucket lookup may hold `/config` before the region counts as unpublished. */
 const HEAD_TIMEOUT_MS = 1500;
 
+/**
+ * What `/config` puts on the wire: the shared payload with `map.layers` withheld.
+ *
+ * The field is part of `RemoteConfigPayload` because the compiled default carries
+ * it, but a published build that still holds the older strict `MapConfigSchema`
+ * rejects the whole `map` object over that one extra key. The served type states
+ * the withheld field instead of letting a cast hide it.
+ */
+type ServedRemoteConfigPayload = Omit<RemoteConfigPayload, 'map'> & {
+  map: Omit<RemoteConfigPayload['map'], 'layers'>;
+};
+
 async function readPublishedRegions(
   bucket: R2Bucket | undefined,
   origin: string,
@@ -125,6 +137,14 @@ configRouter.get('/', configGuard(), async (c) => {
   const origin = new URL(c.req.url).origin;
   const regions = await readPublishedRegions(c.env?.PUBLIC_BUCKET, origin, mapArtifactVersion);
 
+  // The layer selector reaches clients only once the installed base parses it:
+  // every already published build carries the strict `MapConfigSchema` from
+  // before the field existed, and one extra key there rejects the whole `map`
+  // object — that build would lose its renderer, its region catalog and its
+  // download policy. The compiled default keeps `layers`, so the app always has
+  // the value; the wire withholds it until no strict build can receive it.
+  const { layers: _pendingWireCompatibility, ...servedMap } = DEFAULT_REMOTE_CONFIG.map;
+
   return success(c, {
     ...DEFAULT_REMOTE_CONFIG,
     geofence: {
@@ -132,7 +152,7 @@ configRouter.get('/', configGuard(), async (c) => {
       bypassIosBrowser,
     },
     map: {
-      ...DEFAULT_REMOTE_CONFIG.map,
+      ...servedMap,
       renderer: resolveMapRenderer({
         platform: devicePlatform,
         capablePlatforms: mapRendererPlatforms,
@@ -152,7 +172,7 @@ configRouter.get('/', configGuard(), async (c) => {
       },
     },
     appVersion,
-  } satisfies RemoteConfigPayload);
+  } satisfies ServedRemoteConfigPayload);
 });
 
 export { configRouter };

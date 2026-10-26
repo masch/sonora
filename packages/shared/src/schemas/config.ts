@@ -103,8 +103,14 @@ export const MapLayerSelectionSchema = z.object({
  * of `/config` on its own and keeps the default for the ones that fail, so a
  * strict `map` meant a field this build has never heard of discarded the whole
  * object: an old build lost its renderer, its region catalog and its download
- * policy the moment the server added a nested field. An unknown key here is
- * ignored instead.
+ * policy the moment the server added a nested field. An unknown key is tolerated
+ * and carried instead: it travels in the parsed output — the mobile store
+ * persists it into the config cache as it does every field — but nothing reads
+ * it, so it costs nothing, which is what makes adding a field safe. Rejecting it
+ * cost the whole object.
+ *
+ * `layers` is deliberately absent from the wire until the installed base carries
+ * this schema, and `apps/api/src/routes/config.ts` strips it for that reason.
  */
 export const MapConfigSchema = z
   .object({
