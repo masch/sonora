@@ -23,7 +23,7 @@
         "expo-router": "56.2.15",
         "expo-symbols": "56.0.6",
         "i18next": "26.3.6",
-        "nativewind": "5.0.0-preview.4",
+        "nativewind": "5.0.0-rc.0",
         "postcss": "8.5.25",
         "react": "19.2.3",
         "react-dom": "19.2.3",
@@ -119,7 +119,7 @@
         "firebase": "11.3.1",
         "i18next": "26.3.6",
         "maplibre-gl": "6.14.0",
-        "nativewind": "5.0.0-preview.4",
+        "nativewind": "5.0.0-rc.0",
         "pmtiles": "4.5.0",
         "postcss": "8.5.25",
         "promise": "8.3.0",
@@ -2636,7 +2636,7 @@
 
     "napi-postinstall": ["napi-postinstall@0.3.4", "", { "bin": { "napi-postinstall": "lib/cli.js" } }, "sha512-PHI5f1O0EP5xJ9gQmFGMS6IZcrVvTjpXjz7Na41gTE7eE2hK11lg04CECCYEEjdc17EV4DO+fkGEtt7TpTaTiQ=="],
 
-    "nativewind": ["nativewind@5.0.0-preview.4", "", { "dependencies": { "tailwindcss-safe-area": "^1.1.0" }, "peerDependencies": { "react-native-css": "^3.0.1", "tailwindcss": ">4.1.11" } }, "sha512-eLsFGczxIsWADoD18EbEyt01aWgw4uP1/t/O7JIsp/OEbSgVYVobW97e2DDTOxxiiqSu0RexC1KSo5d7tes9uQ=="],
+    "nativewind": ["nativewind@5.0.0-rc.0", "", { "dependencies": { "tailwindcss-safe-area": "^1.1.0" }, "peerDependencies": { "react-native-css": "3.1.0-rc.0", "tailwindcss": ">4.1.11" } }, "sha512-CrESAPb428+EVNvGhUaMfbNllyk6lOnX1ZlVlNktCeae/4mIbb6x4SxN62Rg3cLHNRrRLYZEPYGmqkZ8fVIRZQ=="],
 
     "natural-compare": ["natural-compare@1.4.0", "", {}, "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw=="],
 
