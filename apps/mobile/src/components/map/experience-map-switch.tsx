@@ -35,7 +35,12 @@ export const MAP_SURFACE_BLEED_CLASS = '-mx-4';
 // A complete literal on purpose: NativeWind generates a utility only from a class it
 // can read statically, so the surface cannot be assembled from pieces at runtime. The
 // test keeps this literal equal to the constant above.
-const SURFACE_CLASS = `relative w-full h-80 -mx-4 overflow-hidden rounded-xl`;
+//
+// Deliberately no width: a width of 100% does not stretch under a negative margin — it
+// shifts the box and leaves the same width, which showed as a strip of card on the
+// right on web. Without a width the surface stretches to the parent and the negative
+// margin is what makes it reach both edges.
+const SURFACE_CLASS = `relative h-80 -mx-4 overflow-hidden rounded-xl`;
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;

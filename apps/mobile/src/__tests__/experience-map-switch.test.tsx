@@ -335,9 +335,11 @@ describe('ExperienceMapSwitch', () => {
     // generates a utility it can read; this is what keeps that literal honest.
     expect(bleedClass).toBe(`-mx-${gutter}`);
     expect(surface).toContain(String(bleedClass));
-    // And it owns a box of its own, so two screens cannot give the map two heights.
-    expect(surface).toContain('w-full');
+    // And it owns its height, so two screens cannot give the map two boxes.
     expect(surface).toContain('h-80');
+    // A width of 100% does not stretch under a negative margin: it shifts the box and
+    // leaves a strip of card on the right, which web showed and native did not.
+    expect(surface).not.toContain('w-full');
     // No vertical negative margin: the card's vertical padding is not cancelled.
     expect(surface).not.toContain('-my-');
   });
