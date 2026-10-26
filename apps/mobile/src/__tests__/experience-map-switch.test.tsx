@@ -322,12 +322,19 @@ describe('ExperienceMapSwitch', () => {
       join(__dirname, '../components/map/experience-map-switch.tsx'),
       'utf8',
     );
-    const gutter = /MAP_CARD_GUTTER_CLASS = 'px-(\d)'/.exec(source_)?.[1];
+    // The whole number, not one digit: a gutter of px-10 has to cancel as -mx-10.
+    const gutter = /MAP_CARD_GUTTER_CLASS = 'px-(\d+)'/.exec(source_)?.[1];
+    const bleed = /MAP_SURFACE_BLEED_CLASS = '-mx-(\d+)'/.exec(source_)?.[1];
     const surface = /const SURFACE_CLASS = `([^`]+)`/.exec(source_)?.[1] ?? '';
 
+    const bleedClass = /MAP_SURFACE_BLEED_CLASS = '([^']+)'/.exec(source_)?.[1];
+
     expect(gutter).toBeDefined();
-    // The cancellation is the same step as the gutter, in the same file.
-    expect(surface).toMatch(new RegExp(`(^|\\s)-mx-${gutter}(\\s|$)`));
+    expect(bleed).toBe(gutter);
+    // The surface carries the same class as a static literal, because NativeWind only
+    // generates a utility it can read; this is what keeps that literal honest.
+    expect(bleedClass).toBe(`-mx-${gutter}`);
+    expect(surface).toContain(String(bleedClass));
     // And it owns a box of its own, so two screens cannot give the map two heights.
     expect(surface).toContain('w-full');
     expect(surface).toContain('h-80');

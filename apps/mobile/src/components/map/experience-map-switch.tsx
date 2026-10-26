@@ -22,15 +22,19 @@ import type { MapRenderer } from './resolve-renderer';
  * cancellation cannot drift out of step.
  */
 /**
- * The horizontal padding a detail card gives its content.
+ * The horizontal gutter a detail card gives its content, and the margin that nulls it.
  *
- * The map bleeds to the card's edges, so the surface nulls exactly this padding and
- * nothing else. One constant feeds both the card and the negative margin: a card
- * that padded a different step used to leave a strip of itself around the map, and
- * that is what two magic numbers in two files produced.
+ * Both live here, as literals, because NativeWind only generates a utility it can read
+ * as a static class — a value computed at runtime would style nothing. The pair is the
+ * contract: the map bleeds to the card's edges exactly to the step the card pads, and
+ * a test reads both numbers and fails when they stop agreeing.
  */
 export const MAP_CARD_GUTTER_CLASS = 'px-4';
+export const MAP_SURFACE_BLEED_CLASS = '-mx-4';
 
+// A complete literal on purpose: NativeWind generates a utility only from a class it
+// can read statically, so the surface cannot be assembled from pieces at runtime. The
+// test keeps this literal equal to the constant above.
 const SURFACE_CLASS = `relative w-full h-80 -mx-4 overflow-hidden rounded-xl`;
 
 export interface ExperienceMapSwitchProps {
