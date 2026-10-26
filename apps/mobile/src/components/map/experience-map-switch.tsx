@@ -16,12 +16,22 @@ import type { MapRenderer } from './resolve-renderer';
 /**
  * The map's own frame, the same wherever the map is mounted.
  *
- * It used to take a surface prop, and before that a negative margin that cancelled
- * the padding of the card it expected to sit in — which meant a card that padded
- * differently left a strip of itself around the map. The surface owns its box now:
- * one width, one height, one rounding, and no assumption about whoever mounts it.
+ * The map bleeds to the edges of the card it lives in, with no strip of card around
+ * it, and the surface still owns its box: one width, one height, one rounding. The
+ * one assumption left — the card's gutter — is a constant the cards read too, so the
+ * cancellation cannot drift out of step.
  */
-const SURFACE_CLASS = 'relative w-full h-80 overflow-hidden rounded-xl';
+/**
+ * The horizontal padding a detail card gives its content.
+ *
+ * The map bleeds to the card's edges, so the surface nulls exactly this padding and
+ * nothing else. One constant feeds both the card and the negative margin: a card
+ * that padded a different step used to leave a strip of itself around the map, and
+ * that is what two magic numbers in two files produced.
+ */
+export const MAP_CARD_GUTTER_CLASS = 'px-4';
+
+const SURFACE_CLASS = `relative w-full h-80 -mx-4 overflow-hidden rounded-xl`;
 
 export interface ExperienceMapSwitchProps {
   renderer: MapRenderer;

@@ -313,23 +313,35 @@ describe('ExperienceMapSwitch', () => {
     expect(view.getByTestId('track-detail-map')).toBeTruthy();
   });
 
-  it('owns its box instead of assuming the padding of whoever mounts it', () => {
-    // A negative margin that cancels the parent's padding works only while every
-    // parent pads the same: a card that padded more left a strip of itself around
-    // the map, which is exactly the difference this replaced. The rendered View does
-    // not expose className, so the rule is read from the source, the way the
-    // module-state guard reads it.
+  it('bleeds to the card edge by cancelling exactly the card gutter', () => {
+    // The map has no strip of card around it, which means the surface nulls the card's
+    // horizontal padding — the number one file cannot drift from the number in the
+    // other. The rendered View does not expose className, so the rule is read from the
+    // source, the way the module-state guard reads it.
     const source_ = readFileSync(
       join(__dirname, '../components/map/experience-map-switch.tsx'),
       'utf8',
     );
-    const surfaceClass = /const SURFACE_CLASS = '([^']+)'/.exec(source_)?.[1] ?? '';
+    const gutter = /MAP_CARD_GUTTER_CLASS = 'px-(\d)'/.exec(source_)?.[1];
+    const surface = /const SURFACE_CLASS = `([^`]+)`/.exec(source_)?.[1] ?? '';
 
-    expect(surfaceClass).not.toContain('-mx-');
-    expect(surfaceClass).not.toContain('-my-');
-    // One width and one height, so two screens cannot give the map two boxes.
-    expect(surfaceClass).toContain('w-full');
-    expect(surfaceClass).toContain('h-80');
+    expect(gutter).toBeDefined();
+    // The cancellation is the same step as the gutter, in the same file.
+    expect(surface).toMatch(new RegExp(`(^|\\s)-mx-${gutter}(\\s|$)`));
+    // And it owns a box of its own, so two screens cannot give the map two heights.
+    expect(surface).toContain('w-full');
+    expect(surface).toContain('h-80');
+    // No vertical negative margin: the card's vertical padding is not cancelled.
+    expect(surface).not.toContain('-my-');
+  });
+
+  it('has both detail cards read the same gutter the map cancels', () => {
+    for (const view of ['trip-detail-view.tsx', 'track-detail-view.tsx']) {
+      const source_ = readFileSync(join(__dirname, `../components/${view}`), 'utf8');
+      expect(source_).toContain('${MAP_CARD_GUTTER_CLASS}');
+      // A literal padding next to the constant is how the two drifted apart before.
+      expect(source_).not.toMatch(/rounded-\[24px\][^`]*\bpx-\d/);
+    }
   });
 
   it('gives the map the whole box it just defined', async () => {

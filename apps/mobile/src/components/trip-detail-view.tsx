@@ -8,7 +8,7 @@ import PreparingAudioHint from '@/components/preparing-audio-hint';
 import { PaymentPrompt } from '@/components/payment-prompt';
 import FeedbackForm from '@/components/feedback-form';
 import GpsPrecisionBadge from '@/components/gps-precision-badge';
-import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import ExperienceMapSwitch, { MAP_CARD_GUTTER_CLASS } from '@/components/map/experience-map-switch';
 import { MapDownloadButton } from '@/components/map/map-download-button';
 import GeofenceBlockedBanner from '@/components/geofence-blocked-banner';
 import { GeofenceBlockedModal } from '@/components/geofence-blocked-modal';
@@ -221,7 +221,7 @@ export default function TripDetailView({
           {/* Main Details Card */}
           <TwView
             style={{ backgroundColor: cardBg, borderColor: colors.border }}
-            className="w-full border px-4 py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10"
+            className={`w-full border ${MAP_CARD_GUTTER_CLASS} py-6 rounded-[24px] shadow-md backdrop-blur-md gap-4 z-10`}
           >
             <TripCardHeader
               title={track.title}
