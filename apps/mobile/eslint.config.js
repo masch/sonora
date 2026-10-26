@@ -81,6 +81,11 @@ module.exports = defineConfig([
               importNames: ['TwButton'],
               message: 'Use <Button> from "@/components/ui/button" instead of TwButton.',
             },
+            {
+              name: 'leaflet',
+              message:
+                'Leaflet is deprecated and frozen: it keeps working as it is and gets no new features. Build against the MapLibre renderer (src/components/map/experience-map.tsx) instead.',
+            },
           ],
         },
       ],
@@ -88,6 +93,14 @@ module.exports = defineConfig([
   },
   {
     files: ['**/src/components/ui/modal-primitive.tsx'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  {
+    // The one surviving Leaflet map, frozen on purpose: the deprecation guard
+    // above is what keeps it the only one.
+    files: ['**/src/components/track-detail-map.web.tsx'],
     rules: {
       'no-restricted-imports': 'off',
     },
