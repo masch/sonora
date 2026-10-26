@@ -229,10 +229,10 @@ describe('RemoteConfigPayloadSchema', () => {
       }
     });
 
-    it('rejects the old payload that carried archiveUrl and styleUrl at the top of map', () => {
-      // The shape breaks cleanly: the archive url now lives per region, so a
-      // payload that still sends one top-level archive url has nowhere to put it
-      // and must not be accepted as if it did.
+    it('rejects a map payload with no region catalog and no download policy', () => {
+      // Not about the stray keys: `map` tolerates those (proven above). What is
+      // missing here is required — no `regions` and no `download` — and that is
+      // what the rejection is about.
       const result = RemoteConfigPayloadSchema.safeParse(
         withMap({
           archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',

@@ -42,7 +42,10 @@ const HEAD_TIMEOUT_MS = 1500;
  * the withheld field instead of letting a cast hide it.
  */
 type ServedRemoteConfigPayload = Omit<RemoteConfigPayload, 'map'> & {
-  map: Omit<RemoteConfigPayload['map'], 'layers'>;
+  // `Pick`, not `Omit`: `MapConfig` tolerates unknown keys, so omitting one from it
+  // flattens to an index signature that accepts a map missing every field. Naming
+  // the four keys is what makes the served contract enforced rather than described.
+  map: Pick<RemoteConfigPayload['map'], 'renderer' | 'styleUrl' | 'regions' | 'download'>;
 };
 
 async function readPublishedRegions(

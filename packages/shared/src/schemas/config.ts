@@ -81,6 +81,12 @@ export const MapLayerGroupSchema = z.object({
   defaultVisible: z.boolean().default(true),
 });
 
+/**
+ * Deliberately not strict. A mistyped key inside a selection is dropped and the
+ * documented default applies, which errs towards hiding the control rather than
+ * drawing something nobody asked for; making it strict would resurrect, one level
+ * deeper, the whole-object rejection this contract exists to prevent.
+ */
 export const MapLayerSelectionSchema = z.object({
   /**
    * Whether the selector is offered at all. Off by default: the control does not
