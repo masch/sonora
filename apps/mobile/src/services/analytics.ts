@@ -66,16 +66,18 @@ export const AnalyticsService: AnalyticsTracker = {
     try {
       if (isFirebaseAvailable() && firebaseCrashlytics) {
         firebaseCrashlytics().setAttribute('app_version', getAppVersion().versionName);
-        if (customDescription) {
-          firebaseCrashlytics().setAttribute('custom_description', customDescription);
-        }
-        // Attributes carry the reference the walker reads on screen, so the same
-        // code lands in Crashlytics next to the native crash. They are global and
-        // persist between calls, so both are written on **every** error instead of
-        // only when this call supplies them: a reference left behind by an earlier
-        // crash would otherwise be recorded against this one, and a route the walker
-        // has already left is not where this error happened. The fallback is the
-        // code derived from the error itself — the same one the web event reports.
+        // Every attribute is written on every error, never only when this call
+        // supplies one: Crashlytics attributes are global and persist between
+        // reports, so a value left behind by an earlier crash would be recorded
+        // against this one. `custom_description` had the same defect as the
+        // reference and the route — a report without a description inherited the
+        // previous report's sentence — and an empty string is the documented way to
+        // clear an attribute.
+        firebaseCrashlytics().setAttribute('custom_description', customDescription ?? '');
+        // The reference the walker reads on screen, so the same code lands in
+        // Crashlytics next to the native crash. Its fallback is the code derived
+        // from the error itself — the same one the web event reports — and the route
+        // of the crash is written here too, or cleared when this report has none.
         firebaseCrashlytics().setAttribute(
           'error_reference',
           context?.reference ?? errorReference(error),

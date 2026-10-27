@@ -94,6 +94,22 @@ describe('AnalyticsService', () => {
     expect(mockSetAttribute).toHaveBeenCalledWith('route', '/trip/abc');
   });
 
+  it('never records the previous crash description on a report that has none', () => {
+    platform.OS = 'ios';
+    // The description is a global attribute too: a report without one must clear it
+    // instead of letting the previous crash's sentence label this one.
+    AnalyticsService.recordError(new Error('first'), 'Root ErrorBoundary caught layout error');
+    mockSetAttribute.mockClear();
+
+    AnalyticsService.recordError(new Error('second'));
+
+    expect(mockSetAttribute).toHaveBeenCalledWith('custom_description', '');
+    expect(mockSetAttribute).not.toHaveBeenCalledWith(
+      'custom_description',
+      'Root ErrorBoundary caught layout error',
+    );
+  });
+
   it('never records the previous crash reference or route on a call without context', () => {
     platform.OS = 'ios';
     // Crashlytics attributes are global: an earlier crash wrote a reference and a
