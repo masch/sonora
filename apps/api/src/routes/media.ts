@@ -26,7 +26,46 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
   'image/webp': 'webp',
 };
 
+/**
+ * Cache policy for a published artifact in production, where the version the
+ * app reads is pinned in the url: the bytes behind a key never change, so a year
+ * of `immutable` is honest.
+ */
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
+
+/**
+ * Cache policy everywhere else: the browser may keep the bytes but must
+ * revalidate before using them again.
+ */
+const REVALIDATE_CACHE = 'no-cache';
+
+/**
+ * The `cache-control` a served or stored artifact carries in this environment.
+ *
+ * Only production pins the artifact version in the url, so only production can
+ * promise the bytes behind a key will not change. Every other environment
+ * overwrites the style document and the archives in place, without a version
+ * bump, and `immutable` would keep a browser from re-requesting the object for a
+ * year: the `no-cache` policy makes it revalidate on the next load instead. The
+ * decision therefore overrides whatever policy the object was stored with — a
+ * staging object uploaded before this rule still carries `immutable` in its own
+ * `httpMetadata`.
+ *
+ * An absent or empty `ENVIRONMENT` means production, so an existing deployment
+ * that does not name one keeps the immutable policy it always had.
+ *
+ * Computed once per request by the caller, never inside the branches that
+ * build each response.
+ */
+function artifactCacheControl(env: Env | undefined, stored?: string): string {
+  const environment = env?.ENVIRONMENT;
+
+  if (environment === undefined || environment === '' || environment === 'production') {
+    return stored ?? IMMUTABLE_CACHE;
+  }
+
+  return REVALIDATE_CACHE;
+}
 
 const PMTILES_SCHEME = 'pmtiles://';
 
@@ -122,10 +161,11 @@ mediaRouter.post(
 
     const extension = EXTENSION_BY_TYPE[file.type] ?? 'bin';
     const key = `${REFERENCE_IMAGE_PREFIX}${crypto.randomUUID()}.${extension}`;
+    const cacheControl = artifactCacheControl(c.env);
 
     try {
       await c.var.publicBucket.put(key, await file.arrayBuffer(), {
-        httpMetadata: { contentType: file.type, cacheControl: IMMUTABLE_CACHE },
+        httpMetadata: { contentType: file.type, cacheControl },
         customMetadata: { originalName: file.name, uploadedAt: new Date().toISOString() },
       });
     } catch (err: unknown) {
@@ -145,8 +185,9 @@ mediaRouter.post(
 /**
  * GET /media/public/:key
  * No authentication: serves an uploaded image, a map archive or the published
- * style document. Keys are unguessable UUIDs or versioned artifact names and the
- * content is immutable, so it is cached for a year.
+ * style document. Keys are unguessable UUIDs or versioned artifact names, so
+ * production caches them for a year; every other environment serves them with a
+ * revalidating policy, because it overwrites them in place.
  *
  * The style document is the one key that is not streamed as stored: it is
  * rewritten for the origin that served it, so labels and icons come from our own
@@ -167,7 +208,7 @@ mediaRouter.get('/public/:key{.+}', publicBucketGuard(), async (c) => {
     const headers: Record<string, string> = {
       'content-type': object.httpMetadata?.contentType ?? 'application/octet-stream',
       etag: object.httpEtag,
-      'cache-control': object.httpMetadata?.cacheControl ?? IMMUTABLE_CACHE,
+      'cache-control': artifactCacheControl(c.env, object.httpMetadata?.cacheControl),
     };
 
     // Only the version in play is a style document: an older published style
