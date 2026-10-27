@@ -34,7 +34,8 @@ const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 const HEAD_TIMEOUT_MS = 1500;
 
 /**
- * What `/config` puts on the wire: the shared payload with `map.layers` withheld.
+ * What `/config` puts on the wire: the shared payload, with `map.layers` present
+ * only when the environment's wire switch says the receiving builds parse it.
  *
  * The field is part of `RemoteConfigPayload` because the compiled default carries
  * it, but a published build that still holds the older strict `MapConfigSchema`
@@ -44,8 +45,11 @@ const HEAD_TIMEOUT_MS = 1500;
 type ServedRemoteConfigPayload = Omit<RemoteConfigPayload, 'map'> & {
   // `Pick`, not `Omit`: `MapConfig` tolerates unknown keys, so omitting one from it
   // flattens to an index signature that accepts a map missing every field. Naming
-  // the four keys is what makes the served contract enforced rather than described.
-  map: Pick<RemoteConfigPayload['map'], 'renderer' | 'styleUrl' | 'regions' | 'download'>;
+  // the four keys is what makes the served contract enforced rather than described;
+  // `layers` is the fifth, and it is optional because whether it travels is a
+  // decision of the environment, not of this type.
+  map: Pick<RemoteConfigPayload['map'], 'renderer' | 'styleUrl' | 'regions' | 'download'> &
+    Partial<Pick<RemoteConfigPayload['map'], 'layers'>>;
 };
 
 async function readPublishedRegions(
@@ -107,6 +111,9 @@ configRouter.get('/', configGuard(), async (c) => {
     mapRendererPlatforms,
     mapRendererDeviceIds,
     mapRendererDeviceIdsBlocked,
+    mapLayersWire,
+    mapLayerShowControl,
+    mapLayerGroups,
   } = c.var.configEnv;
 
   // Read the headers directly instead of adding the strict device-id
@@ -141,12 +148,15 @@ configRouter.get('/', configGuard(), async (c) => {
   const regions = await readPublishedRegions(c.env?.PUBLIC_BUCKET, origin, mapArtifactVersion);
 
   // The layer selector reaches clients only once the installed base parses it:
-  // every already published build carries the strict `MapConfigSchema` from
-  // before the field existed, and one extra key there rejects the whole `map`
-  // object — that build would lose its renderer, its region catalog and its
-  // download policy. The compiled default keeps `layers`, so the app always has
-  // the value; the wire withholds it until no strict build can receive it.
-  const { layers: _pendingWireCompatibility, ...servedMap } = DEFAULT_REMOTE_CONFIG.map;
+  // every build published before the tolerant `MapConfigSchema` carries the strict
+  // one, and one extra key there rejects the whole `map` object — that build would
+  // lose its renderer, its region catalog and its download policy. The wire switch
+  // is what keeps that promise per environment; the compiled default keeps
+  // `layers`, so the app always has the value.
+  const { layers: _withheldLayers, ...servedMap } = DEFAULT_REMOTE_CONFIG.map;
+  const servedLayers = mapLayersWire
+    ? { layers: { showControl: mapLayerShowControl, groups: [...mapLayerGroups] } }
+    : {};
 
   return success(c, {
     ...DEFAULT_REMOTE_CONFIG,
@@ -156,6 +166,7 @@ configRouter.get('/', configGuard(), async (c) => {
     },
     map: {
       ...servedMap,
+      ...servedLayers,
       renderer: resolveMapRenderer({
         platform: devicePlatform,
         capablePlatforms: mapRendererPlatforms,

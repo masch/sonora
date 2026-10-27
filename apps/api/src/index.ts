@@ -62,6 +62,24 @@ export interface Env {
    * allowlist. A **secret**, set the same way as `MAP_RENDERER_DEVICE_IDS`.
    */
   MAP_RENDERER_DEVICE_IDS_BLOCKED?: string;
+  /**
+   * `true` lets `/config` publish `map.layers`. Off unless set: every build
+   * released before the tolerant `MapConfigSchema` rejects the whole `map`
+   * object over that one key, so the field travels only where the builds that
+   * receive it parse it.
+   */
+  MAP_LAYERS_WIRE?: string;
+  /**
+   * `true` offers the layer selector to the walker. A misspelled or unset value
+   * keeps it off, which is the compiled default.
+   */
+  MAP_LAYERS_SHOW_CONTROL?: string;
+  /**
+   * Comma-separated layer groups the selector offers, in render order, with a
+   * leading dash for "hidden until asked" (`roads,-buildings`). Ids this build
+   * does not implement are dropped.
+   */
+  MAP_LAYERS_GROUPS?: string;
   ADMIN_API_KEY?: string;
   ADMIN_SESSION_COOKIE_SAMESITE?: 'Strict' | 'Lax' | 'None';
   ADMIN_SESSION_COOKIE_SECURE?: string;
@@ -124,6 +142,19 @@ export interface Variables {
      * unset. Checked before the allowlist.
      */
     mapRendererDeviceIdsBlocked: readonly string[];
+    /**
+     * Whether `map.layers` may travel at all. Off unless the environment says
+     * `true`, because the field is only parseable by the builds released with
+     * the tolerant schema.
+     */
+    mapLayersWire: boolean;
+    /** Whether the served selector is offered to the walker. */
+    mapLayerShowControl: boolean;
+    /**
+     * Normalized `MAP_LAYERS_GROUPS`: the groups to offer, in render order, each
+     * with the state it opens in. Only ids this build implements.
+     */
+    mapLayerGroups: readonly import('./lib/map-layers').ServedLayerGroup[];
   };
   environment: string;
   feedbackStore?: KVNamespace;

@@ -1,7 +1,7 @@
 # Feature: Map Layer Selector
 
 **Feature ID:** `map-layer-selector`
-**Status:** contract defined, served behind a wire gate, and the control shipped (uncommitted): the selector draws itself only when the payload's `showControl` says so, and the flag now has a producer — only the wire gate (`L4`) is still outstanding.
+**Status:** contract, vocabulary, both renderer adapters and the control are merged (`#563`–`#566`, `main` at `0fd7e8c`). The field travels only where the wire switch says the receiving builds parse it, which today is staging alone. Outstanding: the state each renderer opens with (`T6`), persistence of the walker's choice (`T7`), and the production wire (`T8`), whose lift has to answer for the installed base.
 
 ## Specs
 
@@ -24,8 +24,8 @@ Corrected later: Leaflet is frozen — it keeps working as it does and receives 
 ## Tasks
 
 - `T1` — contract in shared: `layers` on `RemoteConfigPayload.map`, and a `MapConfigSchema` that tolerates a field it does not know (done, `7d96168`).
-- `T2` — gated wire: `/config` withholds `layers` until the installed base parses it, with the contract and forward-compatibility tests (this task).
-- `T3` — group vocabulary and the capability contract: which groups each renderer can actually draw (in progress, `packages/shared/src/map/layer-groups.ts`).
+- `T2` — gated wire: `/config` withholds `layers` until the installed base parses it, with the contract and forward-compatibility tests (done, `5660221`, served type enforced in `3fce6eb`).
+- `T3` — group vocabulary and the capability contract: which groups each renderer can actually draw (done, `eee0b67` in `#564`, `packages/shared/src/map/layer-groups.ts`).
 
   The vocabulary is seven groups, `roads`, `water`, `places`, `pois`, `boundaries`, `green`, `buildings`, resolved from the published Protomaps light style by two rules:
 
@@ -34,13 +34,13 @@ Corrected later: Leaflet is frozen — it keeps working as it does and receives 
 
   The capability contract lives in the same module as data (`MAPLIBRE_LAYER_CAPABILITIES` with every group, `LEAFLET_LAYER_CAPABILITIES` with none), so the UI never branches on a renderer name. A group the renderer cannot toggle, or the payload never mentions, resolves to the built-in default of visible — today's drawing. `showLayerControl` is false when the payload says off or the renderer supports no group, because a control with nothing in it is worse than no control.
 
-- `T4` — native MapLibre adapter: apply the resolution to the style, as a pure transform (done, on the chained branch `feat/map-layer-toggle`; see the commit-independence caveat below).
+- `T4` — native MapLibre adapter: apply the resolution to the style, as a pure transform (done, merged with its vocabulary in `#565`; see the commit-independence note below).
 
   The work is `applyLayerGroups` in `packages/shared/src/map/layer-groups.ts`, called by `buildMapStyle` in `apps/mobile/src/components/map/experience-map.tsx` on the base layers, **before** the reference layers are appended, so a group can only ever reach the basemap. A hidden group's layers get `layout.visibility: 'none'`; a visible group's layers lose the key instead of gaining `'visible'`; the canvas (`background`, `earth`, `landcover`) and every unclaimed layer (`refs:*` among them) keep what they had; and when every group is drawn the array is returned as the same reference, so a style nobody asked to change is not rebuilt. The selection comes from `map.layers` — the payload the app already consumes, resolved once with `resolveLayerSelection(…, MAPLIBRE_LAYER_CAPABILITIES)` — and is memoised by content (`id:defaultVisible` list), because on native a new style object re-applies the style and re-fetches its tiles.
 
-  Commit independence: this branch is cut from `feat/map-layer-groups`, not from `main`, because the vocabulary it consumes is not merged yet. It therefore cannot land on its own — it merges with (or after) that branch, and its diff is only meaningful against it.
+  Commit independence, resolved: the branch was cut from `feat/map-layer-groups` rather than `main` because the vocabulary it consumes was not merged yet, so it could not land on its own. Both landed together in `#565` (`4d3dc14` on top of the merge), and `main` carries the pair since `44ebe8f`.
 
-- `T5` — the control itself: trigger button, `BottomModal`, i18n labels, accessibility labels and testIDs, one row per resolved group (done).
+- `T5` — the control itself: trigger button, `BottomModal`, i18n labels, accessibility labels and testIDs, one row per resolved group (done, `9adc2ec` in `#566`, web parity in `5cca55c`).
 
   `apps/mobile/src/components/map/map-layers-control.tsx` is a self-contained action: the trigger `IconButton` (`map-layers-control`) and its sheet live in one file, and no parent declares a `visible` flag. The sheet is a `BottomModal` titled `map.layers.title`, with one `TwPressable` row per resolved entry, in the order it arrives — `MAP_LAYER_GROUPS` decides that order upstream, and the control sorts nothing. A row is `accessibilityRole="checkbox"` with `accessibilityState.checked`, `testID="map-layer-row-${id}"` and a label that names the group _and_ its state (`map.layers.visible` / `map.layers.hidden`, interpolated with the group's own name), because a screen reader reads the state, not a check mark. It renders nothing at all when `showLayerControl(configured, capabilities)` is false. Its props are the selection, `onToggle(id)` and `allowed`: no renderer name appears in the file.
 
@@ -52,6 +52,18 @@ Corrected later: Leaflet is frozen — it keeps working as it does and receives 
 
 - `T6` — decide the renderer default.
 - `T7` — persist the walker's choice: today it lasts as long as the mount does (see `T5`).
+- `T8` — the wire and its producer: whether `map.layers` travels, whether the walker is offered the selector, and which groups it lists in which state (done, staging only).
+
+  Three variables carry it, each answering one question and each failing towards
+  today's behaviour: `MAP_LAYERS_WIRE` (`true` is the only value that publishes the
+  field), `MAP_LAYERS_SHOW_CONTROL` (offers the selector) and `MAP_LAYERS_GROUPS`
+  (render order, with a leading dash for a group that opens hidden). `/config`
+  keeps stripping the field unless the wire switch is on, so `S4` is a switch per
+  environment instead of a comment in the route: an environment whose installed
+  builds still reject the key keeps serving the pre-change contract. Staging turns
+  all three on, because a stale staging build is reinstalled rather than supported;
+  production leaves them unset, and `wrangler.toml` records why the lift is a
+  release decision and not a line to flip.
 
 ## Log
 
@@ -64,3 +76,4 @@ Corrected later: Leaflet is frozen — it keeps working as it does and receives 
 - `L7` — The selection moved up one level with `T5`. The switch (`experience-map-switch.tsx`) now owns it: it resolves the payload once with `resolveLayerSelection(source.layers ?? [], MAPLIBRE_LAYER_CAPABILITIES)`, keeps the result in state, flips one entry per toggle — raising `declared` with it, because a group the walker names is no longer a group the payload left silent — and hands the result to `ExperienceMap` as the `layerSelection` prop. The renderer no longer reads `source.layers` and no longer calls `resolveLayerSelection`: it applies what it is given, through the same pure `applyLayerGroups` transform as before. The prop is still an input by content (`selectionSignature`, next to `documentsKey`), so a caller that rebuilds the array on every render cannot rebuild the style and make native re-fetch its tiles. Two consequences worth recording: the renderer's former reading of the payload at every render is gone, so a payload that arrives after the map mounted no longer applies by itself (that is what persistence, `T7`, has to answer); and the control lives inside the MapLibre branch only, because the frozen Leaflet renderer can toggle no group.
 - `L8` — The flag has a producer, so the control is reachable in the app and not only in tests. `useMapViewConfig` now returns `showLayersControl: map?.layers?.showControl` on the source, next to `layers`, from the same payload the hook already reads: the map components take the source as their only input, and whether the walker is offered the choice at all is a decision about what the map draws, exactly like the region and the group list. A payload that says nothing keeps it `undefined`, which the switch's `?? false` reads as off — the same "silence is not a request" rule the groups follow — and its suite pins the flag both ways (payload `true`, and payload absent or `false`). Nothing else changed: the switch, the control and the renderer are as `T5`/`L7` left them.
 - `L9` — CodeRabbit's review on `#566` found three things the lenses and the refuter did not. Two were real: the **web renderer never read the selection**, so on web the control showed checkboxes that changed nothing (fixed with `applyLayerSelection` in `web-layer-visibility.ts`, and the signature both renderers now share moved to `layerSelectionSignature` in shared), and the Spanish accessibility label said `Caminos: oculta` — a fixed feminine adjective against masculine group names (now `Capa oculta: {{name}}` / `Capa visible: {{name}}`, with the English mirror). The third duplicated the refuter's late-payload finding, already fixed in `d3e3753`. Both renderers must land on the same picture, and only then is the control honest on both.
+- `L10` — "la versionde staging no importa, es para pruebas, que pasa si esperamos a teminar todos las tareas para hacer el proximo release?" — asked before touching the wire, and answered with a switch instead of a wait. What waiting would have cost: with the field stripped, `showControl` never arrives, so the control cannot be seen or exercised on a device and `#566` stays a Jest-only claim. What the release alone would **not** have fixed: a release does not update the builds already installed, and an older build rejects the whole `map` object over the one unknown key — it loses its renderer, its region catalog and its download policy. Lifting therefore has two halves, and only one of them is a strip: `/config` now publishes `map.layers` only when `MAP_LAYERS_WIRE` says so, and the selector it publishes is configured by `MAP_LAYERS_SHOW_CONTROL` and `MAP_LAYERS_GROUPS`. Staging turns all three on, because a stale staging build is reinstalled rather than supported; production keeps them unset, which is the pre-change contract it serves today. The remaining production decision — raise `MINIMUM_APP_VERSION` to the release that ships the control, or gate the field on the `X-App-Version` the client already sends — is deliberately not taken here, and it is recorded in `wrangler.toml` next to the absent variables instead of in this log alone.

@@ -333,6 +333,86 @@ describe('GET /config', () => {
     ).toBe(true);
   });
 
+  it('withholds map.layers while the wire switch is off, even when the selector is configured', async () => {
+    // The switch, not the emptiness of the configuration, is what withholds the
+    // field: an operator may prepare the selector in an environment where the
+    // installed builds still reject the key.
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        MAP_LAYERS_SHOW_CONTROL: 'true',
+        MAP_LAYERS_GROUPS: 'roads,water',
+      },
+    );
+    const body = (await res.json()) as { map: Record<string, unknown> };
+
+    expect(body.map).not.toHaveProperty('layers');
+  });
+
+  it('serves map.layers with the configured selector when the wire switch is on', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        MAP_LAYERS_WIRE: 'true',
+        MAP_LAYERS_SHOW_CONTROL: 'true',
+        MAP_LAYERS_GROUPS: 'roads,-buildings',
+      },
+    );
+    const body = (await res.json()) as {
+      map: { layers: { showControl: boolean; groups: { id: string; defaultVisible: boolean }[] } };
+    };
+
+    expect(body.map.layers).toEqual({
+      showControl: true,
+      groups: [
+        { id: 'roads', defaultVisible: true },
+        { id: 'buildings', defaultVisible: false },
+      ],
+    });
+    // The published field travels inside the contract every receiving build
+    // parses, the tolerant one this release ships.
+    expect(
+      RemoteConfigPayloadSchema.safeParse(
+        await (
+          await app.request(
+            '/config',
+            {},
+            {
+              ...BINDINGS,
+              MAP_LAYERS_WIRE: 'true',
+              MAP_LAYERS_SHOW_CONTROL: 'true',
+              MAP_LAYERS_GROUPS: 'roads',
+            },
+          )
+        ).json(),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('serves the field but no control when only the wire switch is on', async () => {
+    // The two switches answer different questions: the wire decides whether the
+    // key travels, `MAP_LAYERS_SHOW_CONTROL` whether the walker is offered it.
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        MAP_LAYERS_WIRE: 'true',
+        MAP_LAYERS_GROUPS: 'roads',
+      },
+    );
+    const body = (await res.json()) as {
+      map: { layers: { showControl: boolean; groups: { id: string }[] } };
+    };
+
+    expect(body.map.layers.showControl).toBe(false);
+    expect(body.map.layers.groups.map((group) => group.id)).toEqual(['roads']);
+  });
+
   it('sends the renderer and every map field the defaults describe', async () => {
     const res = await app.request('/config', {}, BINDINGS);
     const body = (await res.json()) as MapBody;

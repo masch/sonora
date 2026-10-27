@@ -8,6 +8,7 @@ import {
 } from '@sonora/shared';
 import type { Env, Variables } from '../index';
 import { normalizeDeviceIdList, normalizePlatformList } from '../lib/map-renderer';
+import { normalizeFlag, normalizeLayerGroups } from '../lib/map-layers';
 
 /**
  * Artifact versions are a path segment of the bucket key, so only a value that
@@ -79,6 +80,19 @@ export const configGuard = (): MiddlewareHandler<{
       // must never be written into `wrangler.toml`.
       mapRendererDeviceIds: normalizeDeviceIdList(c.env?.MAP_RENDERER_DEVICE_IDS),
       mapRendererDeviceIdsBlocked: normalizeDeviceIdList(c.env?.MAP_RENDERER_DEVICE_IDS_BLOCKED),
+      // Whether `map.layers` may travel at all. Off unless the environment says
+      // `true`: the field is only parseable by the builds released with the
+      // tolerant schema, and one unknown key makes every older build drop the
+      // whole `map` object — renderer, region catalog and download policy with
+      // it. This is the one switch that is about the installed base, not about
+      // what the selector should offer.
+      mapLayersWire: normalizeFlag(c.env?.MAP_LAYERS_WIRE),
+      // Whether the served selector is offered to the walker. Independent of the
+      // wire switch on purpose: the field can travel with the control still off.
+      mapLayerShowControl: normalizeFlag(c.env?.MAP_LAYERS_SHOW_CONTROL),
+      // Which groups the selector offers and in what order, each with the state
+      // it opens in. Names only the vocabulary this build implements.
+      mapLayerGroups: normalizeLayerGroups(c.env?.MAP_LAYERS_GROUPS),
     });
     await next();
   };

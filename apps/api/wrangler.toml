@@ -43,6 +43,16 @@ MAP_RENDERER = "leaflet"
 # `web` here is what turns the new map on in browsers, once that worker loads.
 MAP_RENDERER_PLATFORMS = "android,ios"
 
+# --- Layer selector (`map.layers`) -----------------------------------------
+# `MAP_LAYERS_WIRE`, `MAP_LAYERS_SHOW_CONTROL` and `MAP_LAYERS_GROUPS` are
+# deliberately absent here, and absent means off. The field is only parseable by
+# builds released with the tolerant `MapConfigSchema`; an older build rejects the
+# whole `map` object over that one unknown key and loses its renderer, its region
+# catalog and its download policy. Lifting this belongs to the release that ships
+# the control, and that release still has to answer for the builds already
+# installed: raise `MINIMUM_APP_VERSION` to it, or gate the field on the version
+# the client sends. Staging publishes it today (see `wrangler.staging.toml`).
+
 MINIMUM_APP_VERSION = "1.0.123"
 BLOCK_OLDER_VERSIONS = "true"
 # ISO dates for grace period range (e.g. "2026-07-02T00:00:00Z" to "2026-07-09T00:00:00Z")
