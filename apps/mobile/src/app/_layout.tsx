@@ -5,11 +5,18 @@ import { APP_CONFIG } from '@/config/app-config';
 import { StagingBadge } from '@/components/staging-badge';
 
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, ErrorBoundaryProps } from 'expo-router';
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  ErrorBoundaryProps,
+  router,
+  usePathname,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAppTranslation } from '@/hooks/use-translation';
 import { RuntimeColors } from '@/constants/theme';
 
 import { ROUTES } from '@/constants/routes';
@@ -31,8 +38,9 @@ import { useTermsCheck } from '@/hooks/use-terms-check';
 import { TermsModal } from '@/components/terms-modal';
 import { MapDownloadPrompt } from '@/components/map/map-download-prompt';
 import { AndroidWebGate } from '@/components/android-web-gate';
+import { ErrorScreen } from '@/components/error-screen';
 import { logger } from '@/utils/logger';
-import { TwView, TwText, TwPressable } from '@/tw';
+import { errorReference } from '@/utils/error-reference';
 
 // Load web font via Google Fonts CDN (web only — document does not exist on native)
 if (typeof document !== 'undefined') {
@@ -158,26 +166,37 @@ export default function RootLayout() {
 }
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
-  const { t } = useAppTranslation();
+  // `usePathname` reads expo-router's global route store, not a navigation
+  // context, so it is safe to call even when the boundary fires before the
+  // navigator mounts.
+  const route = usePathname();
+  const reference = errorReference(error);
 
   useEffect(() => {
-    AnalyticsService.recordError(error, 'Root ErrorBoundary caught layout/render error');
-  }, [error]);
+    AnalyticsService.recordError(error, 'Root ErrorBoundary caught layout/render error', {
+      reference,
+      route,
+      fatal: true,
+    });
+  }, [error, reference, route]);
 
-  return (
-    <TwView className="flex-1 justify-center items-center p-6 bg-slate-900">
-      <TwText className="text-xl font-bold text-white mb-2">
-        {t('common.somethingWentWrong')}
-      </TwText>
-      <TwText className="text-red-400 text-center mb-6">{error.message}</TwText>
-      <TwPressable
-        className="px-6 py-3 bg-indigo-600 rounded-lg active:bg-indigo-700"
-        onPress={retry}
-        accessibilityLabel={t('common.retry')}
-        testID="retry-button"
-      >
-        <TwText className="text-white font-medium">{t('common.retry')}</TwText>
-      </TwPressable>
-    </TwView>
-  );
+  return <ErrorScreen error={error} retry={retry} onGoHome={() => goHome(retry)} />;
+}
+
+/**
+ * Leaves the broken screen for the app root, when there is a navigator to leave for.
+ *
+ * The boundary renders **instead of** the root layout, so the case it exists for is
+ * the case where `Stack` never mounted: Expo Router throws when navigating before
+ * that, and a button that throws would leave the walker with no working action at
+ * all. The failure is therefore treated as "navigation is unavailable" and the
+ * screen falls back to re-rendering the tree, which is the other thing a crash can
+ * recover from.
+ */
+function goHome(retry: () => void): void {
+  try {
+    router.replace('/');
+  } catch {
+    retry();
+  }
 }
