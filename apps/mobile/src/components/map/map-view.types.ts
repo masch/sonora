@@ -1,5 +1,10 @@
 import type { StyleSpecification } from 'maplibre-gl';
-import type { GeoBounds, MapDocument, MapLayerGroupConfig } from '@sonora/shared';
+import type {
+  GeoBounds,
+  MapDocument,
+  MapLayerGroupConfig,
+  MapLayerSelection,
+} from '@sonora/shared';
 
 export { resolveMapRenderer, MAP_RENDERER_ENV, type MapRenderer } from './resolve-renderer';
 
@@ -30,6 +35,14 @@ export interface MapSourceConfig {
    * then draws as the style authored it.
    */
   layers?: readonly MapLayerGroupConfig[];
+  /**
+   * Whether the payload offers the selector at all (`map.layers.showControl`).
+   *
+   * Separate from `layers` on purpose: a payload may switch the control on while
+   * naming no group, and resolution then falls back to every group's built-in
+   * default. It rides with the source for the same reason the group list does.
+   */
+  showLayersControl?: boolean;
   attribution?: string;
 }
 
@@ -62,6 +75,15 @@ export interface ExperienceMapProps {
   waypoints?: { latitude: number; longitude: number }[];
   /** Draw the reference label layer. Defaults to true. */
   showLabels?: boolean;
+  /**
+   * Which basemap groups draw, as the view that owns the decision resolved them.
+   *
+   * The renderer applies this and resolves nothing itself: the switch seeds it from
+   * the payload and lets the walker toggle it, so one place decides and the renderer
+   * only draws. Absent means no group is declared and the style draws exactly what
+   * it authored.
+   */
+  layerSelection?: readonly MapLayerSelection[];
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;

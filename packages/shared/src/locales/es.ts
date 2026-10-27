@@ -32,6 +32,20 @@ export const es = {
     point: 'Pt {{index}}',
     hideLabels: 'Ocultar nombres',
     showLabels: 'Mostrar nombres',
+    // El selector: una fila por grupo del mapa base, en el orden del vocabulario.
+    layers: {
+      title: 'Capas del mapa',
+      roads: 'Caminos',
+      water: 'Agua',
+      places: 'Lugares',
+      pois: 'Puntos de interés',
+      boundaries: 'Límites',
+      green: 'Áreas verdes',
+      buildings: 'Edificios',
+      // Lo que anuncia el lector de pantalla: el grupo y si se dibuja.
+      visible: 'Capa visible: {{name}}',
+      hidden: 'Capa oculta: {{name}}',
+    },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
     // Not a failure: the place is real, it is simply outside every region we publish.

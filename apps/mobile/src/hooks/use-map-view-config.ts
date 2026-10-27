@@ -27,8 +27,10 @@ export interface MapViewConfig {
  * its reference plane over the fallback style and says so, instead of showing a
  * map of somewhere the walker is not.
  *
- * `regionKey` is also carried on `source`, because the archive and the region are
- * one decision and the map components take the source as their only input.
+ * `regionKey` is also carried on `source`, and so are the selector's group list and
+ * its `showLayersControl` flag, because each of them is a decision about what this map
+ * draws — which archive, which groups, whether the walker is offered the choice at all
+ * — and the map components take the source as their only input.
  */
 export function useMapViewConfig(point?: MapPoint | null): MapViewConfig {
   const map = useRemoteConfigStore((state) => state.config.map);
@@ -45,6 +47,7 @@ export function useMapViewConfig(point?: MapPoint | null): MapViewConfig {
       archiveUrl: region?.archiveUrl ?? '',
       styleUrl: map?.styleUrl || undefined,
       layers: map?.layers?.groups,
+      showLayersControl: map?.layers?.showControl,
     },
   };
 }

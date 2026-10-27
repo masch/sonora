@@ -14,12 +14,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
 
 import {
-  MAPLIBRE_LAYER_CAPABILITIES,
   applyLayerGroups,
   buildReferenceStyleLayers,
+  layerSelectionSignature,
+  MAPLIBRE_LAYER_CAPABILITIES,
+  resolveLayerSelection,
   labelAnchorForDocument,
   referenceSourceId,
-  resolveLayerSelection,
   withResolvedLabels,
   type MapDocument,
   type MapLayerSelection,
@@ -367,7 +368,12 @@ function fallbackStyle(archiveUri: string, attribution: string | undefined): Sty
   };
 }
 
-/** Draw order and uniqueness, matching what `applyMapDocuments` reconciles on the web. */
+/** The selection a caller who decided nothing hands over: no group is declared. */
+const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
+
+/**
+ * Draw order and uniqueness, matching what `applyMapDocuments` reconciles on the web.
+ */
 function orderedDocuments(documents: readonly MapDocument[]): MapDocument[] {
   const ordered = [...documents].sort(
     (left, right) => (left.zIndex ?? 0) - (right.zIndex ?? 0) || left.key.localeCompare(right.key),
@@ -503,6 +509,7 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   showLabels = true,
+  layerSelection,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -522,23 +529,6 @@ export default function ExperienceMap({
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
 
-  /**
-   * Which basemap groups draw, from the payload this build already consumes
-   * (`map.layers`, S2) resolved against what MapLibre can actually toggle (T3).
-   *
-   * The group list is an input by content, like `documentsKey`: the store hands back
-   * the same object until the config changes, but `resolveLayerSelection` builds a new
-   * array, and a new array in the style's dependencies would rebuild the style — which
-   * on native re-applies it and re-fetches its tiles.
-   */
-  const groups = source.layers ?? [];
-  const groupsKey = groups.map((group) => `${group.id}:${group.defaultVisible ? 1 : 0}`).join(',');
-  const layerSelection = useMemo<MapLayerSelection[]>(
-    () => resolveLayerSelection(groups, MAPLIBRE_LAYER_CAPABILITIES),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the payload is an input by content (`groupsKey`), not by array identity
-    [groupsKey],
-  );
-
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
     if (remote.status === 'error') setStyleAttempt((previous) => previous + 1);
@@ -548,8 +538,26 @@ export default function ExperienceMap({
 
   // The style is built from values, never from the identity of the props that
   // carry them: the switch hands a rebuilt `overlays` array (and a rebuilt
-  // itinerary document) and the translation hook a new `t` on every render.
+  // itinerary document) and the translation hook a new `t` on every render. The
+  // selection is an input by content for the same reason, even though the view
+  // keeps it in state: a caller that rebuilds the array per render must not rebuild
+  // the style.
   const documentsKey = documentsSignature(overlays);
+  /**
+   * What to draw, from the caller's selection when it has one and from the payload on
+   * the source when it does not.
+   *
+   * The fallback is what a caller that mounts the renderer directly gets: passing only
+   * `source.layers` must keep drawing the groups the payload named, exactly as the
+   * baseline did, instead of silently drawing every group because a prop was omitted.
+   */
+  const effectiveSelection: readonly MapLayerSelection[] =
+    layerSelection ??
+    (source.layers?.length
+      ? resolveLayerSelection(source.layers, MAPLIBRE_LAYER_CAPABILITIES)
+      : NO_LAYER_SELECTION);
+
+  const selectionKey = layerSelectionSignature(effectiveSelection);
   // The basemap is the region's archive and nothing else: with no region there is
   // no archive to draw, whatever the hook happens to hand back.
   const archiveUri = !noRegion && archive.status === 'ready' ? archive.uri : undefined;
@@ -577,7 +585,7 @@ export default function ExperienceMap({
     if (noRegion) {
       return buildMapStyle(referencePlaneStyle(), {
         documents: overlays,
-        selection: layerSelection,
+        selection: effectiveSelection,
         showLabels,
         translate,
       });
@@ -586,11 +594,11 @@ export default function ExperienceMap({
     return buildMapStyle(styleDocument ?? fallbackStyle(archiveUri, attribution), {
       archiveUri,
       documents: overlays,
-      selection: layerSelection,
+      selection: effectiveSelection,
       showLabels,
       translate,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents are an input by content (`documentsKey`), not by array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents and the selection are inputs by content (`documentsKey`, `selectionKey`), not by array identity
   }, [
     archiveUri,
     noRegion,
@@ -599,7 +607,7 @@ export default function ExperienceMap({
     showLabels,
     translate,
     documentsKey,
-    layerSelection,
+    selectionKey,
   ]);
 
   /** Layer ids one of the drawn documents owns, in draw order. */

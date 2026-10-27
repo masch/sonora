@@ -1,6 +1,15 @@
 import { useState } from 'react';
 
-import { ITINERARY_DOCUMENT_KEY, itineraryDocument, type MapDocument } from '@sonora/shared';
+import {
+  ITINERARY_DOCUMENT_KEY,
+  MAPLIBRE_LAYER_CAPABILITIES,
+  itineraryDocument,
+  resolveLayerSelection,
+  showLayerControl,
+  type MapDocument,
+  type MapLayerGroupId,
+  type MapLayerSelection,
+} from '@sonora/shared';
 
 import TrackDetailMap from '@/components/track-detail-map';
 import ReferenceCard from '@/components/reference-card';
@@ -10,6 +19,7 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
+import MapLayersControl from './map-layers-control';
 import type { MapReferencePress, MapSourceConfig } from './map-view.types';
 import type { MapRenderer } from './resolve-renderer';
 
@@ -77,6 +87,11 @@ function waypointsOf(experience: PlayableExperience) {
  * mounts a map shows it the same way: the screen says which experience and which
  * frame, and the frame is the same everywhere: which controls a map has must not
  * depend on where it is mounted.
+ *
+ * The layer selector is the map's other control, and the selection it edits is
+ * decided here too: the switch resolves the payload once, keeps it in state, and
+ * hands the result to the renderer, which applies it and resolves nothing. One place
+ * decides what the map draws; the renderer only draws it.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -89,10 +104,52 @@ export default function ExperienceMapSwitch({
   const waypoints = waypointsOf(experience);
   const [pressedReference, setPressedReference] = useState<MapReferencePress | null>(null);
   const [showLabels, setShowLabels] = useState(true);
+  /**
+   * The groups the payload asks for, resolved against what the renderer can toggle
+   * (T3).
+   *
+   * Recomputed whenever the payload's content changes, never captured at mount: the
+   * remote config arrives after the map is already on screen, and a selection frozen
+   * at mount would draw the groups a payload never asked for and show the walker
+   * checkboxes that disagree with the map.
+   */
+  const resolvedSelection = resolveLayerSelection(source.layers ?? [], MAPLIBRE_LAYER_CAPABILITIES);
+
+  /**
+   * What the walker changed, by group, and only that.
+   *
+   * Overrides rather than a whole selection: the payload stays the source of truth for
+   * every group the walker never touched, so a payload that lands late still reaches
+   * the map. Nothing persists these yet, so the choice lasts as long as the mount does.
+   */
+  const [layerOverrides, setLayerOverrides] = useState<Partial<Record<MapLayerGroupId, boolean>>>(
+    {},
+  );
+
+  const layerSelection: readonly MapLayerSelection[] = resolvedSelection.map((entry) => {
+    const override = layerOverrides[entry.id];
+    if (override === undefined) return entry;
+    return { ...entry, visible: override, declared: true };
+  });
 
   function handleFeaturePress(reference: MapReferencePress) {
     if (reference.documentKey === ITINERARY_DOCUMENT_KEY) return;
     setPressedReference(reference);
+  }
+
+  /**
+   * Flips one group, and declares it while doing so.
+   *
+   * `visible` alone would be a decision `applyLayerGroups` ignores: a group the payload
+   * never mentions is left exactly as the style authored it, because silence is not a
+   * request. A walker who toggles a row is not silent — they are naming the group — so
+   * the entry becomes `declared` and the choice reaches the style. `declared` is only
+   * ever raised here, never lowered: it records who spoke, not what they said.
+   */
+  function handleToggleLayer(id: MapLayerGroupId) {
+    const current = layerSelection.find((entry) => entry.id === id);
+    const next = !(current?.visible ?? true);
+    setLayerOverrides((previous) => ({ ...previous, [id]: next }));
   }
 
   function drawMap() {
@@ -109,12 +166,21 @@ export default function ExperienceMapSwitch({
           <ExperienceMap
             className="h-full w-full"
             source={source}
+            layerSelection={layerSelection}
             overlays={overlays}
             center={[experience.longitude, experience.latitude]}
             userCoordinates={userCoordinates}
             waypoints={waypoints}
             showLabels={showLabels}
             onFeaturePress={handleFeaturePress}
+          />
+          <MapLayersControl
+            selection={layerSelection}
+            onToggle={handleToggleLayer}
+            allowed={showLayerControl(
+              source.showLayersControl ?? false,
+              MAPLIBRE_LAYER_CAPABILITIES,
+            )}
           />
           <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
         </>

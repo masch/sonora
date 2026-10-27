@@ -1,7 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react-native';
 
 import type { StyleSpecification } from 'maplibre-gl';
-import type { MapDocument } from '@sonora/shared';
+import type { MapDocument, MapLayerSelection } from '@sonora/shared';
 
 // The double lives outside this file: the jest.mock factory cannot hold type
 // annotations (it reads them as out-of-scope variables).
@@ -49,6 +49,25 @@ function styleWith(glyphs: boolean): StyleSpecification {
     sources: { basemap: { type: 'vector', url: ARCHIVE } },
     layers: [],
   };
+}
+
+/**
+ * A style that actually draws basemap layers, named the way the published one names
+ * them: the selector resolves a group from those ids (`layerIdsForGroup`), so a style
+ * with no layers could prove nothing about what it touches.
+ */
+function styleWithBasemapLayers(): StyleSpecification {
+  return {
+    version: 8,
+    sources: { basemap: { type: 'vector', url: ARCHIVE } },
+    layers: [
+      { id: 'background', type: 'background' },
+      { id: 'earth', type: 'fill', source: 'basemap', 'source-layer': 'earth' },
+      { id: 'water', type: 'fill', source: 'basemap', 'source-layer': 'water' },
+      { id: 'roads_primary', type: 'line', source: 'basemap', 'source-layer': 'roads' },
+      { id: 'buildings', type: 'fill', source: 'basemap', 'source-layer': 'buildings' },
+    ],
+  } as StyleSpecification;
 }
 
 describe('ExperienceMap (web)', () => {
@@ -275,6 +294,130 @@ describe('ExperienceMap (web)', () => {
     });
 
     expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes a declared group onto the layers the style already drew', async () => {
+    const hidden: MapLayerSelection[] = [
+      { id: 'water', visible: false, declared: true },
+      // Silent: never named by anyone, so the style keeps its own decision.
+      { id: 'roads', visible: true, declared: false },
+    ];
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWithBasemapLayers() }}
+        overlays={[]}
+        layerSelection={hidden}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    // One call, for the group that was named: the canvas (`background`, `earth`) and
+    // the sibling group stay exactly as the style authored them.
+    expect(mockMapInstances[0].layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+    ]);
+  });
+
+  it('leaves every layer as authored when no group is declared', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWithBasemapLayers() }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    expect(mockMapInstances[0].layoutProperties).toEqual([]);
+  });
+
+  it('honours the groups the source names when no selection is passed', async () => {
+    // The native renderer's fallback: a caller that mounts the renderer directly and
+    // passes only `source.layers` must draw the same map on both platforms.
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: ARCHIVE,
+          style: styleWithBasemapLayers(),
+          layers: [{ id: 'water', defaultVisible: false }],
+        }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    expect(mockMapInstances[0].layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+    ]);
+  });
+
+  it('re-applies a toggle without rebuilding the map or its style', async () => {
+    const source = { archiveUrl: ARCHIVE, style: styleWithBasemapLayers() };
+    const hidden: MapLayerSelection[] = [{ id: 'water', visible: false, declared: true }];
+    const shown: MapLayerSelection[] = [{ id: 'water', visible: true, declared: true }];
+
+    const view = await render(
+      <ExperienceMap source={source} overlays={[document]} layerSelection={hidden} />,
+    );
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    await act(async () => {
+      map.emit('load');
+    });
+    const styleAsLoaded = map.options.style;
+
+    expect(map.layoutProperties).toEqual([{ layerId: 'water', name: 'visibility', value: 'none' }]);
+
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[document]} layerSelection={shown} />);
+    });
+
+    // The toggle wrote the decision onto the layers that are already drawn. A style
+    // reload would have answered the same question by re-fetching every tile, and the
+    // double exposes no `setStyle` at all: the only way to reach this assertion is
+    // `setLayoutProperty`. One map instance and one unchanged style object prove the
+    // map was never rebuilt.
+    expect(mockMapInstances).toHaveLength(1);
+    expect(map.options.style).toBe(styleAsLoaded);
+    expect(map.layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+      { layerId: 'water', name: 'visibility', value: 'visible' },
+    ]);
+  });
+
+  it('never touches the reference layers a document owns', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWithBasemapLayers() }}
+        overlays={[document]}
+        layerSelection={[
+          { id: 'water', visible: false, declared: true },
+          { id: 'buildings', visible: false, declared: true },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    expect(mockMapInstances[0].layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+      { layerId: 'buildings', name: 'visibility', value: 'none' },
+    ]);
   });
 });
 
