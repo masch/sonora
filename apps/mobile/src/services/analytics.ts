@@ -1,6 +1,7 @@
 import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
 import { getAppVersion } from '@/utils/app-version';
+import { errorReference } from '@/utils/error-reference';
 import type { AnalyticsEventMap } from './analytics-events';
 import type { AnalyticsTracker, ErrorContext } from './analytics.types';
 
@@ -68,14 +69,18 @@ export const AnalyticsService: AnalyticsTracker = {
         if (customDescription) {
           firebaseCrashlytics().setAttribute('custom_description', customDescription);
         }
-        // Attributes carry the reference the walker reads on screen, so the
-        // same code lands in Crashlytics next to the native crash.
-        if (context?.reference) {
-          firebaseCrashlytics().setAttribute('error_reference', context.reference);
-        }
-        if (context?.route) {
-          firebaseCrashlytics().setAttribute('route', context.route);
-        }
+        // Attributes carry the reference the walker reads on screen, so the same
+        // code lands in Crashlytics next to the native crash. They are global and
+        // persist between calls, so both are written on **every** error instead of
+        // only when this call supplies them: a reference left behind by an earlier
+        // crash would otherwise be recorded against this one, and a route the walker
+        // has already left is not where this error happened. The fallback is the
+        // code derived from the error itself — the same one the web event reports.
+        firebaseCrashlytics().setAttribute(
+          'error_reference',
+          context?.reference ?? errorReference(error),
+        );
+        firebaseCrashlytics().setAttribute('route', context?.route ?? '');
         firebaseCrashlytics().recordError(error);
       } else {
         logger.error('[Native Error - Disabled]', error, customDescription, context);

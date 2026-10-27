@@ -8,6 +8,7 @@ import { Platform, NativeModules } from 'react-native';
 NativeModules.RNFBAppModule = {};
 
 import { AnalyticsService } from '../analytics';
+import { errorReference } from '@/utils/error-reference';
 
 const { AnalyticsService: AnalyticsServiceWeb } = jest.requireActual<{
   AnalyticsService: typeof AnalyticsService;
@@ -79,6 +80,39 @@ describe('AnalyticsService', () => {
     expect(mockSetAttribute).toHaveBeenCalledWith('custom_description', 'Custom description');
     expect(mockSetAttribute).toHaveBeenCalledWith('app_version', 'test-version');
     expect(mockRecordError).toHaveBeenCalledWith(error);
+  });
+
+  it('writes the caller context into the crash attributes', () => {
+    platform.OS = 'ios';
+    AnalyticsService.recordError(new Error('boom'), 'desc', {
+      reference: 'E-ABC123',
+      route: '/trip/abc',
+      fatal: true,
+    });
+
+    expect(mockSetAttribute).toHaveBeenCalledWith('error_reference', 'E-ABC123');
+    expect(mockSetAttribute).toHaveBeenCalledWith('route', '/trip/abc');
+  });
+
+  it('never records the previous crash reference or route on a call without context', () => {
+    platform.OS = 'ios';
+    // Crashlytics attributes are global: an earlier crash wrote a reference and a
+    // route, and a later report that omits them must not inherit either of them.
+    AnalyticsService.recordError(new Error('first'), 'desc', {
+      reference: 'E-ABC123',
+      route: '/trip/abc',
+      fatal: true,
+    });
+    mockSetAttribute.mockClear();
+
+    const second = new Error('second');
+    AnalyticsService.recordError(second, 'desc');
+
+    // Its own derived code — the one the screen shows for this error — and no route.
+    expect(mockSetAttribute).toHaveBeenCalledWith('error_reference', errorReference(second));
+    expect(mockSetAttribute).toHaveBeenCalledWith('route', '');
+    expect(mockSetAttribute).not.toHaveBeenCalledWith('error_reference', 'E-ABC123');
+    expect(mockSetAttribute).not.toHaveBeenCalledWith('route', '/trip/abc');
   });
 
   it('tracks events on web platform using Web Firebase SDK', () => {
