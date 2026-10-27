@@ -44,6 +44,7 @@ export function useMapViewConfig(point?: MapPoint | null): MapViewConfig {
       regionKey,
       archiveUrl: region?.archiveUrl ?? '',
       styleUrl: map?.styleUrl || undefined,
+      layers: map?.layers?.groups,
     },
   };
 }

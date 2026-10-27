@@ -189,6 +189,24 @@ function styleWith(glyphs: boolean): StyleSpecification {
 }
 
 /**
+ * The same document with one layer per selector group, so a group the payload turns
+ * off can be seen in the style the map is handed.
+ */
+function styleWithGroups(): StyleSpecification {
+  return {
+    version: 8,
+    glyphs: 'https://api.example/media/public/glyphs/{fontstack}/{range}.pbf',
+    sources: { basemap: { type: 'vector', url: ARCHIVE_URL } },
+    layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#ffffff' } },
+      { id: 'water', type: 'fill', source: 'basemap', 'source-layer': 'water' },
+      { id: 'water_label_ocean', type: 'symbol', source: 'basemap', 'source-layer': 'water' },
+      { id: 'roads_minor', type: 'line', source: 'basemap', 'source-layer': 'roads' },
+    ],
+  } as StyleSpecification;
+}
+
+/**
  * A `fetch` double that honours its abort signal the way the platform does.
  *
  * The previous double ignored the signal, so a second request could hide behind an
@@ -226,6 +244,17 @@ function abortAwareFetch(): {
 /** The layer ids the map was told to draw, in draw order. */
 function drawnLayerIds(index = 0): string[] {
   return (mockMapProps[index].mapStyle.layers ?? []).map((layer) => layer.id);
+}
+
+/** The `layout` the map was handed for one layer, or `undefined` when it carries none. */
+function drawnLayout(layerId: string, index = 0): Record<string, unknown> | undefined {
+  // The style spec's layer union does not carry `layout` on every member (a
+  // background layer has none), so the double's own shape is what is read here.
+  const layers = (mockMapProps[index].mapStyle.layers ?? []) as {
+    id: string;
+    layout?: Record<string, unknown>;
+  }[];
+  return layers.find((candidate) => candidate.id === layerId)?.layout;
 }
 
 /** The GeoJSON data the style carries for a reference document. */
@@ -388,6 +417,89 @@ describe('ExperienceMap (native)', () => {
     ]);
     // Labels are resolved before drawing: MapLibre cannot call the translation layer.
     expect(drawnFeatures('umepay')[0].properties?.label).toBe('map.references.taller');
+  });
+
+  it('hands the map the group the payload turned off, and nothing else', async () => {
+    // S2: the server decides which groups draw, with no build behind it. The style
+    // handed to MapLibre is where that decision lands — the renderer is declarative,
+    // so the adapter is a transform of the style, not a call on a map handle. The
+    // payload rides on the source, like the archive and the region do.
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: ARCHIVE_URL,
+          style: styleWithGroups(),
+          layers: [{ id: 'water', defaultVisible: false }],
+        }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(mockMapProps).toHaveLength(1);
+    // Every layer the group owns is switched off in the style itself...
+    expect(drawnLayout('water')).toEqual({ visibility: 'none' });
+    expect(drawnLayout('water_label_ocean')).toEqual({ visibility: 'none' });
+    // ...the layers no group turned off are drawn as the document wrote them...
+    expect(drawnLayout('roads_minor')).toBeUndefined();
+    expect(drawnLayout('background')).toBeUndefined();
+    // ...and our own documents are out of reach of any group: they are appended
+    // after the transform, so no group can ever blank them.
+    for (const layerId of ['refs:umepay:fill']) {
+      expect(drawnLayout(layerId)).toBeUndefined();
+    }
+    // The label layer keeps the layout the shared builder wrote, and no group key in it.
+    expect(drawnLayout('refs:umepay:label')).not.toHaveProperty('visibility');
+    expect(drawnLayerIds()).toContain('refs:umepay:label');
+  });
+
+  it('draws the reference layers over the archive on disk', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(mockMapProps).toHaveLength(1);
+    expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({
+      type: 'vector',
+      url: ARCHIVE_URI,
+    });
+    // The base layers survive; the reference layers are added on top of them.
+    expect(drawnLayerIds()).toEqual([
+      'background',
+      'refs:umepay:fill',
+      'refs:umepay:line',
+      'refs:umepay:circle',
+      'refs:umepay:label',
+    ]);
+    // Labels are resolved before drawing: MapLibre cannot call the translation layer.
+    expect(drawnFeatures('umepay')[0].properties?.label).toBe('map.references.taller');
+  });
+
+  it('draws the base layers as the document wrote them when no group is configured', async () => {
+    // The default payload names no group, so the selector changes nothing: the style
+    // is the one this map drew before the selector existed.
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWithGroups() }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(drawnLayerIds()).toEqual([
+      'background',
+      'water',
+      'water_label_ocean',
+      'roads_minor',
+      'refs:umepay:fill',
+      'refs:umepay:line',
+      'refs:umepay:circle',
+      'refs:umepay:label',
+    ]);
+    for (const layerId of ['background', 'water', 'water_label_ocean', 'roads_minor']) {
+      expect(drawnLayout(layerId)).toBeUndefined();
+    }
   });
 
   it('adds and removes the label layer with the labels toggle', async () => {

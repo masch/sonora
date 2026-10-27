@@ -6,11 +6,13 @@ import {
   LEAFLET_LAYER_CAPABILITIES,
   MAPLIBRE_LAYER_CAPABILITIES,
   MAP_LAYER_GROUPS,
+  applyLayerGroups,
   groupOfLayer,
   layerIdsForGroup,
   resolveLayerSelection,
   showLayerControl,
   type MapLayerGroupId,
+  type MapLayerSelection,
 } from '../map/layer-groups';
 
 /**
@@ -188,7 +190,9 @@ describe('resolveLayerSelection', () => {
   it('falls back to visible for a supported group the payload omits', () => {
     const selection = resolveLayerSelection([], MAPLIBRE_LAYER_CAPABILITIES);
 
-    expect(selection).toEqual(MAP_LAYER_GROUPS.map((id) => ({ id, visible: true })));
+    expect(selection).toEqual(
+      MAP_LAYER_GROUPS.map((id) => ({ id, visible: true, declared: false })),
+    );
   });
 
   it('yields nothing for a renderer that cannot toggle a layer', () => {
@@ -219,6 +223,147 @@ describe('resolveLayerSelection', () => {
 
     expect(reversed).toEqual(forward);
     expect(forward.map((entry) => entry.id)).toEqual([...MAP_LAYER_GROUPS]);
+  });
+});
+
+/** A style layer as the document carries it: an id and no layout it did not author. */
+interface FixtureLayer {
+  id: string;
+  type: string;
+  layout?: Record<string, unknown>;
+}
+
+function styleLayers(ids: readonly string[] = PUBLISHED_STYLE_LAYER_IDS): FixtureLayer[] {
+  return ids.map((id) => ({ id, type: 'background' }));
+}
+
+/** Every group this build implements, all named by the payload and drawn. */
+const ALL_VISIBLE: readonly MapLayerSelection[] = MAP_LAYER_GROUPS.map((id) => ({
+  id,
+  visible: true,
+  declared: true,
+}));
+
+/** The same selection with `hidden` named and switched off, everything else named and drawn. */
+function hiding(hidden: readonly MapLayerGroupId[]): MapLayerSelection[] {
+  return MAP_LAYER_GROUPS.map((id) => ({ id, visible: !hidden.includes(id), declared: true }));
+}
+
+function layoutOf(
+  layers: readonly FixtureLayer[],
+  id: string,
+): Record<string, unknown> | undefined {
+  return layers.find((layer) => layer.id === id)?.layout;
+}
+
+describe('applyLayerGroups', () => {
+  it('returns the very same array when every group is visible', () => {
+    // No churn: a new array would be a new style object, and on native a new style
+    // makes MapLibre re-apply it and re-fetch its tiles.
+    const layers = styleLayers();
+
+    expect(applyLayerGroups(layers, ALL_VISIBLE)).toBe(layers);
+  });
+
+  it("hides every layer the payload's group owns, and only that group's", () => {
+    const layers = styleLayers();
+    const applied = applyLayerGroups(layers, hiding(['water']));
+    const water = layerIdsForGroup(PUBLISHED_STYLE_LAYER_IDS, 'water');
+    const roads = layerIdsForGroup(PUBLISHED_STYLE_LAYER_IDS, 'roads');
+
+    expect(water.length).toBeGreaterThan(0);
+    for (const id of water) expect(layoutOf(applied, id), id).toEqual({ visibility: 'none' });
+
+    expect(roads.length).toBeGreaterThan(0);
+    for (const id of roads) expect(layoutOf(applied, id), id).toBeUndefined();
+  });
+
+  it('shows a hidden layer again by dropping the key, never by writing "visible"', () => {
+    const hidden = applyLayerGroups(styleLayers(), hiding(['water']));
+    const shown = applyLayerGroups(hidden, ALL_VISIBLE);
+
+    for (const id of layerIdsForGroup(PUBLISHED_STYLE_LAYER_IDS, 'water')) {
+      const layout = layoutOf(shown, id) ?? {};
+      // A style layer without the key is visible; pinning `visible` would freeze a
+      // decision the style never made.
+      expect(layout, id).not.toHaveProperty('visibility');
+    }
+    expect(shown.some((layer) => layer.layout?.visibility === 'visible')).toBe(false);
+  });
+
+  it('never touches the canvas or a layer no group claims', () => {
+    // Even with every group off: the canvas is the map itself, and `refs:*` belongs
+    // to a document of ours, not to a basemap group.
+    const untouched = ['background', 'earth', 'earth_label_islands', 'landcover'];
+    const layers = styleLayers([
+      ...untouched,
+      ...PUBLISHED_STYLE_LAYER_IDS,
+      'refs:itinerary:fill',
+      'refs:itinerary:circle',
+      'north',
+    ]);
+
+    const applied = applyLayerGroups(layers, hiding([...MAP_LAYER_GROUPS]));
+
+    for (const id of untouched) expect(layoutOf(applied, id), id).toBeUndefined();
+    for (const id of ['refs:itinerary:fill', 'refs:itinerary:circle', 'north']) {
+      expect(layoutOf(applied, id), id).toBeUndefined();
+    }
+    // And the groups really were applied to the rest, so the loop above is not
+    // passing because nothing happened at all.
+    expect(layoutOf(applied, 'water')).toEqual({ visibility: 'none' });
+    expect(layoutOf(applied, 'roads_minor')).toEqual({ visibility: 'none' });
+  });
+
+  it('leaves the layers it was handed untouched and copies the ones it changes', () => {
+    const layers = styleLayers();
+    const before = layers.map((layer) => ({ ...layer }));
+
+    const applied = applyLayerGroups(layers, hiding(['water']));
+
+    expect(layers).toEqual(before);
+    expect(layers.every((layer) => layer.layout === undefined)).toBe(true);
+    // The changed layers are new objects: nothing in place was mutated, and the
+    // input array is still the one the style document holds.
+    expect(layoutOf(applied, 'water')).toEqual({ visibility: 'none' });
+    expect(applied.find((layer) => layer.id === 'water')).not.toBe(
+      layers.find((layer) => layer.id === 'water'),
+    );
+  });
+
+  it('leaves a layer the style hid on purpose hidden when the payload says nothing', () => {
+    // The style authors `visibility: none` on some layers. A payload that names no
+    // group is silence, not a decision, so nothing may be un-hidden: the refuter was
+    // right that the previous behaviour turned an authored decision into its reverse.
+    const layers = [{ id: 'water', layout: { visibility: 'none' } }, { id: 'roads_minor' }];
+    const selection = resolveLayerSelection([], MAPLIBRE_LAYER_CAPABILITIES);
+
+    expect(applyLayerGroups(layers, selection)).toBe(layers);
+    expect(applyLayerGroups(layers, selection)[0].layout?.visibility).toBe('none');
+  });
+
+  it('un-hides an authored layer only when the payload names that group as visible', () => {
+    const layers = [{ id: 'water', layout: { visibility: 'none' } }];
+    const named = resolveLayerSelection(
+      [{ id: 'water', defaultVisible: true }],
+      MAPLIBRE_LAYER_CAPABILITIES,
+    );
+
+    expect(applyLayerGroups(layers, named)[0].layout?.visibility).toBeUndefined();
+    // The source layer is still the style's own: the transform copied it.
+    expect(layers[0].layout).toEqual({ visibility: 'none' });
+  });
+
+  it('ignores a group this build does not implement', () => {
+    // An id from a newer server changes nothing, exactly as `resolveLayerSelection`
+    // drops it from the payload.
+    const layers = styleLayers();
+    const selection: MapLayerSelection[] = [
+      ...ALL_VISIBLE,
+      { id: 'telemetry' as unknown as MapLayerGroupId, visible: false, declared: true },
+    ];
+
+    expect(applyLayerGroups(layers, selection)).toBe(layers);
   });
 });
 
