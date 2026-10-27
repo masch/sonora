@@ -8,7 +8,7 @@ This document is operator-facing: what each step does, when it has to be re-run,
 
 ## 1. The mental model: the style is rewritten in flight
 
-The style document lives in the public bucket as an author wrote it, pointing `glyphs` and `sprite` at `protomaps.github.io`. The API does **not** serve those bytes as stored: `GET /media/public/styles/<version>.json` reads the object, and answers with
+The style document lives in this repository at `assets/map/styles/v1.json`, and the object in the public bucket is a copy of it. The API does **not** serve those bytes as stored: `GET /media/public/styles/<version>.json` reads the object, and answers with
 
 - `glyphs` → `<origin>/media/public/glyphs/{fontstack}/{range}.pbf`,
 - `sprite` → `<origin>/media/public/sprites/light`,
@@ -16,9 +16,21 @@ The style document lives in the public bucket as an author wrote it, pointing `g
 
 Consequences worth holding in mind:
 
-- **The bucket object keeps third-party urls; clients never see them.** Editing the style to "point at our bucket" would be undone by the rewrite, and editing it to keep protomaps urls is pointless.
+- **The bucket object keeps absolute urls of its own; clients never see them.** `glyphs` and `sprite` are replaced whatever they say, and a `pmtiles://` source keeps its path and takes the origin that served the request — so re-pointing those urls in `assets/map/styles/v1.json` at our own bucket changes nothing a client requests, while a relative or missing value would leave the rewrite with nothing to splice an origin into.
 - The urls a client requests are **ours**, so the objects behind them have to exist in **our** bucket. That is the whole reason for this pipeline.
 - The sprite is a **base**, not a directory: MapLibre appends `.json`, `.png`, `@2x.json` and `@2x.png` itself, so the keys are `sprites/light.json`, `sprites/light.png`, `sprites/light@2x.json` and `sprites/light@2x.png`. A tree shaped like `sprites/light/sprite.json` uploads happily and 404s forever, and shipping three of the four leaves every high-density phone asking for a file that was never uploaded — a device log is what caught that one.
+
+### The style document is repository source, not a bucket upload
+
+`assets/map/styles/v1.json` is the source of truth: the bucket object is still what clients are served, and the API still rewrites `glyphs`, `sprite` and every `pmtiles://` origin at serve time. The path mirrors the bucket key (`styles/v1.json`) because nothing is renamed on the way up.
+
+Publish it with the same target that publishes the archive, naming the file where the repository keeps it:
+
+```bash
+make api-upload-map-tiles-staging REGION="calamuchita" VERSION="v1" ARCHIVE="path/region-v1.pmtiles" STYLE="assets/map/styles/v1.json"
+```
+
+`packages/shared/src/__tests__/basemap-style.test.ts` guards the document against the layer-group vocabulary: every layer it draws is either claimed by a group of `MAP_LAYER_GROUPS` or written down as canvas no toggle may hide, so an edit that escapes the layer selector fails the suite instead of shipping. In a non-production environment an overwritten object is revalidated on the next load (`no-cache`), while production keeps `immutable` because its urls are versioned.
 
 ---
 
