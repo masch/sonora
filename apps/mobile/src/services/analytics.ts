@@ -2,7 +2,7 @@ import { logger } from '@/utils/logger';
 import { Platform, NativeModules } from 'react-native';
 import { getAppVersion } from '@/utils/app-version';
 import type { AnalyticsEventMap } from './analytics-events';
-import type { AnalyticsTracker } from './analytics.types';
+import type { AnalyticsTracker, ErrorContext } from './analytics.types';
 
 export type {
   AppLifecycleEvents,
@@ -14,9 +14,10 @@ export type {
   PaymentEvents,
   TermsEvents,
   InAppUpdateEvents,
+  ErrorEvents,
 } from './analytics-events';
 
-export type { AnalyticsEventMap, AnalyticsTracker };
+export type { AnalyticsEventMap, AnalyticsTracker, ErrorContext };
 
 // Dynamic require: native Firebase modules only available in production/dev builds, not Expo Go
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,16 +61,24 @@ export const AnalyticsService: AnalyticsTracker = {
     }
   },
 
-  recordError: (error: Error, customDescription?: string) => {
+  recordError: (error: Error, customDescription?: string, context?: ErrorContext) => {
     try {
       if (isFirebaseAvailable() && firebaseCrashlytics) {
         firebaseCrashlytics().setAttribute('app_version', getAppVersion().versionName);
         if (customDescription) {
           firebaseCrashlytics().setAttribute('custom_description', customDescription);
         }
+        // Attributes carry the reference the walker reads on screen, so the
+        // same code lands in Crashlytics next to the native crash.
+        if (context?.reference) {
+          firebaseCrashlytics().setAttribute('error_reference', context.reference);
+        }
+        if (context?.route) {
+          firebaseCrashlytics().setAttribute('route', context.route);
+        }
         firebaseCrashlytics().recordError(error);
       } else {
-        logger.error('[Native Error - Disabled]', error, customDescription);
+        logger.error('[Native Error - Disabled]', error, customDescription, context);
       }
     } catch (err) {
       logger.warn('Firebase Crashlytics recordError error:', err);

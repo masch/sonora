@@ -4,8 +4,9 @@ import { getAnalytics, logEvent, type Analytics } from 'firebase/analytics';
 import { logger } from '@/utils/logger';
 import { Platform } from 'react-native';
 import { getAppVersion } from '@/utils/app-version';
+import { errorReference } from '@/utils/error-reference';
 import type { AnalyticsEventMap } from './analytics-events';
-import type { AnalyticsTracker } from './analytics.types';
+import type { AnalyticsTracker, ErrorContext } from './analytics.types';
 
 export type {
   AppLifecycleEvents,
@@ -16,9 +17,13 @@ export type {
   TestEvents,
   PaymentEvents,
   TermsEvents,
+  ErrorEvents,
 } from './analytics-events';
 
-export type { AnalyticsEventMap, AnalyticsTracker };
+export type { AnalyticsEventMap, AnalyticsTracker, ErrorContext };
+
+/** Firebase rejects long event params; the first 150 characters identify the crash. */
+const ERROR_MESSAGE_LIMIT = 150;
 
 // Firebase Web SDK instance
 let webAnalytics: Analytics | null = null;
@@ -55,6 +60,27 @@ function ensureWebInitialized() {
   }
 }
 
+/**
+ * Payload for the cross-platform `app_error` event.
+ *
+ * `error_reference` falls back to the locally derived code when the caller did
+ * not send one, so web and native report the same reference for the same crash
+ * and the code a walker reads off the screen can be found in the metrics.
+ */
+function buildAppErrorFields(error: Error, context?: ErrorContext): AnalyticsEventMap['app_error'] {
+  const fields: AnalyticsEventMap['app_error'] = {
+    error_reference: context?.reference ?? errorReference(error),
+    message: error.message.slice(0, ERROR_MESSAGE_LIMIT),
+    fatal: context?.fatal ?? false,
+  };
+
+  if (context?.route) {
+    fields.route = context.route;
+  }
+
+  return fields;
+}
+
 export const AnalyticsService: AnalyticsTracker = {
   trackEvent: <T extends keyof AnalyticsEventMap>(eventName: T, params?: AnalyticsEventMap[T]) => {
     ensureWebInitialized();
@@ -76,9 +102,29 @@ export const AnalyticsService: AnalyticsTracker = {
     }
   },
 
-  recordError: (error: Error, customDescription?: string) => {
+  recordError: (error: Error, customDescription?: string, context?: ErrorContext) => {
     ensureWebInitialized();
-    logger.error('[Web Error]', error, customDescription);
+
+    const fields = buildAppErrorFields(error, context);
+
+    if (webAnalytics) {
+      try {
+        logEvent(webAnalytics, 'app_error', {
+          ...fields,
+          platform: Platform.OS,
+          app_version: getAppVersion().versionName,
+        });
+      } catch (err) {
+        logger.warn('Firebase Web logEvent error for app_error:', err);
+      }
+      // Keep the raw error in the console trail the console-only version left.
+      logger.error('[Web Error]', error, customDescription);
+      return;
+    }
+
+    // No SDK credentials: the same fields reach the console fallback so the
+    // crash is still greppable by the reference the walker quotes.
+    logger.error('[Web Error]', error, customDescription, fields);
   },
 
   initializeGlobalErrorTracking: async () => {
