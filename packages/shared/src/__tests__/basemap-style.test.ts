@@ -16,9 +16,11 @@ import {
 /**
  * The published basemap style, adopted into the repository as its source of truth.
  *
- * The file mirrors the bucket key it is published to (`styles/v1.json`), so it is
- * committed byte-for-byte as the style document an author wrote: it is data, not
- * code, and nothing here reformats it.
+ * The file mirrors the bucket key it is published to (`styles/v1.json`) and is
+ * committed as 2-space JSON: the bucket object is what a client is served, this
+ * copy is what a reviewer reads, and one 65 KB line hides every change to it.
+ * `.prettierignore` keeps the formatting ours and stable, and this suite parses
+ * the document instead of asserting on its bytes.
  *
  * This suite is the guard that keeps it honest against the layer-group
  * vocabulary. An unclaimed layer is drawn always and no toggle can hide it, so a
@@ -27,7 +29,7 @@ import {
  */
 const STYLE_PATH = fileURLToPath(new URL('../../../../assets/map/styles/v1.json', import.meta.url));
 
-/** One layer as the document carries it: an id and whatever else it authors. */
+/** One layer as the document carries it: an id and whatever else the guard reads. */
 interface StyleLayer {
   id: string;
 }
