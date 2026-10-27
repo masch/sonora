@@ -1,4 +1,11 @@
-import { isMapLayerGroupId, type MapLayerGroupId } from '@sonora/shared';
+import {
+  isMapLayerGroupId,
+  LEAFLET_LAYER_CAPABILITIES,
+  MAPLIBRE_LAYER_CAPABILITIES,
+  type MapLayerCapabilities,
+  type MapLayerGroupId,
+  type MapRenderer,
+} from '@sonora/shared';
 
 /**
  * The parser both layer switches share: only the word `true` turns one on.
@@ -52,4 +59,36 @@ export function normalizeLayerGroups(value: string | undefined): ServedLayerGrou
   }
 
   return [...groups].map(([id, defaultVisible]) => ({ id, defaultVisible }));
+}
+
+/**
+ * The capability table of every renderer the contract names.
+ *
+ * `Record<MapRenderer, …>` is the point: the shared union lists the renderers, so
+ * a renderer added to it without a row here is a type error instead of an
+ * `undefined` that reads as "cannot toggle" and silently withholds a selector the
+ * renderer could draw. No row invents capabilities — each is the shared constant
+ * the control and both adapters already resolve.
+ */
+const RENDERER_CAPABILITIES: Record<MapRenderer, MapLayerCapabilities> = {
+  maplibre: MAPLIBRE_LAYER_CAPABILITIES,
+  leaflet: LEAFLET_LAYER_CAPABILITIES,
+};
+
+/**
+ * Whether a renderer can toggle any basemap group at all.
+ *
+ * Asked of the shared capability table rather than answered with
+ * `renderer === 'maplibre'`: the table is what the control and both adapters
+ * resolve, so "which renderer draws groups" is stated once, where the contract is
+ * documented. A comparison by name would be a second hand-written answer that
+ * drifts — it compiles after a renderer gains groups, and it compiles after the
+ * union grows a renderer nobody taught the route about.
+ *
+ * This is the question `/config` asks before it publishes `map.layers`: a device
+ * the same response sends to a renderer with no groups is a device that can draw
+ * no selector, and announcing one would promise a choice it cannot honour.
+ */
+export function rendererCanToggleGroups(renderer: MapRenderer): boolean {
+  return RENDERER_CAPABILITIES[renderer].groups.length > 0;
 }

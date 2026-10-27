@@ -336,12 +336,14 @@ describe('GET /config', () => {
   it('withholds map.layers while the wire switch is off, even when the selector is configured', async () => {
     // The switch, not the emptiness of the configuration, is what withholds the
     // field: an operator may prepare the selector in an environment where the
-    // installed builds still reject the key.
+    // installed builds still reject the key. The renderer is pinned to maplibre
+    // here so the switch is the only thing that can withhold it.
     const res = await app.request(
       '/config',
-      {},
+      { headers: { 'X-Device-Platform': 'android' } },
       {
         ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
         MAP_LAYERS_SHOW_CONTROL: 'true',
         MAP_LAYERS_GROUPS: 'roads,water',
       },
@@ -354,9 +356,10 @@ describe('GET /config', () => {
   it('serves map.layers with the configured selector when the wire switch is on', async () => {
     const res = await app.request(
       '/config',
-      {},
+      { headers: { 'X-Device-Platform': 'android' } },
       {
         ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
         MAP_LAYERS_WIRE: 'true',
         MAP_LAYERS_SHOW_CONTROL: 'true',
         MAP_LAYERS_GROUPS: 'roads,-buildings',
@@ -380,9 +383,10 @@ describe('GET /config', () => {
         await (
           await app.request(
             '/config',
-            {},
+            { headers: { 'X-Device-Platform': 'android' } },
             {
               ...BINDINGS,
+              MAP_RENDERER: 'maplibre',
               MAP_LAYERS_WIRE: 'true',
               MAP_LAYERS_SHOW_CONTROL: 'true',
               MAP_LAYERS_GROUPS: 'roads',
@@ -398,9 +402,10 @@ describe('GET /config', () => {
     // key travels, `MAP_LAYERS_SHOW_CONTROL` whether the walker is offered it.
     const res = await app.request(
       '/config',
-      {},
+      { headers: { 'X-Device-Platform': 'android' } },
       {
         ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
         MAP_LAYERS_WIRE: 'true',
         MAP_LAYERS_GROUPS: 'roads',
       },
@@ -411,6 +416,82 @@ describe('GET /config', () => {
 
     expect(body.map.layers.showControl).toBe(false);
     expect(body.map.layers.groups.map((group) => group.id)).toEqual(['roads']);
+  });
+
+  it('withholds map.layers from a device the same request pins to leaflet', async () => {
+    // The renderer is resolved out of this very request, so the route knows the
+    // answer before it builds the payload: a device the same response sends to
+    // Leaflet can toggle no basemap group, and announcing a selector to it would
+    // promise a choice it cannot honour. No allowlist and no `MAP_RENDERER`, so
+    // the device resolves to Leaflet by capability alone.
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'android' } },
+      {
+        ...BINDINGS,
+        MAP_LAYERS_WIRE: 'true',
+        MAP_LAYERS_SHOW_CONTROL: 'true',
+        MAP_LAYERS_GROUPS: 'roads',
+      },
+    );
+    const body = (await res.json()) as { map: Record<string, unknown> };
+
+    expect(body.map.renderer).toBe('leaflet');
+    expect(body.map).not.toHaveProperty('layers');
+  });
+
+  it('serves map.layers to the device it resolves to maplibre', async () => {
+    const res = await app.request(
+      '/config',
+      { headers: { 'X-Device-Platform': 'android' } },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
+        MAP_LAYERS_WIRE: 'true',
+        MAP_LAYERS_SHOW_CONTROL: 'true',
+        MAP_LAYERS_GROUPS: 'roads,-buildings',
+      },
+    );
+    const body = (await res.json()) as {
+      map: {
+        renderer: string;
+        layers: { showControl: boolean; groups: { id: string; defaultVisible: boolean }[] };
+      };
+    };
+
+    expect(body.map.renderer).toBe('maplibre');
+    expect(body.map.layers).toEqual({
+      showControl: true,
+      groups: [
+        { id: 'roads', defaultVisible: true },
+        { id: 'buildings', defaultVisible: false },
+      ],
+    });
+  });
+
+  it('keeps the block over the environment renderer when withholding map.layers', async () => {
+    // The block wins inside the resolver, and the selector follows the renderer
+    // the request resolved instead of the environment's preference: a blocked
+    // device on a maplibre environment is a Leaflet client, and receives what a
+    // Leaflet client can draw.
+    const res = await app.request(
+      '/config',
+      {
+        headers: { 'X-Device-Id': 'device-blocked', 'X-Device-Platform': 'android' },
+      },
+      {
+        ...BINDINGS,
+        MAP_RENDERER: 'maplibre',
+        MAP_RENDERER_DEVICE_IDS_BLOCKED: 'device-blocked',
+        MAP_LAYERS_WIRE: 'true',
+        MAP_LAYERS_SHOW_CONTROL: 'true',
+        MAP_LAYERS_GROUPS: 'roads',
+      },
+    );
+    const body = (await res.json()) as { map: Record<string, unknown> };
+
+    expect(body.map.renderer).toBe('leaflet');
+    expect(body.map).not.toHaveProperty('layers');
   });
 
   it('sends the renderer and every map field the defaults describe', async () => {
