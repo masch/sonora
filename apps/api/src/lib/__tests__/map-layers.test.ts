@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeFlag, normalizeLayerGroups } from '../map-layers';
+import { normalizeFlag, normalizeLayerGroups, rendererCanToggleGroups } from '../map-layers';
 
 describe('normalizeFlag', () => {
   it('enables only the word "true", whatever its case or padding', () => {
@@ -59,5 +59,15 @@ describe('normalizeLayerGroups', () => {
     expect(normalizeLayerGroups(undefined)).toEqual([]);
     expect(normalizeLayerGroups('   ')).toEqual([]);
     expect(normalizeLayerGroups('-')).toEqual([]);
+  });
+});
+
+describe('rendererCanToggleGroups', () => {
+  it('answers true where the renderer draws each style layer on its own', () => {
+    expect(rendererCanToggleGroups('maplibre')).toBe(true);
+  });
+
+  it('answers false where the renderer bakes every group into the same tiles', () => {
+    expect(rendererCanToggleGroups('leaflet')).toBe(false);
   });
 });

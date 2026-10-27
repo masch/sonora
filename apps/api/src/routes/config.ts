@@ -14,6 +14,7 @@ import type { Env, Variables } from '../index';
 import { success } from '../middleware/problem-details';
 import { configGuard } from '../middleware/config-guard';
 import { resolveMapRenderer } from '../lib/map-renderer';
+import { rendererCanToggleGroups } from '../lib/map-layers';
 
 const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -147,16 +148,35 @@ configRouter.get('/', configGuard(), async (c) => {
   const origin = new URL(c.req.url).origin;
   const regions = await readPublishedRegions(c.env?.PUBLIC_BUCKET, origin, mapArtifactVersion);
 
+  // Resolved once, before the payload is built: whether the selector may be
+  // announced and which renderer the response pins this device to answer the same
+  // request, so they cannot disagree. Everything else keeps the value it had.
+  const renderer = resolveMapRenderer({
+    platform: devicePlatform,
+    capablePlatforms: mapRendererPlatforms,
+    deviceId,
+    allowed: mapRendererDeviceIds,
+    blocked: mapRendererDeviceIdsBlocked,
+    fallback: mapRenderer,
+  });
+
   // The layer selector reaches clients only once the installed base parses it:
   // every build published before the tolerant `MapConfigSchema` carries the strict
   // one, and one extra key there rejects the whole `map` object — that build would
   // lose its renderer, its region catalog and its download policy. The wire switch
   // is what keeps that promise per environment; the compiled default keeps
   // `layers`, so the app always has the value.
+  //
+  // The second condition is about this device, not about the build: a renderer
+  // that can toggle no basemap group receives the group list for nothing, and
+  // `showControl: true` would offer the walker a choice its map cannot draw. The
+  // capability answer comes from the shared table, so Leaflet is excluded by what
+  // it can do rather than by its name.
   const { layers: _withheldLayers, ...servedMap } = DEFAULT_REMOTE_CONFIG.map;
-  const servedLayers = mapLayersWire
-    ? { layers: { showControl: mapLayerShowControl, groups: [...mapLayerGroups] } }
-    : {};
+  const servedLayers =
+    mapLayersWire && rendererCanToggleGroups(renderer)
+      ? { layers: { showControl: mapLayerShowControl, groups: [...mapLayerGroups] } }
+      : {};
 
   return success(c, {
     ...DEFAULT_REMOTE_CONFIG,
@@ -167,14 +187,7 @@ configRouter.get('/', configGuard(), async (c) => {
     map: {
       ...servedMap,
       ...servedLayers,
-      renderer: resolveMapRenderer({
-        platform: devicePlatform,
-        capablePlatforms: mapRendererPlatforms,
-        deviceId,
-        allowed: mapRendererDeviceIds,
-        blocked: mapRendererDeviceIdsBlocked,
-        fallback: mapRenderer,
-      }),
+      renderer,
       // Derived, like every archive url: the environment only names the version.
       styleUrl: `${origin}${mapStylePath(mapArtifactVersion)}`,
       regions,

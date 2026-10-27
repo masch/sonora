@@ -48,10 +48,12 @@ MAP_RENDERER_PLATFORMS = "android,ios"
 # deliberately absent here, and absent means off. The field is only parseable by
 # builds released with the tolerant `MapConfigSchema`; an older build rejects the
 # whole `map` object over that one unknown key and loses its renderer, its region
-# catalog and its download policy. Lifting this belongs to the release that ships
-# the control, and that release still has to answer for the builds already
-# installed: raise `MINIMUM_APP_VERSION` to it, or gate the field on the version
-# the client sends. Staging publishes it today (see `wrangler.staging.toml`).
+# catalog and its download policy. Lifting this gate is a production release
+# decision, and that release is the one that raises `MINIMUM_APP_VERSION` (with
+# `BLOCK_OLDER_VERSIONS` and, if needed, the grace window) so no installed build
+# keeps calling `/config` without the tolerant schema. Gating the field on the
+# version a client sends is a rejected alternative, not a deferred one: the app
+# already enforces a floor. Staging publishes it today (see `wrangler.staging.toml`).
 
 MINIMUM_APP_VERSION = "1.0.123"
 BLOCK_OLDER_VERSIONS = "true"
