@@ -20,6 +20,7 @@ import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
 import MapLayersControl from './map-layers-control';
+import { useMapLayerOverridesStore } from './map-layer-overrides-store';
 import type { MapReferencePress, MapSourceConfig } from './map-view.types';
 import type { MapRenderer } from './resolve-renderer';
 
@@ -89,9 +90,10 @@ function waypointsOf(experience: PlayableExperience) {
  * depend on where it is mounted.
  *
  * The layer selector is the map's other control, and the selection it edits is
- * decided here too: the switch resolves the payload once, keeps it in state, and
- * hands the result to the renderer, which applies it and resolves nothing. One place
- * decides what the map draws; the renderer only draws it.
+ * decided here too: the switch resolves the payload on every render, layers the
+ * walker's own choices — held for the whole app run — on top, and hands the result
+ * to the renderer, which applies it and resolves nothing. One place decides what the
+ * map draws; the renderer only draws it.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -120,11 +122,12 @@ export default function ExperienceMapSwitch({
    *
    * Overrides rather than a whole selection: the payload stays the source of truth for
    * every group the walker never touched, so a payload that lands late still reaches
-   * the map. Nothing persists these yet, so the choice lasts as long as the mount does.
+   * the map. The store is module memory, so the choice survives this map being closed
+   * and opened again and dies with the app run, because the payload is the truth at
+   * every start: `/config` re-seeds the selection on each launch (T7).
    */
-  const [layerOverrides, setLayerOverrides] = useState<Partial<Record<MapLayerGroupId, boolean>>>(
-    {},
-  );
+  const layerOverrides = useMapLayerOverridesStore((state) => state.overrides);
+  const toggleLayerOverride = useMapLayerOverridesStore((state) => state.toggleLayer);
 
   const layerSelection: readonly MapLayerSelection[] = resolvedSelection.map((entry) => {
     const override = layerOverrides[entry.id];
@@ -148,8 +151,7 @@ export default function ExperienceMapSwitch({
    */
   function handleToggleLayer(id: MapLayerGroupId) {
     const current = layerSelection.find((entry) => entry.id === id);
-    const next = !(current?.visible ?? true);
-    setLayerOverrides((previous) => ({ ...previous, [id]: next }));
+    toggleLayerOverride(id, current?.visible ?? true);
   }
 
   function drawMap() {
