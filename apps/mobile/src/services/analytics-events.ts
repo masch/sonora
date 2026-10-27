@@ -88,6 +88,15 @@ export interface InAppUpdateEvents {
   update_store_redirect: { platform: string; url: string };
 }
 
+/**
+ * One crash. Reported by both platform implementations with the same
+ * `error_reference`, so a code read off a crashing screen can be found here.
+ */
+export interface ErrorEvents {
+  /** `message` is truncated to 150 characters; never send more of it. */
+  app_error: { error_reference: string; route?: string; message: string; fatal: boolean };
+}
+
 export interface AnalyticsEventMap
   extends
     AppLifecycleEvents,
@@ -98,4 +107,5 @@ export interface AnalyticsEventMap
     TestEvents,
     PaymentEvents,
     TermsEvents,
-    InAppUpdateEvents {}
+    InAppUpdateEvents,
+    ErrorEvents {}

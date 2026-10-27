@@ -6,6 +6,9 @@ export const en = {
     no: 'No',
     somethingWentWrong: 'Oops! Something went wrong',
     retry: 'Retry',
+    errorHint: 'Try again. If it keeps happening, share the code below so we can look it up.',
+    errorReference: 'Error code',
+    goHome: 'Go to start',
     staging: 'Staging',
   },
   map: {
