@@ -12,8 +12,11 @@ import app, { setDbClient } from '../index';
 const ADMIN_KEY = 'test-admin-key-123';
 const AUTH = { Authorization: `Bearer ${ADMIN_KEY}` };
 
-function bindings(put = vi.fn().mockResolvedValue(undefined)) {
-  return { ADMIN_API_KEY: ADMIN_KEY, PUBLIC_BUCKET: { put } } as never;
+function bindings(
+  put = vi.fn().mockResolvedValue(undefined),
+  extraEnv: Record<string, unknown> = {},
+) {
+  return { ADMIN_API_KEY: ADMIN_KEY, PUBLIC_BUCKET: { put }, ...extraEnv } as never;
 }
 
 function imageForm(file: File): FormData {
@@ -74,6 +77,40 @@ describe('POST /media/reference-images', () => {
 
     expect(res.status).toBe(422);
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('stores the immutable cache policy in production', async () => {
+    const put = vi.fn().mockResolvedValue(undefined);
+    const file = new File([new Uint8Array([1, 2, 3])], 'referencia.png', { type: 'image/png' });
+
+    await app.request(
+      '/media/reference-images',
+      { method: 'POST', headers: AUTH, body: imageForm(file) },
+      bindings(put, { ENVIRONMENT: 'production' }),
+    );
+
+    expect(put).toHaveBeenCalledTimes(1);
+    const [, , options] = put.mock.calls[0] as [string, ArrayBuffer, { httpMetadata: unknown }];
+    expect(options.httpMetadata).toMatchObject({
+      cacheControl: 'public, max-age=31536000, immutable',
+    });
+  });
+
+  it('stores the revalidating cache policy outside production', async () => {
+    // A reference image is unguessable and never overwritten, but the policy is
+    // the environment's, not the key's: one decision for the whole deployment.
+    const put = vi.fn().mockResolvedValue(undefined);
+    const file = new File([new Uint8Array([1, 2, 3])], 'referencia.png', { type: 'image/png' });
+
+    await app.request(
+      '/media/reference-images',
+      { method: 'POST', headers: AUTH, body: imageForm(file) },
+      bindings(put, { ENVIRONMENT: 'staging' }),
+    );
+
+    expect(put).toHaveBeenCalledTimes(1);
+    const [, , options] = put.mock.calls[0] as [string, ArrayBuffer, { httpMetadata: unknown }];
+    expect(options.httpMetadata).toMatchObject({ cacheControl: 'no-cache' });
   });
 
   it('rejects the upload without an admin session', async () => {
@@ -294,6 +331,69 @@ describe('GET /media/public/:key', () => {
     expect(res.status).toBe(200);
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(raw.bytes);
     expect(warn).toHaveBeenCalled();
+  });
+
+  it('serves the revalidating policy outside production, over a stored immutable one', async () => {
+    // The archive in staging is overwritten in place, without a version bump, so
+    // the object's own `immutable` policy is exactly what would hide the new
+    // bytes for a year: the served header must override it, not defer to it.
+    const archive = new Uint8Array([0x50, 0x4d, 0x54, 0x00, 0xff]);
+    const key = mapArchivePath().replace('/media/public/', '');
+    const { bucket } = publicBucket({
+      [key]: {
+        bytes: archive,
+        contentType: 'application/octet-stream',
+        cacheControl: 'public, max-age=31536000, immutable',
+        etag: '"archive-etag"',
+      },
+    });
+
+    const res = await requestAt(STAGING_ORIGIN, key, {
+      PUBLIC_BUCKET: bucket,
+      ENVIRONMENT: 'staging',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-cache');
+    // Only the cache policy changes: the bytes and the etag are the stored ones.
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(archive);
+    expect(res.headers.get('etag')).toBe('"archive-etag"');
+  });
+
+  it('serves the revalidating policy on a rewritten style document outside production', async () => {
+    const { bucket } = publicBucket({ [mapStyleKey()]: storedJson(PUBLISHED_STYLE) });
+
+    const res = await requestAt(STAGING_ORIGIN, mapStyleKey(), {
+      PUBLIC_BUCKET: bucket,
+      ENVIRONMENT: 'staging',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-cache');
+    expect(res.headers.get('etag')).toBe('"stored-etag"');
+    expect(res.headers.get('content-type')).toContain('application/json');
+  });
+
+  it('treats any environment that is not production as revalidating', async () => {
+    const { bucket } = publicBucket({ [mapStyleKey()]: storedJson(PUBLISHED_STYLE) });
+
+    const res = await requestAt(STAGING_ORIGIN, mapStyleKey(), {
+      PUBLIC_BUCKET: bucket,
+      ENVIRONMENT: 'development',
+    });
+
+    expect(res.headers.get('cache-control')).toBe('no-cache');
+  });
+
+  it('keeps the immutable policy when the environment is explicitly production', async () => {
+    const { bucket } = publicBucket({ [mapStyleKey()]: storedJson(PUBLISHED_STYLE) });
+
+    const res = await requestAt(STAGING_ORIGIN, mapStyleKey(), {
+      PUBLIC_BUCKET: bucket,
+      ENVIRONMENT: 'production',
+    });
+
+    expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
   });
 
   it('answers 404 for a key the bucket does not hold', async () => {
