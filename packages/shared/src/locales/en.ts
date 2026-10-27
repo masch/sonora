@@ -43,8 +43,8 @@ export const en = {
       green: 'Green areas',
       buildings: 'Buildings',
       // What a screen reader announces: the group and whether it draws.
-      visible: '{{name}}: shown',
-      hidden: '{{name}}: hidden',
+      visible: 'Layer visible: {{name}}',
+      hidden: 'Layer hidden: {{name}}',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

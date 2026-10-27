@@ -11,6 +11,14 @@ export interface FakeMapInstance {
   sources: Record<string, { setData: (data: unknown) => void }>;
   options: Record<string, unknown>;
   features: { layer: { id: string }; properties: Record<string, unknown> }[];
+  /**
+   * Every layout property the renderer wrote, in call order.
+   *
+   * The web renderer applies the layer selection by rewriting the layers that are
+   * already drawn, so this array is the record of that decision: a hidden group
+   * shows up here as `visibility: none` on each layer it owns.
+   */
+  layoutProperties: { layerId: string; name: string; value: string }[];
   emit(event: string, payload?: unknown): void;
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
@@ -23,6 +31,7 @@ export class FakeMap implements FakeMapInstance {
   sources: Record<string, { setData: (data: unknown) => void }> = {};
   options: Record<string, unknown>;
   features: { layer: { id: string }; properties: Record<string, unknown> }[] = [];
+  layoutProperties: { layerId: string; name: string; value: string }[] = [];
 
   constructor(options: Record<string, unknown>) {
     this.options = options;
@@ -36,7 +45,13 @@ export class FakeMap implements FakeMapInstance {
   remove() {}
 
   getStyle() {
-    return { layers: this.layers, sources: this.sources };
+    // MapLibre's style is the whole picture — the layers the style authored plus the
+    // ones added at runtime — and `getStyle()` is how a renderer sees it. `layers`
+    // stays the runtime record, because the tests assert on what the renderer added.
+    const authored =
+      (this.options.style as { layers?: { id: string; source?: string }[] } | undefined)?.layers ??
+      [];
+    return { layers: [...authored, ...this.layers], sources: this.sources };
   }
 
   getSource(id: string) {
@@ -57,6 +72,10 @@ export class FakeMap implements FakeMapInstance {
 
   removeLayer(id: string) {
     this.layers = this.layers.filter((layer) => layer.id !== id);
+  }
+
+  setLayoutProperty(layerId: string, name: string, value: string) {
+    this.layoutProperties.push({ layerId, name, value });
   }
 
   fitBounds() {}

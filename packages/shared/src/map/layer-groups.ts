@@ -233,6 +233,20 @@ export function applyLayerGroups<T extends { id: string; layout?: Record<string,
 }
 
 /**
+ * The selection as one comparable value: group, whether it draws, and whether the
+ * caller named it.
+ *
+ * Both renderers rebuild their selection on every render, and neither may re-walk the
+ * map's layers for a decision nobody changed. The array is therefore not an input
+ * anywhere; this string is.
+ */
+export function layerSelectionSignature(selection: readonly MapLayerSelection[]): string {
+  return selection
+    .map((entry) => `${entry.id}:${entry.visible ? 1 : 0}:${entry.declared ? 1 : 0}`)
+    .join(',');
+}
+
+/**
  * Whether `id` is one of the groups this build implements. The wire carries any
  * string (S2), so this is where an id from a newer server stops.
  */

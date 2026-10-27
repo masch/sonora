@@ -43,8 +43,8 @@ export const es = {
       green: 'Áreas verdes',
       buildings: 'Edificios',
       // Lo que anuncia el lector de pantalla: el grupo y si se dibuja.
-      visible: '{{name}}: visible',
-      hidden: '{{name}}: oculta',
+      visible: 'Capa visible: {{name}}',
+      hidden: 'Capa oculta: {{name}}',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',

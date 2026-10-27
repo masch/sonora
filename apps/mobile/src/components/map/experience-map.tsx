@@ -16,6 +16,7 @@ import type { NativeSyntheticEvent } from 'react-native';
 import {
   applyLayerGroups,
   buildReferenceStyleLayers,
+  layerSelectionSignature,
   MAPLIBRE_LAYER_CAPABILITIES,
   resolveLayerSelection,
   labelAnchorForDocument,
@@ -403,20 +404,6 @@ function documentsSignature(documents: readonly MapDocument[]): string {
 }
 
 /**
- * The selection as one comparable value: a group, whether it draws, and whether the
- * payload (or the walker) named it.
- *
- * The array is not an input. The switch keeps it in state, so its identity is stable
- * today, but a caller that rebuilds it per render must still not rebuild the style:
- * on native a new style object re-applies the style and re-fetches its tiles.
- */
-function selectionSignature(selection: readonly MapLayerSelection[]): string {
-  return selection
-    .map((entry) => `${entry.id}:${entry.visible ? 1 : 0}:${entry.declared ? 1 : 0}`)
-    .join(',');
-}
-
-/**
  * Reads a reportable reference out of a tapped feature. The web renderer has the
  * same mapping (`toPressReference` in `experience-map.web.tsx`, fed by
  * `feature.layer.id`); native presses carry no layer id, so the layer that was
@@ -570,7 +557,7 @@ export default function ExperienceMap({
       ? resolveLayerSelection(source.layers, MAPLIBRE_LAYER_CAPABILITIES)
       : NO_LAYER_SELECTION);
 
-  const selectionKey = selectionSignature(effectiveSelection);
+  const selectionKey = layerSelectionSignature(effectiveSelection);
   // The basemap is the region's archive and nothing else: with no region there is
   // no archive to draw, whatever the hook happens to hand back.
   const archiveUri = !noRegion && archive.status === 'ready' ? archive.uri : undefined;

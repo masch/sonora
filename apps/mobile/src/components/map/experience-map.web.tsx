@@ -5,15 +5,20 @@ import type { StyleSpecification, VectorSourceSpecification } from 'maplibre-gl'
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  MAPLIBRE_LAYER_CAPABILITIES,
   applyMapDocuments,
+  layerSelectionSignature,
+  resolveLayerSelection,
   toLngLatBounds,
   withResolvedLabels,
   type MapDocument,
+  type MapLayerSelection,
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
 import { ThemedText } from '@/components/themed-text';
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+import { applyLayerSelection } from './web-layer-visibility';
 
 // MapLibre runs in a Web Worker that the metro web build does not emit, so the app
 // gets a request for a chunk that is not deployed and the map dies with "Worker
@@ -45,9 +50,19 @@ interface MapHandle {
   removeSource(id: string): void;
   addLayer(layer: unknown): void;
   removeLayer(id: string): void;
+  /**
+   * Writes one layout property onto one layer that is already drawn.
+   *
+   * This is the whole of how the selector reaches the map: the alternative is a new
+   * style, which re-fetches every tile the archive is already serving.
+   */
+  setLayoutProperty(layerId: string, name: string, value: string): void;
   fitBounds(bounds: [[number, number], [number, number]], options?: unknown): void;
   queryRenderedFeatures(point: unknown): RenderedFeature[];
 }
+
+/** No selection at all: no group is declared, so the style draws what it authored. */
+const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
 
 function toPressReference(
   layerId: string,
@@ -87,6 +102,7 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   showLabels = true,
+  layerSelection,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -133,6 +149,21 @@ export default function ExperienceMap({
   useEffect(() => {
     onFeaturePressRef.current = onFeaturePress;
   }, [onFeaturePress]);
+
+  /**
+   * What to make the basemap draw, from the caller's selection when it has one and
+   * from the payload on the source when it does not.
+   *
+   * The fallback is the native renderer's, for the same reason: a caller that mounts
+   * the renderer directly with only `source.layers` must still get the groups the
+   * payload named instead of a map that quietly draws all of them.
+   */
+  const effectiveSelection: readonly MapLayerSelection[] =
+    layerSelection ??
+    (source.layers?.length
+      ? resolveLayerSelection(source.layers, MAPLIBRE_LAYER_CAPABILITIES)
+      : NO_LAYER_SELECTION);
+  const selectionKey = layerSelectionSignature(effectiveSelection);
 
   // Declared before the overlay effect so the toggle reads the fresh value.
   useEffect(() => {
@@ -285,6 +316,23 @@ export default function ExperienceMap({
     if (!ready || !map) return;
     applyOverlays(map);
   }, [overlays, ready, showLabels, applyOverlays]);
+
+  /**
+   * Applies the selection once the map is drawn, and again whenever it changes.
+   *
+   * This is the only place the decision reaches the map, so the first application and
+   * a walker's toggle take the same path. The map is never rebuilt and its style is
+   * never replaced: the effect only calls `setLayoutProperty`, so flipping a row
+   * repaints instead of re-downloading a tile.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    applyLayerSelection(map, effectiveSelection);
+    // The selection is an input by content (`selectionKey`), not by array identity: the
+    // switch rebuilds the array on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, selectionKey, applyLayerSelection]);
 
   if (error || (!noRegion && archive.status === 'error')) {
     return (
