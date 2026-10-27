@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import { DEFAULT_REMOTE_CONFIG, type RemoteConfigPayload } from '@sonora/shared';
 
 import { MapDownloadButton } from '@/components/map/map-download-button';
@@ -212,5 +213,22 @@ describe('MapDownloadButton', () => {
 
     const button = screen.getByLabelText('Prepare this map');
     expect(button.props.testID).toBe('map-download-button');
+  });
+
+  it('offers nothing in a browser, where there is no archive to keep', async () => {
+    // The browser reads the archive over HTTP and has no device file system; reading
+    // what is "already on the device" there throws from inside the render, which is
+    // what took the whole screen down before this guard existed.
+    const platform = Platform as unknown as { OS: string };
+    const original = platform.OS;
+    platform.OS = 'web';
+    try {
+      await renderFor(INSIDE_CALAMUCHITA);
+
+      expect(screen.queryByTestId('map-download-button')).toBeNull();
+      expect(mockedListDownloaded).not.toHaveBeenCalled();
+    } finally {
+      platform.OS = original;
+    }
   });
 });

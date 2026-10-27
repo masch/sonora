@@ -7,6 +7,7 @@ import { resolveMapRenderer } from '@/components/map/resolve-renderer';
 import { APP_CONFIG } from '@/config/app-config';
 import { archiveFileName, archiveIdentity } from '@/services/map-archives';
 import { ensureArchiveOnDisk, listDownloadedArchives } from '@/services/map-archive-download';
+import { canKeepMapArchive } from '@/services/map-archive-support';
 import { decideDownload, type MapNetwork } from '@/services/map-download-policy';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { logger } from '@/utils/logger';
@@ -155,6 +156,15 @@ export function useMapPrefetch(): MapPrefetchState {
 
     const renderer = resolveMapRenderer(APP_CONFIG.mapRenderer, map.renderer);
     if (renderer !== 'maplibre') {
+      handled.current = signature;
+      return;
+    }
+
+    // A browser has no archive to keep: `expo-file-system` is an unsupported stub
+    // there, so the listing below would throw before anything could be priced, and
+    // MapLibre GL JS reads the archive over HTTP instead. Nothing to download, and
+    // nothing to ask about.
+    if (!canKeepMapArchive()) {
       handled.current = signature;
       return;
     }

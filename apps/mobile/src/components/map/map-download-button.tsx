@@ -10,6 +10,7 @@ import {
   ensureArchiveOnDisk,
   listDownloadedArchives,
 } from '@/services/map-archive-download';
+import { canKeepMapArchive } from '@/services/map-archive-support';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwView } from '@/tw';
 import { logger } from '@/utils/logger';
@@ -49,6 +50,16 @@ export interface MapDownloadButtonProps {
 }
 
 export function MapDownloadButton({ point }: MapDownloadButtonProps) {
+  // A browser keeps no archive of its own: MapLibre GL JS reads it over HTTP, and
+  // `expo-file-system` answers there as an unsupported stub — reading what is
+  // "already on the device" would throw inside this render and take the screen
+  // down. The guard sits outside the hooks of the content for that reason.
+  if (!canKeepMapArchive()) return null;
+
+  return <MapDownloadButtonContent point={point} />;
+}
+
+function MapDownloadButtonContent({ point }: MapDownloadButtonProps) {
   const { t } = useAppTranslation();
   const { renderer, regionKey, source } = useMapViewConfig(point);
   // Every transfer polices the same budget as the prefetch and the map itself. Read
