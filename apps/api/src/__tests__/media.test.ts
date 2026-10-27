@@ -133,6 +133,13 @@ describe('POST /media/reference-images', () => {
 const PRODUCTION_ORIGIN = 'https://sonora-api.sonora-api.workers.dev';
 const STAGING_ORIGIN = 'https://sonora-api-staging.sonora-api.workers.dev';
 
+/**
+ * The origin the committed style document names: `map-assets.invalid` is
+ * reserved by RFC 2606 and resolves nowhere, so the repository copy names no
+ * environment.
+ */
+const RESERVED_ORIGIN = 'https://map-assets.invalid';
+
 /** The archive path the style's basemap must point at, whatever origin serves it. */
 const BASEMAP_ARCHIVE_PATH = mapArchivePath();
 
@@ -241,6 +248,37 @@ describe('GET /media/public/:key', () => {
         },
       },
     });
+  });
+
+  it('serves the request origin for a style whose urls name the reserved one', async () => {
+    // This is what makes normalising the committed document safe without
+    // republishing anything: whatever origin the stored urls carry — even one
+    // that does not exist — the client receives the origin that served this
+    // request, so the committed values are placeholders and nothing more.
+    const reserved = {
+      ...PUBLISHED_STYLE,
+      glyphs: `${RESERVED_ORIGIN}${mapGlyphsPath()}`,
+      sprite: `${RESERVED_ORIGIN}${mapSpritePath()}`,
+      sources: {
+        ...PUBLISHED_STYLE.sources,
+        basemap: {
+          ...PUBLISHED_STYLE.sources.basemap,
+          url: `pmtiles://${RESERVED_ORIGIN}${BASEMAP_ARCHIVE_PATH}`,
+        },
+      },
+    };
+    const { bucket } = publicBucket({ [mapStyleKey()]: storedJson(reserved) });
+
+    const res = await requestAt(STAGING_ORIGIN, mapStyleKey(), { PUBLIC_BUCKET: bucket });
+    const body = (await res.json()) as typeof PUBLISHED_STYLE;
+
+    expect(res.status).toBe(200);
+    expect(body.glyphs).toBe(`${STAGING_ORIGIN}${mapGlyphsPath()}`);
+    expect(body.sprite).toBe(`${STAGING_ORIGIN}${mapSpritePath()}`);
+    // The `pmtiles://` source is re-pointed and keeps its path, so the reserved
+    // origin does not survive into the response.
+    expect(body.sources.basemap.url).toBe(`pmtiles://${STAGING_ORIGIN}${BASEMAP_ARCHIVE_PATH}`);
+    expect(JSON.stringify(body)).not.toContain('map-assets.invalid');
   });
 
   it('keeps the immutable cache headers and the stored etag on the rewritten document', async () => {

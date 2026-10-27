@@ -24,6 +24,8 @@ Consequences worth holding in mind:
 
 `assets/map/styles/v1.json` is the source of truth: the bucket object is still what clients are served, and the API still rewrites `glyphs`, `sprite` and every `pmtiles://` origin at serve time. The path mirrors the bucket key (`styles/v1.json`) because nothing is renamed on the way up.
 
+The committed document names a reserved origin that exists nowhere (`https://map-assets.invalid`, which RFC 2606 keeps from ever resolving), and the API replaces `glyphs`, `sprite` and the source origin on every request, so the file names no environment and a rewrite regression fails loudly instead of quietly serving another environment's data.
+
 Publish it with the same target that publishes the archive, naming the file where the repository keeps it:
 
 ```bash

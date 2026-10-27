@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { mapArchivePath, mapGlyphsPath, mapSpritePath } from '../map/artifacts';
 import {
   ALWAYS_ON_LAYER_PREFIXES,
   MAP_LAYER_GROUPS,
@@ -41,6 +42,17 @@ interface StyleDocument {
 }
 
 const STYLE = JSON.parse(readFileSync(STYLE_PATH, 'utf8')) as StyleDocument;
+
+/**
+ * The origin the committed document names.
+ *
+ * `map-assets.invalid` is reserved by RFC 2606 and never resolves, so the file
+ * names no environment: the paths after it are the real ones and the rewrite
+ * replaces the origin per request. A rewrite regression therefore fails loudly —
+ * the request goes to a host that does not exist — instead of quietly asking one
+ * environment for another's data.
+ */
+const RESERVED_ORIGIN = 'https://map-assets.invalid';
 
 /** The layer ids the document draws, in the order it draws them. */
 const LAYER_IDS: readonly string[] = (STYLE.layers ?? []).map((layer) => layer.id);
@@ -89,22 +101,50 @@ describe('the committed basemap style', () => {
     for (const id of LAYER_IDS) expect(typeof id, JSON.stringify(id)).toBe('string');
   });
 
-  it('keeps glyphs and sprite as absolute urls', () => {
+  it('keeps glyphs and sprite as absolute urls on the reserved origin', () => {
     // The serve-time rewrite substitutes these two whatever they say, but only a
     // value a parser can read keeps that substitution meaningful: a relative or
     // missing url is a document no origin can be spliced into.
     expect(isAbsoluteHttpUrl(STYLE.glyphs), `glyphs: ${JSON.stringify(STYLE.glyphs)}`).toBe(true);
     expect(isAbsoluteHttpUrl(STYLE.sprite), `sprite: ${JSON.stringify(STYLE.sprite)}`).toBe(true);
+
+    // And the origin is the reserved one, never an environment's: the paths stay
+    // the ones the rewrite would substitute anyway.
+    expect(STYLE.glyphs, `glyphs: ${JSON.stringify(STYLE.glyphs)}`).toBe(
+      `${RESERVED_ORIGIN}${mapGlyphsPath()}`,
+    );
+    expect(STYLE.sprite, `sprite: ${JSON.stringify(STYLE.sprite)}`).toBe(
+      `${RESERVED_ORIGIN}${mapSpritePath()}`,
+    );
   });
 
-  it('keeps a pmtiles:// source url for the rewrite to re-point', () => {
+  it('keeps a pmtiles:// source url on the reserved origin for the rewrite to re-point', () => {
     // The same reason one level down: the rewrite replaces the origin of a
     // `pmtiles://` url and keeps its path, so staging can never hand a browser
     // production tiles. Without such a source there is nothing to re-point.
     const urls = pmtilesUrls();
 
     expect(urls.length).toBeGreaterThan(0);
-    for (const url of urls) expect(isAbsoluteHttpUrl(url), url).toBe(true);
+    for (const url of urls) {
+      expect(isAbsoluteHttpUrl(url), url).toBe(true);
+      expect(new URL(url).origin, url).toBe(RESERVED_ORIGIN);
+    }
+
+    // The archive path survives the reserved origin: a reader of this file can
+    // still see which object the app will ask for, once per served request.
+    expect(urls).toContain(`${RESERVED_ORIGIN}${mapArchivePath()}`);
+  });
+
+  it('names no environment host anywhere in the document', () => {
+    // A repository file must not name an environment. The deployed hostnames
+    // differ per environment while this file is one shared copy, and the API
+    // replaces `glyphs`, `sprite` and every `pmtiles://` origin on each request,
+    // so the committed values are placeholders and nothing more. A hostname here
+    // would ship staging urls inside a production upload and leave them there.
+    const serialized = JSON.stringify(STYLE);
+
+    expect(serialized).not.toContain('workers.dev');
+    expect(serialized).not.toContain('sonora-api');
   });
 
   it('claims every layer through a group, or records why it can never be toggled', () => {
