@@ -248,9 +248,11 @@ export function layerSelectionSignature(selection: readonly MapLayerSelection[])
 
 /**
  * Whether `id` is one of the groups this build implements. The wire carries any
- * string (S2), so this is where an id from a newer server stops.
+ * string (S2), so this is where an id from a newer server stops — and the server
+ * asks the same question before it publishes one, so a typo never becomes a row
+ * nobody can render.
  */
-function isMapLayerGroupId(id: string): id is MapLayerGroupId {
+export function isMapLayerGroupId(id: string): id is MapLayerGroupId {
   return (MAP_LAYER_GROUPS as readonly string[]).includes(id);
 }
 

@@ -46,6 +46,20 @@ MAP_RENDERER = "leaflet"
 # decides who *is*.
 MAP_RENDERER_PLATFORMS = "android,ios,web"
 
+# --- Layer selector (`map.layers`) -----------------------------------------
+# This environment publishes the field because staging is for testing: a stale
+# staging build is reinstalled, not supported, so the strict schema in builds
+# older than the tolerant one costs nothing here. Production deliberately keeps
+# all three unset (see `wrangler.toml`).
+#
+# Whether `map.layers` travels at all. `true` is the only value that publishes it.
+MAP_LAYERS_WIRE = "true"
+# Whether the walker is offered the selector. Independent of the wire switch.
+MAP_LAYERS_SHOW_CONTROL = "true"
+# Groups the sheet lists, in the order written here; a leading dash opens the
+# group hidden (`-buildings`). Ids this build does not implement are dropped.
+MAP_LAYERS_GROUPS = "roads,water,places,pois,boundaries,green,buildings"
+
 [define]
 MP_BYPASS_SIGNATURE = "true"
 MP_SIGNATURE_MAX_AGE_MINUTES = "5"
