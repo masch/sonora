@@ -521,9 +521,10 @@ describe('ExperienceMap (native)', () => {
     expect(drawnLayout('water_label_ocean')).toBeUndefined();
   });
 
-  it('draws every group when the view hands it no selection', async () => {
-    // The groups on the source are not a decision this component makes any more, so a
-    // caller that hands no selection gets the style exactly as it was authored.
+  it('draws the groups the source names when the view hands it no selection', async () => {
+    // A caller that mounts the renderer directly keeps the baseline behaviour: the
+    // payload on the source is applied instead of being silently dropped because an
+    // optional prop was omitted.
     await render(
       <ExperienceMap
         source={{
@@ -535,7 +536,8 @@ describe('ExperienceMap (native)', () => {
       />,
     );
 
-    expect(drawnLayout('water')).toBeUndefined();
+    expect(drawnLayout('water')).toEqual({ visibility: 'none' });
+    expect(drawnLayout('water_label_ocean')).toEqual({ visibility: 'none' });
     expect(drawnLayout('roads_minor')).toBeUndefined();
   });
 

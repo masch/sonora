@@ -16,6 +16,8 @@ import type { NativeSyntheticEvent } from 'react-native';
 import {
   applyLayerGroups,
   buildReferenceStyleLayers,
+  MAPLIBRE_LAYER_CAPABILITIES,
+  resolveLayerSelection,
   labelAnchorForDocument,
   referenceSourceId,
   withResolvedLabels,
@@ -520,7 +522,7 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   showLabels = true,
-  layerSelection = NO_LAYER_SELECTION,
+  layerSelection,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -554,7 +556,21 @@ export default function ExperienceMap({
   // keeps it in state: a caller that rebuilds the array per render must not rebuild
   // the style.
   const documentsKey = documentsSignature(overlays);
-  const selectionKey = selectionSignature(layerSelection);
+  /**
+   * What to draw, from the caller's selection when it has one and from the payload on
+   * the source when it does not.
+   *
+   * The fallback is what a caller that mounts the renderer directly gets: passing only
+   * `source.layers` must keep drawing the groups the payload named, exactly as the
+   * baseline did, instead of silently drawing every group because a prop was omitted.
+   */
+  const effectiveSelection: readonly MapLayerSelection[] =
+    layerSelection ??
+    (source.layers?.length
+      ? resolveLayerSelection(source.layers, MAPLIBRE_LAYER_CAPABILITIES)
+      : NO_LAYER_SELECTION);
+
+  const selectionKey = selectionSignature(effectiveSelection);
   // The basemap is the region's archive and nothing else: with no region there is
   // no archive to draw, whatever the hook happens to hand back.
   const archiveUri = !noRegion && archive.status === 'ready' ? archive.uri : undefined;
@@ -582,7 +598,7 @@ export default function ExperienceMap({
     if (noRegion) {
       return buildMapStyle(referencePlaneStyle(), {
         documents: overlays,
-        selection: layerSelection,
+        selection: effectiveSelection,
         showLabels,
         translate,
       });
@@ -591,7 +607,7 @@ export default function ExperienceMap({
     return buildMapStyle(styleDocument ?? fallbackStyle(archiveUri, attribution), {
       archiveUri,
       documents: overlays,
-      selection: layerSelection,
+      selection: effectiveSelection,
       showLabels,
       translate,
     });

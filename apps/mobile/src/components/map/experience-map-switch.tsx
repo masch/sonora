@@ -105,16 +105,32 @@ export default function ExperienceMapSwitch({
   const [pressedReference, setPressedReference] = useState<MapReferencePress | null>(null);
   const [showLabels, setShowLabels] = useState(true);
   /**
-   * Which basemap groups draw, from the payload this build consumes (`map.layers`,
-   * S2) resolved against what the renderer can actually toggle (T3).
+   * The groups the payload asks for, resolved against what the renderer can toggle
+   * (T3).
    *
-   * Seeded once, from the payload that named the groups, and then owned by the walker
-   * for the rest of the session: nothing persists it yet, so the choice lasts as long
-   * as the mount does.
+   * Recomputed whenever the payload's content changes, never captured at mount: the
+   * remote config arrives after the map is already on screen, and a selection frozen
+   * at mount would draw the groups a payload never asked for and show the walker
+   * checkboxes that disagree with the map.
    */
-  const [layerSelection, setLayerSelection] = useState<readonly MapLayerSelection[]>(() =>
-    resolveLayerSelection(source.layers ?? [], MAPLIBRE_LAYER_CAPABILITIES),
+  const resolvedSelection = resolveLayerSelection(source.layers ?? [], MAPLIBRE_LAYER_CAPABILITIES);
+
+  /**
+   * What the walker changed, by group, and only that.
+   *
+   * Overrides rather than a whole selection: the payload stays the source of truth for
+   * every group the walker never touched, so a payload that lands late still reaches
+   * the map. Nothing persists these yet, so the choice lasts as long as the mount does.
+   */
+  const [layerOverrides, setLayerOverrides] = useState<Partial<Record<MapLayerGroupId, boolean>>>(
+    {},
   );
+
+  const layerSelection: readonly MapLayerSelection[] = resolvedSelection.map((entry) => {
+    const override = layerOverrides[entry.id];
+    if (override === undefined) return entry;
+    return { ...entry, visible: override, declared: true };
+  });
 
   function handleFeaturePress(reference: MapReferencePress) {
     if (reference.documentKey === ITINERARY_DOCUMENT_KEY) return;
@@ -131,11 +147,9 @@ export default function ExperienceMapSwitch({
    * ever raised here, never lowered: it records who spoke, not what they said.
    */
   function handleToggleLayer(id: MapLayerGroupId) {
-    setLayerSelection((previous) =>
-      previous.map((entry) =>
-        entry.id === id ? { ...entry, visible: !entry.visible, declared: true } : entry,
-      ),
-    );
+    const current = layerSelection.find((entry) => entry.id === id);
+    const next = !(current?.visible ?? true);
+    setLayerOverrides((previous) => ({ ...previous, [id]: next }));
   }
 
   function drawMap() {
