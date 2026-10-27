@@ -19,6 +19,11 @@ interface MockMapConfig {
     cacheMaxBytes: number;
     cellular: 'ask' | 'auto' | 'never';
   };
+  /** The selector's payload: the flag that offers the control, and the groups. */
+  layers?: {
+    showControl: boolean;
+    groups?: { id: string; defaultVisible: boolean }[];
+  };
 }
 
 const CALAMUCHITA: MockRegion = {
@@ -210,5 +215,32 @@ describe('useMapViewConfig', () => {
 
     expect(result.current.source.styleUrl).toBeUndefined();
     expect(result.current.source.archiveUrl).toBe(CALAMUCHITA.archiveUrl);
+  });
+
+  it("carries the payload's layer control flag onto the source", async () => {
+    // The switch reads the flag off the source, like it reads the groups: the map
+    // components take the source as their only input.
+    mockMapConfig = {
+      ...mockMapConfig!,
+      layers: { showControl: true, groups: [{ id: 'water', defaultVisible: false }] },
+    };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.source.showLayersControl).toBe(true);
+    expect(result.current.source.layers).toEqual([{ id: 'water', defaultVisible: false }]);
+  });
+
+  it('carries no layer control flag when the payload withholds it', async () => {
+    // Absent and false both leave the source without a flag the switch could read as
+    // true, so the control stays off until the payload asks for it.
+    mockMapConfig = { ...mockMapConfig!, layers: { showControl: false } };
+    const off = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+    expect(off.result.current.source.showLayersControl).toBe(false);
+
+    const { layers: _layers, ...withoutLayers } = mockMapConfig;
+    mockMapConfig = withoutLayers;
+    const absent = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+    expect(absent.result.current.source.showLayersControl).toBeUndefined();
+    expect(absent.result.current.source.showLayersControl ?? false).toBe(false);
   });
 });

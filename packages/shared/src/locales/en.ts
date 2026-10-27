@@ -32,6 +32,20 @@ export const en = {
     point: 'Pt {{index}}',
     hideLabels: 'Hide labels',
     showLabels: 'Show labels',
+    // The selector: one row per basemap group, in the vocabulary's own order.
+    layers: {
+      title: 'Map layers',
+      roads: 'Roads',
+      water: 'Water',
+      places: 'Places',
+      pois: 'Points of interest',
+      boundaries: 'Boundaries',
+      green: 'Green areas',
+      buildings: 'Buildings',
+      // What a screen reader announces: the group and whether it draws.
+      visible: '{{name}}: shown',
+      hidden: '{{name}}: hidden',
+    },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',
     // Not a failure: the place is real, it is simply outside every region we publish.

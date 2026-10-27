@@ -419,19 +419,19 @@ describe('ExperienceMap (native)', () => {
     expect(drawnFeatures('umepay')[0].properties?.label).toBe('map.references.taller');
   });
 
-  it('hands the map the group the payload turned off, and nothing else', async () => {
-    // S2: the server decides which groups draw, with no build behind it. The style
-    // handed to MapLibre is where that decision lands — the renderer is declarative,
-    // so the adapter is a transform of the style, not a call on a map handle. The
-    // payload rides on the source, like the archive and the region do.
+  it('hands the map the group the view turned off, and nothing else', async () => {
+    // The selection is the view's decision (the switch resolves the payload and hands
+    // the result down); the renderer only applies what it is given. The style handed
+    // to MapLibre is where that decision lands — the renderer is declarative, so the
+    // adapter is a transform of the style, not a call on a map handle.
     await render(
       <ExperienceMap
-        source={{
-          archiveUrl: ARCHIVE_URL,
-          style: styleWithGroups(),
-          layers: [{ id: 'water', defaultVisible: false }],
-        }}
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWithGroups() }}
         overlays={[document]}
+        layerSelection={[
+          { id: 'water', visible: false, declared: true },
+          { id: 'roads', visible: true, declared: false },
+        ]}
       />,
     );
 
@@ -500,6 +500,43 @@ describe('ExperienceMap (native)', () => {
     for (const layerId of ['background', 'water', 'water_label_ocean', 'roads_minor']) {
       expect(drawnLayout(layerId)).toBeUndefined();
     }
+  });
+
+  it('applies the selection it is given over the groups the source carries', async () => {
+    // A payload that says "hide water" cannot beat the walker's own choice in the
+    // control: the renderer applies the selection and never resolves one itself.
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: ARCHIVE_URL,
+          style: styleWithGroups(),
+          layers: [{ id: 'water', defaultVisible: false }],
+        }}
+        overlays={[document]}
+        layerSelection={[{ id: 'water', visible: true, declared: true }]}
+      />,
+    );
+
+    expect(drawnLayout('water')).toBeUndefined();
+    expect(drawnLayout('water_label_ocean')).toBeUndefined();
+  });
+
+  it('draws every group when the view hands it no selection', async () => {
+    // The groups on the source are not a decision this component makes any more, so a
+    // caller that hands no selection gets the style exactly as it was authored.
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: ARCHIVE_URL,
+          style: styleWithGroups(),
+          layers: [{ id: 'water', defaultVisible: false }],
+        }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(drawnLayout('water')).toBeUndefined();
+    expect(drawnLayout('roads_minor')).toBeUndefined();
   });
 
   it('adds and removes the label layer with the labels toggle', async () => {

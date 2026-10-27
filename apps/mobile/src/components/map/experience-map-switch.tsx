@@ -1,6 +1,15 @@
 import { useState } from 'react';
 
-import { ITINERARY_DOCUMENT_KEY, itineraryDocument, type MapDocument } from '@sonora/shared';
+import {
+  ITINERARY_DOCUMENT_KEY,
+  MAPLIBRE_LAYER_CAPABILITIES,
+  itineraryDocument,
+  resolveLayerSelection,
+  showLayerControl,
+  type MapDocument,
+  type MapLayerGroupId,
+  type MapLayerSelection,
+} from '@sonora/shared';
 
 import TrackDetailMap from '@/components/track-detail-map';
 import ReferenceCard from '@/components/reference-card';
@@ -10,6 +19,7 @@ import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
+import MapLayersControl from './map-layers-control';
 import type { MapReferencePress, MapSourceConfig } from './map-view.types';
 import type { MapRenderer } from './resolve-renderer';
 
@@ -77,6 +87,11 @@ function waypointsOf(experience: PlayableExperience) {
  * mounts a map shows it the same way: the screen says which experience and which
  * frame, and the frame is the same everywhere: which controls a map has must not
  * depend on where it is mounted.
+ *
+ * The layer selector is the map's other control, and the selection it edits is
+ * decided here too: the switch resolves the payload once, keeps it in state, and
+ * hands the result to the renderer, which applies it and resolves nothing. One place
+ * decides what the map draws; the renderer only draws it.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -89,10 +104,38 @@ export default function ExperienceMapSwitch({
   const waypoints = waypointsOf(experience);
   const [pressedReference, setPressedReference] = useState<MapReferencePress | null>(null);
   const [showLabels, setShowLabels] = useState(true);
+  /**
+   * Which basemap groups draw, from the payload this build consumes (`map.layers`,
+   * S2) resolved against what the renderer can actually toggle (T3).
+   *
+   * Seeded once, from the payload that named the groups, and then owned by the walker
+   * for the rest of the session: nothing persists it yet, so the choice lasts as long
+   * as the mount does.
+   */
+  const [layerSelection, setLayerSelection] = useState<readonly MapLayerSelection[]>(() =>
+    resolveLayerSelection(source.layers ?? [], MAPLIBRE_LAYER_CAPABILITIES),
+  );
 
   function handleFeaturePress(reference: MapReferencePress) {
     if (reference.documentKey === ITINERARY_DOCUMENT_KEY) return;
     setPressedReference(reference);
+  }
+
+  /**
+   * Flips one group, and declares it while doing so.
+   *
+   * `visible` alone would be a decision `applyLayerGroups` ignores: a group the payload
+   * never mentions is left exactly as the style authored it, because silence is not a
+   * request. A walker who toggles a row is not silent — they are naming the group — so
+   * the entry becomes `declared` and the choice reaches the style. `declared` is only
+   * ever raised here, never lowered: it records who spoke, not what they said.
+   */
+  function handleToggleLayer(id: MapLayerGroupId) {
+    setLayerSelection((previous) =>
+      previous.map((entry) =>
+        entry.id === id ? { ...entry, visible: !entry.visible, declared: true } : entry,
+      ),
+    );
   }
 
   function drawMap() {
@@ -109,12 +152,21 @@ export default function ExperienceMapSwitch({
           <ExperienceMap
             className="h-full w-full"
             source={source}
+            layerSelection={layerSelection}
             overlays={overlays}
             center={[experience.longitude, experience.latitude]}
             userCoordinates={userCoordinates}
             waypoints={waypoints}
             showLabels={showLabels}
             onFeaturePress={handleFeaturePress}
+          />
+          <MapLayersControl
+            selection={layerSelection}
+            onToggle={handleToggleLayer}
+            allowed={showLayerControl(
+              source.showLayersControl ?? false,
+              MAPLIBRE_LAYER_CAPABILITIES,
+            )}
           />
           <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
         </>

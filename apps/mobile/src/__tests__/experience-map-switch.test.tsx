@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { act, fireEvent, render } from '@testing-library/react-native';
 
-import type { MapDocument } from '@sonora/shared';
+import type { MapDocument, MapLayerSelection } from '@sonora/shared';
 
 import type { MapReferencePress } from '@/components/map/map-view.types';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
@@ -298,6 +298,84 @@ describe('ExperienceMapSwitch', () => {
 
     await fireEvent.press(view.getByTestId('toggle-map-labels'));
     expect(mockExperienceMapProps[mockExperienceMapProps.length - 1].showLabels).toBe(true);
+  });
+
+  // The layer control is the payload's to offer and the switch's to own: the switch
+  // resolves the selection the renderer applies, so the toggle lives here.
+  it('offers the layer control only when the payload asks for it', async () => {
+    const layers = [{ id: 'water', defaultVisible: false }];
+
+    const withoutControl = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={{ ...source, layers }} experience={trip} />,
+    );
+    expect(withoutControl.queryByTestId('map-layers-control')).toBeNull();
+
+    const withControl = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={{ ...source, layers, showLayersControl: true }}
+        experience={trip}
+      />,
+    );
+    expect(withControl.queryByTestId('map-layers-control')).toBeTruthy();
+  });
+
+  it('draws no layer control on the frozen leaflet renderer, which can toggle no group', async () => {
+    const view = await render(
+      <ExperienceMapSwitch
+        renderer="leaflet"
+        source={{
+          ...source,
+          layers: [{ id: 'water', defaultVisible: false }],
+          showLayersControl: true,
+        }}
+        experience={trip}
+      />,
+    );
+
+    expect(view.queryByTestId('map-layers-control')).toBeNull();
+  });
+
+  it('seeds the selection from the payload and toggles one row into it', async () => {
+    const view = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={{
+          ...source,
+          layers: [{ id: 'water', defaultVisible: false }],
+          showLayersControl: true,
+        }}
+        experience={trip}
+      />,
+    );
+    const handed = () =>
+      mockExperienceMapProps[mockExperienceMapProps.length - 1]
+        .layerSelection as MapLayerSelection[];
+
+    // The payload names water once; every other group is silent and draws.
+    expect(handed()).toEqual(
+      expect.arrayContaining([
+        { id: 'water', visible: false, declared: true },
+        { id: 'roads', visible: true, declared: false },
+      ]),
+    );
+
+    await fireEvent.press(view.getByTestId('map-layers-control'));
+    await fireEvent.press(view.getByTestId('map-layer-row-water'));
+
+    // Only the toggled entry flips, and the walker naming it is what declares it.
+    expect(handed().find((entry) => entry.id === 'water')).toEqual({
+      id: 'water',
+      visible: true,
+      declared: true,
+    });
+
+    await fireEvent.press(view.getByTestId('map-layer-row-roads'));
+    expect(handed().find((entry) => entry.id === 'roads')).toEqual({
+      id: 'roads',
+      visible: false,
+      declared: true,
+    });
   });
 
   it('carries the testID it was given on the surface wrapper', async () => {
