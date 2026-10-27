@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, type RenderResult } from '@testing-library/react-native';
 
 import type { MapDocument, MapLayerSelection } from '@sonora/shared';
 
 import type { MapReferencePress } from '@/components/map/map-view.types';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import { useMapLayerOverridesStore } from '@/components/map/map-layer-overrides-store';
 import TripDetailView from '@/components/trip-detail-view';
 import type { TrackExperience, TripExperience } from '@/data/experiences';
 
@@ -195,6 +196,9 @@ describe('ExperienceMapSwitch', () => {
   beforeEach(() => {
     mockExperienceMapProps.length = 0;
     mockTrackDetailMapProps.length = 0;
+    // The layer choices live in module state for the whole app run, so one test's
+    // toggles would otherwise be the next test's starting point.
+    useMapLayerOverridesStore.getState().reset();
   });
 
   it('draws the itinerary plus the experience documents with the maplibre renderer', async () => {
@@ -438,11 +442,142 @@ describe('ExperienceMapSwitch', () => {
   });
 });
 
+/**
+ * `T7`: the walker's layer choice outlives the map, and dies with the app run.
+ *
+ * Every assertion here is made through the switch and its control — a row's state
+ * and the selection the renderer is handed, which is what the style is drawn from
+ * — and never by reading the store's own object, because the store is a means and
+ * the choice the walker sees is the contract.
+ */
+describe('ExperienceMapSwitch layer choice across mounts', () => {
+  const LAYERS = [{ id: 'water', defaultVisible: true }];
+
+  const layersSource = (layers: { id: string; defaultVisible: boolean }[]) => ({
+    ...source,
+    layers,
+    showLayersControl: true,
+  });
+
+  /** The selection the map is drawn from, as the last render handed it over. */
+  const handedSelection = () =>
+    mockExperienceMapProps[mockExperienceMapProps.length - 1].layerSelection as MapLayerSelection[];
+
+  const handed = (id: string) => handedSelection().find((entry) => entry.id === id);
+
+  /**
+   * Leaving the screen: the whole tree, and every bit of React state in it, goes away.
+   *
+   * The unmount is wrapped in `act` because the sheet is a `react-native` `Modal`: an
+   * unmount outside an act scope leaves the harness's act queue open, and the next
+   * mount's sheet would never open. That is a test-harness detail, not something the
+   * app can see — the device unmounts the screen for real.
+   */
+  const leaveScreen = async (view: RenderResult) => {
+    await act(async () => {
+      view.unmount();
+    });
+  };
+
+  beforeEach(() => {
+    mockExperienceMapProps.length = 0;
+    mockTrackDetailMapProps.length = 0;
+    // What a new app run starts from: the store is module memory, so a fresh run
+    // (and this suite's next test) finds it empty.
+    useMapLayerOverridesStore.getState().reset();
+  });
+
+  it("keeps the walker's choice when the map is unmounted and mounted again", async () => {
+    const first = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={layersSource(LAYERS)} experience={trip} />,
+    );
+    await fireEvent.press(first.getByTestId('map-layers-control'));
+    await fireEvent.press(first.getByTestId('map-layer-row-water'));
+    expect(handed('water')).toEqual({ id: 'water', visible: false, declared: true });
+
+    // Leaving the screen: the switch, and every bit of React state in it, goes away.
+    await leaveScreen(first);
+
+    // Coming back, with the same payload: hiding water was a decision about the map
+    // the walker is looking at, not about this mount of it.
+    const second = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={layersSource(LAYERS)} experience={trip} />,
+    );
+    await fireEvent.press(second.getByTestId('map-layers-control'));
+
+    expect(second.getByTestId('map-layer-row-water')).not.toBeChecked();
+    // The style is drawn from this selection, so the row and the map agree.
+    expect(handed('water')).toEqual({ id: 'water', visible: false, declared: true });
+  });
+
+  it('forgets the choice when the app starts again, and the payload decides', async () => {
+    const first = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={layersSource(LAYERS)} experience={trip} />,
+    );
+    await fireEvent.press(first.getByTestId('map-layers-control'));
+    await fireEvent.press(first.getByTestId('map-layer-row-water'));
+    expect(handed('water')).toEqual({ id: 'water', visible: false, declared: true });
+    await leaveScreen(first);
+
+    // A new app run: the module is evaluated again, so nothing the walker chose in
+    // the previous run survives — the payload loaded at launch is the whole truth.
+    useMapLayerOverridesStore.getState().reset();
+
+    const second = await render(
+      <ExperienceMapSwitch renderer="maplibre" source={layersSource(LAYERS)} experience={trip} />,
+    );
+    await fireEvent.press(second.getByTestId('map-layers-control'));
+
+    // The same payload that said "water is visible" is obeyed again.
+    expect(second.getByTestId('map-layer-row-water')).toBeChecked();
+    expect(handed('water')).toEqual({ id: 'water', visible: true, declared: true });
+  });
+
+  it('leaves every untouched group to the payload, even after a remount', async () => {
+    const first = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={layersSource([
+          { id: 'water', defaultVisible: false },
+          { id: 'roads', defaultVisible: true },
+        ])}
+        experience={trip}
+      />,
+    );
+    await fireEvent.press(first.getByTestId('map-layers-control'));
+    await fireEvent.press(first.getByTestId('map-layer-row-roads'));
+    expect(handed('roads')).toEqual({ id: 'roads', visible: false, declared: true });
+    await leaveScreen(first);
+
+    // The payload changed while the walker was away: water is asked for now. The
+    // walker never spoke about water, so the payload's word is the one that counts.
+    const second = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={layersSource([
+          { id: 'water', defaultVisible: true },
+          { id: 'roads', defaultVisible: true },
+        ])}
+        experience={trip}
+      />,
+    );
+    await fireEvent.press(second.getByTestId('map-layers-control'));
+
+    expect(second.getByTestId('map-layer-row-water')).toBeChecked();
+    expect(handed('water')).toEqual({ id: 'water', visible: true, declared: true });
+
+    // And the one group the walker did name still rides on top of the fresh payload.
+    expect(second.getByTestId('map-layer-row-roads')).not.toBeChecked();
+    expect(handed('roads')).toEqual({ id: 'roads', visible: false, declared: true });
+  });
+});
+
 describe('TripDetailView map', () => {
   beforeEach(() => {
     mockExperienceMapProps.length = 0;
     mockTrackDetailMapProps.length = 0;
     mockGeofenceState.userCoordinates = { latitude: -34.61, longitude: -58.39 };
+    useMapLayerOverridesStore.getState().reset();
   });
 
   it('mounts the switch with the trip waypoints and keeps the labels toggle', async () => {
