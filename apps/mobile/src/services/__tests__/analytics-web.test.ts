@@ -84,14 +84,17 @@ describe('analytics.web recordError', () => {
     }
   });
 
-  it('emits one app_error event carrying the reference, route, fatal flag and a truncated message', () => {
+  it('emits one app_error event carrying the reference, route, fatal flag and a bounded message', () => {
     setCredentials();
     const AnalyticsService = loadAnalyticsWeb();
+    // 200 characters of message: past the 100-character limit of a standard
+    // Analytics property, where a longer value is dropped instead of shortened.
     const error = new Error('x'.repeat(200));
+    const longRoute = `/${'segment-'.repeat(20)}`;
 
     AnalyticsService.recordError(error, 'desc', {
       reference: 'E-ABC123',
-      route: '/trip/x',
+      route: longRoute,
       fatal: true,
     });
 
@@ -104,8 +107,8 @@ describe('analytics.web recordError', () => {
     expect(eventName).toBe('app_error');
     expect(params).toEqual({
       error_reference: 'E-ABC123',
-      route: '/trip/x',
-      message: 'x'.repeat(150),
+      route: longRoute.slice(0, 100),
+      message: 'x'.repeat(100),
       fatal: true,
       platform: Platform.OS,
       app_version: 'test-version',

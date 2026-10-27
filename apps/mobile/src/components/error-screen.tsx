@@ -48,7 +48,7 @@ export function ErrorScreen({ error, retry, onGoHome }: ErrorScreenProps) {
       />
       <Button
         label={t('common.goHome')}
-        variant="ghost"
+        variant="secondary"
         onPress={onGoHome}
         testID="error-go-home"
         accessibilityLabel={t('common.goHome')}

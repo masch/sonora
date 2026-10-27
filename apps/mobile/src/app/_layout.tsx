@@ -180,5 +180,23 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     });
   }, [error, reference, route]);
 
-  return <ErrorScreen error={error} retry={retry} onGoHome={() => router.replace('/')} />;
+  return <ErrorScreen error={error} retry={retry} onGoHome={() => goHome(retry)} />;
+}
+
+/**
+ * Leaves the broken screen for the app root, when there is a navigator to leave for.
+ *
+ * The boundary renders **instead of** the root layout, so the case it exists for is
+ * the case where `Stack` never mounted: Expo Router throws when navigating before
+ * that, and a button that throws would leave the walker with no working action at
+ * all. The failure is therefore treated as "navigation is unavailable" and the
+ * screen falls back to re-rendering the tree, which is the other thing a crash can
+ * recover from.
+ */
+function goHome(retry: () => void): void {
+  try {
+    router.replace('/');
+  } catch {
+    retry();
+  }
 }

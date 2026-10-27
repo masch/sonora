@@ -14,11 +14,22 @@ describe('errorReference', () => {
     expect(errorReference(makeError('boom', stack))).toBe(errorReference(makeError('boom', stack)));
   });
 
-  it('returns a different code when the stack differs', () => {
+  it('returns the same code for the same message whatever the stack says', () => {
     const firstError = makeError('boom', 'Error: boom\n    at first (src/a.ts:1:1)');
     const secondError = makeError('boom', 'Error: boom\n    at second (src/b.ts:9:9)');
 
-    expect(errorReference(firstError)).not.toBe(errorReference(secondError));
+    // Stacks differ between iOS, Android and web, and their line numbers move with
+    // every build: hashing one would split a single failure into a code per
+    // platform and per release, which is the opposite of a grouping key.
+    expect(errorReference(firstError)).toBe(errorReference(secondError));
+  });
+
+  it('returns a different code when the message differs', () => {
+    const stack = 'Error: boom\n    at first (src/a.ts:1:1)';
+
+    expect(errorReference(makeError('boom', stack))).not.toBe(
+      errorReference(makeError('bang', stack)),
+    );
   });
 
   it('returns an E-prefixed six character base-36 code', () => {

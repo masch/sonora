@@ -22,8 +22,17 @@ export type {
 
 export type { AnalyticsEventMap, AnalyticsTracker, ErrorContext };
 
-/** Firebase rejects long event params; the first 150 characters identify the crash. */
-const ERROR_MESSAGE_LIMIT = 150;
+/**
+ * Firebase Analytics rejects a parameter value longer than 100 characters, so a
+ * message past that limit reaches the dashboard as no message at all. Both
+ * string fields are bounded here rather than at the call site.
+ */
+const ANALYTICS_PARAM_LIMIT = 100;
+
+/** Trims a value to what a standard Analytics property accepts. */
+function bounded(value: string): string {
+  return value.slice(0, ANALYTICS_PARAM_LIMIT);
+}
 
 // Firebase Web SDK instance
 let webAnalytics: Analytics | null = null;
@@ -70,12 +79,12 @@ function ensureWebInitialized() {
 function buildAppErrorFields(error: Error, context?: ErrorContext): AnalyticsEventMap['app_error'] {
   const fields: AnalyticsEventMap['app_error'] = {
     error_reference: context?.reference ?? errorReference(error),
-    message: error.message.slice(0, ERROR_MESSAGE_LIMIT),
+    message: bounded(error.message),
     fatal: context?.fatal ?? false,
   };
 
   if (context?.route) {
-    fields.route = context.route;
+    fields.route = bounded(context.route);
   }
 
   return fields;

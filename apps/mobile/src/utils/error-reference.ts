@@ -2,11 +2,16 @@
  * Error references (`E-XXXXXX`) derived deterministically from an error.
  *
  * The code is deliberately derived, never random: it is a *grouping key* for us
- * — every occurrence of the same bug folds into one bucket we can count and
+ * — every occurrence of the same failure folds into one bucket we can count and
  * search for in Crashlytics/Firebase — and a *sentence* for the walker, who
- * reads the code off a crashing screen and says "it says E-ABC123". Both sides
- * only line up if the same crash always produces the same code, on any
- * platform, so the derivation depends on nothing but the error itself.
+ * reads the code off a crashing screen and says "it says E-ABC123".
+ *
+ * What it identifies is the **message**, not the occurrence and not the place:
+ * stacks differ between iOS, Android and web, and their line numbers change with
+ * every build, so hashing one would split a single failure into a code per
+ * platform and per release. The message is the only part that survives those
+ * differences; the route and the raw message travel next to the reference, which
+ * is where the localisation comes from.
  */
 
 /** Six base-36 characters keep the code short enough to read aloud over a phone call. */
@@ -24,16 +29,15 @@ function hash(input: string): number {
 
 /**
  * Returns the stable reference for any thrown value: `E-` plus six uppercase
- * base-36 characters hashed from the message and stack.
+ * base-36 characters hashed from the message.
+ *
+ * The stack is deliberately left out: it is what differs across platforms and
+ * builds, so including it would give the same failure a new code per release.
  */
 export function errorReference(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error && typeof error.stack === 'string' ? error.stack : '';
 
-  const code = (hash(`${message}\n${stack}`) % CODE_SPACE)
-    .toString(36)
-    .toUpperCase()
-    .padStart(CODE_LENGTH, '0');
+  const code = (hash(message) % CODE_SPACE).toString(36).toUpperCase().padStart(CODE_LENGTH, '0');
 
   return `E-${code}`;
 }

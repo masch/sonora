@@ -78,4 +78,20 @@ describe('ErrorBoundary component', () => {
     expect(mockReplace).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith('/');
   });
+
+  it('falls back to re-rendering when there is no navigator to go home to', async () => {
+    // The boundary renders instead of the root layout, so the very crash it exists
+    // for can be one where `Stack` never mounted. Expo Router throws in that state,
+    // and a button that throws would leave the walker with no working action.
+    mockReplace.mockImplementationOnce(() => {
+      throw new Error('Attempted to navigate before mounting the Root Layout component');
+    });
+    const mockRetry = jest.fn();
+
+    await render(<ErrorBoundary error={new Error('boom')} retry={mockRetry} />);
+    await fireEvent.press(screen.getByTestId('error-go-home'));
+
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockRetry).toHaveBeenCalledTimes(1);
+  });
 });
