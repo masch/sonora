@@ -190,7 +190,9 @@ describe('resolveLayerSelection', () => {
   it('falls back to visible for a supported group the payload omits', () => {
     const selection = resolveLayerSelection([], MAPLIBRE_LAYER_CAPABILITIES);
 
-    expect(selection).toEqual(MAP_LAYER_GROUPS.map((id) => ({ id, visible: true })));
+    expect(selection).toEqual(
+      MAP_LAYER_GROUPS.map((id) => ({ id, visible: true, declared: false })),
+    );
   });
 
   it('yields nothing for a renderer that cannot toggle a layer', () => {
@@ -235,15 +237,16 @@ function styleLayers(ids: readonly string[] = PUBLISHED_STYLE_LAYER_IDS): Fixtur
   return ids.map((id) => ({ id, type: 'background' }));
 }
 
-/** Every group this build implements, all drawn: the payload's default. */
+/** Every group this build implements, all named by the payload and drawn. */
 const ALL_VISIBLE: readonly MapLayerSelection[] = MAP_LAYER_GROUPS.map((id) => ({
   id,
   visible: true,
+  declared: true,
 }));
 
-/** The same selection with `hidden` switched off and everything else drawn. */
+/** The same selection with `hidden` named and switched off, everything else named and drawn. */
 function hiding(hidden: readonly MapLayerGroupId[]): MapLayerSelection[] {
-  return MAP_LAYER_GROUPS.map((id) => ({ id, visible: !hidden.includes(id) }));
+  return MAP_LAYER_GROUPS.map((id) => ({ id, visible: !hidden.includes(id), declared: true }));
 }
 
 function layoutOf(
@@ -328,13 +331,36 @@ describe('applyLayerGroups', () => {
     );
   });
 
+  it('leaves a layer the style hid on purpose hidden when the payload says nothing', () => {
+    // The style authors `visibility: none` on some layers. A payload that names no
+    // group is silence, not a decision, so nothing may be un-hidden: the refuter was
+    // right that the previous behaviour turned an authored decision into its reverse.
+    const layers = [{ id: 'water', layout: { visibility: 'none' } }, { id: 'roads_minor' }];
+    const selection = resolveLayerSelection([], MAPLIBRE_LAYER_CAPABILITIES);
+
+    expect(applyLayerGroups(layers, selection)).toBe(layers);
+    expect(applyLayerGroups(layers, selection)[0].layout?.visibility).toBe('none');
+  });
+
+  it('un-hides an authored layer only when the payload names that group as visible', () => {
+    const layers = [{ id: 'water', layout: { visibility: 'none' } }];
+    const named = resolveLayerSelection(
+      [{ id: 'water', defaultVisible: true }],
+      MAPLIBRE_LAYER_CAPABILITIES,
+    );
+
+    expect(applyLayerGroups(layers, named)[0].layout?.visibility).toBeUndefined();
+    // The source layer is still the style's own: the transform copied it.
+    expect(layers[0].layout).toEqual({ visibility: 'none' });
+  });
+
   it('ignores a group this build does not implement', () => {
     // An id from a newer server changes nothing, exactly as `resolveLayerSelection`
     // drops it from the payload.
     const layers = styleLayers();
     const selection: MapLayerSelection[] = [
       ...ALL_VISIBLE,
-      { id: 'telemetry' as unknown as MapLayerGroupId, visible: false },
+      { id: 'telemetry' as unknown as MapLayerGroupId, visible: false, declared: true },
     ];
 
     expect(applyLayerGroups(layers, selection)).toBe(layers);

@@ -102,6 +102,15 @@ export interface MapLayerGroupConfig {
 export interface MapLayerSelection {
   id: MapLayerGroupId;
   visible: boolean;
+  /**
+   * Whether the payload named this group at all.
+   *
+   * Silence is not a decision: a payload that never mentions `water` must leave the
+   * water layers exactly as the style authored them, including a layer the style
+   * hid on purpose. Only a named group is the payload's to change, and only a named
+   * group's `visible` may un-hide what the style hid.
+   */
+  declared: boolean;
 }
 
 /**
@@ -154,6 +163,7 @@ export function resolveLayerSelection(
   return MAP_LAYER_GROUPS.filter((id) => capabilities.groups.includes(id)).map((id) => ({
     id,
     visible: declared.get(id) ?? true,
+    declared: declared.has(id),
   }));
 }
 
@@ -168,9 +178,12 @@ export function resolveLayerSelection(
  * group in it that this build does not implement is simply not one of
  * `MAP_LAYER_GROUPS` and is ignored here too.
  *
- * - a hidden group's layers get `layout.visibility: 'none'`;
- * - a visible group's layers lose that key (a style layer without it is visible,
- *   so writing `'visible'` would freeze a decision the style never made);
+ * - only a group the payload **names** is touched: silence leaves the layers as the
+ *   style authored them, because a style may hide a layer on purpose and a payload
+ *   that never mentions the group has not asked for it to appear;
+ * - a named hidden group's layers get `layout.visibility: 'none'`;
+ * - a named visible group's layers lose that key (a style layer without it is
+ *   visible, so writing `'visible'` would freeze a decision the style never made);
  * - the canvas and every layer no group claims keep what they had: a group can
  *   never blank the map it is drawn on, and a `refs:*` layer of ours belongs to a
  *   document, not to a basemap group.
@@ -187,7 +200,7 @@ export function applyLayerGroups<T extends { id: string; layout?: Record<string,
   const hidden = new Set<MapLayerGroupId>();
   const shown = new Set<MapLayerGroupId>();
   for (const entry of selection) {
-    if (!isMapLayerGroupId(entry.id)) continue;
+    if (!isMapLayerGroupId(entry.id) || !entry.declared) continue;
     if (entry.visible) shown.add(entry.id);
     else hidden.add(entry.id);
   }
