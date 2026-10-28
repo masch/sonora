@@ -4,7 +4,12 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { archiveFileName, archiveIdentity, type ArchiveIdentity } from '@/services/map-archives';
+import {
+  archiveFileName,
+  archiveIdentity,
+  isArchiveCurrent,
+  type ArchiveIdentity,
+} from '@/services/map-archives';
 import {
   archiveErrorCode,
   ensureArchiveOnDisk,
@@ -66,6 +71,12 @@ function MapDownloadButtonContent({ point }: MapDownloadButtonProps) {
   // defensively, because a store without a `map` section must not take the trip
   // screen down: absent simply means this action does not police the budget.
   const cacheMaxBytes = useRemoteConfigStore((state) => state.config.map?.download.cacheMaxBytes);
+  // The bytes the payload advertises for the region this trip resolves to. Read from
+  // the same catalog the region came from, keyed by the key that resolution already
+  // produced, so there is no second idea of which region this is.
+  const archiveBytes = useRemoteConfigStore((state) =>
+    regionKey === null ? undefined : state.config.map?.regions[regionKey]?.archiveBytes,
+  );
   const [snapshot, setSnapshot] = useState<MapDownloadSnapshot | null>(null);
 
   // Memoised because the identity is an object: a fresh one every render would make
@@ -81,14 +92,20 @@ function MapDownloadButtonContent({ point }: MapDownloadButtonProps) {
    *
    * The listing is the index, so it answers "is this archive here?" without a second
    * one: an archive this device already wrote needs no download, and saying so is more
-   * useful than offering the action again. Memoised on the archive name because the
-   * read is synchronous and the answer only changes when the archive does.
+   * useful than offering the action again. "Here" is not enough on its own though — an
+   * artifact republished in place keeps its name and changes its bytes — so the size
+   * the payload advertises decides whether the file is the artifact we would fetch.
+   * Memoised on the archive name and that size, because the read is synchronous and
+   * the answer only changes when the archive or the payload does.
    */
   const alreadyOnDevice = useMemo(
     () =>
       archiveName !== null &&
-      listDownloadedArchives().some((archive) => archive.name === archiveName),
-    [archiveName],
+      isArchiveCurrent(
+        listDownloadedArchives().find((archive) => archive.name === archiveName),
+        { name: archiveName, bytes: archiveBytes },
+      ),
+    [archiveName, archiveBytes],
   );
 
   // A settled download — this run's — is the whole truth about its own archive; an
