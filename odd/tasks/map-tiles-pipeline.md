@@ -1,7 +1,7 @@
 # Feature: Own Map Tiles
 
 **Feature ID:** `map-tiles-pipeline`
-**Status:** plan only — three spikes measured the cost (issue #502), nothing is built. The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
+**Status:** in progress — `T2` (one build entry point) is built on `feat/map-tiles-build`; the rest of the plan is still a plan. Three spikes measured the cost (issue #502). The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
 
 ## Specs
 
@@ -29,7 +29,7 @@ Measured on the `calamuchita` bbox (issue #502, three comments):
 ## Tasks
 
 - `T1` — vendor the fork, not a fork of the fork: pin the upstream `protomaps/basemaps` commit and carry the three edits as patches in the repository (`scripts/map-tiles/patches/`), so the profile's provenance is a commit id plus a reviewable diff.
-- `T2` — one build entry point: a Make target that clones the pinned commit, applies the patches, builds the profile jar and runs the tiler for one region, with the sources cache as an explicit directory argument.
+- `T2` — one build entry point: a Make target that clones the pinned commit, applies the patches, builds the profile jar and runs the tiler for one region, with the sources cache as an explicit directory argument (done on `feat/map-tiles-build`; `make map-tiles-build REGION=<region>`, planned and tested in `scripts/map-tiles/build.ts` and `scripts/map-tiles/__tests__/build.test.ts`).
 - `T3` — downloads that cannot lie: every fetched artefact is verified before use (speed guard plus resume for mirrors that stall without closing, zip/JAR integrity check, and a size check where the server publishes one). Three truncated downloads and one 9h46m stall already happened without it.
 - `T4` — publish: upload the archive and the style with the existing `api-upload-map-tiles-*` targets, bumping `MAP_ARTIFACT_VERSION` per environment (staging first, per `S2`).
 - `T5` — offline budget: confirm `map.download.autoMaxBytes` (8 MB) and `cacheMaxBytes` (100 MB) still fit the new archive and the regions we intend to publish — the measured 824 KB says they do, and this task is the check, not the change.

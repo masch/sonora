@@ -546,6 +546,34 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
+# ── Self-built map tiles: one region in, one archive out ────────
+# The published archive is built here, not downloaded from a third party. One command,
+# one region: the script reads the pinned upstream commit (scripts/map-tiles/upstream.json),
+# checks out that commit (or reuses the checkout already on it), applies
+# scripts/map-tiles/patches/*.patch in filename order, builds the profile jar and runs the
+# tiler over the region's bbox from MAP_REGIONS. Every step goes through one executor, so the
+# first failure ends the run naming the step: a patch that no longer applies never reaches
+# the compiler, and no `set -euo pipefail` has to be pasted by hand.
+#
+# CACHE is where the expensive things live: the checkout in <cache>/basemaps, the ~1.4 GB of
+# auxiliary sources the tiler downloads in <cache>/planetiler, and the archive the run writes to
+# <cache>/out/<region>.pmtiles, which the api-upload-map-tiles-* targets below upload. Without
+# CACHE the script uses a directory under the OS temp, which the temp cleaner may delete, so
+# point it at a durable path explicitly:
+#
+#   make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles
+#
+# With that directory warm a region builds in ~4 min instead of ~18 min cold, because the next
+# run reuses the checkout and the sources under it.
+
+MAXZOOM ?= 16
+# Empty means "the script's OS-temp default"; set CACHE=<durable path> to keep the cache.
+CACHE ?=
+
+.PHONY: map-tiles-build
+map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
+	bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
 # client never revalidates. --remote is required: without it wrangler writes to its
