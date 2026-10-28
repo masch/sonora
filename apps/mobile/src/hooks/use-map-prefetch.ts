@@ -5,7 +5,7 @@ import type { MapDownloadPolicy } from '@sonora/shared';
 
 import { resolveMapRenderer } from '@/components/map/resolve-renderer';
 import { APP_CONFIG } from '@/config/app-config';
-import { archiveFileName, archiveIdentity } from '@/services/map-archives';
+import { archiveFileName, archiveIdentity, isArchiveCurrent } from '@/services/map-archives';
 import { ensureArchiveOnDisk, listDownloadedArchives } from '@/services/map-archive-download';
 import { canKeepMapArchive } from '@/services/map-archive-support';
 import { decideDownload, type MapNetwork } from '@/services/map-download-policy';
@@ -66,16 +66,31 @@ async function currentNetwork(): Promise<MapNetwork> {
 function pendingRegions(
   map: NonNullable<ReturnType<typeof useRemoteConfigStore.getState>['config']['map']>,
 ): MapPrefetchRegion[] {
-  const downloaded = new Set(listDownloadedArchives().map((archive) => archive.name));
+  // Indexed by name, because the name is what a region's identity resolves to: one
+  // lookup per region, and the freshness question is asked of that file alone.
+  const downloaded = new Map(
+    listDownloadedArchives().map((archive) => [archive.name, archive] as const),
+  );
 
   const pending: MapPrefetchRegion[] = [];
   for (const key of map.download.preload) {
     const region = map.regions[key];
     if (!region) continue;
     const identity = archiveIdentity(region.archiveUrl, key);
+    if (!identity) continue;
+    const archiveName = archiveFileName(identity);
     // An archive already on the device costs nothing, so it is neither downloaded
-    // again nor counted in the total the walker is asked to approve.
-    if (!identity || downloaded.has(archiveFileName(identity))) continue;
+    // again nor counted in the total the walker is asked to approve — as long as it
+    // is still the artifact the payload advertises. The name carries the version but
+    // an artifact can be overwritten in place under it, so the size decides.
+    if (
+      isArchiveCurrent(downloaded.get(archiveName), {
+        name: archiveName,
+        bytes: region.archiveBytes,
+      })
+    ) {
+      continue;
+    }
     pending.push({
       key,
       label: region.label,

@@ -147,6 +147,33 @@ describe('MapDownloadButton', () => {
     expect(mockedEnsureOnDisk).not.toHaveBeenCalled();
   });
 
+  it('offers the download again when the stored archive is not the size the payload advertises', async () => {
+    const onDevice = archiveIdentity(REGIONS.calamuchita.archiveUrl, 'calamuchita');
+    if (!onDevice) throw new Error('the fixture url must name a version');
+    // Overwritten in place: same name, other bytes. The name alone would call this
+    // archive available and never fetch the artifact the payload advertises.
+    mockedListDownloaded.mockReturnValue([
+      { ...onDevice, name: archiveFileName(onDevice), bytes: CALAMUCHITA_BYTES - 1 },
+    ]);
+
+    await renderFor(INSIDE_CALAMUCHITA);
+    await findButton();
+
+    expect(screen.queryByText('Map available offline')).toBeNull();
+    expect(screen.getByLabelText('Prepare this map')).toBeTruthy();
+    expect(screen.getByTestId('map-download-button')).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('map-download-button'));
+    });
+    expect(mockedEnsureOnDisk).toHaveBeenCalledTimes(1);
+    expect(mockedEnsureOnDisk).toHaveBeenCalledWith({
+      archiveUrl: REGIONS.calamuchita.archiveUrl,
+      identity: onDevice,
+      cacheMaxBytes: CACHE_MAX_BYTES,
+    });
+  });
+
   it('downloads the trip region once, with the payload budget, and ends available', async () => {
     let finishDownload!: (uri: string) => void;
     mockedEnsureOnDisk.mockImplementation(

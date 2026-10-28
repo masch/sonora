@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { DEFAULT_REMOTE_CONFIG, type RemoteConfigPayload } from '@sonora/shared';
 
 import { useMapPrefetch } from '@/hooks/use-map-prefetch';
+import { archiveFileName, archiveIdentity, type StoredArchive } from '@/services/map-archives';
 import { ensureArchiveOnDisk, listDownloadedArchives } from '@/services/map-archive-download';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 
@@ -28,6 +29,19 @@ const originalPlatform = platform.OS;
 
 const ARCHIVE_ORIGIN = 'https://media.sonora.test';
 
+/** The bytes the payload advertises for the one preloaded region. */
+const CALAMUCHITA_BYTES = 826_000;
+
+/** The url the server derives for the one preloaded region. */
+const CALAMUCHITA_URL = `${ARCHIVE_ORIGIN}/media/public/tiles/calamuchita/v1.pmtiles`;
+
+/** One archive the device already holds, as the listing describes it. */
+function storedArchive(bytes: number): StoredArchive {
+  const identity = archiveIdentity(CALAMUCHITA_URL, 'calamuchita');
+  if (!identity) throw new Error('the fixture url must name a version');
+  return { ...identity, name: archiveFileName(identity), bytes };
+}
+
 /** The payload `/config` would have handed the app: one region, maplibre, preloaded. */
 function setMapConfig(): void {
   const config: RemoteConfigPayload = {
@@ -39,8 +53,8 @@ function setMapConfig(): void {
         calamuchita: {
           bbox: [-64.83, -32.28, -64.66, -32.12],
           label: 'Valle de Calamuchita',
-          archiveUrl: `${ARCHIVE_ORIGIN}/media/public/tiles/calamuchita/v1.pmtiles`,
-          archiveBytes: 826_000,
+          archiveUrl: CALAMUCHITA_URL,
+          archiveBytes: CALAMUCHITA_BYTES,
         },
       },
       download: {
@@ -83,6 +97,36 @@ describe('useMapPrefetch', () => {
     // The asymmetric half of this suite: the same payload and the same mount do call
     // the listing when the platform can hold an archive.
     expect(mockedListDownloaded).toHaveBeenCalled();
+  });
+
+  it('prices a region again when the stored archive is not the size the payload advertises', async () => {
+    platform.OS = 'ios';
+    setMapConfig();
+    // The artifact was overwritten in place under the same name, which is exactly what
+    // an overwrite leaves behind: the file is there, and it is not the archive the
+    // payload advertises.
+    mockedListDownloaded.mockReturnValue([storedArchive(CALAMUCHITA_BYTES - 1)]);
+
+    await mountPrefetch();
+
+    expect(mockedEnsureOnDisk).toHaveBeenCalledTimes(1);
+    expect(mockedEnsureOnDisk).toHaveBeenCalledWith({
+      archiveUrl: CALAMUCHITA_URL,
+      identity: archiveIdentity(CALAMUCHITA_URL, 'calamuchita'),
+      cacheMaxBytes: 42_000_000,
+    });
+  });
+
+  it('skips a region whose stored archive still matches the payload size', async () => {
+    platform.OS = 'ios';
+    setMapConfig();
+    mockedListDownloaded.mockReturnValue([storedArchive(CALAMUCHITA_BYTES)]);
+
+    await mountPrefetch();
+
+    // The other half of the rule: an archive of the advertised size is current, so it
+    // costs nothing and is never downloaded again.
+    expect(mockedEnsureOnDisk).not.toHaveBeenCalled();
   });
 
   it('never touches the device archives in a browser', async () => {

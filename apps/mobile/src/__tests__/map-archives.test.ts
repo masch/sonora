@@ -3,6 +3,7 @@ import { mapArchivePath } from '@sonora/shared';
 import {
   archiveFileName,
   archiveIdentity,
+  isArchiveCurrent,
   listArchives,
   planEviction,
   type StoredArchive,
@@ -113,6 +114,38 @@ describe('listArchives', () => {
 
   it('reports nothing for an empty directory', () => {
     expect(listArchives([])).toEqual([]);
+  });
+});
+
+describe('isArchiveCurrent', () => {
+  it('treats an archive of the size the payload advertises as current', () => {
+    const archive = stored('calamuchita', 826_000);
+
+    expect(isArchiveCurrent(archive, { name: archive.name, bytes: 826_000 })).toBe(true);
+  });
+
+  it('treats an archive of another size as stale, because an overwrite keeps the name', () => {
+    const archive = stored('calamuchita', 826_000);
+
+    // The artifact was republished in place: the file still announces `v1` in its
+    // name, and the bytes underneath are no longer the ones the payload advertises.
+    expect(isArchiveCurrent(archive, { name: archive.name, bytes: 826_001 })).toBe(false);
+  });
+
+  it('falls back to the name when the payload advertises no size', () => {
+    const archive = stored('calamuchita', 826_000);
+
+    expect(isArchiveCurrent(archive, { name: archive.name })).toBe(true);
+    // Zero is a region the server did not price, not an archive of no bytes: a
+    // zero-sized expectation would otherwise re-download the same file forever.
+    expect(isArchiveCurrent(archive, { name: archive.name, bytes: 0 })).toBe(true);
+  });
+
+  it('is never current without an archive to compare', () => {
+    const name = nameOf('calamuchita', 'v1', 'aaaaaaaa');
+
+    expect(isArchiveCurrent(undefined, { name, bytes: 826_000 })).toBe(false);
+    expect(isArchiveCurrent(null, { name, bytes: 826_000 })).toBe(false);
   });
 });
 
