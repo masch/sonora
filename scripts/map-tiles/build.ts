@@ -7,11 +7,12 @@
  *
  * 1. `planBuild` — pure apart from the two injected readers, so the pin and the patch list
  *    are arguments instead of surprises. It returns the ordered steps the run will take:
- *    read the pin, check out the pinned commit (or reuse a checkout already at it), apply
- *    every patch in filename order, build the profile jar, run the tiler, report. It throws
- *    a readable error for a region `MAP_REGIONS` does not declare, an unreadable pin, a pin
- *    without a commit, a patches directory with no patches, and a maxzoom the profile cannot
- *    emit — before an operator spends four minutes and 1.4 GB finding out.
+ *    read the pin, check out the pinned commit (or reuse a checkout already at it), return the
+ *    tree to that commit, apply every patch in filename order, build the profile jar, run the
+ *    tiler, report. It throws a readable error for a region `MAP_REGIONS` does not declare, an
+ *    unreadable pin, a pin without a commit, a patches directory with no patches, and a
+ *    maxzoom the profile cannot emit — before an operator spends four minutes and 1.4 GB
+ *    finding out.
  * 2. `runBuild` — the thin layer: one injected executor, one step at a time, and the first
  *    non-zero exit ends the run with the step that failed. There is no `cd … && …` anywhere,
  *    so no prefix can fail silently and no `set -euo pipefail` pasted by hand is the thing
@@ -22,6 +23,11 @@
  * construction here: patch paths handed to `git -C` are absolute (git resolves a relative
  * one against `-C`, not against this process), and the checkout is reused when it already
  * sits at the pinned commit, so a re-run does not re-clone what is already there.
+ *
+ * Reuse needs a third guarantee, because a run leaves its applied patches in the work tree as
+ * uncommitted changes: the step after the checkout returns that tree to the pinned commit. The
+ * invariant is that **patches are always applied to a tree that is exactly the pinned commit**,
+ * whether it was just cloned or reused.
  *
  * Usage:
  *   bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>]
@@ -120,6 +126,14 @@ export interface UpstreamPin {
 export type BuildStep =
   | { kind: 'read-pin'; label: string; repository: string; commit: string }
   | { kind: 'sync-upstream'; label: string; repository: string; commit: string; dir: string }
+  | {
+      kind: 'reset-checkout';
+      label: string;
+      commit: string;
+      dir: string;
+      /** Run in order; together they make the tree exactly `commit` again. */
+      commands: Command[];
+    }
   | { kind: 'apply-patch'; label: string; patch: string; command: Command }
   | { kind: 'build-jar'; label: string; command: Command; targetDir: string }
   | {
@@ -295,6 +309,21 @@ export function planBuild(options: BuildOptions, deps: Partial<PlanDeps> = {}): 
       repository: pin.repository,
       commit: pin.commit,
       dir: workDir,
+    },
+    {
+      // Patches are always applied to a tree exactly at the pin: a reused checkout still carries
+      // the previous run's patches, and `git apply` stops on the first one it finds applied.
+      // Unconditional because the plan is pure; on a fresh clone both commands are no-ops.
+      // The ~1.4 GB sources survive because the tiler downloads them into `<cache>/planetiler`,
+      // a sibling of this checkout, so a clean inside it cannot reach them.
+      kind: 'reset-checkout',
+      label: `reset ${workDir} to ${commitShort}`,
+      commit: pin.commit,
+      dir: workDir,
+      commands: [
+        { file: 'git', args: ['-C', workDir, 'reset', '--hard', pin.commit], cwd: workDir },
+        { file: 'git', args: ['-C', workDir, 'clean', '-fdx'], cwd: workDir },
+      ],
     },
     ...patches.map((name): BuildStep => ({
       kind: 'apply-patch',
@@ -630,6 +659,8 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
 
       case 'sync-upstream': {
         if (checkoutAt(step.dir, step.commit)) {
+          // Reused without a download; the `reset-checkout` step that follows makes the tree the
+          // one a fresh clone would have given us.
           log(`reusing the checkout at ${step.dir} (already at ${step.commit.slice(0, 7)})`);
           return { exitCode: 0 };
         }
@@ -675,6 +706,21 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
         });
         if (checkout.exitCode !== 0) {
           return failed(checkout, `checking out ${step.commit} in ${step.dir} failed`);
+        }
+        return { exitCode: 0 };
+      }
+
+      case 'reset-checkout': {
+        const short = step.commit.slice(0, 7);
+        log(`resetting ${step.dir} to ${short}`);
+        for (const command of step.commands) {
+          const result = await run(command);
+          if (result.exitCode !== 0) {
+            return failed(
+              result,
+              `resetting the checkout at ${step.dir} to ${short} failed (git ${command.args.slice(2).join(' ')})`,
+            );
+          }
         }
         return { exitCode: 0 };
       }

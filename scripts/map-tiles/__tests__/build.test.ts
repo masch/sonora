@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -9,11 +10,14 @@ import {
   type BuildOptions,
   type BuildPlan,
   type BuildStep,
+  type Command,
   type StepExecutor,
   type ToolchainProbe,
+  createExecutor,
   missingEnrichedLayers,
   planBuild,
   runBuild,
+  runCommand,
   tilerArgs,
   toolchainProblem,
 } from '../build';
@@ -77,17 +81,54 @@ function run(
   options: Partial<BuildOptions>,
   executor: StepExecutor,
   probe: ToolchainProbe = TOOLCHAIN,
+  deps = planDeps(),
 ) {
   return runBuild(
     { ...OPTIONS, ...options },
     {
-      ...planDeps(),
+      ...deps,
       executor,
       probeToolchain: () => probe,
       now: () => 0,
       log: () => {},
     },
   );
+}
+
+/** Runs git in `dir` without this machine's own config, so the test owns the repo it builds. */
+function git(dir: string, args: string[]): string {
+  const result = spawnSync('git', ['-C', dir, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
+  });
+  if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
+  return result.stdout;
+}
+
+/** A checkout at the pin, left the way a run leaves it: patch changes, and what the patch added. */
+function checkoutLeftByPreviousRun(dir: string): string {
+  mkdirSync(dir, { recursive: true });
+  git(dir, ['init', '--quiet']);
+  writeFileSync(join(dir, 'PROFILE.md'), 'upstream\n');
+  git(dir, ['add', '.']);
+  git(dir, [
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@example.invalid',
+    'commit',
+    '-q',
+    '-m',
+    'pin',
+  ]);
+  writeFileSync(join(dir, 'PROFILE.md'), 'patched\n');
+  writeFileSync(join(dir, 'leftover.txt'), 'left by the previous run\n');
+  return git(dir, ['rev-parse', 'HEAD']).trim();
+}
+
+/** The pin the plan reads, with `commit` as the pinned commit. */
+function pinAt(commit: string) {
+  return JSON.stringify({ ...JSON.parse(PIN), commit });
 }
 
 describe('planBuild', () => {
@@ -133,6 +174,7 @@ describe('planBuild', () => {
     expect(steps.map((step) => step.kind)).toEqual([
       'read-pin',
       'sync-upstream',
+      'reset-checkout',
       'apply-patch',
       'apply-patch',
       'apply-patch',
@@ -226,6 +268,7 @@ describe('runBuild', () => {
     expect(steps.map((step) => step.kind)).toEqual([
       'read-pin',
       'sync-upstream',
+      'reset-checkout',
       'apply-patch',
       'apply-patch',
     ]);
@@ -240,6 +283,7 @@ describe('runBuild', () => {
     expect(steps.map((step) => step.kind)).toEqual([
       'read-pin',
       'sync-upstream',
+      'reset-checkout',
       'apply-patch',
       'apply-patch',
       'apply-patch',
@@ -248,6 +292,46 @@ describe('runBuild', () => {
       'report',
     ]);
     expect(new Set(steps.map((step) => step.label)).size).toBe(steps.length);
+  });
+
+  it('resets a checkout already at the pin before the first patch, so a warm cache builds like a cold one', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-reuse-'));
+    const workDir = join(root, 'basemaps');
+    try {
+      const commit = checkoutLeftByPreviousRun(workDir);
+      const options: Partial<BuildOptions> = { workDir, cacheDir: join(root, 'cache') };
+      const deps = planDeps({ readFile: () => pinAt(commit) });
+
+      const commands: Command[] = [];
+      /** The tree the first patch meets, and nothing else. */
+      let treeAtFirstPatch: string | null = null;
+      const executor = createExecutor({
+        log: () => {},
+        run: async (command) => {
+          commands.push(command);
+          if (command.args.includes('apply') && treeAtFirstPatch === null) {
+            treeAtFirstPatch = git(workDir, ['status', '--porcelain']);
+          }
+          // Only the reset is real; the patches, the jar build and the tiler are recorded.
+          if (command.file === 'git' && !command.args.includes('apply')) return runCommand(command);
+          if (command.file === 'mvn') {
+            mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
+            writeFileSync(join(workDir, 'tiles', 'target', 'x-with-deps.jar'), '');
+          }
+          return { exitCode: 0, stdout: '' };
+        },
+      });
+
+      const result = await run(options, executor, TOOLCHAIN, deps);
+
+      expect(result.ok).toBe(true);
+      expect(commands.filter((command) => command.args.includes('clone'))).toHaveLength(0);
+      expect(treeAtFirstPatch).toBe('');
+      expect(existsSync(join(workDir, 'leftover.txt'))).toBe(false);
+      expect(git(workDir, ['rev-parse', 'HEAD']).trim()).toBe(commit);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('stops with a one-sentence message instead of running a step when the toolchain is missing', async () => {

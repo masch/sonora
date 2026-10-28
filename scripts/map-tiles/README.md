@@ -40,13 +40,15 @@ make map-tiles-build REGION=calamuchita
 
 Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default a directory under the OS temp, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
 
-The script — [`build.ts`](./build.ts) — does what the prose recipe here used to ask a human to paste: it reads `upstream.json`, checks out that commit (or reuses a checkout already on it), applies `patches/*.patch` in filename order with absolute paths, builds `target/protomaps-basemap-*-with-deps.jar`, runs the tiler, and reports. Every step runs through one executor, so the first failure ends the run naming the step; there is no `set -euo pipefail` to remember. It also refuses to start without JDK 21 and Maven, in one sentence that says what is missing and where it looked.
+The script — [`build.ts`](./build.ts) — does what the prose recipe here used to ask a human to paste: it reads `upstream.json`, checks out that commit (or reuses a checkout already on it), returns the checkout to that commit, applies `patches/*.patch` in filename order with absolute paths, builds `target/protomaps-basemap-*-with-deps.jar`, runs the tiler, and reports. Every step runs through one executor, so the first failure ends the run naming the step; there is no `set -euo pipefail` to remember. It also refuses to start without JDK 21 and Maven, in one sentence that says what is missing and where it looked.
 
 On success it prints the output path, its size in bytes, how long the tile step took, and the archive's `vector_layers` ids. If `landuse`, `buildings` or `pois` is absent it warns, naming the patch that should have added it.
 
 ### Where the cache lives, and why to keep it
 
 The cache is the checkout plus the auxiliary sources the tiler downloads — ~1.4 GB. It defaults to `$TMPDIR/sonora-map-tiles` and the script prints it at the start and end of every run. That is the directory worth keeping: with it warm a region builds in ~4 minutes, and cold it adds ~18 minutes of downloading. Pass `CACHE=/var/tmp/sonora-map-tiles` (or anywhere outside the OS temp cleaner) to make that explicit. The archive is written to `<cache>/out/<region>.pmtiles` for the same reason: the same directory can be handed to the upload targets.
+
+A run leaves its patches applied in the checkout, so before patching it returns that checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`): patches always meet a tree that is exactly the pin, and a second run with a warm cache builds what the first one did instead of stopping at a patch it already finds applied. The sources survive that reset because they are not in the checkout — the tiler downloads them into `<cache>/planetiler`, a sibling directory.
 
 ### When a patch stops the build
 
