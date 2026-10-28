@@ -22,12 +22,17 @@ The map publishes PMTiles built by us instead of a third-party archive, so it ca
 ## Building it
 
 ```bash
+set -euo pipefail
+
 # 1. the pinned upstream, shallow, at the exact commit
 git clone https://github.com/protomaps/basemaps.git /tmp/basemaps-build
 git -C /tmp/basemaps-build checkout 42ffaaa4a85a41bfcb23e43cc0f5b492a5eca123
 
-# 2. our edits, in order — a patch that no longer applies is upstream drift, not something to force
+# 2. our edits, in order. `set -e` above is what makes drift stop the build: the
+#    first patch that no longer applies aborts here, before anything is compiled,
+#    and `--check` fails without touching the tree.
 for patch in scripts/map-tiles/patches/*.patch; do
+  git -C /tmp/basemaps-build apply --check "$patch"
   git -C /tmp/basemaps-build apply "$patch"
 done
 
@@ -49,4 +54,4 @@ Against the `calamuchita` bbox at z16, with the auxiliary sources warm (issue #5
 
 ## The failure mode this design has
 
-When upstream moves, a patch fails to apply and the build stops with the diff in front of it. That is the point: the alternative — a vendored copy — drifts silently, and the map quietly stops gaining the fixes upstream ships. Re-pinning is deliberately a small, explicit act: change `upstream.json`, re-generate the patches, and let the build tell you whether they still mean what they meant.
+When upstream moves, the recipe above stops at the first patch that no longer applies — `set -e` makes the loop abort and `--check` fails before the tree is touched — so a partially patched profile is never compiled. That is the point: the alternative — a vendored copy — drifts silently, and the map quietly stops gaining the fixes upstream ships. Re-pinning is deliberately a small, explicit act: change `upstream.json`, re-generate the patches, and let the build tell you whether they still mean what they meant.
