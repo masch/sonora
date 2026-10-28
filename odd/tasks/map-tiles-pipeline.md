@@ -1,7 +1,7 @@
 # Feature: Own Map Tiles
 
 **Feature ID:** `map-tiles-pipeline`
-**Status:** plan only — three spikes measured the cost (issue #502), nothing is built. The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
+**Status:** in progress — `T2` (one build entry point) is built on `feat/map-tiles-build`; the rest of the plan is still a plan. Three spikes measured the cost (issue #502). The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
 
 ## Specs
 

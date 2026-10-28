@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 import { MAP_REGIONS, bboxTuple } from '../../../packages/shared/src/map/regions';
 import {
+  DEFAULT_CACHE_DIR,
   DEFAULT_MAXZOOM,
   type BuildOptions,
   type BuildPlan,
@@ -15,7 +16,9 @@ import {
   type ToolchainProbe,
   createExecutor,
   missingEnrichedLayers,
+  parseArgs,
   planBuild,
+  probeToolchain,
   runBuild,
   runCommand,
   tilerArgs,
@@ -129,6 +132,85 @@ function checkoutLeftByPreviousRun(dir: string): string {
 /** The pin the plan reads, with `commit` as the pinned commit. */
 function pinAt(commit: string) {
   return JSON.stringify({ ...JSON.parse(PIN), commit });
+}
+
+/**
+ * An upstream with two commits and a checkout at the first one, left dirty by a run at the old
+ * pin: `PROFILE.md` was edited by a patch and `leftover.txt` was added. Re-pinning to the second
+ * commit is the case where git refuses the `checkout` because that patch change is in the way.
+ */
+function checkoutAtAnOldPin(root: string): { workDir: string; newCommit: string } {
+  const originDir = join(root, 'origin');
+  mkdirSync(originDir, { recursive: true });
+  git(originDir, ['init', '--quiet']);
+  writeFileSync(join(originDir, 'PROFILE.md'), 'upstream v1\n');
+  git(originDir, ['add', '.']);
+  git(originDir, [
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@example.invalid',
+    'commit',
+    '-q',
+    '-m',
+    'v1',
+  ]);
+
+  const workDir = join(root, 'basemaps');
+  git(root, ['clone', '--quiet', originDir, workDir]);
+
+  // Upstream moves and the pin moves with it; the checkout below is still at the old commit.
+  writeFileSync(join(originDir, 'PROFILE.md'), 'upstream v2\n');
+  git(originDir, [
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@example.invalid',
+    'commit',
+    '-q',
+    '-am',
+    'v2',
+  ]);
+  const newCommit = git(originDir, ['rev-parse', 'HEAD']).trim();
+
+  writeFileSync(join(workDir, 'PROFILE.md'), 'patched v1\n');
+  writeFileSync(join(workDir, 'leftover.txt'), 'left by the previous run\n');
+
+  return { workDir, newCommit };
+}
+
+/** `#!/bin/sh` that records every call in `log` and answers `-version` with `report`. */
+function fakeJava(path: string, log: string, report: string): void {
+  mkdirSync(join(path, '..'), { recursive: true });
+  writeFileSync(
+    path,
+    [
+      '#!/bin/sh',
+      `echo "$@" >> '${log}'`,
+      `case "$1" in -version) echo '${report}' >&2 ;; esac`,
+      'exit 0',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+}
+
+/** Parses argv the way `main` does, then runs the plan; a rejection is returned, not rethrown. */
+async function runArgv(argv: string[]): Promise<{ error?: string; steps: BuildStep[] }> {
+  const { steps, executor } = recorder();
+  try {
+    const options = parseArgs(argv);
+    await runBuild(options, {
+      ...planDeps(),
+      executor,
+      probeToolchain: () => TOOLCHAIN,
+      now: () => 0,
+      log: () => {},
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error), steps };
+  }
+  return { steps };
 }
 
 describe('planBuild', () => {
@@ -318,7 +400,7 @@ describe('runBuild', () => {
             mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
             writeFileSync(join(workDir, 'tiles', 'target', 'x-with-deps.jar'), '');
           }
-          return { exitCode: 0, stdout: '' };
+          return { exitCode: 0 };
         },
       });
 
@@ -347,6 +429,151 @@ describe('runBuild', () => {
     expect(result.message?.startsWith('JDK 21 and Maven are missing')).toBe(true);
     expect(result.step).toBeUndefined();
     expect(steps).toHaveLength(0);
+  });
+
+  it('moves a dirty checkout to a new pin by fetching, leaving the move to the reset step', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-repin-'));
+    try {
+      const { workDir, newCommit } = checkoutAtAnOldPin(root);
+      const deps = planDeps({ readFile: () => pinAt(newCommit) });
+
+      const commands: Command[] = [];
+      const executor = createExecutor({
+        log: () => {},
+        readVectorLayers: () => ['landuse', 'buildings', 'pois'],
+        sizeOf: () => 1234,
+        run: async (command) => {
+          commands.push(command);
+          // The patches are the real ones' names, not a diff this test repository can apply.
+          if (command.file === 'git' && command.args.includes('apply')) return { exitCode: 0 };
+          if (command.file === 'git') return runCommand(command);
+          if (command.file === 'mvn') {
+            mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
+            writeFileSync(join(workDir, 'tiles', 'target', 'x-with-deps.jar'), '');
+          }
+          return { exitCode: 0 };
+        },
+      });
+
+      const result = await run(
+        { workDir, cacheDir: join(root, 'cache') },
+        executor,
+        TOOLCHAIN,
+        deps,
+      );
+
+      if (!result.ok) throw new Error(`the re-pin failed: ${result.message ?? 'no message'}`);
+      expect(result.ok).toBe(true);
+      // `checkout --detach` is what git refuses while the previous run's patches are applied;
+      // the reset step that follows is what moves HEAD, so sync-upstream only fetches.
+      expect(commands.filter((command) => command.args.includes('checkout'))).toHaveLength(0);
+      expect(commands.some((command) => command.args.includes('fetch'))).toBe(true);
+      expect(git(workDir, ['rev-parse', 'HEAD']).trim()).toBe(newCommit);
+      expect(readFileSync(join(workDir, 'PROFILE.md'), 'utf8')).toBe('upstream v2\n');
+      expect(existsSync(join(workDir, 'leftover.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('parseArgs', () => {
+  it('rejects an empty --maxzoom= by name instead of building z0', async () => {
+    const { error, steps } = await runArgv(['--region=calamuchita', '--maxzoom=']);
+
+    expect(steps).toHaveLength(0);
+    expect(error).toMatch(/--maxzoom/);
+    // `Number('')` is 0, which is a zoom the profile emits: it would build a useless z0 archive.
+    expect(() => parseArgs(['--region=calamuchita', '--maxzoom=  '])).toThrow(/--maxzoom/);
+  });
+
+  it('rejects an empty --cache= by name instead of resolving it to the process cwd', async () => {
+    const { error, steps } = await runArgv(['--region=calamuchita', '--cache=']);
+
+    expect(steps).toHaveLength(0);
+    expect(error).toMatch(/--cache/);
+    // `resolve('')` is the process cwd, where the reset step would then run `git clean -fdx`.
+    expect(error).not.toContain(process.cwd());
+  });
+
+  it('keeps the documented defaults when the optional flags are absent', () => {
+    const defaults = parseArgs(['--region=calamuchita']);
+    expect(defaults.maxzoom).toBe(DEFAULT_MAXZOOM);
+    expect(defaults.cacheDir).toBe(resolve(DEFAULT_CACHE_DIR));
+    expect(defaults.workDir).toBe(join(resolve(DEFAULT_CACHE_DIR), 'basemaps'));
+
+    const explicit = parseArgs(['--region=calamuchita', '--maxzoom=15', '--cache=/var/tmp/keep']);
+    expect(explicit.maxzoom).toBe(15);
+    expect(explicit.cacheDir).toBe('/var/tmp/keep');
+    expect(explicit.workDir).toBe('/var/tmp/keep/basemaps');
+  });
+});
+
+describe('probeToolchain', () => {
+  it('asks the java the tiler runs, so a stale JAVA_HOME stops the run before it starts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-java-'));
+    const previousHome = process.env.JAVA_HOME;
+    try {
+      // JAVA_HOME points at a directory with no bin/java: a stale setting. The tiler would run
+      // `$JAVA_HOME/bin/java` and fail, so the preflight has to say the same thing.
+      const javaHome = join(root, 'stale-jdk');
+      mkdirSync(join(javaHome, 'bin'), { recursive: true });
+      process.env.JAVA_HOME = javaHome;
+
+      const probe = probeToolchain();
+
+      expect(probe.javaMajor).toBeNull();
+      // A second candidate on PATH is what made a stale JAVA_HOME pass here and fail later.
+      expect(probe.javaLookedFor).not.toContain('PATH');
+      const problem = toolchainProblem(probe);
+      if (problem === null) throw new Error('a stale JAVA_HOME was not reported');
+      expect(problem).toContain('JDK 21');
+      expect(problem).toContain('JAVA_HOME/bin/java');
+    } finally {
+      if (previousHome === undefined) delete process.env.JAVA_HOME;
+      else process.env.JAVA_HOME = previousHome;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('asks the same executable the tiler step runs', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-java-'));
+    const previousHome = process.env.JAVA_HOME;
+    try {
+      const javaHome = join(root, 'jdk');
+      const calls = join(root, 'java-calls.log');
+      fakeJava(join(javaHome, 'bin', 'java'), calls, 'openjdk version "21.0.2"');
+      process.env.JAVA_HOME = javaHome;
+
+      const probe = probeToolchain();
+      expect(probe.javaMajor).toBe(21);
+
+      const options = { ...OPTIONS, workDir: join(root, 'basemaps'), cacheDir: root };
+      const built = planBuild(options, planDeps());
+      const tilerStep = built.steps.find(
+        (step): step is Extract<BuildStep, { kind: 'run-tiler' }> => step.kind === 'run-tiler',
+      );
+      if (tilerStep === undefined) throw new Error('the plan has no tiler step');
+      mkdirSync(tilerStep.jarDir, { recursive: true });
+      writeFileSync(join(tilerStep.jarDir, 'x-with-deps.jar'), '');
+
+      const outcome = await createExecutor({
+        log: () => {},
+        readVectorLayers: () => ['landuse'],
+        sizeOf: () => 1,
+      })(tilerStep, { plan: built, elapsedMs: {} });
+
+      expect(outcome.exitCode).toBe(0);
+      // One `-version` from the probe, one `-jar` from the tiler: both the same executable.
+      const invoked = readFileSync(calls, 'utf8').trim().split('\n');
+      expect(invoked).toHaveLength(2);
+      expect(invoked[0]).toBe('-version');
+      expect(invoked[1]).toContain('-jar');
+    } finally {
+      if (previousHome === undefined) delete process.env.JAVA_HOME;
+      else process.env.JAVA_HOME = previousHome;
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

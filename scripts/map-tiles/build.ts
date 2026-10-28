@@ -27,7 +27,9 @@
  * Reuse needs a third guarantee, because a run leaves its applied patches in the work tree as
  * uncommitted changes: the step after the checkout returns that tree to the pinned commit. The
  * invariant is that **patches are always applied to a tree that is exactly the pinned commit**,
- * whether it was just cloned or reused.
+ * whether it was just cloned or reused. That is also why moving a reused checkout to a new pin
+ * only fetches: `git checkout` refuses to move HEAD over the previous run's changes — exactly
+ * when upstream touched a file the patches modify — and the reset step is what moves it.
  *
  * Usage:
  *   bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>]
@@ -474,25 +476,22 @@ function javaExecutable(): string {
   return javaHome === undefined || javaHome.length === 0 ? 'java' : join(javaHome, 'bin', 'java');
 }
 
-/** What this machine offers. Both checks are allowed to fail without throwing. */
+/**
+ * What this machine offers. Both checks are allowed to fail without throwing.
+ *
+ * The java probe asks the very executable `run-tiler` will spawn, and nothing else: a stale
+ * `JAVA_HOME` with a good `java` on PATH used to pass here and fail minutes later inside the
+ * tiler, which is the one failure this preflight exists to prevent.
+ */
 export function probeToolchain(): ToolchainProbe {
-  const javaHome = process.env.JAVA_HOME;
+  const executable = javaExecutable();
   const javaLookedFor =
-    javaHome === undefined || javaHome.length === 0
-      ? '`java` on PATH (`JAVA_HOME` is not set)'
-      : '`$JAVA_HOME/bin/java` and `java` on PATH';
+    executable === 'java' ? '`java` on PATH (`JAVA_HOME` is not set)' : '`$JAVA_HOME/bin/java`';
 
-  let javaMajor: number | null = null;
-  const javaCandidates =
-    javaHome === undefined || javaHome.length === 0
-      ? ['java']
-      : [join(javaHome, 'bin', 'java'), 'java'];
-  for (const candidate of javaCandidates) {
-    const result = spawnSync(candidate, ['-version'], { encoding: 'utf8' });
-    if (result.error) continue;
-    javaMajor = parseJavaMajor(`${result.stderr ?? ''}${result.stdout ?? ''}`);
-    if (javaMajor !== null) break;
-  }
+  const javaResult = spawnSync(executable, ['-version'], { encoding: 'utf8' });
+  const javaMajor = javaResult.error
+    ? null
+    : parseJavaMajor(`${javaResult.stderr ?? ''}${javaResult.stdout ?? ''}`);
 
   const mavenResult = spawnSync('mvn', ['-v'], { encoding: 'utf8' });
   const maven = mavenResult.error ? null : 'mvn';
@@ -500,39 +499,39 @@ export function probeToolchain(): ToolchainProbe {
   return { javaMajor, javaLookedFor, maven, mavenLookedFor: '`mvn` on PATH' };
 }
 
-/** The exit code and stdout of one command, with start failures kept as data. */
+/** The exit code of one command, with start failures kept as data. */
 export interface CommandResult {
   exitCode: number;
-  stdout: string;
   /** Set when the process could not be started at all, e.g. ENOENT. */
   error?: string;
 }
 
-/** Runs one command in its own directory, inheriting stderr so build output stays live. */
+/**
+ * Runs one command in its own directory, inheriting stdout and stderr.
+ *
+ * Both streams stay attached to the operator's terminal on purpose: Maven writes its
+ * `[ERROR]` lines to stdout and planetiler writes its progress there too, so capturing
+ * stdout meant a failed jar build printed only "the profile jar build failed" and a slow
+ * download printed nothing for minutes. No step reads the output to decide anything.
+ */
 export function runCommand(command: Command): Promise<CommandResult> {
   return new Promise((resolvePromise) => {
     const child = spawn(command.file, command.args, {
       cwd: command.cwd,
-      stdio: ['ignore', 'pipe', 'inherit'],
+      stdio: ['ignore', 'inherit', 'inherit'],
     });
 
-    let stdout = '';
-    child.stdout?.setEncoding('utf8');
-    child.stdout?.on('data', (chunk: string) => {
-      stdout += chunk;
-    });
     child.on('error', (error) => {
-      resolvePromise({ exitCode: 127, stdout, error: reasonOf(error) });
+      resolvePromise({ exitCode: 127, error: reasonOf(error) });
     });
     child.on('close', (code) => {
-      resolvePromise({ exitCode: code ?? 1, stdout });
+      resolvePromise({ exitCode: code ?? 1 });
     });
   });
 }
 
 export interface StepOutcome {
   exitCode: number;
-  stdout?: string;
   /** A readable reason when the step itself decided to stop, e.g. no jar was produced. */
   message?: string;
 }
@@ -646,7 +645,6 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
 
   const failed = (result: CommandResult, fallback: string): StepOutcome => ({
     exitCode: result.exitCode,
-    stdout: result.stdout,
     message: result.error === undefined ? fallback : `${fallback}: ${result.error}`,
   });
 
@@ -668,7 +666,7 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
         // A checkout we already have is cheaper to move than to clone again: re-pinning only
         // needs the new commit fetched, not the whole tree downloaded a second time.
         if (existsSync(join(step.dir, '.git'))) {
-          log(`moving the checkout at ${step.dir} to ${step.commit.slice(0, 7)}`);
+          log(`fetching the new pin in ${step.dir}`);
           const fetch = await run({
             file: 'git',
             args: ['-C', step.dir, 'fetch', 'origin'],
@@ -677,15 +675,9 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
           if (fetch.exitCode !== 0) {
             return failed(fetch, `fetching ${step.repository} in ${step.dir} failed`);
           }
-
-          const checkout = await run({
-            file: 'git',
-            args: ['-C', step.dir, 'checkout', '--detach', step.commit],
-            cwd: step.dir,
-          });
-          if (checkout.exitCode !== 0) {
-            return failed(checkout, `checking out ${step.commit} in ${step.dir} failed`);
-          }
+          // No `checkout` here: the previous run's patches are still applied, and git refuses
+          // to move HEAD over them — which is exactly the file upstream touched. The
+          // `reset-checkout` step that follows moves HEAD to the pin and clears the tree.
           return { exitCode: 0 };
         }
 
@@ -730,7 +722,7 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
         if (result.exitCode !== 0) {
           return failed(result, `${basename(step.patch)} did not apply`);
         }
-        return { exitCode: 0, stdout: result.stdout };
+        return { exitCode: 0 };
       }
 
       case 'build-jar': {
@@ -739,7 +731,7 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
         if (result.exitCode !== 0) {
           return failed(result, 'the profile jar build failed');
         }
-        return { exitCode: 0, stdout: result.stdout };
+        return { exitCode: 0 };
       }
 
       case 'run-tiler': {
@@ -767,7 +759,7 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
         if (result.exitCode !== 0) {
           return failed(result, 'the tiler failed');
         }
-        return { exitCode: 0, stdout: result.stdout };
+        return { exitCode: 0 };
       }
 
       case 'report': {
@@ -882,10 +874,20 @@ export async function runBuild(options: BuildOptions, deps: RunDeps = {}): Promi
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
 function flag(argv: string[], name: string): string | undefined {
-  const inline = argv.find((arg) => arg.startsWith(`--${name}=`));
-  if (inline !== undefined) return inline.slice(name.length + 3);
+  const prefix = `--${name}=`;
+  const inline = argv.find((arg) => arg.startsWith(prefix));
   const index = argv.indexOf(`--${name}`);
-  return index === -1 ? undefined : argv[index + 1];
+  if (inline === undefined && index === -1) return undefined;
+
+  const value = inline !== undefined ? inline.slice(prefix.length) : (argv[index + 1] ?? '');
+  // A blank value is not a small value: `Number('')` is 0, which is a zoom the profile emits,
+  // and `resolve('')` is the process cwd, where the reset step would then `git clean -fdx`.
+  if (value.trim().length === 0) {
+    throw new Error(
+      `--${name} needs a value, got "${value}": a blank one is not usable, so the run stops instead of guessing.`,
+    );
+  }
+  return value;
 }
 
 /** The repository this file lives in, so a run from anywhere reads the same patches. */
@@ -895,7 +897,7 @@ export function repoRootFromModule(): string {
 
 export function parseArgs(argv: string[]): BuildOptions {
   const region = flag(argv, 'region');
-  if (region === undefined || region.length === 0) {
+  if (region === undefined) {
     throw new Error(`--region is required (one of ${Object.keys(MAP_REGIONS).join(', ')}).`);
   }
 
