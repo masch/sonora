@@ -35,25 +35,22 @@ The patches are a build input, nothing more. No application code reads them, the
 ## Building it
 
 ```bash
-set -euo pipefail
-
-# 1. the pinned upstream, shallow, at the exact commit
-git clone https://github.com/protomaps/basemaps.git /tmp/basemaps-build
-git -C /tmp/basemaps-build checkout 42ffaaa4a85a41bfcb23e43cc0f5b492a5eca123
-
-# 2. our edits, in order. `set -e` above is what makes drift stop the build: the
-#    first patch that no longer applies aborts here, before anything is compiled,
-#    and `--check` fails without touching the tree.
-for patch in scripts/map-tiles/patches/*.patch; do
-  git -C /tmp/basemaps-build apply --check "$patch"
-  git -C /tmp/basemaps-build apply "$patch"
-done
-
-# 3. the jar (JDK 21 + Maven; see docs/map-tiles.md for the toolchain)
-cd /tmp/basemaps-build/tiles && mvn -B -q clean package -DskipTests
+make map-tiles-build REGION=calamuchita
 ```
 
-The result is `target/protomaps-basemap-*-with-deps.jar`: planetiler and the profile in one runnable jar.
+Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default a directory under the OS temp, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
+
+The script — [`build.ts`](./build.ts) — does what the prose recipe here used to ask a human to paste: it reads `upstream.json`, checks out that commit (or reuses a checkout already on it), applies `patches/*.patch` in filename order with absolute paths, builds `target/protomaps-basemap-*-with-deps.jar`, runs the tiler, and reports. Every step runs through one executor, so the first failure ends the run naming the step; there is no `set -euo pipefail` to remember. It also refuses to start without JDK 21 and Maven, in one sentence that says what is missing and where it looked.
+
+On success it prints the output path, its size in bytes, how long the tile step took, and the archive's `vector_layers` ids. If `landuse`, `buildings` or `pois` is absent it warns, naming the patch that should have added it.
+
+### Where the cache lives, and why to keep it
+
+The cache is the checkout plus the auxiliary sources the tiler downloads — ~1.4 GB. It defaults to `$TMPDIR/sonora-map-tiles` and the script prints it at the start and end of every run. That is the directory worth keeping: with it warm a region builds in ~4 minutes, and cold it adds ~18 minutes of downloading. Pass `CACHE=/var/tmp/sonora-map-tiles` (or anywhere outside the OS temp cleaner) to make that explicit. The archive is written to `<cache>/out/<region>.pmtiles` for the same reason: the same directory can be handed to the upload targets.
+
+### When a patch stops the build
+
+A patch that no longer applies ends the run at that patch, before the jar is built, so a half-patched profile is never compiled. Read the upstream change at the pinned commit, re-generate the patch against the new tree, and run the command again. Never force it — not with `--3way`, not by editing the checkout by hand: the patch is the only thing that notices upstream moving, and forcing it is how silent drift comes back.
 
 ## Measured on this fork
 
@@ -67,4 +64,4 @@ Against the `calamuchita` bbox at z16, with the auxiliary sources warm (issue #5
 
 ## The failure mode this design has
 
-When upstream moves, the recipe above stops at the first patch that no longer applies — `set -e` makes the loop abort and `--check` fails before the tree is touched — so a partially patched profile is never compiled. That is the point: the alternative — a vendored copy — drifts silently, and the map quietly stops gaining the fixes upstream ships. Re-pinning is deliberately a small, explicit act: change `upstream.json`, re-generate the patches, and let the build tell you whether they still mean what they meant.
+When upstream moves, the build stops at the first patch that no longer applies — the run aborts there, before the jar is built — so a partially patched profile is never compiled. That is the point: the alternative — a vendored copy — drifts silently, and the map quietly stops gaining the fixes upstream ships. Re-pinning is deliberately a small, explicit act: change `upstream.json`, re-generate the patches, and let the build tell you whether they still mean what they meant.

@@ -546,6 +546,28 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
+# ── Self-built map tiles: one region in, one archive out ────────
+# The published archive is built here, not downloaded from a third party. One command,
+# one region: the script reads the pinned upstream commit (scripts/map-tiles/upstream.json),
+# checks out that commit (or reuses the checkout already on it), applies
+# scripts/map-tiles/patches/*.patch in filename order, builds the profile jar and runs the
+# tiler over the region's bbox from MAP_REGIONS. Every step goes through one executor, so the
+# first failure ends the run naming the step: a patch that no longer applies never reaches
+# the compiler, and no `set -euo pipefail` has to be pasted by hand.
+#
+# CACHE is where the expensive things live: the checkout and the ~1.4 GB of auxiliary
+# sources the tiler downloads. It defaults to a directory under the OS temp, which the script
+# prints at the start and end of a run; pass CACHE= to keep it somewhere durable, and warm
+# builds drop from ~18 min to ~4 min. The archive lands at $(CACHE)/out/<region>.pmtiles and
+# is uploaded by the api-upload-map-tiles-* targets below, not by this one.
+
+MAXZOOM ?= 16
+CACHE ?=
+
+.PHONY: map-tiles-build
+map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
+	bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
 # client never revalidates. --remote is required: without it wrangler writes to its
