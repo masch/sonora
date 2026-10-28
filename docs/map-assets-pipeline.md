@@ -26,6 +26,22 @@ Consequences worth holding in mind:
 
 The committed document names a reserved origin that exists nowhere (`https://map-assets.invalid`, which RFC 2606 keeps from ever resolving), and the API replaces `glyphs`, `sprite` and the source origin on every request, so the file names no environment and a rewrite regression fails loudly instead of quietly serving another environment's data.
 
+**It is committed as 2-space JSON, on purpose.** The document is hand-edited — a filter widened, a label layer added — and one 65 KB line makes every one of those changes invisible in review. `.prettierignore` lists `assets/map/styles/`, so nothing reformats the file unbidden and the indentation is ours to keep; re-emit it the same way with
+
+```bash
+bunx prettier --ignore-path /dev/null --write assets/map/styles/v1.json
+```
+
+which only re-indents: the parsed document is unchanged, and the ignore path is what makes prettier skip the entry that keeps it out of the check.
+
+**A layer may only name fields the archive carries.** Labels and shields are decided against the published archive, not against the upstream schema, and three measurements settle what this map can show:
+
+- `roads_shields` needed no widening. The archive carries `shield_text` on 59 of its 670 road features, all of them `highway` (3) or `major_road` (56); `minor_road` and `aeroway` carry a `ref` but never a `shield_text`, which is the field the layer labels with.
+- The `pois` filter needed no new kind. Of the sprite's 53 icons, 34 are POI kinds and every one is already admitted; the apparent 35th, `train_station`, is the icon that the already-admitted kind `station` resolves to, not a kind of its own.
+- Places needed no finer layer. `places_locality` filters on `kind == "locality"` alone, and in this archive every village, hamlet and `isolated_dwelling` is exactly that: promoting `kind_detail` would have drawn a second label on the same point.
+
+A label layer over a source layer with no `name` — `landuse`, `buildings`, `boundaries` — draws nothing at all, which is why none exists here: the archive carries no names for those.
+
 Publish it with the same target that publishes the archive, naming the file where the repository keeps it:
 
 ```bash
