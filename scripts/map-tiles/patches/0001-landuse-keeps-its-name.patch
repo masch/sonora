@@ -1,0 +1,12 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java b/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
+index 00d3c15..a95d235 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
+@@ -247,6 +247,7 @@ public class Landuse implements ForwardingProfile.LayerPostProcessor {
+         .setId(FeatureId.create(sf))
+         // Core Tilezen schema properties
+         .setAttr("kind", kind)
++        .setAttr("name", sf.getString("name"))
+         .setAttr("sort_rank", 189)
+         // NOTE: (nvkelso 20230622) Consider zoom 5 instead...
+         //       But to match Protomaps v2 we do earlier

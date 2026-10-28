@@ -1,0 +1,15 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/layers/Buildings.java b/tiles/src/main/java/com/protomaps/basemap/layers/Buildings.java
+index fc5a0e0..9ba9217 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Buildings.java
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Buildings.java
+@@ -109,8 +109,9 @@ public class Buildings implements ForwardingProfile.LayerPostProcessor {
+         .setAttrWithMinzoom("layer", Parse.parseIntOrNull(sf.getString("layer")), 13)
+         // NOTE: Height is quantized by zoom in a post-process step
+         .setAttr(HEIGHT_KEY, height.height())
++        .setAttr("name", sf.getString("name"))
+         .setAttr("sort_rank", 400)
+-        .setZoomRange(minZoom, 15);
++        .setZoomRange(minZoom, 16);
+ 
+       if (kind.equals("building_part")) {
+         // We don't need to set WithMinzoom because that's implicate with the ZoomRange

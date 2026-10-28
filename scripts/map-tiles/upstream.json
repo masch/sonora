@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/protomaps/basemaps.git",
+  "commit": "42ffaaa4a85a41bfcb23e43cc0f5b492a5eca123",
+  "commitSubject": "Latest (#636)",
+  "commitDate": "2026-09-11",
+  "module": "tiles",
+  "purpose": "The Protomaps planetiler profile, pinned. The patches in ./patches are ours and are re-applied on top of this commit by the build; the profile is not vendored, so upstream stays the source of everything but the names."
+}

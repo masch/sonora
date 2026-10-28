@@ -112,7 +112,7 @@ export JAVA_HOME=/tmp/tile-spike/jdk-21*
 
 ## 6. If the pipeline is adopted
 
-- The profile and the build commands become repository source, next to `assets/map/styles/`, and the archive is published with the existing `make api-upload-map-tiles-*` targets.
+- The profile and the build commands become repository source, next to `assets/map/styles/`, and the archive is published with the existing `make api-upload-map-tiles-*` targets. Our delta over the upstream profile lives in [`scripts/map-tiles/`](../scripts/map-tiles/README.md) — three patches on a pinned commit, with the reasoning for that shape written there.
 - A new artifact version is a bucket key, so nothing needs invalidating: `MAP_ARTIFACT_VERSION` moves and clients follow.
 - Revisit the offline budget: `autoMaxBytes` (8 MB) and `cacheMaxBytes` (100 MB) in `map.download` were set against an 846 KB archive.
 - The size check added in #576 (`isArchiveCurrent`) already re-downloads a region whose bytes changed, so overwriting in place keeps working at the new scale.
