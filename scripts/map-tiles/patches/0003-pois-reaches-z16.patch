@@ -1,0 +1,22 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java b/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java
+index 21a420e..634ba82 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java
+@@ -544,7 +544,7 @@ public class Pois implements ForwardingProfile.LayerPostProcessor {
+       .setAttr("min_zoom", minZoom + 1)
+       //
+       .setBufferPixels(8)
+-      .setZoomRange(Math.min(minZoom, 15), 15)
++      .setZoomRange(Math.min(minZoom, 15), 16)
+       // Core OSM tags for different kinds of places
+       // Special airport only tag (to indicate if it's an airport with regular commercial flights)
+       .setAttr("iata", sf.getString("iata"))
+@@ -627,7 +627,7 @@ public class Pois implements ForwardingProfile.LayerPostProcessor {
+       .setAttr("min_zoom", minZoom + 1)
+       //
+       .setBufferPixels(8)
+-      .setZoomRange(Math.min(minZoom, 15), 15)
++      .setZoomRange(Math.min(minZoom, 15), 16)
+       .setSortKey(sortKey);
+   }
+ 
