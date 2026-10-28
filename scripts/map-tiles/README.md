@@ -4,6 +4,19 @@ The map publishes PMTiles built by us instead of a third-party archive, so it ca
 
 **The profile is not vendored.** Upstream (`protomaps/basemaps`, `tiles/`) stays the source of everything — layer schemas, tag mappings, label placement — and we carry three edits on top as patches. That keeps our fork a commit id plus a reviewable diff instead of a copy that drifts.
 
+## Why patches, and not one of the other three ways
+
+Our whole delta is three lines in three Java files. Everything below is about carrying that tiny change over somebody else's project without taking the project over.
+
+| Option                                                                                                                       | What it would mean                              | Why it lost                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vendor the project** — copy `tiles/` into this repository                                                                  | we own hundreds of Java files and a Maven build | upstream fixes stop arriving unless someone merges them by hand, and nobody will                                                                                       |
+| **Fork the repository on GitHub** — our own copy with the three lines                                                        | a second repository to keep in sync             | the delta leaves our review: reading a change to the map would mean visiting another repository, and its history is not this one                                       |
+| **Overlay the three files** — keep full copies of `Landuse.java`, `Buildings.java`, `Pois.java` and copy them over the clone | the whole file, easy to read                    | a copy **overwrites without asking**: if upstream edits that file, the copy wins and the conflict is never seen. Silent drift, the failure this design exists to avoid |
+| **Patches** — the three diffs, applied to a pinned clone                                                                     | a commit id plus a diff                         | it is the only option that **notices** upstream changing, because a patch that no longer applies stops the build                                                       |
+
+The patches are a build input, nothing more. No application code reads them, they never travel to a device: they exist so whoever builds the tiles gets exactly the profile that was measured. If one fails, the answer is to read the upstream change and re-generate the patch — never to force it.
+
 | Piece                  | Where                                        |
 | ---------------------- | -------------------------------------------- |
 | Pinned upstream commit | `upstream.json`                              |
