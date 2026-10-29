@@ -6,9 +6,11 @@
  */
 import { describe, expect, it } from 'bun:test';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { Command } from '../build';
 import type { DownloadOptions, DownloadResult } from '../download';
@@ -212,6 +214,17 @@ describe('installToolchain', () => {
       '/srv/sonora/.tools/jdk-21',
     );
     expect(toolchainRoot('/srv/sonora', '/opt/toolchain')).toBe('/opt/toolchain');
+    // The repository root itself is inside the repository: the prefix check alone let it through.
+    expect(() => toolchainRoot('/srv/sonora', '/srv/sonora')).toThrow(/\.tools/);
+  });
+
+  it('rejects a --root with no usable value instead of installing to the default', () => {
+    const script = fileURLToPath(new URL('../toolchain.ts', import.meta.url));
+    for (const argv of [['--root'], ['--root=  ']]) {
+      const run = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8' });
+      expect(run.status).toBe(1);
+      expect(`${run.stderr}${run.stdout}`).toContain('--root needs a value');
+    }
   });
 
   it('pins a real JDK 21 and a real Maven, with a published digest each', () => {

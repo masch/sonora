@@ -106,7 +106,8 @@ export function toolchainRoot(repoRoot: string, explicit?: string): string {
   );
 
   const ignored = `${join(repository, LOCAL_TOOLS_DIR)}/`;
-  if (root.startsWith(`${repository}/`) && !root.startsWith(ignored)) {
+  // The repository root itself is inside the repository too, and `startsWith` alone missed it.
+  if (root === repository || (root.startsWith(`${repository}/`) && !root.startsWith(ignored))) {
     throw new Error(
       `the toolchain would live at ${root}, inside the repository but outside ${join(repository, LOCAL_TOOLS_DIR)}: only that folder is git-ignored, so binaries anywhere else end up in a commit.`,
     );
@@ -254,13 +255,25 @@ export async function installToolchain(
   return { ok: true, installed, skipped, env: toolchainEnv(root) };
 }
 
-/** `--name=value` or `--name value`, the shape the other scripts in this directory use. */
+/**
+ * `--name=value` or `--name value`, the shape the other scripts in this directory use.
+ *
+ * A flag that is present with no usable value is an error, never "absent": falling back to the
+ * default would install 350 MB where the operator did not ask for it, and say nothing.
+ */
 function flag(argv: string[], name: string): string | undefined {
   const prefix = `--${name}=`;
   const inline = argv.find((arg) => arg.startsWith(prefix));
   const index = argv.indexOf(`--${name}`);
-  if (inline !== undefined) return inline.slice(prefix.length);
-  return index === -1 ? undefined : argv[index + 1];
+  if (inline === undefined && index === -1) return undefined;
+
+  const value = inline !== undefined ? inline.slice(prefix.length) : argv[index + 1];
+  if (value === undefined || value.trim().length === 0) {
+    throw new Error(
+      `--${name} needs a value, got "${value ?? ''}": a blank one would silently use the default root, so the run stops instead of guessing.`,
+    );
+  }
+  return value;
 }
 
 async function main(argv: string[]): Promise<number> {

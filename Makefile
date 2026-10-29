@@ -576,6 +576,10 @@ CACHE ?=
 # The pinned JDK 21 + Maven that `make map-tiles-toolchain` installs, in the same ignored
 # folder. The repository carries the versions and digests; the binaries never enter git.
 TOOLCHAIN ?= $(CURDIR)/.tools/toolchain
+# Empty when the pinned toolchain is absent: the build then runs with whatever the shell
+# already exported, so an inherited JAVA_HOME pointing at a JDK 21 is not overwritten by an
+# empty one. When it is present, both its bin directories go ahead of PATH.
+TOOLCHAIN_ENV = $(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),JAVA_HOME="$(TOOLCHAIN)/jdk" PATH="$(TOOLCHAIN)/jdk/bin:$(TOOLCHAIN)/maven/bin:$$PATH",)
 
 .PHONY: map-tiles-toolchain
 map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adoptium + Apache, digest-checked). Usage: make map-tiles-toolchain [TOOLCHAIN=<dir>]
@@ -583,9 +587,7 @@ map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adop
 
 .PHONY: map-tiles-build
 map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
-	@JAVA_HOME="$(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),$(TOOLCHAIN)/jdk)" \
-		PATH="$(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),$(TOOLCHAIN)/jdk/bin:$(TOOLCHAIN)/maven/bin:,)$$PATH" \
-		bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
 
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
