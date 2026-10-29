@@ -13,7 +13,7 @@ Companion page: [Map Assets Pipeline](map-assets-pipeline.md) covers how the sty
 | Renderer       | MapLibre (native and web), fed by `GET /config`                                                                                     |
 | Style          | Protomaps light, 71 layers, served from our bucket and **rewritten in flight** (`glyphs`, `sprite`, `pmtiles://` origins)           |
 | Tiles          | one PMTiles archive per region, `tiles/<region>/<version>.pmtiles`                                                                  |
-| Archive served | `calamuchita/v1.pmtiles`, **843 052 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
+| Archive served | `calamuchita/v1.pmtiles`, **859 265 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
 | Offline        | native keeps the archive on disk and reads `pmtiles://file://…`; the browser streams it over HTTP                                   |
 
 The style document is repository source: `assets/map/styles/v1.json`, guarded by `packages/shared/src/__tests__/basemap-style.test.ts`.
@@ -25,7 +25,7 @@ Read from the archive's own header and `vector_layers` metadata after a build, n
 | Layer        | zooms     | has `name` | fields that matter                                       |
 | ------------ | --------- | ---------- | -------------------------------------------------------- |
 | `earth`      | 0–16      | yes        | kind, min_zoom, translated names                         |
-| `landuse`    | 2–15      | **yes**    | kind, sort_rank, **name**                                |
+| `landuse`    | 2–**16**  | **yes**    | kind, sort_rank, **name**                                |
 | `landcover`  | 0–7       | no         | kind                                                     |
 | `places`     | 1–15      | yes        | kind, **kind_detail**, min_zoom, population              |
 | `pois`       | 7–**16**  | yes        | kind, **kind_detail**, min_zoom                          |
@@ -46,6 +46,7 @@ The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and
 - **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
 - **`boundaries` names**: upstream drops them, and the fork does not add them.
 - **Anything above z16**: the profile stops there; addresses (`address_label`) ask for z18.
+- **Area names below z15**: upstream's landuse post-process drops `name` at every zoom except exactly 15, so patch `0004` carries both the zoom range and that early return — without it the polygon reaches z16 with no name on it.
 - **Browser offline**: the browser still keeps nothing, on purpose (`canKeepMapArchive()` answers `false` there). That is `T8` in the plan, staged separately.
 
 The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
@@ -192,7 +193,7 @@ Headless Chromium renders the built archive with the repository style and report
 
 ## 7. Budget and next steps
 
-**Offline budget (`T5`): holds, for the device.** The built archive is **843 052 B**, below the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
+**Offline budget (`T5`): holds, for the device.** The built archive is **859 265 B**, close to the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
 
 **What is left:**
 
