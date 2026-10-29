@@ -60,7 +60,7 @@ describe('the published style draws what the archive carries', () => {
             tile: { z, x, y },
             expect: expectation.labels ?? [],
             expectFills: expectation.fills ?? [],
-            family: 'landuse',
+            group: 'green',
           },
           REPO,
         );

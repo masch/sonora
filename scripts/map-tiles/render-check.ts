@@ -17,8 +17,11 @@
  *   bun scripts/map-tiles/render-check.ts --archive=<region>.pmtiles [--expect="Bosque Umepay"]
  *
  * Exit code 0 means the style drew at least one named area and, when `--expect` is given, that
- * every expected name was among them. It also proves the selector's promise: hiding the
- * `green` family (`landuse_*`) removes those labels.
+ * every expected name was among them. It also measures the layer selector: it hides exactly the
+ * layers `layerIdsForGroup` assigns to the `green` group — the same resolution the web selector
+ * runs — and fails if the label it drew is still there. What that proves is the group table and
+ * MapLibre's answer to it; what wires a group to the control is a component, and there it is
+ * `experience-map-web.test.tsx`.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -26,16 +29,40 @@ import { fileURLToPath } from 'node:url';
 
 import { chromium } from 'playwright';
 
+// The selector's own resolution, imported by path for the reason `map-assets.ts` states:
+// `@sonora/shared` is not linked into the repository root. Using it here is what makes the
+// selector half of this check measure production's rules instead of a copy of them.
+import {
+  MAP_LAYER_GROUPS,
+  layerIdsForGroup,
+  type MapLayerGroupId,
+} from '../../packages/shared/src/map/layer-groups';
+
 /**
  * The bit of Bun this script uses, declared here instead of pulling `@types/bun` into the whole
  * `scripts/` typecheck for one call.
  */
 declare const Bun: {
-  serve(options: { port: number; fetch: (request: Request) => Response | Promise<Response> }): {
+  serve(options: {
+    port: number;
+    /** Loopback: this process loads the page, so nobody else needs the socket. */
+    hostname?: string;
+    fetch: (request: Request) => Response | Promise<Response>;
+  }): {
     port: number;
     stop(force?: boolean): void;
   };
 };
+
+/**
+ * The address the check serves on.
+ *
+ * Loopback on purpose: the archive, the style and the MapLibre assets are this process's own
+ * files and only the page it opens reads them. `Bun.serve`'s default is inherited from whatever
+ * the runtime version decides (`localhost` today, documented as `0.0.0.0`), so the address is
+ * named here instead of left to it.
+ */
+export const RENDER_HOST = '127.0.0.1';
 
 export interface RenderCheckOptions {
   archive: string;
@@ -46,8 +73,19 @@ export interface RenderCheckOptions {
   expect: string[];
   /** Style layers that must draw at least one feature, so a missing fill fails here too. */
   expectFills: string[];
-  /** Style layers whose visibility proves the selector works. */
-  family: string;
+  /** The selector group whose visibility this check measures. */
+  group: MapLayerGroupId;
+}
+
+/**
+ * The style layers the selector hides for one group.
+ *
+ * Delegated to `@sonora/shared` instead of re-derived here: the check's subject is the group table
+ * the app ships, so a prefix that stops claiming a layer has to fail this check the way it would
+ * fail the selector. A local `startsWith` agrees with itself and proves nothing.
+ */
+export function hiddenLayersFor(layers: Iterable<string>, group: MapLayerGroupId): string[] {
+  return layerIdsForGroup(layers, group);
 }
 
 /** The lon/lat of the centre of one slippy tile, in the order MapLibre wants it. */
@@ -191,14 +229,14 @@ function ranged(path: string) {
 
 export interface RenderCheckResult {
   ok: boolean;
-  /** The style-layer prefix the check watched, echoed so the output names what it tested. */
-  family: string;
+  /** The selector group the check watched, echoed so the output names what it tested. */
+  group: MapLayerGroupId;
   /** The names the style placed on its label layer. */
   names: string[];
   /** The fill layers that drew at least one feature. */
   fills: string[];
-  /** How many style layers the family owns, so a missing one is visible in the output. */
-  familyLayers: number;
+  /** How many style layers the group owns, so a group that claims nothing is visible. */
+  groupLayers: number;
   /** Whether the source reported itself loaded, which separates "empty" from "not fetched". */
   sourceLoaded: boolean;
   message?: string;
@@ -220,10 +258,10 @@ export async function renderCheck(
   if (maplibre === null || pmtiles === null) {
     return {
       ok: false,
-      family: options.family,
+      group: options.group,
       names: [],
       fills: [],
-      familyLayers: 0,
+      groupLayers: 0,
       sourceLoaded: false,
       message: 'maplibre-gl and pmtiles must be installed to render an archive',
     };
@@ -231,8 +269,13 @@ export async function renderCheck(
 
   const style = JSON.parse(readFileSync(options.style, 'utf8')) as Record<string, unknown>;
   const [lon, lat] = tileCenter(options.tile.z, options.tile.x, options.tile.y);
+  const hidden = hiddenLayersFor(
+    ((style.layers ?? []) as { id: string }[]).map((layer) => layer.id),
+    options.group,
+  );
 
   const server = Bun.serve({
+    hostname: RENDER_HOST,
     port: 0,
     fetch(request) {
       const url = new URL(request.url);
@@ -270,12 +313,15 @@ export async function renderCheck(
   });
 
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM ?? findChromium() ?? undefined;
-  const browser = await chromium.launch({
-    ...(executablePath === undefined ? {} : { executablePath }),
-    args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
-  });
-
+  // Declared before the launch and closed with `?.`: a launch that rejects — no browser on this
+  // machine — must not leave the server listening behind it.
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
   try {
+    browser = await chromium.launch({
+      ...(executablePath === undefined ? {} : { executablePath }),
+      args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
+    });
+
     const tab = await browser.newPage({ viewport: { width: 900, height: 700 } });
     await tab.goto(`http://127.0.0.1:${server.port}/`);
     await tab.waitForFunction(
@@ -308,11 +354,11 @@ export async function renderCheck(
           });
         });
 
-        const familyLayers: string[] = map
+        const groupLayers: string[] = map
           .getStyle()
           .layers.map((layer: { id: string }) => layer.id)
-          .filter((id: string) => id.startsWith(input.family));
-        const labelLayers = familyLayers.filter((id) =>
+          .filter((id: string) => input.hideLayers.includes(id));
+        const labelLayers = groupLayers.filter((id) =>
           map
             .getStyle()
             .layers.some(
@@ -343,17 +389,19 @@ export async function renderCheck(
         );
 
         const before = placed(labelLayers);
-        // The selector's promise: hiding the family hides its labels too.
-        for (const id of familyLayers) map.setLayoutProperty(id, 'visibility', 'none');
+        // The selector's rule, applied to the set it resolves for this group: hiding the group
+        // must take its labels with it. What this cannot say is what the control shows — that is
+        // the component's test, and this one is about the group table and the renderer.
+        for (const id of groupLayers) map.setLayoutProperty(id, 'visibility', 'none');
         await new Promise((resolve) => setTimeout(resolve, 250));
         const after = placed(labelLayers);
-        for (const id of familyLayers) map.setLayoutProperty(id, 'visibility', 'visible');
+        for (const id of groupLayers) map.setLayoutProperty(id, 'visibility', 'visible');
 
         return {
           names: before,
           drawnFills,
           afterHiding: after,
-          familyLayers: familyLayers.length,
+          groupLayers: groupLayers.length,
           labelLayers: labelLayers.length,
           sourceLoaded: map.isSourceLoaded('basemap'),
         };
@@ -361,7 +409,7 @@ export async function renderCheck(
       {
         center: [lon, lat],
         zoom: options.tile.z,
-        family: options.family,
+        hideLayers: hidden,
         expectFills: options.expectFills,
       },
     );
@@ -370,28 +418,31 @@ export async function renderCheck(
     const missingFills = options.expectFills.filter((id) => !rendered.drawnFills.includes(id));
     const problems: string[] = [];
     if (!rendered.sourceLoaded) problems.push('the archive never loaded as a source');
+    if (rendered.groupLayers === 0) {
+      problems.push(`the selector's "${options.group}" group owns no layer of this style`);
+    }
     if (rendered.labelLayers === 0) {
-      problems.push(`the style has no symbol layer in the "${options.family}" family`);
+      problems.push(`the style has no symbol layer in the "${options.group}" group`);
     }
     if (rendered.names.length === 0) problems.push('the style placed no named label');
     if (missing.length > 0) problems.push(`not drawn: ${missing.join(', ')}`);
     if (missingFills.length > 0)
       problems.push(`fills that drew nothing: ${missingFills.join(', ')}`);
     if (rendered.afterHiding.length > 0) {
-      problems.push(`hiding "${options.family}" left ${rendered.afterHiding.join(', ')} drawn`);
+      problems.push(`hiding "${options.group}" left ${rendered.afterHiding.join(', ')} drawn`);
     }
 
     return {
       ok: problems.length === 0,
-      family: options.family,
+      group: options.group,
       names: rendered.names,
       fills: rendered.drawnFills,
-      familyLayers: rendered.familyLayers,
+      groupLayers: rendered.groupLayers,
       sourceLoaded: rendered.sourceLoaded,
       ...(problems.length === 0 ? {} : { message: problems.join('; ') }),
     };
   } finally {
-    await browser.close();
+    await browser?.close();
     server.stop(true);
   }
 }
@@ -439,6 +490,14 @@ async function main(argv: string[]): Promise<number> {
   );
   const fillsFlag = (flag(argv, 'expect-fill') ?? '').split(',').filter((id) => id.length > 0);
 
+  const group = flag(argv, 'group') ?? 'green';
+  if (!(MAP_LAYER_GROUPS as readonly string[]).includes(group)) {
+    console.error(
+      `map-tiles-render-check: --group must be one of ${MAP_LAYER_GROUPS.join(', ')}, got "${group}".`,
+    );
+    return 1;
+  }
+
   const result = await renderCheck(
     {
       archive: resolve(archive),
@@ -446,13 +505,13 @@ async function main(argv: string[]): Promise<number> {
       tile: { z: parts[0] as number, x: parts[1] as number, y: parts[2] as number },
       expect: fromFlag.length > 0 ? fromFlag : (committed.labels ?? []),
       expectFills: fillsFlag.length > 0 ? fillsFlag : (committed.fills ?? []),
-      family: flag(argv, 'family') ?? 'landuse',
+      group: group as MapLayerGroupId,
     },
     repoRoot,
   );
 
   console.log(
-    `source loaded: ${result.sourceLoaded} | ${result.family} layers: ${result.familyLayers}`,
+    `source loaded: ${result.sourceLoaded} | "${result.group}" layers: ${result.groupLayers}`,
   );
   console.log(`labels placed: ${result.names.length === 0 ? '(none)' : result.names.join(', ')}`);
   console.log(`fills drawn:   ${result.fills.length === 0 ? '(none)' : result.fills.join(', ')}`);
@@ -465,7 +524,16 @@ async function main(argv: string[]): Promise<number> {
 
 const invoked = process.argv[1];
 if (invoked !== undefined && resolve(invoked) === fileURLToPath(import.meta.url)) {
-  void main(process.argv.slice(2)).then((code) => {
-    process.exitCode = code;
-  });
+  main(process.argv.slice(2))
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((error: unknown) => {
+      // A bad flag is an argument error and reads as one line; anything else keeps its message.
+      // Without this the rejection escapes and the runtime prints its own frame-by-frame dump.
+      console.error(
+        `map-tiles-render-check: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      process.exitCode = 1;
+    });
 }

@@ -1,14 +1,24 @@
 /**
- * The parts of the render check that need no browser: the tile geometry and where a package
- * really lives. The render itself is the check's own output — a browser is not something a unit
- * test should depend on.
+ * The parts of the render check that need no browser: the tile geometry, the selector's hide set
+ * and where a package really lives. The render itself is the check's own output — a browser is
+ * not something a unit test should depend on.
  */
 import { describe, expect, it } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { packageDir, tileCenter } from '../render-check';
+import { RENDER_HOST, hiddenLayersFor, packageDir, tileCenter } from '../render-check';
+
+describe('the render server address', () => {
+  it('is loopback, so the archive is not served to the network', () => {
+    // Pinned rather than inherited: `Bun.serve` takes its default from the runtime version, and
+    // this process serves a built archive and the MapLibre assets to a page it opens itself.
+    expect(RENDER_HOST).toBe('127.0.0.1');
+  });
+});
 
 describe('tileCenter', () => {
   it('puts z0/0/0 at the centre of the world', () => {
@@ -31,6 +41,60 @@ describe('tileCenter', () => {
     const [, north] = tileCenter(10, 512, 300);
     const [, south] = tileCenter(10, 512, 301);
     expect(north).toBeGreaterThan(south);
+  });
+});
+
+/**
+ * The command line as somebody else calls it: `make map-tiles-render-check ARCHIVE=` passes an
+ * empty value, and what comes back must be one line naming the flag — not the runtime's stack
+ * trace, which is what an unhandled rejection produces and what a reader cannot act on.
+ */
+describe('the command line reports a bad argument as an argument error', () => {
+  const script = fileURLToPath(new URL('../render-check.ts', import.meta.url));
+
+  for (const argv of [['--archive='], ['--archive']]) {
+    it(`rejects ${argv.join(' ')} with one line and no stack trace`, () => {
+      const run = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8' });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain('map-tiles-render-check: --archive needs a value');
+      // A frame (`    at ...`) is the unhandled-rejection dump, and the runtime banner
+      // (`Bun v…`) with it: both mean the error escaped instead of being reported.
+      expect(run.stderr).not.toMatch(/^\s+at /m);
+      expect(run.stderr).not.toContain('Bun v');
+    });
+  }
+});
+
+describe('the selector hide set', () => {
+  // The style the archive check renders with, read the way the check reads it: what the group
+  // table resolves is what the render hides, so this is the input the assertion depends on.
+  const style = JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL('../../../assets/map/styles/v1.json', import.meta.url)),
+      'utf8',
+    ),
+  ) as { layers: { id: string; type: string }[] };
+  const ids = style.layers.map((layer) => layer.id);
+
+  it('resolves `green` to exactly the landuse_* layers the style draws', () => {
+    // Two independent derivations: the prefix the group table declares, and the ids themselves.
+    // A group that stops claiming its family makes the render check hide nothing and "prove" the
+    // selector by leaving every label drawn, which is the defect this comparison exists to catch.
+    expect(hiddenLayersFor(ids, 'green')).toEqual(ids.filter((id) => id.startsWith('landuse_')));
+  });
+
+  it('includes the label layer, so hiding the group can take a name with it', () => {
+    const hidden = hiddenLayersFor(ids, 'green');
+    expect(hidden).toContain('landuse_label');
+    expect(style.layers.find((layer) => layer.id === 'landuse_label')?.type).toBe('symbol');
+  });
+
+  it('never hides the canvas, which every client draws whatever it asks for', () => {
+    const hidden = hiddenLayersFor(ids, 'green');
+    for (const alwaysOn of ['background', 'earth', 'earth_label_islands', 'landcover_wood']) {
+      expect(hidden).not.toContain(alwaysOn);
+    }
   });
 });
 
