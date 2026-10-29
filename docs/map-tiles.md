@@ -1,6 +1,6 @@
-# Map Tiles: What The Map Can Draw, And What It Would Take To Match OSM
+# Map Tiles: What The Map Carries, And How To Build It
 
-Operator and engineer reference for the base map. It records what was **measured** on the published artifacts, so the analysis does not have to be repeated, and it states the one open decision.
+Operator and engineer reference for the base map. It records what was **measured** on the published artifacts and what the build actually produces, so neither the analysis nor the recipe has to be repeated. The map is now built here: the archive staging serves is made by this repository, from a pinned upstream profile plus three patches.
 
 Companion page: [Map Assets Pipeline](map-assets-pipeline.md) covers how the style, glyphs and sprite reach a device.
 
@@ -8,35 +8,47 @@ Companion page: [Map Assets Pipeline](map-assets-pipeline.md) covers how the sty
 
 ## 1. Where the map comes from today
 
-| Piece            | Value                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Renderer         | MapLibre (native and web), fed by `GET /config`                                                                           |
-| Style            | Protomaps light, 71 layers, served from our bucket and **rewritten in flight** (`glyphs`, `sprite`, `pmtiles://` origins) |
-| Tiles            | one PMTiles archive per region, `tiles/<region>/<version>.pmtiles`                                                        |
-| Archive measured | `calamuchita/v1.pmtiles`, **846 213 bytes**, PMTiles v3, **z0–15**                                                        |
-| Offline          | native keeps the archive on disk and reads `pmtiles://file://…`; the browser streams it over HTTP                         |
+| Piece          | Value                                                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Renderer       | MapLibre (native and web), fed by `GET /config`                                                                                     |
+| Style          | Protomaps light, 71 layers, served from our bucket and **rewritten in flight** (`glyphs`, `sprite`, `pmtiles://` origins)           |
+| Tiles          | one PMTiles archive per region, `tiles/<region>/<version>.pmtiles`                                                                  |
+| Archive served | `calamuchita/v1.pmtiles`, **843 052 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
+| Offline        | native keeps the archive on disk and reads `pmtiles://file://…`; the browser streams it over HTTP                                   |
 
 The style document is repository source: `assets/map/styles/v1.json`, guarded by `packages/shared/src/__tests__/basemap-style.test.ts`.
 
 ## 2. What the archive actually carries
 
-Read from the archive's own `vector_layers` metadata, not assumed:
+Read from the archive's own header and `vector_layers` metadata after a build, not assumed. Header: PMTiles v3, gzip internally, 1 544 addressed tiles / 1 191 entries, **z0–16**.
 
-| Layer        | zooms | has `name` | fields that matter                                       |
-| ------------ | ----- | ---------- | -------------------------------------------------------- |
-| `earth`      | 0–15  | **yes**    | kind, min_zoom, translated names                         |
-| `landuse`    | 2–15  | **no**     | kind, sort_rank                                          |
-| `landcover`  | 0–7   | no         | kind                                                     |
-| `places`     | 1–15  | yes        | kind, **kind_detail**, min_zoom, population              |
-| `pois`       | 5–15  | yes        | kind, **kind_detail**, min_zoom                          |
-| `roads`      | 3–15  | yes        | kind, kind_detail, ref, **shield_text**, network, oneway |
-| `water`      | 0–15  | yes        | kind, kind_detail, min_zoom                              |
-| `buildings`  | 11–15 | **no**     | addr_housenumber, height, kind                           |
-| `boundaries` | 0–15  | **no**     | kind, brk_a3, disputed                                   |
+| Layer        | zooms     | has `name` | fields that matter                                       |
+| ------------ | --------- | ---------- | -------------------------------------------------------- |
+| `earth`      | 0–16      | yes        | kind, min_zoom, translated names                         |
+| `landuse`    | 2–15      | **yes**    | kind, sort_rank, **name**                                |
+| `landcover`  | 0–7       | no         | kind                                                     |
+| `places`     | 1–15      | yes        | kind, **kind_detail**, min_zoom, population              |
+| `pois`       | 7–**16**  | yes        | kind, **kind_detail**, min_zoom                          |
+| `roads`      | 3–16      | yes        | kind, kind_detail, ref, **shield_text**, network, oneway |
+| `water`      | 0–16      | yes        | kind, kind_detail, min_zoom                              |
+| `buildings`  | 14–**16** | **yes**    | **name**, addr_housenumber, height, kind                 |
+| `boundaries` | 6–16      | no         | kind, brk_a3, disputed                                   |
 
-## 3. Why the map does not look like OpenStreetMap
+The three bold changes are ours, carried as patches on the pinned upstream commit (`0001` `name` on `landuse`, `0002` `name` on buildings and buildings to z16, `0003` `pois` to z16). Everything else is upstream.
 
-Not a style problem. Three measurements settle it:
+## 3. What it still will not show
+
+The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. Only one of the three is drawn, and the difference matters:
+
+- **POIs at z16 — visible now.** The style's `pois` symbol layer already admits every kind, so the toilets, cabins and viewpoints of z16 appear without touching the style.
+- **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The ceiling is the data's: `landuse` stops at z15, so the label stops there too.
+- **Building names — in the tiles, not on the map.** `buildings` carries `name` since patch 0002, but its style layers are a fill plus `address_label` (z18, house numbers). Nothing draws the name yet, deliberately: named buildings in rural OSM are rare and one label per footprint is noise.
+- **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
+- **`boundaries` names**: upstream drops them, and the fork does not add them.
+- **Anything above z16**: the profile stops there; addresses (`address_label`) ask for z18.
+- **Browser offline**: the browser still keeps nothing, on purpose (`canKeepMapArchive()` answers `false` there). That is `T8` in the plan, staged separately.
+
+The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
 
 1. **Area names cannot exist.** `landuse` has 11 layers in the style and **all of them are fills**; there is no symbol layer. And even if there were one, `landuse` carries no `name` field: "Bosque Umepay" or "Huerta Madre" are not in our tiles at all.
 2. **The POI set is complete for what we carry.** The sprite has 53 icons; 34 are POI kinds and the style already admits every one of them. The apparent 35th, `train_station`, is the icon the already-admitted kind `station` resolves to. Nothing left to add without new data.
@@ -48,7 +60,9 @@ What OSM shows and we cannot, for the same reason — the data is not there:
 - POIs at the zoom OSM shows them (z16+), and addresses (`address_label` asks for **z18**);
 - one-way arrows and the rest of the z16 detail.
 
-## 4. The options, honestly priced
+## 4. The options, honestly priced — and the one taken
+
+**Taken: the middle path**, built and published. The table stays as the reasoning that chose it.
 
 | Path                                                             | What it buys                                                              | Cost                                                                                                                                     |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -58,9 +72,9 @@ What OSM shows and we cannot, for the same reason — the data is not there:
 
 The middle path is the only one that closes the gap, and its cost is exactly what the spike below measures.
 
-## 5. The spike: a self-built tileset at z16, measured
+## 5. The spike, kept as the record of how this was priced
 
-Recorded so it can be re-run; its numbers live in the tracking issue.
+The spike below is what chose the path; the numbers in §6 are what the pipeline now produces. It stays so nobody has to re-derive the cost from scratch.
 
 **Inputs**
 
@@ -110,12 +124,75 @@ export JAVA_HOME=/tmp/tile-spike/jdk-21*
 "$JAVA_HOME/bin/java" -version
 ```
 
-## 6. If the pipeline is adopted
+## 6. Running the pipeline
 
-- The profile and the build commands become repository source, next to `assets/map/styles/`, and the archive is published with the existing `make api-upload-map-tiles-*` targets. Our delta over the upstream profile lives in [`scripts/map-tiles/`](../scripts/map-tiles/README.md) — three patches on a pinned commit, with the reasoning for that shape written there.
-- A new artifact version is a bucket key, so nothing needs invalidating: `MAP_ARTIFACT_VERSION` moves and clients follow.
-- Revisit the offline budget: `autoMaxBytes` (8 MB) and `cacheMaxBytes` (100 MB) in `map.download` were set against an 846 KB archive.
-- The size check added in #576 (`isArchiveCurrent`) already re-downloads a region whose bytes changed, so overwriting in place keeps working at the new scale.
+### Once per machine
+
+```bash
+make map-tiles-toolchain
+```
+
+Installs the pinned **JDK 21.0.13+9** (Adoptium) and **Maven 3.9.16** (Apache) into **`<repo>/.tools/toolchain`**, which `.gitignore` holds: the repository keeps the versions and digests, never the binaries, and a root inside the checkout but outside `.tools/` is refused. Each archive is checked against the digest the vendor publishes before it is unpacked, and a stamped installation is reused. `TOOLCHAIN=` / `SONORA_TOOLCHAIN` move it.
+
+### Every build
+
+```bash
+make map-tiles-build REGION=calamuchita                  # cache in <repo>/.tools/cache
+make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles   # another disk
+```
+
+What a run does, in order, stopping at the first failure and naming it:
+
+| Step               | What it guarantees                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------- |
+| `sync-upstream`    | the pinned commit is checked out, or the existing checkout is moved to it                               |
+| `reset-checkout`   | the tree is **exactly** the pin, so patches always meet a clean tree (a failed reset ends the run)      |
+| `apply-patch`      | the three edits apply; a patch that no longer applies stops the build **before** the jar is compiled    |
+| `build-jar`        | the profile builds (`mvn -B -q clean package -DskipTests`)                                              |
+| `fetch-osm`        | the region's Geofabrik extract, resumed, size-checked and verified as an OSM PBF                        |
+| `download-sources` | planetiler's own sources, under a stall guard (120 s without growth ⇒ kill and retry, 3 attempts)       |
+| `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest) |
+| `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                  |
+
+Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling).
+
+### Publishing
+
+```bash
+make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 \
+  ARCHIVE=/absolute/path/calamuchita.pmtiles \
+  STYLE=/absolute/path/to/assets/map/styles/v1.json
+```
+
+- **Absolute paths.** The target runs wrangler from `apps/api`, so a repository-relative `STYLE=` fails _after_ the archive is already uploaded (this happened; see `T10` in the plan).
+- **One version for both objects.** The archive and the style are keyed by `MAP_ARTIFACT_VERSION`, and the media route serves `styles/<current version>.json` only — a style uploaded under another key is invisible.
+- Staging may be overwritten in place (`S2`): non-production is served `no-cache`, so a re-upload is picked up without a version bump.
+
+Verify what is served, rather than trusting the upload:
+
+```bash
+B=https://sonora-api-staging.sonora-api.workers.dev/media/public
+curl -s "$B/tiles/calamuchita/v1.pmtiles" | sha256sum     # must equal the built file
+curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritten to the serving origin
+```
+
+### Two known gaps
+
+- **`T9`** — planetiler's own downloads do not resume: a killed attempt discards its `.tmp`, so a slow-but-alive mirror can never finish the 932 MB water or 953 MB land archive. Until the two `osmdata` files are fetched by our downloader (which does resume), a cold cache may need them pre-seeded. The first real run hit exactly this: three attempts, 8 % lost each.
+- **`T10`** — the upload targets do not validate `ARCHIVE`/`STYLE` before uploading, so a wrong path leaves the bucket half-updated.
+
+## 7. Budget and next steps
+
+**Offline budget (`T5`): holds, for the device.** The built archive is **843 052 B**, below the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
+
+**What is left:**
+
+| Task        | What it is                                                                                                             | State                               |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `T6`        | a trip and a track at Calamuchita show area names and the z16 POIs, offline, and the layer selector claims every layer | needs a device on the staging build |
+| `T8`        | web offline, as its own stage: the browser keeps nothing today                                                         | planned, with its five conditions   |
+| `T9`, `T10` | the two gaps above                                                                                                     | planned                             |
+| production  | the same upload against the production bucket                                                                          | withheld until `T6` passes          |
 
 ## 7. Open decision
 

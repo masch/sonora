@@ -49,7 +49,6 @@ import {
   readSync,
   statSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -82,8 +81,13 @@ export const PROFILE_MAX_ZOOM = 16;
 
 export const DEFAULT_MAXZOOM = PROFILE_MAX_ZOOM;
 
-/** Where a run keeps its checkout and the auxiliary sources when `--cache` is not given. */
-export const DEFAULT_CACHE_DIR = join(tmpdir(), 'sonora-map-tiles');
+/**
+ * Where a run keeps its checkout and the auxiliary sources when `--cache` is not given.
+ *
+ * Inside the repository, in the one folder `.gitignore` holds: the same place the toolchain
+ * lives, so a checkout carries nothing of its own outside it.
+ */
+export const DEFAULT_CACHE_DIR = join(repoRootFromModule(), '.tools', 'cache');
 
 const UPSTREAM_FILE = 'scripts/map-tiles/upstream.json';
 const PATCHES_DIR = 'scripts/map-tiles/patches';
