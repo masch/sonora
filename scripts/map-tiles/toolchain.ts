@@ -74,7 +74,9 @@ export const TOOLCHAIN: ToolchainArtefact[] = [
   {
     name: 'maven',
     version: '3.9.16',
-    url: 'https://dlcdn.apache.org/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz',
+    // `archive.apache.org`, not `dlcdn`: the download mirror only keeps current releases, so a
+    // pinned version would start returning 404 the day Apache publishes the next 3.9.x.
+    url: 'https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz',
     bytes: 9_300_000,
     digest: {
       algorithm: 'sha512',
@@ -155,6 +157,20 @@ export function checksumProblem(
 export interface ToolchainOptions {
   root: string;
   artefacts?: ToolchainArtefact[];
+  /** The host the installation is for; defaults to this process's. */
+  host?: { platform: string; arch: string };
+}
+
+/**
+ * Why the pinned toolchain cannot be installed here, or `null` when it can.
+ *
+ * The JDK archive is a linux-x64 build: unpacking it elsewhere writes a `.stamp` and reports
+ * success for a `java` binary that cannot run, and the build then prefers that broken toolchain
+ * over a working `JAVA_HOME`. Refusing before the download is the only honest answer.
+ */
+export function unsupportedHost(platform: string, arch: string): string | null {
+  if (platform === 'linux' && arch === 'x64') return null;
+  return `the pinned JDK is a linux-x64 build and this host is ${platform}-${arch}: install JDK 21 and Maven yourself and put them on PATH, or point SONORA_TOOLCHAIN at an existing installation.`;
 }
 
 export interface ToolchainDeps {
@@ -200,6 +216,10 @@ export async function installToolchain(
   const download = deps.download ?? downloadVerified;
   const artefacts = options.artefacts ?? TOOLCHAIN;
   const root = resolve(options.root);
+
+  const host = options.host ?? { platform: process.platform, arch: process.arch };
+  const hostProblem = unsupportedHost(host.platform, host.arch);
+  if (hostProblem !== null) return { ok: false, installed: [], skipped: [], message: hostProblem };
 
   const installed: string[] = [];
   const skipped: string[] = [];

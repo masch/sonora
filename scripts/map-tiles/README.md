@@ -41,7 +41,7 @@ make map-tiles-build REGION=calamuchita
 
 The profile compiles with `maven.compiler.source=21`, so JDK 17 is not enough. `make map-tiles-toolchain` installs the pinned **JDK 21.0.13+9** (Adoptium) and **Maven 3.9.16** (Apache) into **`<repo>/.tools/toolchain`**: one folder inside the checkout, ignored by `.gitignore`, so nothing of the build's own lives outside the project and no binary ever enters git. Both archives are checked against the digest the vendor publishes before they are unpacked, and a stamped installation is reused; `--root`, `TOOLCHAIN=` or `SONORA_TOOLCHAIN` moves it, and a root inside the repository but outside `.tools/` is refused. `make map-tiles-build` picks that toolchain up when it is installed and falls back to whatever `java` and `mvn` are on `PATH` when it is not.
 
-Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default a directory under the OS temp, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
+Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default `<repo>/.tools/cache`, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
 
 The script — [`build.ts`](./build.ts) — does what the prose recipe here used to ask a human to paste: it reads `upstream.json`, checks out that commit (or reuses a checkout already on it), returns the checkout to that commit, applies `patches/*.patch` in filename order with absolute paths, builds `target/protomaps-basemap-*-with-deps.jar`, downloads the region's extract and the tiler's own auxiliary sources, verifies every one of them, runs the tiler, and reports. Every step runs through one executor, so the first failure ends the run naming the step; there is no `set -euo pipefail` to remember. It also refuses to start without JDK 21 and Maven, in one sentence that says what is missing and where it looked.
 
@@ -80,7 +80,7 @@ The cache is the checkout, the auxiliary sources the tiler downloads and the arc
   out/<region>.pmtiles       the archive
 ```
 
-The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own `data/sources` against its working directory. That is why the sources are not in the checkout: a run leaves its patches applied as uncommitted changes, so before patching it returns the checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`), and anything kept there would be deleted. The tiler's working directory is a sibling, so it survives that reset, and a warm cache builds what the first run did instead of stopping at a patch it already finds applied or downloading 1.4 GB again.
+The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own `data/sources` against its working directory. That is why the sources are not in the checkout: a run leaves its patches applied as uncommitted changes, so before patching it returns the checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`), and anything kept there would be deleted. The tiler's working directory is a sibling, so it survives that reset, and a warm cache builds what the first run did instead of stopping at a patch it already finds applied or downloading 2.9 GB again.
 
 ### When a patch stops the build
 

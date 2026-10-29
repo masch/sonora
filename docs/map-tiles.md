@@ -184,7 +184,7 @@ curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritt
 
 ## 7. Budget and next steps
 
-**Offline budget (`T5`): holds.** The built archive is **843 052 B**, below the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. No change needed; revisit if a region's archive grows by an order of magnitude.
+**Offline budget (`T5`): holds, for the device.** The built archive is **843 052 B**, below the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
 
 **What is left:**
 
