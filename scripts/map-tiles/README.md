@@ -95,7 +95,9 @@ Headless Chromium renders the built archive with `assets/map/styles/v1.json` and
 
 The names it asserts are committed in `render-expectations.json`, per region and tile, so the command needs no flags and a label that stops being placed fails here. `EXPECT=` overrides them for a one-off. The check also proves the selector's promise: it hides the `landuse_*` family and fails if a label stays drawn. `--tile=z/x/y` picks the tile it renders (default `15/10491/19483`, which holds the area names around Bosque Umepay) and `--family` picks the prefix it watches.
 
-Chromium comes from `PLAYWRIGHT_CHROMIUM` or from the browsers Playwright already installed — this never downloads one, because a check that silently fetches 150 MB is not something a CI job should do by accident. Wiring it into CI is a separate decision: it needs `playwright install chromium` in the job.
+Chromium comes from `PLAYWRIGHT_CHROMIUM` or from the browsers Playwright already installed — this never downloads one, because a check that silently fetches 150 MB is not something a CI job should do by accident.
+
+**It also runs as a test.** `scripts/map-tiles/__tests__/render.test.ts` replays the committed expectations through the same renderer, so `bun test scripts/map-tiles` covers the map itself and not only its inputs. It needs the two things it cannot invent — a built archive (`MAP_TILES_ARCHIVE`, or the default cache path) and a Chromium — and skips, saying why, when either is missing. Wiring it into CI means building the archive in the job (JDK 21 + Maven + ~4 GB of sources) or handing it one as an artefact; that is a delivery decision, not a code one.
 
 ### When a patch stops the build
 

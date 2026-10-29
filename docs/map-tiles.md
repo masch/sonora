@@ -185,7 +185,7 @@ curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritt
 make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles
 ```
 
-Headless Chromium renders the built archive with the repository style and reports the labels it placed, so a filter, a zoom range or a font mistake fails before a phone is involved. Offline on purpose (the style names the reserved origin, so glyphs are drawn locally), and it also proves the selector: it hides the `landuse_*` family and fails if a label stays. What it cannot prove is the native plumbing — the `pmtiles://file://` protocol, the font ranges written to disk, the per-session style cache — and that is what a device still checks.
+Headless Chromium renders the built archive with the repository style and reports the labels it placed, so a filter, a zoom range or a font mistake fails before a phone is involved. The same render also runs in `bun test` (`__tests__/render.test.ts`), replaying the committed expectations; it skips, saying why, when there is no archive or no browser on the machine. Offline on purpose (the style names the reserved origin, so glyphs are drawn locally), and it also proves the selector: it hides the `landuse_*` family and fails if a label stays. What it cannot prove is the native plumbing — the `pmtiles://file://` protocol, the font ranges written to disk, the per-session style cache — and that is what a device still checks.
 
 ### Two known gaps
 

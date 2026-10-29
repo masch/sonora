@@ -84,6 +84,34 @@ export function expectedFor(
   return expectations[region]?.[tile] ?? {};
 }
 
+/**
+ * An already installed Playwright Chromium, newest first, or `null`.
+ *
+ * The check never downloads one: a test that silently fetches 150 MB is not something a suite
+ * should do, and a machine without a browser should skip the render, visibly, instead.
+ */
+export function findChromium(cacheDir?: string): string | null {
+  const root = cacheDir ?? join(process.env.HOME ?? '', '.cache', 'ms-playwright');
+  let entries: string[];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return null;
+  }
+
+  const candidates = entries
+    .filter((entry) => entry.startsWith('chromium-'))
+    .sort((a, b) => Number(b.split('-')[1] ?? 0) - Number(a.split('-')[1] ?? 0));
+
+  for (const entry of candidates) {
+    for (const relative of ['chrome-linux64/chrome', 'chrome-linux/chrome']) {
+      const path = join(root, entry, relative);
+      if (existsSync(path)) return path;
+    }
+  }
+  return null;
+}
+
 /** Where a package really lives, whether it is hoisted or bun's isolated `.bun/` layout. */
 export function packageDir(repoRoot: string, name: string): string | null {
   const hoisted = join(repoRoot, 'node_modules', name);
@@ -241,7 +269,7 @@ export async function renderCheck(
     },
   });
 
-  const executablePath = process.env.PLAYWRIGHT_CHROMIUM;
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM ?? findChromium() ?? undefined;
   const browser = await chromium.launch({
     ...(executablePath === undefined ? {} : { executablePath }),
     args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
