@@ -25,11 +25,7 @@ function scratch(): string {
   return mkdtempSync(join(tmpdir(), 'map-tiles-download-'));
 }
 
-/**
- * A partial transfer the way an interrupted run leaves it: the bytes, and the validator and size
- * they were fetched against. Without that second file a resume is refused, which is the rule the
- * mutable `-latest` extract exists for.
- */
+/** A partial the way an interrupted run leaves it: the bytes, and what they were fetched against. */
 function writePart(
   destination: string,
   bytes: string,
@@ -123,8 +119,7 @@ describe('downloadVerified', () => {
       expect(result.resumedFrom).toBe(4);
       expect(result.bytes).toBe(10);
       expect(requests[0]?.headers['Range']).toBe('bytes=4-');
-      // The validator is what makes the resume safe: `If-Range` asks the server for the whole
-      // file if it is no longer the one the partial was fetched from.
+      // `If-Range` asks for the whole file when it is no longer the one the part came from.
       expect(requests[0]?.headers['If-Range']).toBe('"v1"');
       expect(existsSync(`${destination}.part`)).toBe(false);
       expect(existsSync(`${destination}.part.meta`)).toBe(false);
@@ -161,15 +156,9 @@ describe('downloadVerified', () => {
     const root = scratch();
     try {
       const destination = join(root, 'extract.osm.pbf');
+      const first = { 'content-length': '10', etag: '"v1"' };
       const { fetchLike, requests } = scriptedFetch([
-        (signal) =>
-          serve(
-            200,
-            { 'content-length': '10', etag: '"v1"' },
-            [Buffer.from('012')],
-            'stall',
-            signal,
-          ),
+        (signal) => serve(200, first, [Buffer.from('012')], 'stall', signal),
         () => serve(206, { 'content-range': 'bytes 3-9/10' }, [Buffer.from('3456789')]),
       ]);
 

@@ -7,12 +7,10 @@
  * the server promised, but neither stops an attempt that stops delivering, and neither opens
  * the archive it just wrote. That is the gap this module closes, in four rules:
  *
- * 1. **Resume, but only the same version.** A partial transfer lives in `<destination>.part`
- *    next to a `<destination>.part.meta` holding the validator it was fetched against, and the
- *    next attempt asks for `Range: bytes=<size>-` with `If-Range: <validator>`. A server that
- *    ignores the range — or a part with no validator, which is what a Geofabrik `-latest` that
- *    changed overnight leaves behind — answers with the whole file and the part is restarted
- *    instead of gluing a new tail onto an old head.
+ * 1. **Resume, but only the same version.** A partial lives in `<destination>.part` next to a
+ *    `<destination>.part.meta` holding the validator it was fetched against, and a resume sends
+ *    `Range` with `If-Range`. A changed file — or a part with no validator — starts over instead
+ *    of gluing a new tail onto an old head.
  * 2. **Speed guard.** A transfer that delivers less than `minBytesPerSecond` over `windowMs`
  *    is aborted and retried, so a mirror that hangs without closing costs one window instead
  *    of an afternoon.
@@ -142,11 +140,9 @@ export function parseUnsatisfiedRange(value: string | null): number | null {
   return match === null ? null : Number(match[1]);
 }
 
-/** What a partial file was fetched against, so it is only resumed for the same version. */
+/** What a partial file was fetched against: the validator, and the size the server declared. */
 interface PartState {
-  /** `ETag` (strong) or `Last-Modified`, sent back as `If-Range`. */
   etag: string | null;
-  /** The size the server declared when the part was started, when it declared one. */
   total: number | null;
 }
 
@@ -158,7 +154,7 @@ function readPartState(path: string): PartState | null {
     const etag =
       typeof record.etag === 'string' && record.etag.trim().length > 0 ? record.etag.trim() : null;
     const total =
-      typeof record.total === 'number' && Number.isSafeInteger(record.total) && record.total > 0
+      typeof record.total === 'number' && Number.isInteger(record.total) && record.total > 0
         ? record.total
         : null;
     return { etag, total };
@@ -168,10 +164,8 @@ function readPartState(path: string): PartState | null {
 }
 
 /**
- * The validator to resume against: a strong `ETag`, or `Last-Modified`.
- *
- * A weak `ETag` (`W/"…"`) is deliberately skipped: HTTP forbids it as an `If-Range` validator,
- * and using it anyway is how a changed file gets appended to instead of replaced.
+ * The validator to resume against — a strong `ETag` or `Last-Modified`. A weak `ETag` is skipped:
+ * HTTP forbids it as `If-Range`, and using it is how a changed file gets appended to.
  */
 function validatorOf(headers: { get(name: string): string | null }): string | null {
   const etag = headers.get('etag')?.trim();
@@ -222,9 +216,8 @@ export async function downloadVerified(
     let offset = sizeOfFile(partPath);
     let resumeState = offset > 0 ? readPartState(partStatePath) : null;
 
-    // Without a validator there is no way to know the bytes on disk are a prefix of what the
-    // server serves now. `-latest` is rewritten upstream every day, so resuming blind could glue
-    // the new tail onto an old head and produce an extract the structural check accepts.
+    // Without a validator the bytes on disk may be a different file: `-latest` is rewritten
+    // upstream every day, so resuming blind could produce an extract that still passes verify.
     if (offset > 0 && (resumeState === null || resumeState.etag === null)) {
       log(
         `no validator for the partial ${partPath}: starting over instead of resuming (attempt ${attempt} of ${attempts})`,
@@ -252,10 +245,8 @@ export async function downloadVerified(
     }
 
     if (response.status === 416) {
-      // The server refuses to resume where we asked. Its answer says how big the file really is,
-      // so a part is only promoted when it is exactly that big and its contents verify: a stale
-      // part from yesterday's `-latest` is bigger or smaller, and would otherwise become the
-      // extract the tiler reads.
+      // The answer says how big the file really is, so a part is promoted only when it is exactly
+      // that big and verifies: a stale part from yesterday's `-latest` is a different size.
       const total = parseUnsatisfiedRange(response.headers.get('content-range'));
       if (offset > 0 && total !== null && offset === total) {
         const problem = verify(partPath);
