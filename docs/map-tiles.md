@@ -41,13 +41,14 @@ The three bold changes are ours, carried as patches on the pinned upstream commi
 The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. Only one of the three is drawn, and the difference matters:
 
 - **POIs at z16 — visible now.** The style's `pois` symbol layer already admits every kind, so the toilets, cabins and viewpoints of z16 appear without touching the style.
-- **Area and building names — in the tiles, not on the map.** The style's eleven `landuse` layers are **all fills**, and its `buildings` layers are a fill plus `address_label` (z18, house numbers). Nothing draws `name`, so a forest or a building keeps its name in the data and shows none of it on screen. Drawing them means new symbol layers in `assets/map/styles/v1.json` (`T11`) — the data is there, the drawing is not.
+- **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The ceiling is the data's: `landuse` stops at z15, so the label stops there too.
+- **Building names — in the tiles, not on the map.** `buildings` carries `name` since patch 0002, but its style layers are a fill plus `address_label` (z18, house numbers). Nothing draws the name yet, deliberately: named buildings in rural OSM are rare and one label per footprint is noise.
 - **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
 - **`boundaries` names**: upstream drops them, and the fork does not add them.
 - **Anything above z16**: the profile stops there; addresses (`address_label`) ask for z18.
 - **Browser offline**: the browser still keeps nothing, on purpose (`canKeepMapArchive()` answers `false` there). That is `T8` in the plan, staged separately.
 
-The measurements below are kept as the record of why the old map looked the way it did:
+The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
 
 1. **Area names cannot exist.** `landuse` has 11 layers in the style and **all of them are fills**; there is no symbol layer. And even if there were one, `landuse` carries no `name` field: "Bosque Umepay" or "Huerta Madre" are not in our tiles at all.
 2. **The POI set is complete for what we carry.** The sprite has 53 icons; 34 are POI kinds and the style already admits every one of them. The apparent 35th, `train_station`, is the icon the already-admitted kind `station` resolves to. Nothing left to add without new data.
