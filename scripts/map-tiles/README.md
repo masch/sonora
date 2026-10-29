@@ -86,12 +86,12 @@ The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own 
 ### Proving the style draws what the archive carries
 
 ```bash
-make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles EXPECT="Bosque Umepay,Huerta Madre"
+make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles
 ```
 
 Headless Chromium renders the built archive with `assets/map/styles/v1.json` and reports the labels the style actually placed, so a filter, a zoom range or a font mistake fails here instead of on a phone. It is offline on purpose: the style names the reserved origin, so MapLibre cannot fetch glyphs and draws codepoints locally — label _placement_ is what is asserted.
 
-The check also proves the selector's promise: it hides the `landuse_*` family and fails if a label stays drawn. `--tile=z/x/y` picks the tile it renders (default `15/10491/19483`, which holds the area names around Bosque Umepay) and `--family` picks the prefix it watches.
+The names it asserts are committed in `render-expectations.json`, per region and tile, so the command needs no flags and a label that stops being placed fails here. `EXPECT=` overrides them for a one-off. The check also proves the selector's promise: it hides the `landuse_*` family and fails if a label stays drawn. `--tile=z/x/y` picks the tile it renders (default `15/10491/19483`, which holds the area names around Bosque Umepay) and `--family` picks the prefix it watches.
 
 Chromium comes from `PLAYWRIGHT_CHROMIUM` or from the browsers Playwright already installed — this never downloads one, because a check that silently fetches 150 MB is not something a CI job should do by accident. Wiring it into CI is a separate decision: it needs `playwright install chromium` in the job.
 

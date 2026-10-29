@@ -54,6 +54,25 @@ export function tileCenter(z: number, x: number, y: number): [number, number] {
   return [lon, lat];
 }
 
+/**
+ * The names each tile is expected to draw, per region.
+ *
+ * Kept in a file rather than in a flag so the expectation is reviewable and the command needs
+ * nothing but an archive: a label that stops being placed — a zoom range, a collision, a filter
+ * — fails here instead of on somebody's phone.
+ */
+export interface RenderExpectations {
+  [region: string]: { [tile: string]: string[] };
+}
+
+export function expectedNames(
+  expectations: RenderExpectations,
+  region: string,
+  tile: string,
+): string[] {
+  return expectations[region]?.[tile] ?? [];
+}
+
 /** Where a package really lives, whether it is hoisted or bun's isolated `.bun/` layout. */
 export function packageDir(repoRoot: string, name: string): string | null {
   const hoisted = join(repoRoot, 'node_modules', name);
@@ -348,12 +367,24 @@ async function main(argv: string[]): Promise<number> {
     return 1;
   }
 
+  const region = flag(argv, 'region') ?? 'calamuchita';
+  const fromFlag = (flag(argv, 'expect') ?? '').split(',').filter((name) => name.length > 0);
+  // The committed expectation is the default, so `make map-tiles-render-check ARCHIVE=…`
+  // asserts what this repository promises without a flag nobody remembers to pass.
+  const committed = expectedNames(
+    JSON.parse(
+      readFileSync(join(repoRoot, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
+    ) as RenderExpectations,
+    region,
+    tile,
+  );
+
   const result = await renderCheck(
     {
       archive: resolve(archive),
       style: resolve(flag(argv, 'style') ?? join(repoRoot, 'assets/map/styles/v1.json')),
       tile: { z: parts[0] as number, x: parts[1] as number, y: parts[2] as number },
-      expect: (flag(argv, 'expect') ?? '').split(',').filter((name) => name.length > 0),
+      expect: fromFlag.length > 0 ? fromFlag : committed,
       family: flag(argv, 'family') ?? 'landuse',
     },
     repoRoot,
