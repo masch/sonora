@@ -8,9 +8,10 @@
  * asks for — can be answered without a phone, and this is it: headless Chromium renders the
  * built archive with the repository's style and reports the labels the style actually placed.
  *
- * No network. The style names the reserved origin (`map-assets.invalid`), so MapLibre cannot
- * fetch glyphs and falls back to drawing codepoints locally; label *placement* is what this
- * check asserts, and it happens either way.
+ * No network. The style names the reserved origin (`map-assets.invalid`), so no glyph range
+ * resolves; MapLibre answers that on its own by drawing the codepoints locally, and the label is
+ * still placed. That fallback is the renderer's, not this script's — what the check asserts is
+ * placement, which is what a filter, a zoom range or a font stack can break.
  *
  * Usage:
  *   bun scripts/map-tiles/render-check.ts --archive=<region>.pmtiles [--expect="Bosque Umepay"]
@@ -224,8 +225,11 @@ export async function renderCheck(
             url: `pmtiles://http://127.0.0.1:${server.port}/archive.pmtiles`,
           },
         };
-        // The reserved origin keeps this check offline: MapLibre cannot fetch glyphs and draws
-        // codepoints locally, which is enough to prove a label was placed.
+        // The reserved origin keeps this check offline. The glyphs cannot be fetched, and
+        // **MapLibre** falls back on its own: it logs `Rendering codepoint U+0061 locally instead`
+        // and places the label with a locally drawn glyph. This check does not provide that
+        // fallback, it relies on it — which is why the assertion is about placement, not about
+        // pixels.
         return new Response(JSON.stringify(served), {
           headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
         });
