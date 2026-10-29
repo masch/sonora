@@ -169,7 +169,7 @@ make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 \
 
 - **Paths are resolved and checked first.** The target runs wrangler from `apps/api`, so a repository-relative path would be resolved there — which is how the first publish left the bucket half-updated. Both paths are now resolved against the repository root (absolute inputs untouched) and the target refuses to start when either file is missing (`T10`).
 - **One version for both objects.** The archive and the style are keyed by `MAP_ARTIFACT_VERSION`, and the media route serves `styles/<current version>.json` only — a style uploaded under another key is invisible.
-- Staging may be overwritten in place (`S2`): non-production is served `no-cache`, so a re-upload is picked up without a version bump.
+- Staging may be overwritten in place (`S2`): non-production is served `no-cache`, and the upload writes `must-revalidate` onto the object too, so a re-upload is picked up without a version bump. **This only protects objects uploaded after that policy existed**: a key cached while the target still wrote `immutable` stays fresh in a browser for a year, and only a new version key escapes it.
 
 Verify what is served, rather than trusting the upload:
 

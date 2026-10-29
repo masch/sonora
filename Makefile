@@ -614,8 +614,8 @@ api-upload-map-tiles-staging: ## Upload a map region archive + style to the stag
 	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
 		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
 	done
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the staging public bucket"
 
 .PHONY: api-upload-map-tiles-production
@@ -679,7 +679,7 @@ api-upload-map-assets-staging: ## Upload self-hosted map glyphs + sprite to the 
 			*.json) TYPE=application/json ;; \
 			*.png) TYPE=image/png ;; \
 		esac; \
-		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-staging-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote); \
+		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-staging-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote); \
 	done; \
 	echo "Uploaded the glyphs and the sprite to the staging public bucket"
 
