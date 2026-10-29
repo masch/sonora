@@ -60,6 +60,8 @@ The spikes lost three downloads and one afternoon to the mirrors: three truncate
 | **Size**        | when the server publishes a total, the finished file has exactly that many bytes                                                                                                       | three truncated downloads                                                                       |
 | **Integrity**   | the zip's central directory, the extract's OSM PBF header, a gzip's magic bytes, and a JAR's `META-INF/MANIFEST.MF`, all read before the tiler sees the file                           | a 9-byte `Not Found` saved as `planetiler.jar`, a 931 MB water-polygons zip that would not open |
 
+A download stage is `fetch-osm` (the extract, ours), then `fetch-shapes` (the two ~950 MB `osmdata` archives — water and land polygons — which planetiler's own downloader cannot finish, because it does not resume and a stalled mirror costs the whole attempt), then `download-sources` (planetiler's remaining sources: Natural Earth, the landcover file, qrank, fonts) and `verify-sources`, which opens every file before the tiler reads any of them.
+
 A finished file is only renamed into place after it passes, and a file that no longer passes is discarded and fetched again. A partial is only resumed against the validator it was fetched with (`If-Range`), so an interrupted download continues but yesterday's bytes are never glued to today's file.
 
 A cached extract is kept rather than refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Delete `<cache>/planetiler/data/sources/<area>.osm.pbf` when you mean to take a newer one — the next run downloads and verifies it again.

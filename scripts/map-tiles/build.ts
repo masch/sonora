@@ -67,6 +67,7 @@ import {
   jarProblem,
   osmPbfProblem,
   sourcesProblems,
+  zipProblem,
 } from './download';
 
 /** The shallowest zoom the profile emits; planetiler's own floor for this profile. */
@@ -107,6 +108,26 @@ const SOURCE_DOWNLOAD_ATTEMPTS = 3;
 
 /** Geofabrik publishes one `-latest.osm.pbf` per extract, with a Content-Length. */
 const GEOFABRIK_BASE = 'https://download.geofabrik.de';
+
+/**
+ * The tiler's auxiliary archives big enough that a stalled mirror costs a run.
+ *
+ * planetiler downloads its own sources and does **not** resume: a killed attempt discards its
+ * `.tmp`, so a mirror that delivers slowly and then stops can never finish 932 MB (measured: three
+ * attempts, 8 % lost each). These two are ~950 MB apiece and plain zips, so they are fetched here,
+ * where the downloader resumes and verifies, and planetiler finds them and skips them. The rest of
+ * its sources stay where they are: they are small enough that a retry is cheaper than owning them.
+ */
+const TILER_ARCHIVES = [
+  {
+    name: 'water-polygons-split-3857.zip',
+    url: 'https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip',
+  },
+  {
+    name: 'land-polygons-split-3857.zip',
+    url: 'https://osmdata.openstreetmap.de/download/land-polygons-split-3857.zip',
+  },
+] as const;
 
 /**
  * The Geofabrik extract each region is cut from.
@@ -181,6 +202,12 @@ export type BuildStep =
       url: string;
       /** Where the extract belongs once it is complete and verified. */
       destination: string;
+    }
+  | {
+      kind: 'fetch-shapes';
+      label: string;
+      /** The two archives our downloader owns, with the path the tiler will read them from. */
+      archives: Array<{ url: string; destination: string }>;
     }
   | {
       kind: 'download-sources';
@@ -447,6 +474,16 @@ export function planBuild(options: BuildOptions, deps: Partial<PlanDeps> = {}): 
       label: `download the ${extract} extract`,
       url: extractUrl,
       destination: osmPath,
+    },
+    {
+      // The two ~950 MB osmdata archives are ours: our downloader resumes them across attempts and
+      // verifies the zip, which planetiler's own downloader does neither of.
+      kind: 'fetch-shapes',
+      label: `download ${TILER_ARCHIVES.length} shape archives into ${dataSourcesDir}`,
+      archives: TILER_ARCHIVES.map((archive) => ({
+        url: archive.url,
+        destination: join(dataSourcesDir, archive.name),
+      })),
     },
     {
       // planetiler fetches its own auxiliary sources (water and land polygons, Natural Earth,
@@ -967,6 +1004,30 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
             ? `resumed at ${result.resumedFrom} bytes`
             : 'downloaded';
         log(`  ${step.destination}: ${result.bytes} bytes (${how})`);
+        return { exitCode: 0 };
+      }
+
+      case 'fetch-shapes': {
+        for (const archive of step.archives) {
+          log(`downloading ${archive.url}`);
+          const result = await download({
+            url: archive.url,
+            destination: archive.destination,
+            verify: zipProblem,
+          });
+          if (!result.ok) {
+            return {
+              exitCode: 1,
+              message: `downloading ${archive.url} failed: ${result.message ?? 'no reason given'}`,
+            };
+          }
+          const how = result.cached
+            ? 'already there'
+            : result.resumedFrom > 0
+              ? `resumed at ${result.resumedFrom} bytes`
+              : 'downloaded';
+          log(`  ${archive.destination}: ${result.bytes} bytes (${how})`);
+        }
         return { exitCode: 0 };
       }
 

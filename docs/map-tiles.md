@@ -143,16 +143,17 @@ make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles   # anot
 
 What a run does, in order, stopping at the first failure and naming it:
 
-| Step               | What it guarantees                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| `sync-upstream`    | the pinned commit is checked out, or the existing checkout is moved to it                               |
-| `reset-checkout`   | the tree is **exactly** the pin, so patches always meet a clean tree (a failed reset ends the run)      |
-| `apply-patch`      | the three edits apply; a patch that no longer applies stops the build **before** the jar is compiled    |
-| `build-jar`        | the profile builds (`mvn -B -q clean package -DskipTests`)                                              |
-| `fetch-osm`        | the region's Geofabrik extract, resumed, size-checked and verified as an OSM PBF                        |
-| `download-sources` | planetiler's own sources, under a stall guard (120 s without growth ⇒ kill and retry, 3 attempts)       |
-| `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest) |
-| `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                  |
+| Step               | What it guarantees                                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sync-upstream`    | the pinned commit is checked out, or the existing checkout is moved to it                                                                                       |
+| `reset-checkout`   | the tree is **exactly** the pin, so patches always meet a clean tree (a failed reset ends the run)                                                              |
+| `apply-patch`      | the three edits apply; a patch that no longer applies stops the build **before** the jar is compiled                                                            |
+| `build-jar`        | the profile builds (`mvn -B -q clean package -DskipTests`)                                                                                                      |
+| `fetch-osm`        | the region's Geofabrik extract, resumed, size-checked and verified as an OSM PBF                                                                                |
+| `fetch-shapes`     | the two ~950 MB `osmdata` archives (water and land polygons), resumed and verified as zips — planetiler's own downloader does not resume, so these two are ours |
+| `download-sources` | planetiler's own sources, under a stall guard (120 s without growth ⇒ kill and retry, 3 attempts)                                                               |
+| `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest)                                                         |
+| `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                                                                          |
 
 Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling).
 
@@ -164,7 +165,7 @@ make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 \
   STYLE=/absolute/path/to/assets/map/styles/v1.json
 ```
 
-- **Absolute paths.** The target runs wrangler from `apps/api`, so a repository-relative `STYLE=` fails _after_ the archive is already uploaded (this happened; see `T10` in the plan).
+- **Paths are resolved and checked first.** The target runs wrangler from `apps/api`, so a repository-relative path would be resolved there — which is how the first publish left the bucket half-updated. Both paths are now resolved against the repository root (absolute inputs untouched) and the target refuses to start when either file is missing (`T10`).
 - **One version for both objects.** The archive and the style are keyed by `MAP_ARTIFACT_VERSION`, and the media route serves `styles/<current version>.json` only — a style uploaded under another key is invisible.
 - Staging may be overwritten in place (`S2`): non-production is served `no-cache`, so a re-upload is picked up without a version bump.
 

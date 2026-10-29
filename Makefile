@@ -594,6 +594,12 @@ map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). U
 # client never revalidates. --remote is required: without it wrangler writes to its
 # local Miniflare simulation and the deployed Worker keeps seeing an empty bucket.
 
+# The upload targets run wrangler from apps/api, so a repository-relative path is resolved there
+# and fails *after* the archive is already in the bucket. Both paths are resolved once, against
+# the repository root, and the target refuses to start when either file is missing.
+MAP_ARCHIVE_PATH = $(if $(filter /%,$(ARCHIVE)),$(ARCHIVE),$(CURDIR)/$(ARCHIVE))
+MAP_STYLE_PATH = $(if $(filter /%,$(STYLE)),$(STYLE),$(CURDIR)/$(STYLE))
+
 .PHONY: api-upload-map-tiles-staging
 api-upload-map-tiles-staging: ## Upload a map region archive + style to the staging public bucket. Usage: make api-upload-map-tiles-staging REGION="calamuchita" VERSION="v1" ARCHIVE="path/region-v1.pmtiles" STYLE="path/style-v1.json"
 	@if [ -z "$(REGION)" ] || [ -z "$(VERSION)" ] || [ -z "$(ARCHIVE)" ] || [ -z "$(STYLE)" ]; then \
@@ -601,8 +607,11 @@ api-upload-map-tiles-staging: ## Upload a map region archive + style to the stag
 		echo "  make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
 		exit 1; \
 	fi
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
+		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
+	done
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the staging public bucket"
 
 .PHONY: api-upload-map-tiles-production
@@ -612,8 +621,11 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 		echo "  make api-upload-map-tiles-production REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
 		exit 1; \
 	fi
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
+	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
+		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
+	done
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
 
 # ── Self-hosted map assets: glyphs + sprite (public bucket) ────

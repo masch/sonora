@@ -284,6 +284,7 @@ describe('planBuild', () => {
       'apply-patch',
       'build-jar',
       'fetch-osm',
+      'fetch-shapes',
       'download-sources',
       'verify-sources',
       'run-tiler',
@@ -365,6 +366,22 @@ describe('planBuild', () => {
     expect(tiler.cwd.startsWith(`${built.workDir}/`)).toBe(false);
   });
 
+  it('fetches the two osmdata archives itself, into the sources directory the tiler reads', () => {
+    const built = plan();
+    const shapes = stepOf(built, 'fetch-shapes');
+
+    expect(shapes.archives.map((archive) => archive.url)).toEqual([
+      'https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip',
+      'https://osmdata.openstreetmap.de/download/land-polygons-split-3857.zip',
+    ]);
+    for (const archive of shapes.archives) {
+      expect(archive.destination.startsWith(`${built.sourcesDir}/data/sources/`)).toBe(true);
+    }
+    // Before the tiler's own download stage, so that stage finds them and skips them.
+    const order = built.steps.map((step) => step.kind);
+    expect(order.indexOf('fetch-shapes')).toBeLessThan(order.indexOf('download-sources'));
+  });
+
   it('refuses to plan a region with no declared extract', () => {
     expect(() => planBuild({ ...OPTIONS }, planDeps({ extracts: {} }))).toThrow(
       /no Geofabrik extract for "calamuchita"/,
@@ -429,6 +446,7 @@ describe('runBuild', () => {
       'apply-patch',
       'build-jar',
       'fetch-osm',
+      'fetch-shapes',
       'download-sources',
       'verify-sources',
       'run-tiler',
@@ -455,7 +473,12 @@ describe('runBuild', () => {
         // step that follows runs for real instead of being stubbed away.
         download: async (options: DownloadOptions) => {
           mkdirSync(dirname(options.destination), { recursive: true });
-          writeFileSync(options.destination, osmPbfHeader());
+          // The extract is a PBF and the shape archives are zips: the verification step that
+          // follows runs for real, so each stub has to write what its own check accepts.
+          writeFileSync(
+            options.destination,
+            options.destination.endsWith('.pbf') ? osmPbfHeader() : storedZip('shape.shp'),
+          );
           return { ok: true, bytes: 1, resumedFrom: 0, attempts: 1, cached: false };
         },
         guard: async () => ({ exitCode: 0, stalled: false }),
@@ -516,7 +539,12 @@ describe('runBuild', () => {
         // step that follows runs for real instead of being stubbed away.
         download: async (options: DownloadOptions) => {
           mkdirSync(dirname(options.destination), { recursive: true });
-          writeFileSync(options.destination, osmPbfHeader());
+          // The extract is a PBF and the shape archives are zips: the verification step that
+          // follows runs for real, so each stub has to write what its own check accepts.
+          writeFileSync(
+            options.destination,
+            options.destination.endsWith('.pbf') ? osmPbfHeader() : storedZip('shape.shp'),
+          );
           return { ok: true, bytes: 1, resumedFrom: 0, attempts: 1, cached: false };
         },
         guard: async () => ({ exitCode: 0, stalled: false }),
