@@ -2,12 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 import { MAP_REGIONS, bboxTuple } from '../../../packages/shared/src/map/regions';
 import {
   DEFAULT_CACHE_DIR,
   DEFAULT_MAXZOOM,
+  MAP_TILE_EXTRACTS,
   type BuildOptions,
   type BuildPlan,
   type BuildStep,
@@ -24,6 +25,8 @@ import {
   tilerArgs,
   toolchainProblem,
 } from '../build';
+import { type DownloadOptions, osmPbfProblem } from '../download';
+import { osmPbfHeader, storedZip, writeJar } from './archives';
 
 /** A repository root that is not the working tree, so "absolute" means "not from cwd". */
 const REPO_ROOT = '/srv/sonora';
@@ -49,15 +52,34 @@ const OPTIONS: BuildOptions = {
 };
 
 /** Plan dependencies that never touch the disk, so a test owns the pin and the patch list. */
-function planDeps(overrides: { readFile?: () => string; listDir?: () => string[] } = {}) {
+function planDeps(
+  overrides: {
+    readFile?: () => string;
+    listDir?: () => string[];
+    extracts?: Record<string, string>;
+  } = {},
+) {
   return {
     readFile: overrides.readFile ?? (() => PIN),
     listDir: overrides.listDir ?? (() => [...PATCH_NAMES]),
+    ...(overrides.extracts === undefined ? {} : { extracts: overrides.extracts }),
   };
 }
 
 function plan(overrides: Partial<BuildOptions> = {}, deps = planDeps()): BuildPlan {
   return planBuild({ ...OPTIONS, ...overrides }, deps);
+}
+
+/** One step of a plan, by kind, so a test never indexes into an order it did not state. */
+function stepOf<K extends BuildStep['kind']>(
+  built: BuildPlan,
+  kind: K,
+): Extract<BuildStep, { kind: K }> {
+  const step = built.steps.find(
+    (candidate): candidate is Extract<BuildStep, { kind: K }> => candidate.kind === kind,
+  );
+  if (step === undefined) throw new Error(`the plan has no ${kind} step`);
+  return step;
 }
 
 const TOOLCHAIN: ToolchainProbe = {
@@ -251,7 +273,7 @@ describe('planBuild', () => {
     expect(() => plan({ maxzoom: -1 })).toThrow(/maxzoom -1 is outside what the profile can emit/);
   });
 
-  it('plans read-pin, the pinned checkout, every patch in filename order, the jar, the tiler and the report', () => {
+  it('plans the pin, every patch, the jar, the verified sources and then the tiler', () => {
     const steps = plan().steps;
     expect(steps.map((step) => step.kind)).toEqual([
       'read-pin',
@@ -261,6 +283,9 @@ describe('planBuild', () => {
       'apply-patch',
       'apply-patch',
       'build-jar',
+      'fetch-osm',
+      'download-sources',
+      'verify-sources',
       'run-tiler',
       'report',
     ]);
@@ -310,7 +335,40 @@ describe('planBuild', () => {
     expect(args).toContain('--bounds=-64.83,-32.28,-64.66,-32.12');
     expect(args).toContain('--maxzoom=15');
     expect(args).toContain(`--output=${step.output}`);
-    expect(args).toContain(`--data-dir=${step.dataDir}`);
+    // The extract is named, never left to planetiler's `--area` default: "monaco" is what a
+    // build without it tiles, silently, for a region in Argentina.
+    expect(args).toContain(`--osm-path=${step.osmPath}`);
+    expect(step.cwd).toBe('/var/tmp/sonora-map-tiles/planetiler');
+    expect(args.some((arg) => arg.startsWith('--data-dir='))).toBe(false);
+  });
+
+  it('declares the Geofabrik extract of every region, so a build can never tile Monaco', () => {
+    for (const region of Object.keys(MAP_REGIONS)) {
+      expect(MAP_TILE_EXTRACTS[region as keyof typeof MAP_REGIONS]).toMatch(/^[a-z-]+\/[a-z-]+$/);
+    }
+    expect(MAP_TILE_EXTRACTS.calamuchita).toBe('south-america/argentina');
+  });
+
+  it('fetches the extract into the sources cache and tiles from there, outside the checkout', () => {
+    const built = plan();
+    const fetch = stepOf(built, 'fetch-osm');
+    expect(fetch.url).toBe('https://download.geofabrik.de/south-america/argentina-latest.osm.pbf');
+    expect(fetch.destination).toBe(
+      '/var/tmp/sonora-map-tiles/planetiler/data/sources/argentina.osm.pbf',
+    );
+
+    const tiler = stepOf(built, 'run-tiler');
+    expect(tiler.osmPath).toBe(fetch.destination);
+    expect(tiler.cwd).toBe('/var/tmp/sonora-map-tiles/planetiler');
+    // The reset step runs `clean -fdx` inside the checkout, so a source that lives there would
+    // be deleted by the next run: the sources cache is a sibling, never a child of it.
+    expect(tiler.cwd.startsWith(`${built.workDir}/`)).toBe(false);
+  });
+
+  it('refuses to plan a region with no declared extract', () => {
+    expect(() => planBuild({ ...OPTIONS }, planDeps({ extracts: {} }))).toThrow(
+      /no Geofabrik extract for "calamuchita"/,
+    );
   });
 });
 
@@ -370,6 +428,9 @@ describe('runBuild', () => {
       'apply-patch',
       'apply-patch',
       'build-jar',
+      'fetch-osm',
+      'download-sources',
+      'verify-sources',
       'run-tiler',
       'report',
     ]);
@@ -389,6 +450,15 @@ describe('runBuild', () => {
       let treeAtFirstPatch: string | null = null;
       const executor = createExecutor({
         log: () => {},
+        // The sources stages are not what this test is about: they answer as if they had run.
+        // The extract is written where the real download would put it, so the verification
+        // step that follows runs for real instead of being stubbed away.
+        download: async (options: DownloadOptions) => {
+          mkdirSync(dirname(options.destination), { recursive: true });
+          writeFileSync(options.destination, osmPbfHeader());
+          return { ok: true, bytes: 1, resumedFrom: 0, attempts: 1, cached: false };
+        },
+        guard: async () => ({ exitCode: 0, stalled: false }),
         run: async (command) => {
           commands.push(command);
           if (command.args.includes('apply') && treeAtFirstPatch === null) {
@@ -398,7 +468,7 @@ describe('runBuild', () => {
           if (command.file === 'git' && !command.args.includes('apply')) return runCommand(command);
           if (command.file === 'mvn') {
             mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
-            writeFileSync(join(workDir, 'tiles', 'target', 'x-with-deps.jar'), '');
+            writeJar(join(workDir, 'tiles', 'target', 'x-with-deps.jar'));
           }
           return { exitCode: 0 };
         },
@@ -442,6 +512,14 @@ describe('runBuild', () => {
         log: () => {},
         readVectorLayers: () => ['landuse', 'buildings', 'pois'],
         sizeOf: () => 1234,
+        // The extract is written where the real download would put it, so the verification
+        // step that follows runs for real instead of being stubbed away.
+        download: async (options: DownloadOptions) => {
+          mkdirSync(dirname(options.destination), { recursive: true });
+          writeFileSync(options.destination, osmPbfHeader());
+          return { ok: true, bytes: 1, resumedFrom: 0, attempts: 1, cached: false };
+        },
+        guard: async () => ({ exitCode: 0, stalled: false }),
         run: async (command) => {
           commands.push(command);
           // The patches are the real ones' names, not a diff this test repository can apply.
@@ -449,7 +527,7 @@ describe('runBuild', () => {
           if (command.file === 'git') return runCommand(command);
           if (command.file === 'mvn') {
             mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
-            writeFileSync(join(workDir, 'tiles', 'target', 'x-with-deps.jar'), '');
+            writeJar(join(workDir, 'tiles', 'target', 'x-with-deps.jar'));
           }
           return { exitCode: 0 };
         },
@@ -471,6 +549,244 @@ describe('runBuild', () => {
       expect(git(workDir, ['rev-parse', 'HEAD']).trim()).toBe(newCommit);
       expect(readFileSync(join(workDir, 'PROFILE.md'), 'utf8')).toBe('upstream v2\n');
       expect(existsSync(join(workDir, 'leftover.txt'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The stages that face the network: the extract, planetiler's own auxiliary sources, and the
+ * jar the run is about to execute. Each one is driven with an injected dependency, so no test
+ * needs a mirror, a download or a JDK.
+ */
+describe('the steps that fetch and verify sources', () => {
+  function scratchPlan(root: string): BuildPlan {
+    return plan({ workDir: join(root, 'basemaps'), cacheDir: root });
+  }
+
+  it('downloads the extract through the OSM PBF check and reports a refused transfer', async () => {
+    const built = plan();
+    const step = stepOf(built, 'fetch-osm');
+    const seen: DownloadOptions[] = [];
+
+    const outcome = await createExecutor({
+      log: () => {},
+      download: async (options) => {
+        seen.push(options);
+        return { ok: true, bytes: 1024, resumedFrom: 0, attempts: 1, cached: false };
+      },
+    })(step, { plan: built, elapsedMs: {} });
+
+    expect(outcome.exitCode).toBe(0);
+    expect(seen[0]?.url).toBe(
+      'https://download.geofabrik.de/south-america/argentina-latest.osm.pbf',
+    );
+    expect(seen[0]?.destination).toBe(step.destination);
+    // The verifier is the download's own gate: nothing reaches the tiler unopened.
+    expect(seen[0]?.verify).toBe(osmPbfProblem);
+
+    const refused = await createExecutor({
+      log: () => {},
+      download: async () => ({
+        ok: false,
+        bytes: 3,
+        resumedFrom: 0,
+        attempts: 3,
+        cached: false,
+        message: 'the transfer stalled at 3 bytes',
+      }),
+    })(step, { plan: built, elapsedMs: {} });
+
+    expect(refused.exitCode).not.toBe(0);
+    expect(refused.message).toContain('the transfer stalled');
+    expect(refused.message).toContain(step.url);
+  });
+
+  it('retries the source download after a stall instead of waiting on it', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-sources-'));
+    try {
+      const built = scratchPlan(root);
+      const step = stepOf(built, 'download-sources');
+      mkdirSync(step.jarDir, { recursive: true });
+      writeJar(join(step.jarDir, 'profile-with-deps.jar'));
+
+      const attempts: Command[] = [];
+      const logs: string[] = [];
+      const guard = async (command: Command) => {
+        attempts.push(command);
+        return attempts.length === 1
+          ? { exitCode: 137, stalled: true }
+          : { exitCode: 0, stalled: false };
+      };
+
+      const outcome = await createExecutor({ log: (line) => logs.push(line), guard })(step, {
+        plan: built,
+        elapsedMs: {},
+      });
+
+      expect(outcome.exitCode).toBe(0);
+      expect(attempts).toHaveLength(2);
+      expect(attempts[0]?.args).toContain('--only-download');
+      expect(logs.join('\n')).toContain('stall');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('gives up on a source download that keeps stalling, naming the stall', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-sources-'));
+    try {
+      const built = scratchPlan(root);
+      const step = stepOf(built, 'download-sources');
+      mkdirSync(step.jarDir, { recursive: true });
+      writeJar(join(step.jarDir, 'profile-with-deps.jar'));
+
+      const outcome = await createExecutor({
+        log: () => {},
+        guard: async () => ({ exitCode: 137, stalled: true }),
+      })(step, { plan: built, elapsedMs: {} });
+
+      expect(outcome.exitCode).not.toBe(0);
+      expect(outcome.message).toContain('stalled 3 times');
+      expect(outcome.message).toContain(step.cwd);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('passes a sources directory whose artefacts open, and names the one that does not', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-sources-'));
+    try {
+      const built = scratchPlan(root);
+      const step = stepOf(built, 'verify-sources');
+      const executor = createExecutor({ log: () => {} });
+
+      mkdirSync(step.sourcesDir, { recursive: true });
+      writeFileSync(step.osmPath, osmPbfHeader());
+      writeFileSync(join(step.sourcesDir, 'land-polygons-split-3857.zip'), storedZip('land.shp'));
+
+      expect((await executor(step, { plan: built, elapsedMs: {} })).exitCode).toBe(0);
+
+      writeFileSync(join(step.sourcesDir, 'water-polygons-split-3857.zip'), 'Not Found');
+      const broken = await executor(step, { plan: built, elapsedMs: {} });
+
+      expect(broken.exitCode).not.toBe(0);
+      expect(broken.message).toContain('water-polygons-split-3857.zip');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a sources directory that holds no extract, and one that holds nothing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-sources-'));
+    try {
+      const built = scratchPlan(root);
+      const step = stepOf(built, 'verify-sources');
+      const executor = createExecutor({ log: () => {} });
+
+      mkdirSync(step.sourcesDir, { recursive: true });
+      writeFileSync(join(step.sourcesDir, 'land-polygons-split-3857.zip'), storedZip('land.shp'));
+      const noExtract = await executor(step, { plan: built, elapsedMs: {} });
+      expect(noExtract.exitCode).not.toBe(0);
+      expect(noExtract.message).toContain(step.osmPath);
+
+      rmSync(step.sourcesDir, { recursive: true, force: true });
+      const missing = await executor(step, { plan: built, elapsedMs: {} });
+      expect(missing.exitCode).not.toBe(0);
+      expect(missing.message).toContain(`${step.sourcesDir} does not exist`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to run a jar that is not a JAR, before spawning java', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-sources-'));
+    try {
+      const built = scratchPlan(root);
+      const step = stepOf(built, 'run-tiler');
+      mkdirSync(step.jarDir, { recursive: true });
+      // A structurally valid zip that is not a JAR: it opens, and it still cannot be run.
+      writeFileSync(join(step.jarDir, 'profile-with-deps.jar'), storedZip('Basemap.class'));
+
+      let spawned = 0;
+      const outcome = await createExecutor({
+        log: () => {},
+        run: async () => {
+          spawned += 1;
+          return { exitCode: 0 };
+        },
+        readVectorLayers: () => ['landuse', 'buildings', 'pois'],
+        sizeOf: () => 1,
+      })(step, { plan: built, elapsedMs: {} });
+
+      expect(outcome.exitCode).not.toBe(0);
+      expect(outcome.message).toContain('META-INF/MANIFEST.MF');
+      expect(spawned).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The reset is the step that makes a warm cache build what a cold one would. When it fails the
+ * tree is not the pin, and patching it anyway is how a half-applied profile gets compiled: the
+ * run has to stop there, and the review of the build entry point asked for this to be pinned.
+ */
+describe('a failed reset', () => {
+  it('stops the run at the reset step, before any patch or the jar', async () => {
+    const { steps, executor } = recorder('reset ');
+    const result = await run({}, executor);
+
+    expect(result.ok).toBe(false);
+    expect(result.step?.kind).toBe('reset-checkout');
+    expect(result.exitCode).toBe(7);
+    expect(result.message).toContain('step "reset ');
+    expect(steps.map((step) => step.kind)).toEqual(['read-pin', 'sync-upstream', 'reset-checkout']);
+    expect(steps.some((step) => step.kind === 'apply-patch')).toBe(false);
+    expect(steps.some((step) => step.kind === 'build-jar')).toBe(false);
+    expect(steps.some((step) => step.kind === 'run-tiler')).toBe(false);
+  });
+
+  it('leaves the dirty checkout untouched and names the git command that failed', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-reset-failure-'));
+    try {
+      const workDir = join(root, 'basemaps');
+      const commit = checkoutLeftByPreviousRun(workDir);
+      const deps = planDeps({ readFile: () => pinAt(commit) });
+
+      const commands: Command[] = [];
+      const executor = createExecutor({
+        log: () => {},
+        run: async (command) => {
+          commands.push(command);
+          if (command.file === 'git' && command.args.includes('reset')) {
+            return { exitCode: 1, error: 'fatal: could not reset the tree' };
+          }
+          return { exitCode: 0 };
+        },
+      });
+
+      const result = await run(
+        { workDir, cacheDir: join(root, 'cache') },
+        executor,
+        TOOLCHAIN,
+        deps,
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.step?.kind).toBe('reset-checkout');
+      expect(result.message).toContain(`resetting the checkout at ${workDir}`);
+      expect(result.message).toContain('git reset');
+      expect(result.message).toContain('fatal: could not reset the tree');
+
+      // Nothing runs after the command that failed, and the previous run's leftovers are still
+      // in the tree: the point is to stop, not to clean up halfway.
+      expect(commands.filter((command) => command.args.includes('clean'))).toHaveLength(0);
+      expect(commands.filter((command) => command.args.includes('apply'))).toHaveLength(0);
+      expect(commands.some((command) => command.file === 'mvn')).toBe(false);
+      expect(existsSync(join(workDir, 'leftover.txt'))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -555,7 +871,7 @@ describe('probeToolchain', () => {
       );
       if (tilerStep === undefined) throw new Error('the plan has no tiler step');
       mkdirSync(tilerStep.jarDir, { recursive: true });
-      writeFileSync(join(tilerStep.jarDir, 'x-with-deps.jar'), '');
+      writeJar(join(tilerStep.jarDir, 'x-with-deps.jar'));
 
       const outcome = await createExecutor({
         log: () => {},
