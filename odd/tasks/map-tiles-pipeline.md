@@ -48,6 +48,21 @@ Measured on the `calamuchita` bbox (issue #502, three comments):
 - **What it still will not show**: `landcover` (z0–7 by design) and `boundaries` names, and nothing above z16.
 - **Extract freshness.** A cached extract is kept, not refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Taking a newer one is a deliberate act — delete the file and the next run downloads and verifies it again.
 
+## Delivery
+
+The branch `feat/map-tiles-verified-downloads` grew past one reviewable slice (14 commits, ~3 000
+authored lines), so it is delivered as chained PRs, oldest first. Each slice is a review unit of
+its own; the boundary is the commit that closes it.
+
+| Slice                                                  | What it holds                                                                                                                                   | Commits               | State                                                                                 |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| 1. Verified downloads (`T3`)                           | `scripts/map-tiles/download.ts` and its suite, the build wiring that fetches and verifies every source, the reset-abort test                    | `0294341` … `e9fb4b8` | **reviewed and approved** (`review-ee6c0efc0e395fc6`, burned)                         |
+| 2. Build tooling (`T9`, `T10`)                         | the pinned toolchain installer, the `.tools/` folder and cache default, the two `osmdata` archives under our downloader, upload-path validation | `6a1654c` … `a8696b2` | reviewed and approved (`review-671fc942e9472290`, burned) except the last two commits |
+| 3. Documents and style (`T4`, `T5`, `T7`, `T8`, `T11`) | the runbook in `docs/map-tiles.md`, the build's record in this file, the web-offline stage, `landuse_label` in the style                        | `50d5b64` … `d65682b` | published to staging; `T6` on a device is the open check                              |
+
+Slices 2 and 3 interleave in history (`50d5b64` sits between them), so a chained PR split needs
+either a rebase onto three linear branches or a merge-order decision — a human call, not a tool's.
+
 ## Log
 
 - `L1` — "que es lo que tenemos que hacer para que se vea todo lo de OSM? evaluamos. no importa si es mucho el cambio"
