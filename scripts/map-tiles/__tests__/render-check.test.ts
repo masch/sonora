@@ -64,6 +64,21 @@ describe('the command line reports a bad argument as an argument error', () => {
       expect(run.stderr).not.toContain('Bun v');
     });
   }
+
+  // A flag nobody reads used to be ignored, so a renamed one fell through to the default group and
+  // the check could pass while watching different layers. Both shapes now fail, naming the flag.
+  for (const [argv, expected] of [
+    [['--archive=/nonexistent.pmtiles', '--family=landuse'], '--family is now --group'],
+    [['--archive=/nonexistent.pmtiles', '--nonsense=1'], 'unknown option --nonsense'],
+  ] as [string[], string][]) {
+    it(`refuses ${argv[1]} instead of ignoring it`, () => {
+      const run = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8' });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain(expected);
+      expect(run.stderr).not.toMatch(/^\s+at /m);
+    });
+  }
 });
 
 describe('the selector hide set', () => {

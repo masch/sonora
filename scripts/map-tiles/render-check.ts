@@ -460,7 +460,29 @@ function flag(argv: string[], name: string): string | undefined {
   return value;
 }
 
+/**
+ * Every flag `main` reads. A name outside this list is refused instead of ignored: the selector
+ * flag was renamed, and a baseline invocation that still says `--family` would otherwise fall
+ * through to the default group and let the check pass while watching other layers.
+ */
+const KNOWN_FLAGS = ['archive', 'tile', 'region', 'expect', 'expect-fill', 'style', 'group'];
+
+function assertKnownFlags(argv: string[]): void {
+  for (const arg of argv) {
+    if (!arg.startsWith('--')) continue;
+    const name = arg.slice(2).split('=')[0] ?? '';
+    if (KNOWN_FLAGS.includes(name)) continue;
+    throw new Error(
+      name === 'family'
+        ? '--family is now --group (a selector group id), or --expect-fill for a style layer.'
+        : `unknown option --${name}; this check reads ${KNOWN_FLAGS.map((each) => `--${each}`).join(', ')}.`,
+    );
+  }
+}
+
 async function main(argv: string[]): Promise<number> {
+  assertKnownFlags(argv);
+
   const repoRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   const archive = flag(argv, 'archive');
   if (archive === undefined) {
