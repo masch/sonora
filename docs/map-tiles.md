@@ -177,6 +177,14 @@ curl -s "$B/tiles/calamuchita/v1.pmtiles" | sha256sum     # must equal the built
 curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritten to the serving origin
 ```
 
+### Proving the style draws what the archive carries
+
+```bash
+make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles EXPECT="Bosque Umepay"
+```
+
+Headless Chromium renders the built archive with the repository style and reports the labels it placed, so a filter, a zoom range or a font mistake fails before a phone is involved. Offline on purpose (the style names the reserved origin, so glyphs are drawn locally), and it also proves the selector: it hides the `landuse_*` family and fails if a label stays. What it cannot prove is the native plumbing — the `pmtiles://file://` protocol, the font ranges written to disk, the per-session style cache — and that is what a device still checks.
+
 ### Two known gaps
 
 - **`T9`** — planetiler's own downloads do not resume: a killed attempt discards its `.tmp`, so a slow-but-alive mirror can never finish the 932 MB water or 953 MB land archive. Until the two `osmdata` files are fetched by our downloader (which does resume), a cold cache may need them pre-seeded. The first real run hit exactly this: three attempts, 8 % lost each.

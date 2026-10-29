@@ -585,6 +585,10 @@ TOOLCHAIN_ENV = $(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),JAVA_HOME="$(TOOLCHAI
 map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adoptium + Apache, digest-checked). Usage: make map-tiles-toolchain [TOOLCHAIN=<dir>]
 	bun scripts/map-tiles/toolchain.ts $(if $(TOOLCHAIN),--root="$(TOOLCHAIN)",)
 
+.PHONY: map-tiles-render-check
+map-tiles-render-check: ## Render a built archive with the repo style in headless Chromium and report the labels it draws. Usage: make map-tiles-render-check ARCHIVE=<cache>/out/<region>.pmtiles [EXPECT="Bosque Umepay"]
+	bun scripts/map-tiles/render-check.ts --archive="$(ARCHIVE)" $(if $(EXPECT),--expect="$(EXPECT)",)
+
 .PHONY: map-tiles-build
 map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
 	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)

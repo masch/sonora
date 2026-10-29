@@ -82,6 +82,18 @@ The cache is the checkout, the auxiliary sources the tiler downloads and the arc
 
 The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own `data/sources` against its working directory. That is why the sources are not in the checkout: a run leaves its patches applied as uncommitted changes, so before patching it returns the checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`), and anything kept there would be deleted. The tiler's working directory is a sibling, so it survives that reset, and a warm cache builds what the first run did instead of stopping at a patch it already finds applied or downloading 2.9 GB again.
 
+### Proving the style draws what the archive carries
+
+```bash
+make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles EXPECT="Bosque Umepay"
+```
+
+Headless Chromium renders the built archive with `assets/map/styles/v1.json` and reports the labels the style actually placed, so a filter, a zoom range or a font mistake fails here instead of on a phone. It is offline on purpose: the style names the reserved origin, so MapLibre cannot fetch glyphs and draws codepoints locally — label _placement_ is what is asserted.
+
+The check also proves the selector's promise: it hides the `landuse_*` family and fails if a label stays drawn. `--tile=z/x/y` picks the tile it renders (default `15/10491/19483`, which holds the area names around Bosque Umepay) and `--family` picks the prefix it watches.
+
+Chromium comes from `PLAYWRIGHT_CHROMIUM` or from the browsers Playwright already installed — this never downloads one, because a check that silently fetches 150 MB is not something a CI job should do by accident. Wiring it into CI is a separate decision: it needs `playwright install chromium` in the job.
+
 ### When a patch stops the build
 
 A patch that no longer applies ends the run at that patch, before the jar is built, so a half-patched profile is never compiled. Read the upstream change at the pinned commit, re-generate the patch against the new tree, and run the command again. Never force it — not with `--3way`, not by editing the checkout by hand: the patch is the only thing that notices upstream moving, and forcing it is how silent drift comes back.
