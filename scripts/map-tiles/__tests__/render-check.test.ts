@@ -187,6 +187,9 @@ describe('the integration test in CI', () => {
     });
 
     expect(run.status).toBe(0);
-    expect(`${run.stdout}${run.stderr}`).toContain('render check skipped');
+    // The tiles must be skipped, not rendered and not failed. `bun test` names every skipped case,
+    // so the assertion reads the runner's own report instead of a log line the sibling file prints
+    // as a courtesy — coupling a CI contract to that sentence is how it breaks for no reason.
+    expect(`${run.stdout}${run.stderr}`).toContain('(skip)');
   });
 });
