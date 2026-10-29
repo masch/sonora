@@ -13,7 +13,7 @@ Companion page: [Map Assets Pipeline](map-assets-pipeline.md) covers how the sty
 | Renderer       | MapLibre (native and web), fed by `GET /config`                                                                                     |
 | Style          | Protomaps light, 71 layers, served from our bucket and **rewritten in flight** (`glyphs`, `sprite`, `pmtiles://` origins)           |
 | Tiles          | one PMTiles archive per region, `tiles/<region>/<version>.pmtiles`                                                                  |
-| Archive served | `calamuchita/v1.pmtiles`, **870 017 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
+| Archive served | `calamuchita/v1.pmtiles`, **880 899 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
 | Offline        | native keeps the archive on disk and reads `pmtiles://file://…`; the browser streams it over HTTP                                   |
 
 The style document is repository source: `assets/map/styles/v1.json`, guarded by `packages/shared/src/__tests__/basemap-style.test.ts`.
@@ -47,7 +47,7 @@ The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and
 - **`boundaries` names**: upstream drops them, and the fork does not add them.
 - **`natural` values the profile never maps**: `heath` joined the list in patch `0005`, but a value nobody listed is dropped before any style can draw it — that is the class of gap to check against OSM when an area looks blank.
 - **Anything above z16**: the profile stops there; addresses (`address_label`) ask for z18.
-- **Area names below z15**: upstream's landuse post-process drops `name` at every zoom except exactly 15, so patch `0004` carries both the zoom range and that early return — without it the polygon reaches z16 with no name on it.
+- **Area names**: none missing. Patch `0004` took `landuse` to z16 and spared names above z15; patch `0006` stopped `Area.filterArea` from deleting them below it, so the data carries a name at every zoom and only `landuse_label`'s `minzoom` decides when one is drawn — lowering it never needs a rebuild.
 - **Browser offline**: the browser still keeps nothing, on purpose (`canKeepMapArchive()` answers `false` there). That is `T8` in the plan, staged separately.
 
 The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
@@ -194,7 +194,7 @@ Headless Chromium renders the built archive with the repository style and report
 
 ## 7. Budget and next steps
 
-**Offline budget (`T5`): holds, for the device.** The built archive is **870 017 B**, close to the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
+**Offline budget (`T5`): holds, for the device.** The built archive is **880 899 B**, close to the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
 
 **What is left:**
 
