@@ -20,6 +20,7 @@ import {
   checksumProblem,
   installToolchain,
   toolchainRoot,
+  unsupportedHost,
   toolchainEnv,
 } from '../toolchain';
 
@@ -204,8 +205,16 @@ describe('installToolchain', () => {
   });
 
   it('installs into one ignored folder of the repository, and nowhere else in it', () => {
-    // One folder inside the checkout, so nothing has to live outside the project...
-    expect(toolchainRoot('/srv/sonora')).toBe('/srv/sonora/.tools/toolchain');
+    // `SONORA_TOOLCHAIN` is documented as an override, so a developer who exported it must not
+    // turn the default-root assertion red.
+    const saved = process.env.SONORA_TOOLCHAIN;
+    delete process.env.SONORA_TOOLCHAIN;
+    try {
+      // One folder inside the checkout, so nothing has to live outside the project...
+      expect(toolchainRoot('/srv/sonora')).toBe('/srv/sonora/.tools/toolchain');
+    } finally {
+      if (saved !== undefined) process.env.SONORA_TOOLCHAIN = saved;
+    }
     // ...and that folder is the only place inside it a binary may land: anything else would be
     // tracked, which is how a 200 MB JDK ends up in a commit.
     expect(() => toolchainRoot('/srv/sonora', '/srv/sonora/scripts/jdk')).toThrow(/\.tools/);
@@ -216,6 +225,28 @@ describe('installToolchain', () => {
     expect(toolchainRoot('/srv/sonora', '/opt/toolchain')).toBe('/opt/toolchain');
     // The repository root itself is inside the repository: the prefix check alone let it through.
     expect(() => toolchainRoot('/srv/sonora', '/srv/sonora')).toThrow(/\.tools/);
+  });
+
+  it('refuses a host the pinned JDK cannot run on, before downloading anything', async () => {
+    expect(unsupportedHost('linux', 'x64')).toBeNull();
+    expect(unsupportedHost('darwin', 'arm64')).toContain('linux-x64 build');
+    expect(unsupportedHost('linux', 'arm64')).toContain('linux-arm64');
+
+    const root = scratch();
+    try {
+      const downloads: DownloadOptions[] = [];
+      const result = await installToolchain(
+        { root, artefacts: artefacts(), host: { platform: 'darwin', arch: 'arm64' } },
+        { download: downloader(downloads), run: async () => ({ exitCode: 0 }), log: () => {} },
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('linux-x64 build');
+      expect(downloads).toHaveLength(0);
+      expect(existsSync(join(root, 'jdk'))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('rejects a --root with no usable value instead of installing to the default', () => {
