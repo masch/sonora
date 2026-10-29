@@ -2,11 +2,11 @@
 
 The map publishes PMTiles built by us instead of a third-party archive, so it can show what OpenStreetMap shows: names on areas and buildings, and points of interest at z16. See [`docs/map-tiles.md`](../../docs/map-tiles.md) for what the published tiles carry today, and `odd/tasks/map-tiles-pipeline.md` for the plan this directory belongs to.
 
-**The profile is not vendored.** Upstream (`protomaps/basemaps`, `tiles/`) stays the source of everything — layer schemas, tag mappings, label placement — and we carry three edits on top as patches. That keeps our fork a commit id plus a reviewable diff instead of a copy that drifts.
+**The profile is not vendored.** Upstream (`protomaps/basemaps`, `tiles/`) stays the source of everything — layer schemas, tag mappings, label placement — and we carry our edits on top as patches. That keeps our fork a commit id plus a reviewable diff instead of a copy that drifts.
 
 ## Why patches, and not one of the other three ways
 
-Our whole delta is three lines in three Java files. Everything below is about carrying that tiny change over somebody else's project without taking the project over.
+Our whole delta is a handful of lines in four Java files. Everything below is about carrying that tiny change over somebody else's project without taking the project over.
 
 | Option                                                                                                                       | What it would mean                              | Why it lost                                                                                                                                                            |
 | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,11 +24,14 @@ The patches are a build input, nothing more. No application code reads them, the
 
 ## The three edits, and why each exists
 
-| Patch                         | Change                                                        | Why                                                                                          |
-| ----------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `0001-landuse-keeps-its-name` | `name` is kept on the `landuse` polygon emission              | upstream drops it for size, which is why a forest, a meadow or an orchard cannot be labelled |
-| `0002-buildings-name-and-z16` | `name` is kept on buildings, and the layer reaches z16        | same reason, plus the ceiling that hid the detail OSM draws at high zoom                     |
-| `0003-pois-reaches-z16`       | points of interest are emitted up to z16, both emission sites | the toilets, cabins and viewpoints of OSM appear at z16, and upstream stops at z15           |
+| Patch                         | Change                                                                      | Why                                                                                                                                                                                |
+| ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0001-landuse-keeps-its-name` | `name` is kept on the `landuse` polygon emission                            | upstream drops it for size, which is why a forest, a meadow or an orchard cannot be labelled                                                                                       |
+| `0002-buildings-name-and-z16` | `name` is kept on buildings, and the layer reaches z16                      | same reason, plus the ceiling that hid the detail OSM draws at high zoom                                                                                                           |
+| `0003-pois-reaches-z16`       | points of interest are emitted up to z16, both emission sites               | the toilets, cabins and viewpoints of OSM appear at z16, and upstream stops at z15                                                                                                 |
+| `0006-area-keeps-names`       | `Area.filterArea` stops deleting `name`/`name:*`                            | the post-process stripped names at every zoom below 15, so an area label was impossible there — now the data carries them everywhere and the style alone decides when to draw them |
+| `0005-natural-heath`          | `natural=heath` joins the tags mapped to `landuse`                          | OSM has it (the big yellow area next to Bosque Umepay) and the profile dropped it outright, so no style could have drawn it                                                        |
+| `0004-landuse-reaches-z16`    | `landuse` reaches z16, and its post-process stops stripping names above z15 | an area name vanished as soon as the walker zoomed in: the polygons stopped at z15, and the post-process removes `name` at every zoom except exactly 15                            |
 
 `landcover` is deliberately untouched: its features live at z0–7, where an area name buys nothing. What matters for a forest is `landuse=wood`, covered by patch 1.
 
@@ -81,6 +84,20 @@ The cache is the checkout, the auxiliary sources the tiler downloads and the arc
 ```
 
 The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own `data/sources` against its working directory. That is why the sources are not in the checkout: a run leaves its patches applied as uncommitted changes, so before patching it returns the checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`), and anything kept there would be deleted. The tiler's working directory is a sibling, so it survives that reset, and a warm cache builds what the first run did instead of stopping at a patch it already finds applied or downloading 2.9 GB again.
+
+### Proving the style draws what the archive carries
+
+```bash
+make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles
+```
+
+Headless Chromium renders the built archive with `assets/map/styles/v1.json` and reports the labels the style actually placed, so a filter, a zoom range or a font mistake fails here instead of on a phone. It is offline on purpose: the style names the reserved origin, so MapLibre cannot fetch glyphs and draws codepoints locally — label _placement_ is what is asserted.
+
+The names and fills the repository promises are written in `__tests__/render.test.ts`, not in a data file: the integration test owns them and drives the same renderer. `EXPECT=` and `--expect-fill=` still override them for a one-off, and `make map-tiles-render-check ARCHIVE=…` with no flags at all reports what the style drew without asserting any name. The check also measures the selector: it hides the layers `layerIdsForGroup` assigns to the `green` group — the same resolution the web control runs — and fails if a label stays drawn, or if the group claims no layer at all. That is a claim about the group table and the renderer, not about the control; the control has its own test. `--tile=z/x/y` picks the tile it renders (default `15/10491/19483`, which holds the area names around Bosque Umepay) and `--group` picks the selector group it watches; its old name `--family` was a layer prefix and now fails, saying so, rather than silently watching the default group.
+
+Chromium comes from `PLAYWRIGHT_CHROMIUM` or from the browsers Playwright already installed — this never downloads one, because a check that silently fetches 150 MB is not something a CI job should do by accident.
+
+**It also runs as a test.** `scripts/map-tiles/__tests__/render.test.ts` states the expectations itself and runs them through the same renderer, so `bun test scripts/map-tiles` covers the map itself and not only its inputs. It needs the two things it cannot invent — a built archive (`MAP_TILES_ARCHIVE`, or the default cache path) and a Chromium (`PLAYWRIGHT_CHROMIUM`) — and on a laptop it skips, saying why, when either is missing. Under `CI` it does not: a job that skips these tiles goes green having drawn nothing, so the missing piece fails there instead. Wiring it into CI means building the archive in the job (JDK 21 + Maven + ~4 GB of sources) or handing it one as an artefact; that is a delivery decision, not a code one.
 
 ### When a patch stops the build
 

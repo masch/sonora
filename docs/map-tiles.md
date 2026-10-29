@@ -13,7 +13,7 @@ Companion page: [Map Assets Pipeline](map-assets-pipeline.md) covers how the sty
 | Renderer       | MapLibre (native and web), fed by `GET /config`                                                                                     |
 | Style          | Protomaps light, 71 layers, served from our bucket and **rewritten in flight** (`glyphs`, `sprite`, `pmtiles://` origins)           |
 | Tiles          | one PMTiles archive per region, `tiles/<region>/<version>.pmtiles`                                                                  |
-| Archive served | `calamuchita/v1.pmtiles`, **843 052 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
+| Archive served | `calamuchita/v1.pmtiles`, **880 899 bytes**, PMTiles v3, **z0–16**, built by [`scripts/map-tiles/`](../scripts/map-tiles/README.md) |
 | Offline        | native keeps the archive on disk and reads `pmtiles://file://…`; the browser streams it over HTTP                                   |
 
 The style document is repository source: `assets/map/styles/v1.json`, guarded by `packages/shared/src/__tests__/basemap-style.test.ts`.
@@ -22,17 +22,17 @@ The style document is repository source: `assets/map/styles/v1.json`, guarded by
 
 Read from the archive's own header and `vector_layers` metadata after a build, not assumed. Header: PMTiles v3, gzip internally, 1 544 addressed tiles / 1 191 entries, **z0–16**.
 
-| Layer        | zooms     | has `name` | fields that matter                                       |
-| ------------ | --------- | ---------- | -------------------------------------------------------- |
-| `earth`      | 0–16      | yes        | kind, min_zoom, translated names                         |
-| `landuse`    | 2–15      | **yes**    | kind, sort_rank, **name**                                |
-| `landcover`  | 0–7       | no         | kind                                                     |
-| `places`     | 1–15      | yes        | kind, **kind_detail**, min_zoom, population              |
-| `pois`       | 7–**16**  | yes        | kind, **kind_detail**, min_zoom                          |
-| `roads`      | 3–16      | yes        | kind, kind_detail, ref, **shield_text**, network, oneway |
-| `water`      | 0–16      | yes        | kind, kind_detail, min_zoom                              |
-| `buildings`  | 14–**16** | **yes**    | **name**, addr_housenumber, height, kind                 |
-| `boundaries` | 6–16      | no         | kind, brk_a3, disputed                                   |
+| Layer        | zooms     | has `name` | fields that matter                                                                                                                                                                                  |
+| ------------ | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `earth`      | 0–16      | yes        | kind, min_zoom, translated names                                                                                                                                                                    |
+| `landuse`    | 2–**16**  | **yes**    | kind, sort_rank, **name** (kinds drawn: park, forest, wood, scrub, grassland, **heath**, **bare_rock**, urban green, hospital, industrial, school, beach, zoo, aerodrome, runway, pedestrian, pier) |
+| `landcover`  | 0–7       | no         | kind                                                                                                                                                                                                |
+| `places`     | 1–15      | yes        | kind, **kind_detail**, min_zoom, population                                                                                                                                                         |
+| `pois`       | 7–**16**  | yes        | kind, **kind_detail**, min_zoom                                                                                                                                                                     |
+| `roads`      | 3–16      | yes        | kind, kind_detail, ref, **shield_text**, network, oneway                                                                                                                                            |
+| `water`      | 0–16      | yes        | kind, kind_detail, min_zoom                                                                                                                                                                         |
+| `buildings`  | 14–**16** | **yes**    | **name**, addr_housenumber, height, kind                                                                                                                                                            |
+| `boundaries` | 6–16      | no         | kind, brk_a3, disputed                                                                                                                                                                              |
 
 The three bold changes are ours, carried as patches on the pinned upstream commit (`0001` `name` on `landuse`, `0002` `name` on buildings and buildings to z16, `0003` `pois` to z16). Everything else is upstream.
 
@@ -41,11 +41,13 @@ The three bold changes are ours, carried as patches on the pinned upstream commi
 The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. Only one of the three is drawn, and the difference matters:
 
 - **POIs at z16 — visible now.** The style's `pois` symbol layer already admits every kind, so the toilets, cabins and viewpoints of z16 appear without touching the style.
-- **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The ceiling is the data's: `landuse` stops at z15, so the label stops there too.
+- **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The data sets no ceiling any more: patches `0004` and `0006` removed it (see the list below), so the only thing deciding when a name is drawn is this layer's `minzoom`.
 - **Building names — in the tiles, not on the map.** `buildings` carries `name` since patch 0002, but its style layers are a fill plus `address_label` (z18, house numbers). Nothing draws the name yet, deliberately: named buildings in rural OSM are rare and one label per footprint is noise.
 - **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
 - **`boundaries` names**: upstream drops them, and the fork does not add them.
+- **`natural` values the profile never maps**: `heath` joined the list in patch `0005`, but a value nobody listed is dropped before any style can draw it — that is the class of gap to check against OSM when an area looks blank.
 - **Anything above z16**: the profile stops there; addresses (`address_label`) ask for z18.
+- **Area names**: none missing. Patch `0004` took `landuse` to z16 and spared names above z15; patch `0006` stopped `Area.filterArea` from deleting them below it, so the data carries a name at every zoom and only `landuse_label`'s `minzoom` decides when one is drawn — lowering it never needs a rebuild.
 - **Browser offline**: the browser still keeps nothing, on purpose (`canKeepMapArchive()` answers `false` there). That is `T8` in the plan, staged separately.
 
 The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
@@ -167,7 +169,7 @@ make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 \
 
 - **Paths are resolved and checked first.** The target runs wrangler from `apps/api`, so a repository-relative path would be resolved there — which is how the first publish left the bucket half-updated. Both paths are now resolved against the repository root (absolute inputs untouched) and the target refuses to start when either file is missing (`T10`).
 - **One version for both objects.** The archive and the style are keyed by `MAP_ARTIFACT_VERSION`, and the media route serves `styles/<current version>.json` only — a style uploaded under another key is invisible.
-- Staging may be overwritten in place (`S2`): non-production is served `no-cache`, so a re-upload is picked up without a version bump.
+- Staging may be overwritten in place (`S2`): non-production is served `no-cache`, and the upload writes `must-revalidate` onto the object too, so a re-upload is picked up without a version bump. **This only protects objects uploaded after that policy existed**: a key cached while the target still wrote `immutable` stays fresh in a browser for a year, and only a new version key escapes it.
 
 Verify what is served, rather than trusting the upload:
 
@@ -177,6 +179,14 @@ curl -s "$B/tiles/calamuchita/v1.pmtiles" | sha256sum     # must equal the built
 curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritten to the serving origin
 ```
 
+### Proving the style draws what the archive carries
+
+```bash
+make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles
+```
+
+Headless Chromium renders the built archive with the repository style and reports the labels it placed, so a filter, a zoom range or a font mistake fails before a phone is involved. The same render also runs in `bun test` (`__tests__/render.test.ts`), where the expectations live — that test owns them, and the standalone command asserts only what its flags name; it skips, saying why, when there is no archive or no browser on the machine. Offline on purpose: the style names the reserved origin, so MapLibre draws the glyphs locally. It also measures the layer selector — it hides the layers `layerIdsForGroup` assigns to the `green` group, the same resolution the web control runs, and fails if a label stays or if the group claims no layer. What that proves is the group table and the renderer's answer to it; what the control shows is `experience-map-web.test.tsx`, and what neither can prove is the native plumbing — the `pmtiles://file://` protocol, the font ranges written to disk, the per-session style cache — which is what a device still checks.
+
 ### Two known gaps
 
 - **`T9`** — planetiler's own downloads do not resume: a killed attempt discards its `.tmp`, so a slow-but-alive mirror can never finish the 932 MB water or 953 MB land archive. Until the two `osmdata` files are fetched by our downloader (which does resume), a cold cache may need them pre-seeded. The first real run hit exactly this: three attempts, 8 % lost each.
@@ -184,7 +194,7 @@ curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritt
 
 ## 7. Budget and next steps
 
-**Offline budget (`T5`): holds, for the device.** The built archive is **843 052 B**, below the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
+**Offline budget (`T5`): holds, for the device.** The built archive is **880 899 B**, close to the 846 213 B published before, against `map.download.autoMaxBytes` (8 MB, the silent-download ceiling) and `cacheMaxBytes` (100 MB, the device budget) — the ceiling is ~10× the archive and the device budget holds ~118 regions at this size. The browser keeps nothing today, so this says nothing about Cache Storage: if the browser ever stores a map (`T8`), its quota — per origin and shared with the PWA — is measured separately. Revisit if a region's archive grows by an order of magnitude.
 
 **What is left:**
 
