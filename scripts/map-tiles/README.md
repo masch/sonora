@@ -6,7 +6,7 @@ The map publishes PMTiles built by us instead of a third-party archive, so it ca
 
 ## Why patches, and not one of the other three ways
 
-Our whole delta is five lines in three Java files. Everything below is about carrying that tiny change over somebody else's project without taking the project over.
+Our whole delta is six lines in three Java files. Everything below is about carrying that tiny change over somebody else's project without taking the project over.
 
 | Option                                                                                                                       | What it would mean                              | Why it lost                                                                                                                                                            |
 | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,6 +29,7 @@ The patches are a build input, nothing more. No application code reads them, the
 | `0001-landuse-keeps-its-name` | `name` is kept on the `landuse` polygon emission                            | upstream drops it for size, which is why a forest, a meadow or an orchard cannot be labelled                                                            |
 | `0002-buildings-name-and-z16` | `name` is kept on buildings, and the layer reaches z16                      | same reason, plus the ceiling that hid the detail OSM draws at high zoom                                                                                |
 | `0003-pois-reaches-z16`       | points of interest are emitted up to z16, both emission sites               | the toilets, cabins and viewpoints of OSM appear at z16, and upstream stops at z15                                                                      |
+| `0005-natural-heath`          | `natural=heath` joins the tags mapped to `landuse`                          | OSM has it (the big yellow area next to Bosque Umepay) and the profile dropped it outright, so no style could have drawn it                             |
 | `0004-landuse-reaches-z16`    | `landuse` reaches z16, and its post-process stops stripping names above z15 | an area name vanished as soon as the walker zoomed in: the polygons stopped at z15, and the post-process removes `name` at every zoom except exactly 15 |
 
 `landcover` is deliberately untouched: its features live at z0–7, where an area name buys nothing. What matters for a forest is `landuse=wood`, covered by patch 1.

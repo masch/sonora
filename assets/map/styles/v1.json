@@ -123,6 +123,28 @@
       "paint": { "fill-color": "#9cd3b4", "fill-opacity": 0.7 }
     },
     {
+      "id": "landuse_heath",
+      "type": "fill",
+      "source": "basemap",
+      "source-layer": "landuse",
+      "filter": ["==", "kind", "heath"],
+      "paint": {
+        "fill-color": "rgba(234, 239, 210, 1)",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0, 11, 1]
+      }
+    },
+    {
+      "id": "landuse_bare_rock",
+      "type": "fill",
+      "source": "basemap",
+      "source-layer": "landuse",
+      "filter": ["==", "kind", "bare_rock"],
+      "paint": {
+        "fill-color": "#e7e7e7",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0, 11, 1]
+      }
+    },
+    {
       "id": "landuse_hospital",
       "type": "fill",
       "source": "basemap",

@@ -1,6 +1,12 @@
 {
   "calamuchita": {
-    "15/10491/19483": ["Bosque Umepay", "Huerta Madre"],
-    "16/20982/38967": ["Bosque Umepay", "Huerta Madre"]
+    "15/10491/19483": {
+      "labels": ["Bosque Umepay", "Huerta Madre"],
+      "fills": ["landuse_park", "landuse_heath", "landuse_bare_rock"]
+    },
+    "16/20982/38967": {
+      "labels": ["Bosque Umepay", "Huerta Madre"],
+      "fills": ["landuse_park", "landuse_heath", "landuse_bare_rock"]
+    }
   }
 }

@@ -1,0 +1,12 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java b/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
+index 91b77c1..4df9713 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Landuse.java
+@@ -130,6 +130,7 @@ public class Landuse implements ForwardingProfile.LayerPostProcessor {
+           sand
+           wetland
+           bare_rock
++          heath
+         """),
+       use("kind", fromTag("natural"))
+     ),

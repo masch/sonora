@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type RenderExpectations, expectedNames } from '../render-check';
+import { type RenderExpectations, expectedFor } from '../render-check';
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 const STYLE = JSON.parse(readFileSync(join(REPO, 'assets/map/styles/v1.json'), 'utf8')) as {
@@ -43,6 +43,23 @@ describe('the area label keeps its collision fix', () => {
   });
 });
 
+describe('the fills OSM shows are in the style', () => {
+  it('draws heath and bare rock, the two areas this map used to leave blank', () => {
+    // `natural=heath` is the big yellow area next to Bosque Umepay; `natural=bare_rock` the grey
+    // one. Both are in the tiles now; without these layers nothing paints them.
+    expect(layer('landuse_heath').type).toBe('fill');
+    expect(layer('landuse_bare_rock').type).toBe('fill');
+  });
+
+  it('keeps the heath patch in the profile, because the tag is otherwise dropped', () => {
+    const patch = readFileSync(
+      join(REPO, 'scripts/map-tiles/patches/0005-natural-heath.patch'),
+      'utf8',
+    );
+    expect(patch).toContain('+          heath');
+  });
+});
+
 describe('the landuse patch keeps both halves of the fix', () => {
   it('extends the polygons to z16', () => {
     // One half alone produces polygons at z16 with no name on them: the render check caught it.
@@ -64,18 +81,28 @@ describe('the render expectations', () => {
   ) as RenderExpectations;
 
   it('promise the area names at the zooms the device checked', () => {
-    expect(expectedNames(expectations, 'calamuchita', '15/10491/19483')).toEqual([
-      'Bosque Umepay',
-      'Huerta Madre',
-    ]);
-    expect(expectedNames(expectations, 'calamuchita', '16/20982/38967')).toEqual([
-      'Bosque Umepay',
-      'Huerta Madre',
-    ]);
+    for (const tile of ['15/10491/19483', '16/20982/38967']) {
+      expect(expectedFor(expectations, 'calamuchita', tile).labels).toEqual([
+        'Bosque Umepay',
+        'Huerta Madre',
+      ]);
+    }
+  });
+
+  it('promise the fills the walker can see there', () => {
+    // `natural=heath` (patch 0005) and `natural=bare_rock` were the two areas OSM drew and this
+    // map did not: a profile gap for the first, a missing fill layer for the second.
+    for (const tile of ['15/10491/19483', '16/20982/38967']) {
+      expect(expectedFor(expectations, 'calamuchita', tile).fills).toEqual([
+        'landuse_park',
+        'landuse_heath',
+        'landuse_bare_rock',
+      ]);
+    }
   });
 
   it('say nothing for a tile nobody measured, instead of inventing a promise', () => {
-    expect(expectedNames(expectations, 'calamuchita', '0/0/0')).toEqual([]);
-    expect(expectedNames(expectations, 'patagonia', '15/10491/19483')).toEqual([]);
+    expect(expectedFor(expectations, 'calamuchita', '0/0/0')).toEqual({});
+    expect(expectedFor(expectations, 'patagonia', '15/10491/19483')).toEqual({});
   });
 });

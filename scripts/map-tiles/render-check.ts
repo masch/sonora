@@ -43,6 +43,8 @@ export interface RenderCheckOptions {
   tile: { z: number; x: number; y: number };
   /** Names that must appear among the labels the style placed. */
   expect: string[];
+  /** Style layers that must draw at least one feature, so a missing fill fails here too. */
+  expectFills: string[];
   /** Style layers whose visibility proves the selector works. */
   family: string;
 }
@@ -61,16 +63,24 @@ export function tileCenter(z: number, x: number, y: number): [number, number] {
  * nothing but an archive: a label that stops being placed — a zoom range, a collision, a filter
  * — fails here instead of on somebody's phone.
  */
-export interface RenderExpectations {
-  [region: string]: { [tile: string]: string[] };
+export interface TileExpectation {
+  /** Names the style must place on its label layer. */
+  labels?: string[];
+  /** Style layers that must draw at least one feature at this tile. */
+  fills?: string[];
 }
 
-export function expectedNames(
+export interface RenderExpectations {
+  [region: string]: { [tile: string]: TileExpectation };
+}
+
+/** What one tile promises, or nothing at all for a tile nobody measured. */
+export function expectedFor(
   expectations: RenderExpectations,
   region: string,
   tile: string,
-): string[] {
-  return expectations[region]?.[tile] ?? [];
+): TileExpectation {
+  return expectations[region]?.[tile] ?? {};
 }
 
 /** Where a package really lives, whether it is hoisted or bun's isolated `.bun/` layout. */
@@ -156,6 +166,8 @@ export interface RenderCheckResult {
   family: string;
   /** The names the style placed on its label layer. */
   names: string[];
+  /** The fill layers that drew at least one feature. */
+  fills: string[];
   /** How many style layers the family owns, so a missing one is visible in the output. */
   familyLayers: number;
   /** Whether the source reported itself loaded, which separates "empty" from "not fetched". */
@@ -181,6 +193,7 @@ export async function renderCheck(
       ok: false,
       family: options.family,
       names: [],
+      fills: [],
       familyLayers: 0,
       sourceLoaded: false,
       message: 'maplibre-gl and pmtiles must be installed to render an archive',
@@ -293,6 +306,10 @@ export async function renderCheck(
                 ),
               ];
 
+        const drawnFills = input.expectFills.filter(
+          (id: string) => map.queryRenderedFeatures({ layers: [id] }).length > 0,
+        );
+
         const before = placed(labelLayers);
         // The selector's promise: hiding the family hides its labels too.
         for (const id of familyLayers) map.setLayoutProperty(id, 'visibility', 'none');
@@ -302,16 +319,23 @@ export async function renderCheck(
 
         return {
           names: before,
+          drawnFills,
           afterHiding: after,
           familyLayers: familyLayers.length,
           labelLayers: labelLayers.length,
           sourceLoaded: map.isSourceLoaded('basemap'),
         };
       },
-      { center: [lon, lat], zoom: options.tile.z, family: options.family },
+      {
+        center: [lon, lat],
+        zoom: options.tile.z,
+        family: options.family,
+        expectFills: options.expectFills,
+      },
     );
 
     const missing = options.expect.filter((name) => !rendered.names.includes(name));
+    const missingFills = options.expectFills.filter((id) => !rendered.drawnFills.includes(id));
     const problems: string[] = [];
     if (!rendered.sourceLoaded) problems.push('the archive never loaded as a source');
     if (rendered.labelLayers === 0) {
@@ -319,6 +343,8 @@ export async function renderCheck(
     }
     if (rendered.names.length === 0) problems.push('the style placed no named label');
     if (missing.length > 0) problems.push(`not drawn: ${missing.join(', ')}`);
+    if (missingFills.length > 0)
+      problems.push(`fills that drew nothing: ${missingFills.join(', ')}`);
     if (rendered.afterHiding.length > 0) {
       problems.push(`hiding "${options.family}" left ${rendered.afterHiding.join(', ')} drawn`);
     }
@@ -327,6 +353,7 @@ export async function renderCheck(
       ok: problems.length === 0,
       family: options.family,
       names: rendered.names,
+      fills: rendered.drawnFills,
       familyLayers: rendered.familyLayers,
       sourceLoaded: rendered.sourceLoaded,
       ...(problems.length === 0 ? {} : { message: problems.join('; ') }),
@@ -371,20 +398,22 @@ async function main(argv: string[]): Promise<number> {
   const fromFlag = (flag(argv, 'expect') ?? '').split(',').filter((name) => name.length > 0);
   // The committed expectation is the default, so `make map-tiles-render-check ARCHIVE=…`
   // asserts what this repository promises without a flag nobody remembers to pass.
-  const committed = expectedNames(
+  const committed = expectedFor(
     JSON.parse(
       readFileSync(join(repoRoot, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
     ) as RenderExpectations,
     region,
     tile,
   );
+  const fillsFlag = (flag(argv, 'expect-fill') ?? '').split(',').filter((id) => id.length > 0);
 
   const result = await renderCheck(
     {
       archive: resolve(archive),
       style: resolve(flag(argv, 'style') ?? join(repoRoot, 'assets/map/styles/v1.json')),
       tile: { z: parts[0] as number, x: parts[1] as number, y: parts[2] as number },
-      expect: fromFlag.length > 0 ? fromFlag : committed,
+      expect: fromFlag.length > 0 ? fromFlag : (committed.labels ?? []),
+      expectFills: fillsFlag.length > 0 ? fillsFlag : (committed.fills ?? []),
       family: flag(argv, 'family') ?? 'landuse',
     },
     repoRoot,
@@ -394,6 +423,7 @@ async function main(argv: string[]): Promise<number> {
     `source loaded: ${result.sourceLoaded} | ${result.family} layers: ${result.familyLayers}`,
   );
   console.log(`labels placed: ${result.names.length === 0 ? '(none)' : result.names.join(', ')}`);
+  console.log(`fills drawn:   ${result.fills.length === 0 ? '(none)' : result.fills.join(', ')}`);
   if (!result.ok) {
     console.error(`map-tiles-render-check: ${result.message ?? 'the check failed'}`);
     return 1;
