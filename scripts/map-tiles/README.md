@@ -39,7 +39,7 @@ make map-tiles-toolchain      # once: pinned JDK 21 + Maven, outside the repo
 make map-tiles-build REGION=calamuchita
 ```
 
-The profile compiles with `maven.compiler.source=21`, so JDK 17 is not enough. `make map-tiles-toolchain` installs the pinned **JDK 21.0.13+9** (Adoptium) and **Maven 3.9.16** (Apache) into `~/.local/share/sonora-map-tiles/toolchain` — never inside the repository, which keeps the versions and digests in `toolchain.ts` and no binaries in git. Both archives are checked against the digest the vendor publishes before they are unpacked, and a stamped installation is reused; `TOOLCHAIN=<dir>` or `SONORA_TOOLCHAIN` moves it. `make map-tiles-build` picks that toolchain up when it is installed and falls back to whatever `java` and `mvn` are on `PATH` when it is not.
+The profile compiles with `maven.compiler.source=21`, so JDK 17 is not enough. `make map-tiles-toolchain` installs the pinned **JDK 21.0.13+9** (Adoptium) and **Maven 3.9.16** (Apache) into **`<repo>/.tools/toolchain`**: one folder inside the checkout, ignored by `.gitignore`, so nothing of the build's own lives outside the project and no binary ever enters git. Both archives are checked against the digest the vendor publishes before they are unpacked, and a stamped installation is reused; `--root`, `TOOLCHAIN=` or `SONORA_TOOLCHAIN` moves it, and a root inside the repository but outside `.tools/` is refused. `make map-tiles-build` picks that toolchain up when it is installed and falls back to whatever `java` and `mvn` are on `PATH` when it is not.
 
 Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default a directory under the OS temp, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
 
@@ -66,13 +66,16 @@ A cached extract is kept rather than refreshed: Geofabrik publishes a new `<area
 
 ### Where the cache lives, and why to keep it
 
-The cache is the checkout, the auxiliary sources the tiler downloads and the archive — ~1.4 GB plus the region's extract. It defaults to `$TMPDIR/sonora-map-tiles` and the script prints it at the start and end of every run. That is the directory worth keeping: with it warm a region builds in ~4 minutes, and cold it adds ~18 minutes of downloading. Pass `CACHE=/var/tmp/sonora-map-tiles` (or anywhere outside the OS temp cleaner) to make that explicit. The archive is written to `<cache>/out/<region>.pmtiles` for the same reason: the same directory can be handed to the upload targets.
+The cache is the checkout, the auxiliary sources the tiler downloads and the archive — ~2.9 GB plus the region's extract. It defaults to **`<repo>/.tools/cache`**, the same ignored folder the toolchain lives in, and the script prints it at the start and end of every run. That is the directory worth keeping: with it warm a region builds in ~4 minutes, and cold it adds ~18 minutes of downloading. Pass `CACHE=/var/tmp/sonora-map-tiles` (or anywhere outside the OS temp cleaner) to make that explicit. The archive is written to `<cache>/out/<region>.pmtiles` for the same reason: the same directory can be handed to the upload targets.
 
 ```
-<cache>/basemaps/            the pinned checkout, patched by the run and cleaned by the next one
-<cache>/planetiler/          the tiler's working directory
-<cache>/planetiler/data/sources/   the extract and every auxiliary source, verified before use
-<cache>/out/<region>.pmtiles       the archive
+.tools/                      the one folder .gitignore holds; nothing of this lives outside it
+.tools/toolchain/            JDK 21 + Maven, installed once
+.tools/cache/                everything a run downloads and writes
+  basemaps/                  the pinned checkout, patched by the run and cleaned by the next one
+  planetiler/                the tiler's working directory
+    data/sources/            the extract and every auxiliary source, verified before use
+  out/<region>.pmtiles       the archive
 ```
 
 The tiler runs **inside `<cache>/planetiler`**, and planetiler resolves its own `data/sources` against its working directory. That is why the sources are not in the checkout: a run leaves its patches applied as uncommitted changes, so before patching it returns the checkout to the pinned commit (`git reset --hard` and `git clean -fdx` inside `<cache>/basemaps`), and anything kept there would be deleted. The tiler's working directory is a sibling, so it survives that reset, and a warm cache builds what the first run did instead of stopping at a patch it already finds applied or downloading 1.4 GB again.

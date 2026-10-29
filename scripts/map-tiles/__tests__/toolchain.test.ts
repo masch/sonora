@@ -16,8 +16,8 @@ import {
   TOOLCHAIN,
   type ToolchainArtefact,
   checksumProblem,
-  defaultToolchainRoot,
   installToolchain,
+  toolchainRoot,
   toolchainEnv,
 } from '../toolchain';
 
@@ -201,13 +201,17 @@ describe('installToolchain', () => {
     }
   });
 
-  it('installs outside the repository, so no binary ever enters git', () => {
-    const root = defaultToolchainRoot('/srv/sonora');
-    expect(root.startsWith('/srv/sonora')).toBe(false);
-    expect(root.startsWith(process.env.HOME ?? '/nonexistent')).toBe(true);
-    // An explicit override is honoured, which is how the build cache and the toolchain can
-    // live on different disks.
-    expect(defaultToolchainRoot('/srv/sonora', '/opt/toolchain')).toBe('/opt/toolchain');
+  it('installs into one ignored folder of the repository, and nowhere else in it', () => {
+    // One folder inside the checkout, so nothing has to live outside the project...
+    expect(toolchainRoot('/srv/sonora')).toBe('/srv/sonora/.tools/toolchain');
+    // ...and that folder is the only place inside it a binary may land: anything else would be
+    // tracked, which is how a 200 MB JDK ends up in a commit.
+    expect(() => toolchainRoot('/srv/sonora', '/srv/sonora/scripts/jdk')).toThrow(/\.tools/);
+    // An explicit override is still honoured, inside the ignored folder or outside the repo.
+    expect(toolchainRoot('/srv/sonora', '/srv/sonora/.tools/jdk-21')).toBe(
+      '/srv/sonora/.tools/jdk-21',
+    );
+    expect(toolchainRoot('/srv/sonora', '/opt/toolchain')).toBe('/opt/toolchain');
   });
 
   it('pins a real JDK 21 and a real Maven, with a published digest each', () => {

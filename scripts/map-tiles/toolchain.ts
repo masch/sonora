@@ -32,21 +32,14 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { type Command, type CommandResult, runCommand } from './build';
 import { type DownloadOptions, type DownloadResult, downloadVerified } from './download';
 
-/** Where the toolchain lands when `--root` is not given: never inside the repository. */
-export const DEFAULT_TOOLCHAIN_ROOT = join(
-  homedir(),
-  '.local',
-  'share',
-  'sonora-map-tiles',
-  'toolchain',
-);
+/** The one repository-local folder the build's tools and cache live in; `.gitignore` holds it. */
+export const LOCAL_TOOLS_DIR = '.tools';
 
 const STAMP = '.stamp';
 const DOWNLOADS = 'downloads';
@@ -92,22 +85,30 @@ export const TOOLCHAIN: ToolchainArtefact[] = [
 ];
 
 /**
- * Where the toolchain lives: outside the repository by default, or `--root`/`SONORA_TOOLCHAIN`.
+ * Where the toolchain lives: `<repo>/.tools/toolchain` by default, or `--root`/`SONORA_TOOLCHAIN`.
  *
- * The repository path is accepted only to be refused: a toolchain inside it is a directory of
- * binaries that somebody eventually commits.
+ * Inside the repository on purpose — one folder, ignored by git — with one rule: a root inside
+ * the working tree has to sit under that ignored folder, because a toolchain anywhere else is a
+ * directory of binaries that somebody eventually commits.
  */
-export function defaultToolchainRoot(repoRoot: string, explicit?: string): string {
-  if (explicit !== undefined && explicit.trim().length > 0) return resolve(explicit);
-  const fromEnvironment = process.env.SONORA_TOOLCHAIN;
-  if (fromEnvironment !== undefined && fromEnvironment.trim().length > 0) {
-    return resolve(fromEnvironment);
-  }
-  const root = resolve(DEFAULT_TOOLCHAIN_ROOT);
+export function toolchainRoot(repoRoot: string, explicit?: string): string {
   const repository = resolve(repoRoot);
-  if (root === repository || root.startsWith(`${repository}/`)) {
+  const fromFlag = explicit !== undefined && explicit.trim().length > 0 ? explicit : undefined;
+  const fromEnvironment =
+    fromFlag === undefined && process.env.SONORA_TOOLCHAIN !== undefined
+      ? process.env.SONORA_TOOLCHAIN
+      : undefined;
+  const root = resolve(
+    fromFlag ??
+      (fromEnvironment !== undefined && fromEnvironment.trim().length > 0
+        ? fromEnvironment
+        : join(repository, LOCAL_TOOLS_DIR, 'toolchain')),
+  );
+
+  const ignored = `${join(repository, LOCAL_TOOLS_DIR)}/`;
+  if (root.startsWith(`${repository}/`) && !root.startsWith(ignored)) {
     throw new Error(
-      `the toolchain would live inside the repository at ${root}: binaries stay out of git, so point --root or SONORA_TOOLCHAIN somewhere else.`,
+      `the toolchain would live at ${root}, inside the repository but outside ${join(repository, LOCAL_TOOLS_DIR)}: only that folder is git-ignored, so binaries anywhere else end up in a commit.`,
     );
   }
   return root;
@@ -266,7 +267,7 @@ async function main(argv: string[]): Promise<number> {
   const repoRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   let root: string;
   try {
-    root = defaultToolchainRoot(repoRoot, flag(argv, 'root'));
+    root = toolchainRoot(repoRoot, flag(argv, 'root'));
   } catch (error) {
     console.error(`map-tiles-toolchain: ${error instanceof Error ? error.message : String(error)}`);
     return 1;

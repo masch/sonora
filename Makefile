@@ -556,24 +556,26 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 # the compiler, and no `set -euo pipefail` has to be pasted by hand.
 #
 # CACHE is where the expensive things live: the checkout in <cache>/basemaps, the region's
-# extract and the ~1.4 GB of auxiliary sources the tiler downloads in
+# extract and the ~2.9 GB of auxiliary sources the tiler downloads in
 # <cache>/planetiler/data/sources, and the archive the run writes to
 # <cache>/out/<region>.pmtiles, which the api-upload-map-tiles-* targets below upload. Every
 # download is resumed when interrupted, stopped when it stops delivering, and opened before the
-# tiler reads it. Without CACHE the script uses a directory under the OS temp, which the temp
-# cleaner may delete, so point it at a durable path explicitly:
+# tiler reads it. The default is <repo>/.tools/cache — one git-ignored folder, nothing of the
+# build's own living outside the checkout — so the only thing to decide is whether the
+# repository's filesystem has room for ~4 GB:
 #
-#   make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles
+#   make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles   # another disk
 #
 # With that directory warm a region builds in ~4 min instead of ~18 min cold, because the next
 # run reuses the checkout and the sources under it.
 
 MAXZOOM ?= 16
-# Empty means "the script's OS-temp default"; set CACHE=<durable path> to keep the cache.
+# Empty means the script's default: <repo>/.tools/cache, the one folder .gitignore holds.
+# Set CACHE=<dir> only to keep the ~4 GB of sources somewhere else for a while.
 CACHE ?=
-# The pinned JDK 21 + Maven that `make map-tiles-toolchain` installs. It lives outside the
-# repository on purpose: the repo carries the versions and digests, never the binaries.
-TOOLCHAIN ?= $(HOME)/.local/share/sonora-map-tiles/toolchain
+# The pinned JDK 21 + Maven that `make map-tiles-toolchain` installs, in the same ignored
+# folder. The repository carries the versions and digests; the binaries never enter git.
+TOOLCHAIN ?= $(CURDIR)/.tools/toolchain
 
 .PHONY: map-tiles-toolchain
 map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adoptium + Apache, digest-checked). Usage: make map-tiles-toolchain [TOOLCHAIN=<dir>]

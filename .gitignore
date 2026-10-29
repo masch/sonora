@@ -82,5 +82,8 @@ example
 # Local Pi runtime state
 .atl/
 .codegraph/
+
+# Local toolchain and the tile build cache (see scripts/map-tiles/README.md).
+.tools/
 # Self-hosted map assets (glyphs + sprite) staged for upload, never committed
 map-assets/
