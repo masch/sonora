@@ -555,11 +555,13 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 # first failure ends the run naming the step: a patch that no longer applies never reaches
 # the compiler, and no `set -euo pipefail` has to be pasted by hand.
 #
-# CACHE is where the expensive things live: the checkout in <cache>/basemaps, the ~1.4 GB of
-# auxiliary sources the tiler downloads in <cache>/planetiler, and the archive the run writes to
-# <cache>/out/<region>.pmtiles, which the api-upload-map-tiles-* targets below upload. Without
-# CACHE the script uses a directory under the OS temp, which the temp cleaner may delete, so
-# point it at a durable path explicitly:
+# CACHE is where the expensive things live: the checkout in <cache>/basemaps, the region's
+# extract and the ~1.4 GB of auxiliary sources the tiler downloads in
+# <cache>/planetiler/data/sources, and the archive the run writes to
+# <cache>/out/<region>.pmtiles, which the api-upload-map-tiles-* targets below upload. Every
+# download is resumed when interrupted, stopped when it stops delivering, and opened before the
+# tiler reads it. Without CACHE the script uses a directory under the OS temp, which the temp
+# cleaner may delete, so point it at a durable path explicitly:
 #
 #   make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles
 #

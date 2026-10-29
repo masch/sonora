@@ -1,7 +1,7 @@
 # Feature: Own Map Tiles
 
 **Feature ID:** `map-tiles-pipeline`
-**Status:** in progress — `T2` (one build entry point) is built on `feat/map-tiles-build`; the rest of the plan is still a plan. Three spikes measured the cost (issue #502). The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
+**Status:** in progress — `T1` and `T2` are on `main`; `T3` (downloads that cannot lie) is built on `feat/map-tiles-verified-downloads`; `T4`–`T7` are still a plan. Three spikes measured the cost (issue #502). The decision this plan serves: replace the third-party archive with one we build, so the map can show what OpenStreetMap shows.
 
 ## Specs
 
@@ -30,7 +30,7 @@ Measured on the `calamuchita` bbox (issue #502, three comments):
 
 - `T1` — vendor the fork, not a fork of the fork: pin the upstream `protomaps/basemaps` commit and carry the three edits as patches in the repository (`scripts/map-tiles/patches/`), so the profile's provenance is a commit id plus a reviewable diff.
 - `T2` — one build entry point: a Make target that clones the pinned commit, applies the patches, builds the profile jar and runs the tiler for one region, with the sources cache as an explicit directory argument (done on `feat/map-tiles-build`; `make map-tiles-build REGION=<region>`, planned and tested in `scripts/map-tiles/build.ts` and `scripts/map-tiles/__tests__/build.test.ts`).
-- `T3` — downloads that cannot lie: every fetched artefact is verified before use (speed guard plus resume for mirrors that stall without closing, zip/JAR integrity check, and a size check where the server publishes one). Three truncated downloads and one 9h46m stall already happened without it.
+- `T3` — downloads that cannot lie: every fetched artefact is verified before use (speed guard plus resume for mirrors that stall without closing, zip/JAR integrity check, and a size check where the server publishes one). Three truncated downloads and one 9h46m stall already happened without it (done on `feat/map-tiles-verified-downloads`: `0294341` the verified downloader, `563eccf` the build wiring and the reset-abort test; this record follows in the same unit).
 - `T4` — publish: upload the archive and the style with the existing `api-upload-map-tiles-*` targets, bumping `MAP_ARTIFACT_VERSION` per environment (staging first, per `S2`).
 - `T5` — offline budget: confirm `map.download.autoMaxBytes` (8 MB) and `cacheMaxBytes` (100 MB) still fit the new archive and the regions we intend to publish — the measured 824 KB says they do, and this task is the check, not the change.
 - `T6` — device reading: a trip and a track at Calamuchita show area names and the POIs that were missing, base map and labels draw offline, and the layer selector still claims every layer of the new style.
@@ -42,9 +42,12 @@ Measured on the `calamuchita` bbox (issue #502, three comments):
 - **Build machine.** JDK 21 plus Maven plus 4–8 GB RAM is not "a script anyone runs"; decide who runs it before the first production upload.
 - **A profile we now own.** The fork is three edits today; upstream changes will need re-applying. Pinning the commit is what keeps that honest.
 - **What it still will not show**: `landcover` (z0–7 by design) and `boundaries` names, and nothing above z16.
+- **Extract freshness.** A cached extract is kept, not refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Taking a newer one is a deliberate act — delete the file and the next run downloads and verifies it again.
 
 ## Log
 
 - `L1` — "que es lo que tenemos que hacer para que se vea todo lo de OSM? evaluamos. no importa si es mucho el cambio"
 - `L2` — The measurements that produced this plan live in issue #502: three spikes (OpenMapTiles profile, Protomaps profile, forked Protomaps profile) over the Argentina extract at the Calamuchita bbox, each with size, build time and the resulting `vector_layers`.
 - `L3` — "documentar el resultado y armar plan de adopción": this document is the plan; the results are the issue comments it links.
+- `L4` — "Seguimos con map-tiles-pipeline. Leé odd/tasks/map-tiles-pipeline.md hasta ## Log y scripts/map-tiles/README.md. Arrancamos por T3, y en la misma unidad va el test del aborto cuando falla el reset que dejó pendiente el validador."
+- `L5` — T3 found two ways the entry point from `T2` lied, both about where a build's data comes from. `--data-dir` is not a planetiler 0.10 argument, so the auxiliary sources landed in `<checkout>/tiles/target/data/sources` and the next run's `clean -fdx` deleted the 1.4 GB the cache was supposed to keep; and the profile's own `--area` default is **monaco**, so a run that named no extract downloaded Monaco and reported it as the region's archive. The build now fetches the region's Geofabrik extract itself, runs the tiler in `<cache>/planetiler` (where planetiler resolves `data/sources`), and verifies every file there before the tiler reads it. The validator's pending abort is pinned in the suite: a failed reset ends the run at `reset-checkout`, with no patch applied, no jar built and no java spawned, and the dirty checkout left as it was.
