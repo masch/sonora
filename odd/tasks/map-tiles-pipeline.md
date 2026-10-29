@@ -50,18 +50,19 @@ Measured on the `calamuchita` bbox (issue #502, three comments):
 
 ## Delivery
 
-The branch `feat/map-tiles-verified-downloads` grew past one reviewable slice (14 commits, ~3 000
-authored lines), so it is delivered as chained PRs, oldest first. Each slice is a review unit of
-its own; the boundary is the commit that closes it.
+The branch grew past one reviewable slice (15 commits, ~3 000 authored lines), so it is delivered
+as three chained PRs. The history is already linear and the slices are contiguous prefixes, so the
+split is three branch pointers — no rebase, no rewritten commit:
 
-| Slice                                                  | What it holds                                                                                                                                   | Commits               | State                                                                                 |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------- |
-| 1. Verified downloads (`T3`)                           | `scripts/map-tiles/download.ts` and its suite, the build wiring that fetches and verifies every source, the reset-abort test                    | `0294341` … `e9fb4b8` | **reviewed and approved** (`review-ee6c0efc0e395fc6`, burned)                         |
-| 2. Build tooling (`T9`, `T10`)                         | the pinned toolchain installer, the `.tools/` folder and cache default, the two `osmdata` archives under our downloader, upload-path validation | `6a1654c` … `a8696b2` | reviewed and approved (`review-671fc942e9472290`, burned) except the last two commits |
-| 3. Documents and style (`T4`, `T5`, `T7`, `T8`, `T11`) | the runbook in `docs/map-tiles.md`, the build's record in this file, the web-offline stage, `landuse_label` in the style                        | `50d5b64` … `d65682b` | published to staging; `T6` on a device is the open check                              |
+| Slice                                      | Branch                              | Base    | Holds                                                                                                                                                                        | State                                                         |
+| ------------------------------------------ | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1. Verified downloads (`T3`)               | `feat/map-tiles-verified-downloads` | `main`  | `download.ts` and its suite, the build wiring that fetches and verifies every source, the reset-abort test, the resume-validator correction                                  | **reviewed and approved** (`review-ee6c0efc0e395fc6`, burned) |
+| 2. A build that runs, and what it produced | `feat/map-tiles-build-tooling`      | slice 1 | the pinned toolchain, the `.tools/` folder and cache default, the first real build's record, the operator runbook, `landuse_label`, and the five findings that review raised | **reviewed and approved** (`review-671fc942e9472290`, burned) |
+| 3. The gaps the real run exposed           | `feat/map-tiles-docs-and-labels`    | slice 2 | `T9` (the two `osmdata` archives under our downloader), `T10` (upload paths resolved and checked), this delivery record                                                      | unpublished; `assess` says no review is due                   |
 
-Slices 2 and 3 interleave in history (`50d5b64` sits between them), so a chained PR split needs
-either a rebase onto three linear branches or a merge-order decision — a human call, not a tool's.
+Each PR shows only its own increment, because its base is the previous slice. Publishing them —
+push, `gh pr create --base <previous branch>`, merge order — is the human's decision; the
+repository is not pushed from here.
 
 ## Log
 
