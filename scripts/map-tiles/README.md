@@ -35,8 +35,11 @@ The patches are a build input, nothing more. No application code reads them, the
 ## Building it
 
 ```bash
+make map-tiles-toolchain      # once: pinned JDK 21 + Maven, outside the repo
 make map-tiles-build REGION=calamuchita
 ```
+
+The profile compiles with `maven.compiler.source=21`, so JDK 17 is not enough. `make map-tiles-toolchain` installs the pinned **JDK 21.0.13+9** (Adoptium) and **Maven 3.9.16** (Apache) into `~/.local/share/sonora-map-tiles/toolchain` — never inside the repository, which keeps the versions and digests in `toolchain.ts` and no binaries in git. Both archives are checked against the digest the vendor publishes before they are unpacked, and a stamped installation is reused; `TOOLCHAIN=<dir>` or `SONORA_TOOLCHAIN` moves it. `make map-tiles-build` picks that toolchain up when it is installed and falls back to whatever `java` and `mvn` are on `PATH` when it is not.
 
 Optional: `MAXZOOM` (default 16, the deepest zoom the profile emits) and `CACHE` (default a directory under the OS temp, printed by the script). The archive lands at `<CACHE>/out/<region>.pmtiles`; publish it with `make api-upload-map-tiles-staging REGION=… VERSION=… ARCHIVE=… STYLE=…`.
 

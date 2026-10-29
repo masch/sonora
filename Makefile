@@ -571,10 +571,19 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 MAXZOOM ?= 16
 # Empty means "the script's OS-temp default"; set CACHE=<durable path> to keep the cache.
 CACHE ?=
+# The pinned JDK 21 + Maven that `make map-tiles-toolchain` installs. It lives outside the
+# repository on purpose: the repo carries the versions and digests, never the binaries.
+TOOLCHAIN ?= $(HOME)/.local/share/sonora-map-tiles/toolchain
+
+.PHONY: map-tiles-toolchain
+map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adoptium + Apache, digest-checked). Usage: make map-tiles-toolchain [TOOLCHAIN=<dir>]
+	bun scripts/map-tiles/toolchain.ts $(if $(TOOLCHAIN),--root="$(TOOLCHAIN)",)
 
 .PHONY: map-tiles-build
 map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
-	bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+	@JAVA_HOME="$(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),$(TOOLCHAIN)/jdk)" \
+		PATH="$(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),$(TOOLCHAIN)/jdk/bin:$(TOOLCHAIN)/maven/bin:,)$$PATH" \
+		bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
 
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
