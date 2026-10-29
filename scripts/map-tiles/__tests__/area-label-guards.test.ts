@@ -1,17 +1,16 @@
 /**
- * The two decisions the device settled, pinned where `bun test` can see them.
+ * The style and patch guards the device settled, pinned where `bun test` can see them.
  *
  * The render check proves the outcome, but it needs a browser and an archive, so it cannot run
  * on every commit. These guards cover the regression class it found: someone edits the style or
  * the patch and quietly drops the fix, and the label disappears again — this time on a phone,
- * weeks later.
+ * weeks later. What each tile is expected to draw is not here; it lives with the render, in
+ * `render.test.ts`.
  */
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { type RenderExpectations, expectedFor } from '../render-check';
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 const STYLE = JSON.parse(readFileSync(join(REPO, 'assets/map/styles/v1.json'), 'utf8')) as {
@@ -21,9 +20,6 @@ const PATCH = readFileSync(
   join(REPO, 'scripts/map-tiles/patches/0004-landuse-reaches-z16.patch'),
   'utf8',
 );
-const EXPECTATIONS = JSON.parse(
-  readFileSync(join(REPO, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
-) as RenderExpectations;
 
 function layer(id: string) {
   const found = STYLE.layers.find((candidate) => candidate.id === id);
@@ -75,16 +71,6 @@ describe('the names travel at every zoom', () => {
     expect(patch).toContain('-        if (minArea < 30000d');
     expect(patch).toContain('item.tags().remove(key)');
   });
-
-  it('promises the labels at z13 and z14 too, which is what the device could not see', () => {
-    expect(expectedFor(EXPECTATIONS, 'calamuchita', '13/2622/4870').labels).toEqual([
-      'Bosque Umepay',
-    ]);
-    expect(expectedFor(EXPECTATIONS, 'calamuchita', '14/5245/9741').labels).toEqual([
-      'Bosque Umepay',
-      'Huerta Madre',
-    ]);
-  });
 });
 
 describe('the landuse patch keeps both halves of the fix', () => {
@@ -99,33 +85,5 @@ describe('the landuse patch keeps both halves of the fix', () => {
     // arrives.
     expect(PATCH).toContain('+    if (zoom >= 15)');
     expect(PATCH).toContain('-    if (zoom == 15)');
-  });
-});
-
-describe('the render expectations', () => {
-  it('promise the area names at the zooms the device checked', () => {
-    for (const tile of ['15/10491/19483', '16/20982/38967']) {
-      expect(expectedFor(EXPECTATIONS, 'calamuchita', tile).labels).toEqual([
-        'Bosque Umepay',
-        'Huerta Madre',
-      ]);
-    }
-  });
-
-  it('promise the fills the walker can see there', () => {
-    // `natural=heath` (patch 0005) and `natural=bare_rock` were the two areas OSM drew and this
-    // map did not: a profile gap for the first, a missing fill layer for the second.
-    for (const tile of ['15/10491/19483', '16/20982/38967']) {
-      expect(expectedFor(EXPECTATIONS, 'calamuchita', tile).fills).toEqual([
-        'landuse_park',
-        'landuse_heath',
-        'landuse_bare_rock',
-      ]);
-    }
-  });
-
-  it('say nothing for a tile nobody measured, instead of inventing a promise', () => {
-    expect(expectedFor(EXPECTATIONS, 'calamuchita', '0/0/0')).toEqual({});
-    expect(expectedFor(EXPECTATIONS, 'patagonia', '15/10491/19483')).toEqual({});
   });
 });

@@ -70,6 +70,9 @@ describe('the command line reports a bad argument as an argument error', () => {
   for (const [argv, expected] of [
     [['--archive=/nonexistent.pmtiles', '--family=landuse'], '--family is now --group'],
     [['--archive=/nonexistent.pmtiles', '--nonsense=1'], 'unknown option --nonsense'],
+    // `--region` used to pick the expectations out of a data file; they live in the integration
+    // test now, so keeping the flag would be a second name that does nothing.
+    [['--archive=/nonexistent.pmtiles', '--region=calamuchita'], 'unknown option --region'],
   ] as [string[], string][]) {
     it(`refuses ${argv[1]} instead of ignoring it`, () => {
       const run = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8' });
@@ -144,5 +147,46 @@ describe('packageDir', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * The integration test's contract with a CI job, checked from outside it.
+ *
+ * A render suite that skips is honest on a laptop and worthless in CI: the job goes green having
+ * rendered nothing. `render.test.ts` therefore treats a missing archive or browser as a failure
+ * wherever `CI` says the render is required, and this runs it the way CI would.
+ */
+describe('the integration test in CI', () => {
+  const integration = fileURLToPath(new URL('./render.test.ts', import.meta.url));
+
+  it('fails instead of skipping when CI asks for the render and the archive is missing', () => {
+    const run = spawnSync(process.execPath, ['test', integration], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        CI: 'true',
+        MAP_TILES_ARCHIVE: '/nonexistent/calamuchita.pmtiles',
+        PLAYWRIGHT_CHROMIUM: '/nonexistent/chrome',
+      },
+    });
+
+    expect(run.status).not.toBe(0);
+    expect(`${run.stdout}${run.stderr}`).toContain('the render check cannot run');
+  });
+
+  it('still skips on a laptop, so the suite is usable without a build', () => {
+    const run = spawnSync(process.execPath, ['test', integration], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        CI: '',
+        MAP_TILES_ARCHIVE: '/nonexistent/calamuchita.pmtiles',
+        PLAYWRIGHT_CHROMIUM: '/nonexistent/chrome',
+      },
+    });
+
+    expect(run.status).toBe(0);
+    expect(`${run.stdout}${run.stderr}`).toContain('render check skipped');
   });
 });

@@ -16,12 +16,19 @@
  * Usage:
  *   bun scripts/map-tiles/render-check.ts --archive=<region>.pmtiles [--expect="Bosque Umepay"]
  *
- * Exit code 0 means the style drew at least one named area and, when `--expect` is given, that
- * every expected name was among them. It also measures the layer selector: it hides exactly the
- * layers `layerIdsForGroup` assigns to the `green` group — the same resolution the web selector
- * runs — and fails if the label it drew is still there. What that proves is the group table and
- * MapLibre's answer to it; what wires a group to the control is a component, and there it is
- * `experience-map-web.test.tsx`.
+ * With neither `--expect` nor `--expect-fill` the check invents no name: it reports what the
+ * style drew and asserts only what any archive must show — the source loaded, the `green` group
+ * resolves to at least one layer, at least one named label was placed, and hiding the group
+ * removes it. What the tiles are *expected* to draw lives in the integration test that drives
+ * this renderer, `__tests__/render.test.ts`, so a label that stops being placed fails
+ * `bun test` naming the tile that lost it. The two flags are how a one-off names its own.
+ *
+ * Exit code 0 means the style drew at least one named area, that every name `--expect` gives was
+ * among them, and that every layer `--expect-fill` names drew a feature. It also measures the
+ * layer selector: it hides exactly the layers `layerIdsForGroup` assigns to the `green` group —
+ * the same resolution the web selector runs — and fails if the label it drew is still there.
+ * What that proves is the group table and MapLibre's answer to it; what wires a group to the
+ * control is a component, and there it is `experience-map-web.test.tsx`.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -93,33 +100,6 @@ export function tileCenter(z: number, x: number, y: number): [number, number] {
   const lon = ((x + 0.5) / 2 ** z) * 360 - 180;
   const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / 2 ** z))) * 180) / Math.PI;
   return [lon, lat];
-}
-
-/**
- * The names each tile is expected to draw, per region.
- *
- * Kept in a file rather than in a flag so the expectation is reviewable and the command needs
- * nothing but an archive: a label that stops being placed — a zoom range, a collision, a filter
- * — fails here instead of on somebody's phone.
- */
-export interface TileExpectation {
-  /** Names the style must place on its label layer. */
-  labels?: string[];
-  /** Style layers that must draw at least one feature at this tile. */
-  fills?: string[];
-}
-
-export interface RenderExpectations {
-  [region: string]: { [tile: string]: TileExpectation };
-}
-
-/** What one tile promises, or nothing at all for a tile nobody measured. */
-export function expectedFor(
-  expectations: RenderExpectations,
-  region: string,
-  tile: string,
-): TileExpectation {
-  return expectations[region]?.[tile] ?? {};
 }
 
 /**
@@ -465,7 +445,7 @@ function flag(argv: string[], name: string): string | undefined {
  * flag was renamed, and a baseline invocation that still says `--family` would otherwise fall
  * through to the default group and let the check pass while watching other layers.
  */
-const KNOWN_FLAGS = ['archive', 'tile', 'region', 'expect', 'expect-fill', 'style', 'group'];
+const KNOWN_FLAGS = ['archive', 'tile', 'expect', 'expect-fill', 'style', 'group'];
 
 function assertKnownFlags(argv: string[]): void {
   for (const arg of argv) {
@@ -499,18 +479,11 @@ async function main(argv: string[]): Promise<number> {
     return 1;
   }
 
-  const region = flag(argv, 'region') ?? 'calamuchita';
-  const fromFlag = (flag(argv, 'expect') ?? '').split(',').filter((name) => name.length > 0);
-  // The committed expectation is the default, so `make map-tiles-render-check ARCHIVE=…`
-  // asserts what this repository promises without a flag nobody remembers to pass.
-  const committed = expectedFor(
-    JSON.parse(
-      readFileSync(join(repoRoot, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
-    ) as RenderExpectations,
-    region,
-    tile,
-  );
-  const fillsFlag = (flag(argv, 'expect-fill') ?? '').split(',').filter((id) => id.length > 0);
+  // The flags are the only way to make this CLI assert a name or a layer. Nothing is read from
+  // disk behind them: what the tiles are expected to draw lives in `__tests__/render.test.ts`,
+  // next to the renderer, so an expectation cannot pass by nobody remembering to pass a flag.
+  const expect = (flag(argv, 'expect') ?? '').split(',').filter((name) => name.length > 0);
+  const expectFills = (flag(argv, 'expect-fill') ?? '').split(',').filter((id) => id.length > 0);
 
   const group = flag(argv, 'group') ?? 'green';
   if (!(MAP_LAYER_GROUPS as readonly string[]).includes(group)) {
@@ -525,8 +498,8 @@ async function main(argv: string[]): Promise<number> {
       archive: resolve(archive),
       style: resolve(flag(argv, 'style') ?? join(repoRoot, 'assets/map/styles/v1.json')),
       tile: { z: parts[0] as number, x: parts[1] as number, y: parts[2] as number },
-      expect: fromFlag.length > 0 ? fromFlag : (committed.labels ?? []),
-      expectFills: fillsFlag.length > 0 ? fillsFlag : (committed.fills ?? []),
+      expect,
+      expectFills,
       group: group as MapLayerGroupId,
     },
     repoRoot,
