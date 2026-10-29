@@ -1,0 +1,30 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/postprocess/Area.java b/tiles/src/main/java/com/protomaps/basemap/postprocess/Area.java
+index c824d92..b7298e9 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/postprocess/Area.java
++++ b/tiles/src/main/java/com/protomaps/basemap/postprocess/Area.java
+@@ -3,9 +3,7 @@ package com.protomaps.basemap.postprocess;
+ import com.onthegomap.planetiler.VectorTile;
+ import com.onthegomap.planetiler.geo.GeometryException;
+ import java.util.ArrayList;
+-import java.util.HashSet;
+ import java.util.List;
+-import java.util.Set;
+ 
+ public class Area {
+ 
+@@ -20,15 +18,6 @@ public class Area {
+       if (minArea > 0 && area < minArea) {
+         // do nothing
+       } else {
+-        if (minArea < 30000d / (4096 * 4096) * (256 * 256)) {
+-          Set<String> keys = new HashSet<>(item.tags().keySet());
+-          for (String key : keys) {
+-            if (key.equals("name") || key.startsWith("name:")) {
+-              item.tags().remove(key);
+-            }
+-          }
+-        }
+-
+         result.add(item);
+       }
+     }

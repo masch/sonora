@@ -21,6 +21,9 @@ const PATCH = readFileSync(
   join(REPO, 'scripts/map-tiles/patches/0004-landuse-reaches-z16.patch'),
   'utf8',
 );
+const EXPECTATIONS = JSON.parse(
+  readFileSync(join(REPO, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
+) as RenderExpectations;
 
 function layer(id: string) {
   const found = STYLE.layers.find((candidate) => candidate.id === id);
@@ -60,6 +63,30 @@ describe('the fills OSM shows are in the style', () => {
   });
 });
 
+describe('the names travel at every zoom', () => {
+  it('keeps the patch that stops Area from stripping them', () => {
+    // `Area.filterArea` removed name/name:* whenever minArea < 117.19, which is always. With
+    // patch 0006 the data carries the names at every zoom and only the style decides when to
+    // draw them, so lowering `landuse_label`'s minzoom never needs a rebuild.
+    const patch = readFileSync(
+      join(REPO, 'scripts/map-tiles/patches/0006-area-keeps-names.patch'),
+      'utf8',
+    );
+    expect(patch).toContain('-        if (minArea < 30000d');
+    expect(patch).toContain('item.tags().remove(key)');
+  });
+
+  it('promises the labels at z13 and z14 too, which is what the device could not see', () => {
+    expect(expectedFor(EXPECTATIONS, 'calamuchita', '13/2622/4870').labels).toEqual([
+      'Bosque Umepay',
+    ]);
+    expect(expectedFor(EXPECTATIONS, 'calamuchita', '14/5245/9741').labels).toEqual([
+      'Bosque Umepay',
+      'Huerta Madre',
+    ]);
+  });
+});
+
 describe('the landuse patch keeps both halves of the fix', () => {
   it('extends the polygons to z16', () => {
     // One half alone produces polygons at z16 with no name on them: the render check caught it.
@@ -76,13 +103,9 @@ describe('the landuse patch keeps both halves of the fix', () => {
 });
 
 describe('the render expectations', () => {
-  const expectations = JSON.parse(
-    readFileSync(join(REPO, 'scripts/map-tiles/render-expectations.json'), 'utf8'),
-  ) as RenderExpectations;
-
   it('promise the area names at the zooms the device checked', () => {
     for (const tile of ['15/10491/19483', '16/20982/38967']) {
-      expect(expectedFor(expectations, 'calamuchita', tile).labels).toEqual([
+      expect(expectedFor(EXPECTATIONS, 'calamuchita', tile).labels).toEqual([
         'Bosque Umepay',
         'Huerta Madre',
       ]);
@@ -93,7 +116,7 @@ describe('the render expectations', () => {
     // `natural=heath` (patch 0005) and `natural=bare_rock` were the two areas OSM drew and this
     // map did not: a profile gap for the first, a missing fill layer for the second.
     for (const tile of ['15/10491/19483', '16/20982/38967']) {
-      expect(expectedFor(expectations, 'calamuchita', tile).fills).toEqual([
+      expect(expectedFor(EXPECTATIONS, 'calamuchita', tile).fills).toEqual([
         'landuse_park',
         'landuse_heath',
         'landuse_bare_rock',
@@ -102,7 +125,7 @@ describe('the render expectations', () => {
   });
 
   it('say nothing for a tile nobody measured, instead of inventing a promise', () => {
-    expect(expectedFor(expectations, 'calamuchita', '0/0/0')).toEqual({});
-    expect(expectedFor(expectations, 'patagonia', '15/10491/19483')).toEqual({});
+    expect(expectedFor(EXPECTATIONS, 'calamuchita', '0/0/0')).toEqual({});
+    expect(expectedFor(EXPECTATIONS, 'patagonia', '15/10491/19483')).toEqual({});
   });
 });
