@@ -25,6 +25,20 @@ function scratch(): string {
   return mkdtempSync(join(tmpdir(), 'map-tiles-download-'));
 }
 
+/**
+ * A partial transfer the way an interrupted run leaves it: the bytes, and the validator and size
+ * they were fetched against. Without that second file a resume is refused, which is the rule the
+ * mutable `-latest` extract exists for.
+ */
+function writePart(
+  destination: string,
+  bytes: string,
+  state: { etag: string | null; total: number | null },
+): void {
+  writeFileSync(`${destination}.part`, bytes);
+  writeFileSync(`${destination}.part.meta`, JSON.stringify(state));
+}
+
 interface FakeResponse {
   status: number;
   /** Read case-insensitively, the way `Headers` would answer the downloader. */
@@ -92,10 +106,10 @@ describe('downloadVerified', () => {
     const root = scratch();
     try {
       const destination = join(root, 'argentina.osm.pbf');
-      writeFileSync(`${destination}.part`, 'abcd');
+      writePart(destination, 'abcd', { etag: '"v1"', total: 10 });
       const { fetchLike, requests } = scriptedFetch([
         () =>
-          serve(206, { 'content-range': 'bytes 4-9/10', 'content-length': '6' }, [
+          serve(206, { 'content-range': 'bytes 4-9/10', 'content-length': '6', etag: '"v1"' }, [
             Buffer.from('efghij'),
           ]),
       ]);
@@ -109,18 +123,23 @@ describe('downloadVerified', () => {
       expect(result.resumedFrom).toBe(4);
       expect(result.bytes).toBe(10);
       expect(requests[0]?.headers['Range']).toBe('bytes=4-');
+      // The validator is what makes the resume safe: `If-Range` asks the server for the whole
+      // file if it is no longer the one the partial was fetched from.
+      expect(requests[0]?.headers['If-Range']).toBe('"v1"');
       expect(existsSync(`${destination}.part`)).toBe(false);
+      expect(existsSync(`${destination}.part.meta`)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('restarts from zero when the server ignores the range it was asked for', async () => {
+  it('restarts from zero when the partial carries no validator', async () => {
     const root = scratch();
     try {
       const destination = join(root, 'extract.osm.pbf');
+      // What yesterday's `-latest` leaves behind: bytes, and no record of which file they are.
       writeFileSync(`${destination}.part`, 'abcd');
-      const { fetchLike } = scriptedFetch([
+      const { fetchLike, requests } = scriptedFetch([
         () => serve(200, { 'content-length': '10' }, [Buffer.from('0123456789')]),
       ]);
 
@@ -132,6 +151,7 @@ describe('downloadVerified', () => {
       expect(result.ok).toBe(true);
       expect(result.resumedFrom).toBe(0);
       expect(result.bytes).toBe(10);
+      expect(requests[0]?.headers['Range']).toBeUndefined();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -142,7 +162,14 @@ describe('downloadVerified', () => {
     try {
       const destination = join(root, 'extract.osm.pbf');
       const { fetchLike, requests } = scriptedFetch([
-        (signal) => serve(200, { 'content-length': '10' }, [Buffer.from('012')], 'stall', signal),
+        (signal) =>
+          serve(
+            200,
+            { 'content-length': '10', etag: '"v1"' },
+            [Buffer.from('012')],
+            'stall',
+            signal,
+          ),
         () => serve(206, { 'content-range': 'bytes 3-9/10' }, [Buffer.from('3456789')]),
       ]);
 
@@ -157,6 +184,54 @@ describe('downloadVerified', () => {
       expect(requests).toHaveLength(2);
       expect(requests[0]?.headers['Range']).toBeUndefined();
       expect(requests[1]?.headers['Range']).toBe('bytes=3-');
+      expect(requests[1]?.headers['If-Range']).toBe('"v1"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('promotes a partial the server says is already complete, without another byte', async () => {
+    const root = scratch();
+    try {
+      const destination = join(root, 'extract.osm.pbf');
+      writePart(destination, 'whole-file', { etag: '"v1"', total: 10 });
+      const { fetchLike, requests } = scriptedFetch([
+        () => serve(416, { 'content-range': 'bytes */10' }, []),
+      ]);
+
+      const result = await downloadVerified(
+        { url: 'https://example.invalid/extract.osm.pbf', destination },
+        { fetch: fetchLike, log: () => {} },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.bytes).toBe(10);
+      expect(result.resumedFrom).toBe(10);
+      expect(requests).toHaveLength(1);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('discards a partial the server says is a different size than the file it serves', async () => {
+    const root = scratch();
+    try {
+      const destination = join(root, 'extract.osm.pbf');
+      // A stale part: it starts with an OSM header, so only the declared size gives it away.
+      writePart(destination, 'stale-file', { etag: '"v0"', total: 10 });
+      const { fetchLike } = scriptedFetch([
+        () => serve(416, { 'content-range': 'bytes */8' }, []),
+        () => serve(200, { 'content-length': '8', etag: '"v1"' }, [Buffer.from('01234567')]),
+      ]);
+
+      const result = await downloadVerified(
+        { url: 'https://example.invalid/extract.osm.pbf', destination },
+        { fetch: fetchLike, log: () => {} },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.bytes).toBe(8);
+      expect(result.resumedFrom).toBe(0);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

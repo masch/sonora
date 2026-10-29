@@ -7,9 +7,12 @@
  * the server promised, but neither stops an attempt that stops delivering, and neither opens
  * the archive it just wrote. That is the gap this module closes, in four rules:
  *
- * 1. **Resume.** A partial transfer lives in `<destination>.part` and the next attempt asks for
- *    `Range: bytes=<size>-`. A server that ignores the range answers `200` and the part is
- *    restarted instead of appending a second copy of the head to the tail.
+ * 1. **Resume, but only the same version.** A partial transfer lives in `<destination>.part`
+ *    next to a `<destination>.part.meta` holding the validator it was fetched against, and the
+ *    next attempt asks for `Range: bytes=<size>-` with `If-Range: <validator>`. A server that
+ *    ignores the range — or a part with no validator, which is what a Geofabrik `-latest` that
+ *    changed overnight leaves behind — answers with the whole file and the part is restarted
+ *    instead of gluing a new tail onto an old head.
  * 2. **Speed guard.** A transfer that delivers less than `minBytesPerSecond` over `windowMs`
  *    is aborted and retried, so a mirror that hangs without closing costs one window instead
  *    of an afternoon.
@@ -29,10 +32,12 @@ import {
   mkdirSync,
   openSync,
   readdirSync,
+  readFileSync,
   readSync,
   renameSync,
   statSync,
   unlinkSync,
+  writeFileSync,
   writeSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -130,6 +135,51 @@ export function parseContentRange(
   return { start, total: match[2] === '*' ? null : Number(match[2]) };
 }
 
+/** The total from a `416` answer, the only place the server says how big the file really is. */
+export function parseUnsatisfiedRange(value: string | null): number | null {
+  if (value === null) return null;
+  const match = /^bytes\s+\*\/(\d+)$/.exec(value.trim());
+  return match === null ? null : Number(match[1]);
+}
+
+/** What a partial file was fetched against, so it is only resumed for the same version. */
+interface PartState {
+  /** `ETag` (strong) or `Last-Modified`, sent back as `If-Range`. */
+  etag: string | null;
+  /** The size the server declared when the part was started, when it declared one. */
+  total: number | null;
+}
+
+function readPartState(path: string): PartState | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    if (parsed === null || typeof parsed !== 'object') return null;
+    const record = parsed as { etag?: unknown; total?: unknown };
+    const etag =
+      typeof record.etag === 'string' && record.etag.trim().length > 0 ? record.etag.trim() : null;
+    const total =
+      typeof record.total === 'number' && Number.isSafeInteger(record.total) && record.total > 0
+        ? record.total
+        : null;
+    return { etag, total };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The validator to resume against: a strong `ETag`, or `Last-Modified`.
+ *
+ * A weak `ETag` (`W/"…"`) is deliberately skipped: HTTP forbids it as an `If-Range` validator,
+ * and using it anyway is how a changed file gets appended to instead of replaced.
+ */
+function validatorOf(headers: { get(name: string): string | null }): string | null {
+  const etag = headers.get('etag')?.trim();
+  if (etag !== undefined && etag.length > 0 && !etag.startsWith('W/')) return etag;
+  const modified = headers.get('last-modified')?.trim();
+  return modified !== undefined && modified.length > 0 ? modified : null;
+}
+
 /**
  * Downloads `url` to `destination`, resuming what is already in `<destination>.part`, stopping
  * an attempt that stops delivering, and refusing a file its integrity check rejects.
@@ -149,6 +199,7 @@ export async function downloadVerified(
   const windowMs = options.windowMs ?? DEFAULT_WINDOW_MS;
   const minRate = options.minBytesPerSecond ?? DEFAULT_MIN_BYTES_PER_SECOND;
   const partPath = `${options.destination}.part`;
+  const partStatePath = `${partPath}.meta`;
 
   // A file that is already there and verifies is a cache hit: no request, no HEAD, nothing.
   if (existsSync(options.destination)) {
@@ -169,14 +220,31 @@ export async function downloadVerified(
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     attemptsUsed = attempt;
     let offset = sizeOfFile(partPath);
+    let resumeState = offset > 0 ? readPartState(partStatePath) : null;
+
+    // Without a validator there is no way to know the bytes on disk are a prefix of what the
+    // server serves now. `-latest` is rewritten upstream every day, so resuming blind could glue
+    // the new tail onto an old head and produce an extract the structural check accepts.
+    if (offset > 0 && (resumeState === null || resumeState.etag === null)) {
+      log(
+        `no validator for the partial ${partPath}: starting over instead of resuming (attempt ${attempt} of ${attempts})`,
+      );
+      unlinkSync(partPath);
+      offset = 0;
+      resumeState = null;
+    }
+
+    const headers: Record<string, string> = {};
+    if (offset > 0 && resumeState !== null && resumeState.etag !== null) {
+      headers['Range'] = `bytes=${offset}-`;
+      headers['If-Range'] = resumeState.etag;
+    }
+
     const controller = new AbortController();
     let response: Awaited<ReturnType<FetchLike>>;
 
     try {
-      response = await doFetch(options.url, {
-        headers: offset > 0 ? { Range: `bytes=${offset}-` } : {},
-        signal: controller.signal,
-      });
+      response = await doFetch(options.url, { headers, signal: controller.signal });
     } catch (error) {
       lastMessage = `requesting ${options.url} failed: ${reasonOf(error)}`;
       log(`${lastMessage} (attempt ${attempt} of ${attempts})`);
@@ -184,15 +252,24 @@ export async function downloadVerified(
     }
 
     if (response.status === 416) {
-      // The server refuses to resume where we asked: either the part is already the whole file
-      // or it is longer than the file upstream. Verify, and otherwise start over.
-      const problem = verify(partPath);
-      if (offset > 0 && problem === null) {
-        renameSync(partPath, options.destination);
-        return { ok: true, bytes: offset, resumedFrom: offset, attempts: attempt, cached: false };
+      // The server refuses to resume where we asked. Its answer says how big the file really is,
+      // so a part is only promoted when it is exactly that big and its contents verify: a stale
+      // part from yesterday's `-latest` is bigger or smaller, and would otherwise become the
+      // extract the tiler reads.
+      const total = parseUnsatisfiedRange(response.headers.get('content-range'));
+      if (offset > 0 && total !== null && offset === total) {
+        const problem = verify(partPath);
+        if (problem === null) {
+          unlinkSync(partStatePath);
+          renameSync(partPath, options.destination);
+          return { ok: true, bytes: offset, resumedFrom: offset, attempts: attempt, cached: false };
+        }
+        lastMessage = problem;
+      } else {
+        lastMessage = `the server refused to resume at ${offset} bytes and says the file is ${total ?? 'of unknown size'} bytes`;
       }
       unlinkSync(partPath);
-      lastMessage = `the server refused to resume at ${offset} bytes and ${problem ?? 'the part does not verify'}`;
+      unlinkSync(partStatePath);
       log(`${lastMessage} (attempt ${attempt} of ${attempts})`);
       continue;
     }
@@ -209,6 +286,20 @@ export async function downloadVerified(
       lastMessage = `the server resumed at ${contentRange?.start ?? 'an unknown byte'} instead of ${offset}`;
       log(`${lastMessage}; starting over (attempt ${attempt} of ${attempts})`);
       unlinkSync(partPath);
+      unlinkSync(partStatePath);
+      continue;
+    }
+    if (
+      resumed &&
+      resumeState?.total != null &&
+      contentRange?.total != null &&
+      resumeState.total !== contentRange.total
+    ) {
+      // `If-Range` said the file is the one we started; a different total means it is not.
+      lastMessage = `the file changed under the partial ${partPath}: ${resumeState.total} bytes then, ${contentRange.total} now`;
+      log(`${lastMessage}; starting over (attempt ${attempt} of ${attempts})`);
+      unlinkSync(partPath);
+      unlinkSync(partStatePath);
       continue;
     }
     // A server that ignores the range answers 200 with the whole file: appending it would
@@ -222,6 +313,12 @@ export async function downloadVerified(
     const total = resumed
       ? (contentRange?.total ?? null)
       : Number(response.headers.get('content-length')) || null;
+
+    // The part records what it was started against, before the bytes arrive: an attempt killed
+    // mid-stream has to leave enough behind for the next run to know whether resuming is safe.
+    if (!resumed) {
+      writeFileSync(partStatePath, JSON.stringify({ etag: validatorOf(response.headers), total }));
+    }
 
     const reader = response.body?.getReader();
     if (reader === undefined || reader === null) {
@@ -281,11 +378,13 @@ export async function downloadVerified(
       // Resuming a finished-but-wrong file cannot fix it: the nine-byte "Not Found" has no tail
       // to fetch. Throw it away so the next attempt starts from zero.
       unlinkSync(partPath);
+      unlinkSync(partStatePath);
       lastMessage = problem;
       log(`${lastMessage} (attempt ${attempt} of ${attempts})`);
       continue;
     }
 
+    unlinkSync(partStatePath);
     renameSync(partPath, options.destination);
     return { ok: true, bytes, resumedFrom: offset, attempts: attempt, cached: false };
   }
