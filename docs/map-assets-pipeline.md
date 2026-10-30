@@ -91,8 +91,10 @@ survives — and writes all four sprite files, because MapLibre asks a high-dens
 `@2x.json` **and** `@2x.png`. **Re-running it is safe**, which is what makes it an operator target: a
 sheet that already documents the icons is repainted in place — the drawing is deterministic, so a
 re-run changes no pixel and heals a box a half-finished write left blank — and only a sheet without
-them grows a row. `ICONS_CHECK=1` answers whether the document's box holds ink without writing
-anything. A sheet fetched before the icons existed needs no special step: the run extends it.
+them grows a row. Both files are written through a `.partial` sibling and renamed over the target, so
+a killed run leaves the old sheet rather than half of a new one — which is what makes running it again
+a real recovery instead of a hopeful one. `ICONS_CHECK=1` answers whether the document's box holds ink
+without writing anything. A sheet fetched before the icons existed needs no special step: the run extends it.
 
 ### Step 2 — upload: put the files where the client asks for them
 

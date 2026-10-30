@@ -20,7 +20,7 @@
  *   bun scripts/map-sprites/extend.ts --dir=map-assets/sprites
  *   bun scripts/map-sprites/extend.ts --dir=map-assets/sprites --check
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { mapSpriteKey } from '../../packages/shared/src/map/artifacts';
@@ -91,11 +91,26 @@ function readDocument(path: string): SpriteDocument {
   return JSON.parse(readFileSync(path, 'utf8')) as SpriteDocument;
 }
 
+/**
+ * Replaces a file in one step: written beside it, then renamed over it.
+ *
+ * The sheet is written to its live path, so a partial write is not a slow run — it is a
+ * truncated PNG or half a JSON document, and the next run dies in `decodePng` or
+ * `readDocument` with no way back except re-downloading the whole atlas. A rename inside
+ * one directory is atomic, so readers see the old file or the new one and never a half of
+ * either, which is what makes "just run it again" true rather than hopeful.
+ */
+function writeAtomic(path: string, bytes: Uint8Array | string): void {
+  const partial = `${path}.partial`;
+  writeFileSync(partial, bytes);
+  renameSync(partial, path);
+}
+
 /** Serialised with sorted keys, so two runs of the same input produce the same bytes. */
 function writeDocument(path: string, document: SpriteDocument): void {
   const sorted: SpriteDocument = {};
   for (const name of Object.keys(document).sort()) sorted[name] = document[name];
-  writeFileSync(path, `${JSON.stringify(sorted, null, 2)}\n`);
+  writeAtomic(path, `${JSON.stringify(sorted, null, 2)}\n`);
 }
 
 /** Names of our icons the document already carries. */
@@ -151,7 +166,7 @@ export function extendSheet(dir: string): string[] {
         const entry = document[name];
         paste(repainted, drawIcon(name, pair.ratio), entry.x, entry.y);
       }
-      writeFileSync(imagePath, encodePng(repainted));
+      writeAtomic(imagePath, encodePng(repainted));
       notes.push(
         `${pair.image}: already carries ${recorded.join(', ')}, repainted in place at ratio ${pair.ratio}`,
       );
@@ -180,7 +195,7 @@ export function extendSheet(dir: string): string[] {
       };
     });
 
-    writeFileSync(imagePath, encodePng(extended));
+    writeAtomic(imagePath, encodePng(extended));
     writeDocument(documentPath, document);
     notes.push(
       `${pair.image}: ${atlas.width}×${atlas.height} → ${extended.width}×${extended.height}, ` +

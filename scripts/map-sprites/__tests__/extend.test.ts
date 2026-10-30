@@ -8,7 +8,7 @@
  * would need a network fetch to do it.
  */
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -115,6 +115,16 @@ describe('extending the sheet', () => {
     expect([...twice.data]).toEqual([...once.data]);
     expect(readFileSync(join(dir, 'light.json'), 'utf8')).toBe(documentOnce);
     expect(notes[0]).toContain('already carries lodging, camping');
+  });
+
+  it('leaves no partial file behind, so a killed run never half-writes the sheet', () => {
+    // Both writes go through a temporary sibling and a rename, which is what keeps a truncated
+    // PNG or half a JSON document from being the state the next run has to read.
+    const dir = sheetDir();
+
+    extendSheet(dir);
+
+    expect(readdirSync(dir).filter((name) => name.endsWith('.partial'))).toEqual([]);
   });
 
   it('repairs a box a partial write left blank, without a fresh download', () => {
