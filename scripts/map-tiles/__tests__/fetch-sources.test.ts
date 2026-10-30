@@ -8,7 +8,20 @@
  */
 import { describe, expect, it } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { Database } from 'bun:sqlite';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -271,18 +284,41 @@ describe('the verifiers the table uses', () => {
   // The header of a SQLite file survives a transfer that died at the end, so magic alone called a
   // zero-padded GeoPackage good and the build read it. The header states its own length; the check
   // has to believe it over the file size.
-  it('rejects a GeoPackage whose header is intact but whose body never arrived', () => {
+  // The case that matters, and the one the header cannot see: the file is **exactly** the length it
+  // declares, and everything past the first page is zeros. A size check passes it; opening the
+  // database does not. This is what a mirror padded tonight, for a different source.
+  it('rejects a GeoPackage padded to its declared length with zeros', () => {
     const root = scratch();
     try {
       const path = join(root, 'daylight-landcover.gpkg');
-      const header = Buffer.alloc(4096);
-      header.write('SQLite format 3\0', 0, 'latin1');
-      header.writeUInt16BE(4096, 16); // page size
-      header.writeUInt32BE(64, 28); // page count → the database claims 256 KiB
-      writeFileSync(path, header);
+      const whole = new Database(path, { create: true });
+      whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)');
+      for (let i = 0; i < 200; i++) whole.run('INSERT INTO t (name) VALUES (?)', [`fila ${i}`]);
+      whole.close();
 
-      const problem = gpkgProblem(path);
-      expect(problem).toContain('truncated or padded');
+      const size = statSync(path).size;
+      // Keep page one and zero the rest: same length, intact header, no database behind it.
+      const fd = openSync(path, 'r+');
+      writeSync(fd, Buffer.alloc(size - 4096), 0, size - 4096, 4096);
+      closeSync(fd);
+
+      expect(statSync(path).size).toBe(size); // the length the header declares, unchanged
+      expect(gpkgProblem(path)).toContain('not a usable GeoPackage');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts a GeoPackage SQLite can open', () => {
+    const root = scratch();
+    try {
+      const path = join(root, 'daylight-landcover.gpkg');
+      const whole = new Database(path, { create: true });
+      whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY)');
+      whole.run('INSERT INTO t DEFAULT VALUES');
+      whole.close();
+
+      expect(gpkgProblem(path)).toBeNull();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

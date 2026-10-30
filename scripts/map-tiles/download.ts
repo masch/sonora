@@ -528,12 +528,32 @@ export function osmPbfProblem(path: string): string | null {
 const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'latin1');
 
 /**
- * One sentence when `path` is not a whole GeoPackage, `null` when it is.
+ * The slice of `bun:sqlite` this module uses.
  *
- * The header alone is not enough, and this is not hypothetical: a download interrupted at the end
- * leaves the first block intact and the rest padded with zeros, so the magic still matches while
- * the database is gone. The SQLite header states its own length — page size at offset 16, page
- * count at offset 28 — so the file has to be that size to count as complete.
+ * Declared here for the reason the `Bun` global is declared in `render-check.ts`: pulling
+ * `@types/bun` into the whole `scripts/` typecheck for one class is not a trade worth making.
+ * `bun:sqlite` ships with the runtime, so there is no dependency to add.
+ */
+interface GpkgDatabase {
+  query(sql: string): { get(): Record<string, unknown> | null };
+  close(): void;
+}
+
+const { Database: GpkgDatabaseClass } = require('bun:sqlite') as {
+  Database: new (path: string, options?: { readonly?: boolean }) => GpkgDatabase;
+};
+
+/**
+ * One sentence when `path` is not a GeoPackage SQLite can open, `null` when it is.
+ *
+ * The header is not enough, and this is not hypothetical: a transfer that dies at the end can be
+ * padded to the length it promised, so the SQLite magic and the page count both look right while
+ * the pages are zeros — tonight's `daylight-landcover.gpkg` failure mode, and the reason this
+ * verifier exists. The length check catches a truncated file; only opening the database catches a
+ * padded one, so `bun:sqlite` — built into the runtime — reads page one and the pages after it.
+ *
+ * `quick_check` is the cheap form of `integrity_check`: it walks the btree structures and says
+ * `ok` without scanning every row, which is the right cost for a file the tiler reads next.
  */
 export function gpkgProblem(path: string): string | null {
   const magic = readBytes(path, SQLITE_MAGIC.length, 0);
@@ -541,22 +561,20 @@ export function gpkgProblem(path: string): string | null {
     return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
   }
 
-  const header = readBytes(path, 32, 0);
-  if (header === null) return `${path} is too short to be a GeoPackage.`;
-
-  const declared = header.readUInt16BE(16);
-  const pageSize = declared === 1 ? 65536 : declared;
-  const pageCount = header.readUInt32BE(28);
-  // A zero page count means "not known here", which SQLite writes while a file is still being
-  // built; a downloaded one always states it, so a zero is treated as unusable rather than trusted.
-  const expected = pageSize * pageCount;
-  if (expected === 0) return `${path} states no length in its SQLite header.`;
-
-  const size = sizeOfFile(path);
-  if (size !== expected) {
-    return `${path} claims ${expected} bytes in its SQLite header and has ${size}: it is truncated or padded.`;
+  let database: GpkgDatabase | undefined;
+  try {
+    database = new GpkgDatabaseClass(path, { readonly: true });
+    const row = database.query('PRAGMA quick_check').get();
+    const verdict = row === null ? 'no answer' : String(Object.values(row)[0]);
+    if (verdict !== 'ok') {
+      return `${path} is not a usable GeoPackage: SQLite reports "${verdict}".`;
+    }
+    return null;
+  } catch (error) {
+    return `${path} is not a usable GeoPackage: ${reasonOf(error)}`;
+  } finally {
+    database?.close();
   }
-  return null;
 }
 
 /** One sentence when `path` does not start like a gzip stream, `null` when it does. */
