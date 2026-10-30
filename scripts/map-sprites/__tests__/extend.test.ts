@@ -3,7 +3,7 @@
  *
  * A synthetic sheet is the only way to assert the things that matter: the existing
  * icons keep their coordinates byte for byte, the new row is inked, both pixel ratios
- * move together, and a second run refuses instead of appending a duplicate. Running
+ * move together, and a second run repaints in place instead of appending a row. Running
  * this against the real Protomaps sheet would prove the same facts less precisely and
  * would need a network fetch to do it.
  */

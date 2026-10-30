@@ -13,6 +13,13 @@ import { join } from 'node:path';
 
 import { decodePng, encodePng, type Raster } from '../png';
 
+/**
+ * The pinned upstream sheet's own size, which the extension keeps in width and grows in height by
+ * one icon row. Named because a bare 256 says nothing about where the number came from.
+ */
+const UPSTREAM_SHEET_WIDTH = 256;
+const UPSTREAM_SHEET_HEIGHT = 114;
+
 const SHEET = join(import.meta.dir, '../../../map-assets/sprites/light.png');
 const SHEET_DOCUMENT = join(import.meta.dir, '../../../map-assets/sprites/light.json');
 const sheetMissing = existsSync(SHEET)
@@ -101,8 +108,8 @@ describe('the shipped sheet, read by this codec', () => {
         { x: number; y: number; width: number; height: number }
       >;
 
-      expect(sheet.width).toBe(256);
-      expect(sheet.height).toBeGreaterThanOrEqual(114);
+      expect(sheet.width).toBe(UPSTREAM_SHEET_WIDTH);
+      expect(sheet.height).toBeGreaterThanOrEqual(UPSTREAM_SHEET_HEIGHT);
 
       const toilets = document.toilets;
       expect(toilets).toBeDefined();
