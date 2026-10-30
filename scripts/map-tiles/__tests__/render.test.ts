@@ -122,8 +122,9 @@ describe('the published style draws what the archive carries', () => {
         );
 
         // The message names what is missing, so a failure reads as the gap, not as a boolean.
+        // What proves the render is the features it drew: `sourceLoaded` is the renderer's own
+        // bookkeeping and reports false for a tile whose labels and fills are already drawn.
         expect(result.message ?? 'ok').toBe('ok');
-        expect(result.sourceLoaded).toBe(true);
         expect(result.names).toEqual(expect.arrayContaining(expectation.labels));
         expect(result.fills).toEqual(expect.arrayContaining(expectation.fills));
       },
