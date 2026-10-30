@@ -362,13 +362,18 @@ export async function renderCheck(
           .getStyle()
           .layers.map((layer: { id: string }) => layer.id)
           .filter((id: string) => input.hideLayers.includes(id));
-        const labelLayers = groupLayers.filter((id) =>
+        const symbolLayers = new Set<string>(
           map
             .getStyle()
-            .layers.some(
-              (layer: { id: string; type?: string }) => layer.id === id && layer.type === 'symbol',
-            ),
+            .layers.filter((layer: { type?: string }) => layer.type === 'symbol')
+            .map((layer: { id: string }) => layer.id),
         );
+        // Two sets, because two different questions are asked. The names the style draws come from
+        // **every** symbol layer — a buildings label is not in the `green` group, and a check that
+        // watched only the group it measures could never see one. Hiding the group, on the other
+        // hand, must take exactly the group's own labels with it.
+        const labelLayers: string[] = [...symbolLayers];
+        const groupLabelLayers: string[] = groupLayers.filter((id) => symbolLayers.has(id));
 
         const placed = (layers: string[]): string[] =>
           layers.length === 0
@@ -413,11 +418,11 @@ export async function renderCheck(
         // The renderer answers a layout change on a later frame, not on the next statement, so a
         // fixed pause measured the scheduler. Poll until the labels are gone, bounded.
         const hideDeadline = Date.now() + 5_000;
-        let after = placed(labelLayers);
+        let after = placed(groupLabelLayers);
         while (after.length > 0 && Date.now() < hideDeadline) {
           await new Promise((resolve) => setTimeout(resolve, 50));
           map.triggerRepaint();
-          after = placed(labelLayers);
+          after = placed(groupLabelLayers);
         }
         for (const id of groupLayers) map.setLayoutProperty(id, 'visibility', 'visible');
 
@@ -430,7 +435,7 @@ export async function renderCheck(
           drawnFills,
           afterHiding: after,
           groupLayers: groupLayers.length,
-          labelLayers: labelLayers.length,
+          labelLayers: groupLabelLayers.length,
           sourceLoaded,
         };
       },
