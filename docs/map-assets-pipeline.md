@@ -88,9 +88,11 @@ make map-assets-icons ICONS_CHECK=1     # read-only: are they there, with ink?
 The fetched sheet is upstream's and stays upstream's; what this repository adds to it is a separate,
 testable step. `extend.ts` grows the atlas by one icon row at the bottom — every upstream coordinate
 survives — and writes all four sprite files, because MapLibre asks a high-density device for
-`@2x.json` **and** `@2x.png`. It refuses a sheet that already carries the icons rather than appending
-a second copy, and `ICONS_CHECK=1` answers whether the document's box holds ink. A fresh sheet needs
-`make map-assets-fetch --force` first.
+`@2x.json` **and** `@2x.png`. **Re-running it is safe**, which is what makes it an operator target: a
+sheet that already documents the icons is repainted in place — the drawing is deterministic, so a
+re-run changes no pixel and heals a box a half-finished write left blank — and only a sheet without
+them grows a row. `ICONS_CHECK=1` answers whether the document's box holds ink without writing
+anything. A sheet fetched before the icons existed needs no special step: the run extends it.
 
 ### Step 2 — upload: put the files where the client asks for them
 

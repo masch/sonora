@@ -34,7 +34,7 @@ unmerged, review burned). Delivery is the human's: push and PR.
 | --- | -------------------------------------------------------------------------------------------------------------- | ---------- | ------ | ------------------------- |
 | T1  | `docs`: record the staging publish and the `fetch-sources` run in the pipeline log (`L14`)                     | S1         | inline | 10d2354                   |
 | T2  | `sprite`: PNG codec + supersampled rasterizer + the two icon shapes, pure Bun, with tests                      | S4, S5, S6 | inline | 1587d8c, bf490d5, 65f3216 |
-| T3  | `sprite`: extend the pinned sheet with our icons for 1x and 2x, idempotent, plus a `make` target and tests     | S4, S5     | inline | 86953c7                   |
+| T3  | `sprite`: extend the pinned sheet with our icons for 1x and 2x, retry-safe, plus a `make` target and tests     | S4, S5     | inline | 86953c7                   |
 | T4  | `style`: admit the lodging kinds and map them to our two icons; every admitted kind resolves to an icon (test) | S3, S4     | inline | —                         |
 | T5  | `profile`: patch `0008` — unnamed area lodging POIs admitted at `pointOnSurface`                               | S1, S2     | inline | 3288c41                   |
 | T6  | `tests`: assert the archive carries the cabins next to the Salón, and that the style draws them                | S1, S3     | inline | —                         |
@@ -107,3 +107,14 @@ this slice. Pushing and opening the PR stays the human's decision.
   it came back **126 pass, 0 fail**, including the render check of the four measured tiles and the
   cabins on both tiles. The GitHub job itself needs the branch pushed and a PR, which is the human's
   call; the steps it runs are the ones that just passed.
+- `L8` — Native review (`review-add676f119503c79`, tier medium, four lenses) raised one BLOCKER, and it was
+  right: `R4-001` — "the extend step is not idempotent as `T3` requires". I had written it to _refuse_ a
+  sheet that already carried the icons and documented that as idempotence, and even pinned the refusal
+  with a test; but a documented operator target has to survive being run twice, and a process killed
+  between the 1x and 2x writes left an atlas whose only recovery was a forced re-fetch. The fix inverts
+  the behaviour: a sheet that already documents the icons is **repainted in place** — the drawing is
+  deterministic, so a re-run is byte-identical and it heals a box a partial write left blank — and only a
+  sheet without them grows a row. Verified on the real sheet: `make map-assets-icons` twice leaves both
+  `light.png` and `light.json` byte-identical (`md5sum -c`), and two new tests pin the re-run and the
+  repair. The lesson is the one this whole slice is about: the assertion I wrote tested my intent, not the
+  property the target needs.

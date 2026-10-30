@@ -100,13 +100,36 @@ describe('extending the sheet', () => {
     expect(document.lodging.pixelRatio).toBe(2);
   });
 
-  it('refuses a sheet that already carries the icons instead of duplicating them', () => {
+  it('can be run again: a second run repaints in place instead of appending a row', () => {
+    // The operator target, so it runs again after a failed publish or a re-fetch. Before this,
+    // the second run threw and the only way out was a forced re-download.
     const dir = sheetDir();
     extendSheet(dir);
+    const once = decodePng(readFileSync(join(dir, 'light.png')));
+    const documentOnce = readFileSync(join(dir, 'light.json'), 'utf8');
 
-    expect(() => extendSheet(dir)).toThrow(
-      'light.json already carries lodging, camping — the sheet is extended once.',
-    );
+    const notes = extendSheet(dir);
+
+    const twice = decodePng(readFileSync(join(dir, 'light.png')));
+    expect(twice.height).toBe(once.height);
+    expect([...twice.data]).toEqual([...once.data]);
+    expect(readFileSync(join(dir, 'light.json'), 'utf8')).toBe(documentOnce);
+    expect(notes[0]).toContain('already carries lodging, camping');
+  });
+
+  it('repairs a box a partial write left blank, without a fresh download', () => {
+    // A process killed between the image write and the document write — or between the two
+    // ratios — leaves a sheet the next run has to be able to finish, not complain about.
+    const dir = sheetDir();
+    extendSheet(dir);
+    const atlas = decodePng(readFileSync(join(dir, 'light.png')));
+    atlas.data.fill(0, (atlas.height - ICON_BOX) * atlas.width * 4);
+    writeFileSync(join(dir, 'light.png'), encodePng(atlas));
+    expect(() => checkSheet(dir)).toThrow('light.png draws no ink for lodging');
+
+    extendSheet(dir);
+
+    expect(checkSheet(dir)).toHaveLength(2);
   });
 });
 

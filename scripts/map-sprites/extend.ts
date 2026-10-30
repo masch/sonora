@@ -114,11 +114,19 @@ function inked(atlas: Raster, entry: SpriteEntry): boolean {
 }
 
 /**
- * Appends every icon we own to both ratios of the sheet.
+ * Ensures every icon we own is in both ratios of the sheet.
  *
- * Refuses a sheet that already carries them instead of appending a second copy: a
- * duplicated icon is not an error a renderer reports, it is an atlas that grew for no
- * reason and a document where one name points at one of two drawings.
+ * **Re-running it is safe**, and that is not a nicety: this is an operator target, so it runs
+ * again after a failed publish, after a re-fetch, and on somebody's second attempt at the
+ * command. A sheet that already documents our icons is therefore *repaired* rather than
+ * refused — the boxes are repainted from the drawing, which is deterministic, so a re-run
+ * changes no pixel and heals a box that an interrupted write left blank. Only a sheet that
+ * does not document them yet grows a new row, and that row is reused by every later run.
+ *
+ * The one case that still grows a row twice is a process killed between the image write and
+ * the document write: the document then lacks entries for a row the image already has, and
+ * the next run appends its own. That costs one 19 px row and leaves the sheet consistent —
+ * the alternative, deriving where an orphan row starts, would guess at pixels.
  */
 export function extendSheet(dir: string): string[] {
   const notes: string[] = [];
@@ -127,16 +135,29 @@ export function extendSheet(dir: string): string[] {
     const documentPath = join(dir, pair.document);
     const imagePath = join(dir, pair.image);
     const document = readDocument(documentPath);
-    const already = present(document);
-    if (already.length > 0) {
-      throw new Error(
-        `${pair.document} already carries ${already.join(', ')} — the sheet is extended once. ` +
-          'Re-run `make map-assets-fetch --force` for a pristine copy.',
-      );
-    }
-
     const atlas = decodePng(readFileSync(imagePath));
     const box = ICON_BOX * pair.ratio;
+    const recorded = present(document);
+
+    // The whole set is already there: repaint in place. Idempotent on pixels, and it fixes a
+    // box that a previous partial write left blank instead of demanding a fresh download.
+    if (recorded.length === OUR_ICON_NAMES.length) {
+      const repainted = {
+        width: atlas.width,
+        height: atlas.height,
+        data: new Uint8Array(atlas.data),
+      };
+      for (const name of OUR_ICON_NAMES) {
+        const entry = document[name];
+        paste(repainted, drawIcon(name, pair.ratio), entry.x, entry.y);
+      }
+      writeFileSync(imagePath, encodePng(repainted));
+      notes.push(
+        `${pair.image}: already carries ${recorded.join(', ')}, repainted in place at ratio ${pair.ratio}`,
+      );
+      continue;
+    }
+
     if (OUR_ICON_NAMES.length * box > atlas.width) {
       throw new Error(
         `${pair.image} is ${atlas.width} px wide and ${OUR_ICON_NAMES.length} icons need ` +
@@ -148,6 +169,8 @@ export function extendSheet(dir: string): string[] {
     OUR_ICON_NAMES.forEach((name, index) => {
       const atX = index * box;
       paste(extended, drawIcon(name, pair.ratio), atX, atlas.height);
+      // Overwrites a stale entry from an interrupted run, so a half-written document is
+      // repaired rather than left pointing at a row this run did not draw.
       document[name] = {
         x: atX,
         y: atlas.height,
