@@ -1,0 +1,111 @@
+name: 4-CI Map tiles
+
+# The integration test in `scripts/map-tiles` asserts what this project knows about one zone: the
+# area names, and the two areas OSM draws and this map used to leave blank. It renders the archive
+# with the style that ships in this repository, so the pair it proves is exactly what a client
+# draws — the style from the build, the archive from the bucket.
+#
+# Which archive is **not** decided here. The API publishes it in `GET /config` (`map.regions[].
+# archiveUrl`, next to the byte count it read from the bucket), so the job downloads the object the
+# deployed environment tells a client to download. That keeps the key layout in `@sonora/shared`
+# instead of restating it in YAML, and it refuses to verify an archive nobody is served: an
+# environment deployed ahead of this repository cannot make a stale object look green.
+#
+# `CI` is set by Actions, and the suite treats a missing archive or browser as a failure rather
+# than a skip — a green run that rendered nothing would be worse than no job at all.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Published environment to verify
+        type: choice
+        options: [staging, production]
+        default: staging
+  schedule:
+    # Daily, so a republished archive is verified without waiting for somebody to touch the code.
+    - cron: '0 6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/map-tiles/**'
+      - 'assets/map/styles/**'
+      - '.github/workflows/ci-map-tiles.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/map-tiles/**'
+      - 'assets/map/styles/**'
+      - '.github/workflows/ci-map-tiles.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: map-tiles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  published:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REGION: calamuchita
+      ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Ask the API which archive it serves
+        id: artifact
+        run: |
+          case "$ENVIRONMENT" in
+            staging) api="https://sonora-api-staging.sonora-api.workers.dev" ;;
+            production) api="https://sonora-api.sonora-api.workers.dev" ;;
+            *) echo "::error::unknown environment '$ENVIRONMENT'"; exit 1 ;;
+          esac
+          config="$RUNNER_TEMP/config.json"
+          curl -fsSL --retry 3 --retry-all-errors -o "$config" "$api/config" || {
+            echo "::error::$api/config did not answer"
+            exit 1
+          }
+          url=$(jq -er --arg region "$REGION" '.map.regions[$region].archiveUrl' "$config") || {
+            echo "::error::$api publishes no archive for $REGION — upload it and deploy the API first"
+            exit 1
+          }
+          bytes=$(jq -er --arg region "$REGION" '.map.regions[$region].archiveBytes' "$config")
+          echo "verifying $ENVIRONMENT: $url ($bytes bytes)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "bytes=$bytes" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch it and check it is the object the API described
+        env:
+          URL: ${{ steps.artifact.outputs.url }}
+          EXPECTED_BYTES: ${{ steps.artifact.outputs.bytes }}
+        run: |
+          archive="$RUNNER_TEMP/$REGION.pmtiles"
+          curl -fsSL --retry 3 --retry-all-errors -o "$archive" "$URL" || {
+            echo "::error::could not fetch $URL"
+            exit 1
+          }
+          # A truncated body or an error page has to fail here, named, instead of as a mysterious
+          # render failure later: the byte count is the one the API read from the bucket.
+          magic=$(head -c 7 "$archive")
+          [ "$magic" = "PMTiles" ] || {
+            echo "::error::$URL did not answer with a PMTiles archive"
+            exit 1
+          }
+          size=$(wc -c < "$archive")
+          [ "$size" = "$EXPECTED_BYTES" ] || {
+            echo "::error::$URL served $size bytes, the API described $EXPECTED_BYTES"
+            exit 1
+          }
+          echo "archive ok: $size bytes"
+          echo "MAP_TILES_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Install the Chromium the render needs
+        run: bunx playwright install --with-deps chromium
+
+      - name: Render the published archive with this repository's style
+        run: bun test scripts/map-tiles
