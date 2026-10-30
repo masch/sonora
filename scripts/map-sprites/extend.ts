@@ -208,33 +208,51 @@ export function extendSheet(dir: string): string[] {
 
 /**
  * Reads the four files and reports, per icon, whether the document names it and the
- * image draws it. Throws on the first sheet that is missing something, naming it.
+ * image draws it.
+ *
+ * Every problem is collected before throwing, not just the first: a sheet whose two ratios
+ * are both broken used to report one, get re-run after the operator fixed it, and only then
+ * report the other — which turns one repair into two round trips for no reason.
  */
 export function checkSheet(dir: string): string[] {
   const notes: string[] = [];
+  const problems: string[] = [];
 
   for (const pair of PAIRS) {
     const document = readDocument(join(dir, pair.document));
     const atlas = decodePng(readFileSync(join(dir, pair.image)));
+    let sound = true;
     for (const name of OUR_ICON_NAMES) {
       const entry = document[name];
-      if (!entry) throw new Error(`${pair.document} does not carry ${name}`);
+      if (!entry) {
+        problems.push(`${pair.document} does not carry ${name}`);
+        sound = false;
+        continue;
+      }
       if (entry.width !== ICON_BOX * pair.ratio || entry.height !== ICON_BOX * pair.ratio) {
-        throw new Error(
+        problems.push(
           `${pair.document} gives ${name} a ${entry.width}×${entry.height} box at ratio ` +
             `${pair.ratio}, expected ${ICON_BOX * pair.ratio}×${ICON_BOX * pair.ratio}`,
         );
+        sound = false;
+        continue;
       }
       if (entry.x + entry.width > atlas.width || entry.y + entry.height > atlas.height) {
-        throw new Error(
+        problems.push(
           `${pair.document} places ${name} outside ${pair.image} (${atlas.width}×${atlas.height})`,
         );
+        sound = false;
+        continue;
       }
-      if (!inked(atlas, entry)) throw new Error(`${pair.image} draws no ink for ${name}`);
+      if (!inked(atlas, entry)) {
+        problems.push(`${pair.image} draws no ink for ${name}`);
+        sound = false;
+      }
     }
-    notes.push(`${pair.document}: ${OUR_ICON_NAMES.join(', ')} named and inked`);
+    if (sound) notes.push(`${pair.document}: ${OUR_ICON_NAMES.join(', ')} named and inked`);
   }
 
+  if (problems.length > 0) throw new Error(problems.join('\n'));
   return notes;
 }
 

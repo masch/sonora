@@ -12,7 +12,7 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ICON_BOX } from '../icons';
+import { ICON_BOX, OUR_ICON_NAMES } from '../icons';
 import { decodePng, encodePng, type Raster } from '../png';
 import { checkSheet, extendSheet } from '../extend';
 
@@ -154,10 +154,46 @@ describe('checking the sheet', () => {
     const dir = sheetDir();
     extendSheet(dir);
 
-    expect(checkSheet(dir)).toEqual([
-      'light.json: lodging, camping named and inked',
-      'light@2x.json: lodging, camping named and inked',
-    ]);
+    const notes = checkSheet(dir);
+    expect(notes).toHaveLength(2);
+    for (const [index, document] of ['light.json', 'light@2x.json'].entries()) {
+      expect(notes[index]).toContain(document);
+      for (const icon of OUR_ICON_NAMES) expect(notes[index]).toContain(icon);
+    }
+  });
+
+  it('reports every problem at once instead of one per run', () => {
+    // Fixing one broken ratio only to be told about the other on the next run is a wasted round
+    // trip for the operator, so both are named in one failure.
+    const dir = sheetDir();
+    extendSheet(dir);
+    for (const document of ['light.json', 'light@2x.json']) {
+      const entries = JSON.parse(readFileSync(join(dir, document), 'utf8'));
+      delete entries.lodging;
+      delete entries.camping;
+      writeFileSync(join(dir, document), JSON.stringify(entries));
+    }
+
+    expect(() => checkSheet(dir)).toThrow(/light\.json does not carry lodging/);
+    expect(() => checkSheet(dir)).toThrow(/light@2x\.json does not carry camping/);
+  });
+
+  it('grows one extra row when a run died between the image and the document write', () => {
+    // The case the extension's comment describes: the image has the row, the document does not.
+    // The next run appends its own row, which costs 19 px and leaves a sheet that verifies —
+    // the alternative, guessing where an orphan row starts, would invent pixels.
+    const dir = sheetDir();
+    extendSheet(dir);
+    const grown = decodePng(readFileSync(join(dir, 'light.png'))).height;
+    const entries = JSON.parse(readFileSync(join(dir, 'light.json'), 'utf8'));
+    delete entries.lodging;
+    delete entries.camping;
+    writeFileSync(join(dir, 'light.json'), JSON.stringify(entries));
+
+    extendSheet(dir);
+
+    expect(decodePng(readFileSync(join(dir, 'light.png'))).height).toBe(grown + ICON_BOX);
+    expect(checkSheet(dir)).toHaveLength(2);
   });
 
   it('fails when the document names an icon the image does not draw', () => {
