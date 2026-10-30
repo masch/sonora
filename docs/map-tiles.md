@@ -38,7 +38,7 @@ The three bold changes are ours, carried as patches on the pinned upstream commi
 
 ## 3. What it still will not show
 
-The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. Only one of the three is drawn, and the difference matters:
+The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. All three are drawn now, and how each one got there is worth knowing, because they failed for different reasons:
 
 - **POIs at z16 — visible where the style and the sheet can draw them.** POI display needs three things to agree, and until this slice only the first was true: the profile has to emit the kind (patch `0003` takes `pois` to z16, patch `0007` keeps unnamed amenity areas, patch `0008` keeps unnamed lodging areas), the `pois` filter has to admit it, and `icon-image` has to resolve to an icon the published sheet carries. `icon-image` is `["get","kind"]` with lodging and camping mapped onto our own two glyphs, so an admitted kind the sheet has no glyph for draws **nothing at all** — not a placeholder box. `__tests__/poi-icons.test.ts` reads the admitted kinds out of the style and fails when one resolves to an icon outside the sheet; that is the check this section used to lack, and the reason the cabins next to the Salón were missing while the data sat in the tiles.
 - **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The data sets no ceiling any more: patches `0004` and `0006` removed it (see the list below), so the only thing deciding when a name is drawn is this layer's `minzoom`.
@@ -58,8 +58,9 @@ The measurements below are kept as the record of why the old map looked the way 
 
 What OSM shows and we cannot, for the same reason — the data is not there:
 
-- names on forests, meadows, orchards, farms, and on buildings;
-- POIs at the zoom OSM shows them (z16+), and addresses (`address_label` asks for **z18**);
+- POIs deeper than z16: the archive stops at 16 and many kinds carry `min_zoom` 17, so the deepest
+  zoom draws them only when a client overzooms past the tile's own zoom. Addresses never appear:
+  `address_label` asks for **z18**;
 - one-way arrows and the rest of the z16 detail.
 
 ## 4. The options, honestly priced — and the one taken

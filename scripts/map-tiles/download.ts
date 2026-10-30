@@ -559,7 +559,15 @@ const { Database: GpkgDatabaseClass } = require('bun:sqlite') as {
  * is not a detail: verifying the cache left an empty `daylight-landcover.gpkg-wal` behind, and the
  * build's own source check then refused the whole run for a file nobody downloaded. A verifier that
  * writes is not a verifier, so this one notes what is already there and removes what it added.
+ *
+ * The SQLite header is not the identity either: any healthy database has it, so a truncated download
+ * that is a valid SQLite file would be kept as a cached GeoPackage and then fail inside the tiler,
+ * far from the cause. `application_id` is the field GeoPackage sets to `"GPKG"`, and it is the one
+ * fact that separates the file this verifier is about from every other SQLite database.
  */
+/** The `application_id` every GeoPackage declares: the ASCII bytes `GPKG`. */
+const GPKG_APPLICATION_ID = 0x47504b47;
+
 export function gpkgProblem(path: string): string | null {
   const magic = readBytes(path, SQLITE_MAGIC.length, 0);
   if (magic === null || !magic.equals(SQLITE_MAGIC)) {
@@ -572,6 +580,14 @@ export function gpkgProblem(path: string): string | null {
   let database: GpkgDatabase | undefined;
   try {
     database = new GpkgDatabaseClass(path, { readonly: true });
+    const identity = database.query('PRAGMA application_id').get();
+    const applicationId = identity === null ? -1 : Number(Object.values(identity)[0]);
+    if (applicationId !== GPKG_APPLICATION_ID) {
+      return (
+        `${path} is not a GeoPackage: SQLite application_id is ${applicationId}, ` +
+        `not the "GPKG" marker (${GPKG_APPLICATION_ID}).`
+      );
+    }
     const row = database.query('PRAGMA quick_check').get();
     const verdict = row === null ? 'no answer' : String(Object.values(row)[0]);
     if (verdict !== 'ok') {

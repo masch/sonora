@@ -292,6 +292,7 @@ describe('the verifiers the table uses', () => {
     try {
       const path = join(root, 'daylight-landcover.gpkg');
       const whole = new Database(path, { create: true });
+      whole.run('PRAGMA application_id = 0x47504b47');
       whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)');
       for (let i = 0; i < 200; i++) whole.run('INSERT INTO t (name) VALUES (?)', [`fila ${i}`]);
       whole.close();
@@ -314,11 +315,30 @@ describe('the verifiers the table uses', () => {
     try {
       const path = join(root, 'daylight-landcover.gpkg');
       const whole = new Database(path, { create: true });
+      whole.run('PRAGMA application_id = 0x47504b47');
       whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY)');
       whole.run('INSERT INTO t DEFAULT VALUES');
       whole.close();
 
       expect(gpkgProblem(path)).toBeNull();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a healthy SQLite file that is not a GeoPackage', () => {
+    // The header cannot tell them apart: any database starts with "SQLite format 3" and passes
+    // an integrity check. A truncated download that happens to be valid SQLite used to be kept
+    // as a cached GeoPackage and then fail inside the tiler, nowhere near the cause.
+    const root = scratch();
+    try {
+      const path = join(root, 'daylight-landcover.gpkg');
+      const whole = new Database(path, { create: true });
+      whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY)');
+      whole.run('INSERT INTO t DEFAULT VALUES');
+      whole.close();
+
+      expect(gpkgProblem(path)).toContain('SQLite application_id is 0');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -333,6 +353,7 @@ describe('the verifiers the table uses', () => {
     try {
       const path = join(root, 'daylight-landcover.gpkg');
       const whole = new Database(path, { create: true });
+      whole.run('PRAGMA application_id = 0x47504b47');
       whole.run('PRAGMA journal_mode=WAL');
       whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY)');
       whole.run('INSERT INTO t DEFAULT VALUES');

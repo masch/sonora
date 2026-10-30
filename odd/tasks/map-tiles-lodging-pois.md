@@ -118,3 +118,15 @@ this slice. Pushing and opening the PR stays the human's decision.
   `light.png` and `light.json` byte-identical (`md5sum -c`), and two new tests pin the re-run and the
   repair. The lesson is the one this whole slice is about: the assertion I wrote tested my intent, not the
   property the target needs.
+- `L10` — CodeRabbit commented on `#587` and was right about two things my own review had missed. Its
+  best finding: `gpkgProblem` accepted **any** healthy SQLite file, because the `SQLite format 3` header
+  and `quick_check` say nothing about being a GeoPackage — so a download that arrived as valid-but-wrong
+  SQLite was kept as cache and then failed inside the tiler, nowhere near the cause. The verifier now
+  checks `PRAGMA application_id` against `0x47504b47` (`"GPKG"`), confirmed against the real source file,
+  with a test that rejects a plain SQLite database. Its second finding was the documentation: the same
+  section still said "only one of the three is drawn" and listed building names among the gaps, which is
+  the exact class of wrongness this whole slice exists to remove. Its third finding — that `areaPoi`
+  should require `canBePolygon()` — is diagnosed right and prescribed wrong: planetiler's
+  `WithGeometry.pointOnSurface()` has an explicit `canBeLine()` branch, so a bench drawn as a line gets
+  its interior point, and applying the suggested fix would drop that POI instead of protecting it. The
+  fourth (a direct unit test for `buildings_label`) duplicates what the render check already asserts.
