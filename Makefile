@@ -589,6 +589,12 @@ map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adop
 map-tiles-render-check: ## Render a built archive with the repo style in headless Chromium and report the labels it draws. Usage: make map-tiles-render-check ARCHIVE=<cache>/out/<region>.pmtiles [EXPECT="Bosque Umepay"]
 	bun scripts/map-tiles/render-check.ts --archive="$(ARCHIVE)" $(if $(EXPECT),--expect="$(EXPECT)",)
 
+# Pre-seeds every source the tiler reads — resumed, size-checked and verified — so a build that
+# follows finds them on disk and planetiler downloads nothing of its own.
+.PHONY: map-tiles-fetch-sources
+map-tiles-fetch-sources: ## Pre-seed every tiler source (resumed + verified) so a build downloads nothing. Usage: make map-tiles-fetch-sources [REGION=calamuchita] [CACHE=dir]
+	bun scripts/map-tiles/fetch-sources.ts $(if $(REGION),--region="$(REGION)",) $(if $(CACHE),--cache="$(CACHE)",)
+
 .PHONY: map-tiles-build
 map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
 	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)

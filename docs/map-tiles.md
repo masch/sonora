@@ -42,7 +42,7 @@ The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and
 
 - **POIs at z16 — visible now.** The style's `pois` symbol layer already admits every kind, so the toilets, cabins and viewpoints of z16 appear without touching the style.
 - **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The data sets no ceiling any more: patches `0004` and `0006` removed it (see the list below), so the only thing deciding when a name is drawn is this layer's `minzoom`.
-- **Building names — in the tiles, not on the map.** `buildings` carries `name` since patch 0002, but its style layers are a fill plus `address_label` (z18, house numbers). Nothing draws the name yet, deliberately: named buildings in rural OSM are rare and one label per footprint is noise.
+- **Building names — drawn from z16.** `buildings` carries `name` since patch 0002, and `buildings_label` now draws it with the same natural-label template as `landuse_label`, italic 10 px, from z16 — the layer at z15 was measured to displace "Huerta Madre", and an area name beats a building name. It sits in the `buildings` group by prefix, so the selector can hide it.
 - **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
 - **`boundaries` names**: upstream drops them, and the fork does not add them.
 - **`natural` values the profile never maps**: `heath` joined the list in patch `0005`, but a value nobody listed is dropped before any style can draw it — that is the class of gap to check against OSM when an area looks blank.
@@ -157,7 +157,7 @@ What a run does, in order, stopping at the first failure and naming it:
 | `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest)                                                         |
 | `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                                                                          |
 
-Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling).
+Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling). The three sources `download-sources` owns are the fragile ones — planetiler neither resumes nor verifies them — so `make map-tiles-fetch-sources` pre-seeds all of them, plus the extract and the two shape archives, with the same resume-and-verify rules, and a build that follows downloads nothing.
 
 ### Publishing
 

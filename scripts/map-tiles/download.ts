@@ -39,6 +39,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 
 /** Bytes per second a transfer has to keep up, averaged over the window. */
 export const DEFAULT_MIN_BYTES_PER_SECOND = 64 * 1024;
@@ -517,6 +518,65 @@ export function osmPbfProblem(path: string): string | null {
   return null;
 }
 
+/**
+ * The header every SQLite database starts with, which is what a GeoPackage is underneath.
+ *
+ * `daylight-landcover.gpkg` has no archive to open and no extension anyone can check: it is a
+ * SQLite file, so the first 16 bytes either are this header or the file is not a GeoPackage.
+ * That is the same read as the gzip check, and it is what tells a padded download from a real one.
+ */
+const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'latin1');
+
+/**
+ * The slice of `bun:sqlite` this module uses.
+ *
+ * Declared here for the reason the `Bun` global is declared in `render-check.ts`: pulling
+ * `@types/bun` into the whole `scripts/` typecheck for one class is not a trade worth making.
+ * `bun:sqlite` ships with the runtime, so there is no dependency to add.
+ */
+interface GpkgDatabase {
+  query(sql: string): { get(): Record<string, unknown> | null };
+  close(): void;
+}
+
+const { Database: GpkgDatabaseClass } = require('bun:sqlite') as {
+  Database: new (path: string, options?: { readonly?: boolean }) => GpkgDatabase;
+};
+
+/**
+ * One sentence when `path` is not a GeoPackage SQLite can open, `null` when it is.
+ *
+ * The header is not enough, and this is not hypothetical: a transfer that dies at the end can be
+ * padded to the length it promised, so the SQLite magic and the page count both look right while
+ * the pages are zeros — tonight's `daylight-landcover.gpkg` failure mode, and the reason this
+ * verifier exists. The length check catches a truncated file; only opening the database catches a
+ * padded one, so `bun:sqlite` — built into the runtime — reads page one and the pages after it.
+ *
+ * `quick_check` is the cheap form of `integrity_check`: it walks the btree structures and says
+ * `ok` without scanning every row, which is the right cost for a file the tiler reads next.
+ */
+export function gpkgProblem(path: string): string | null {
+  const magic = readBytes(path, SQLITE_MAGIC.length, 0);
+  if (magic === null || !magic.equals(SQLITE_MAGIC)) {
+    return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
+  }
+
+  let database: GpkgDatabase | undefined;
+  try {
+    database = new GpkgDatabaseClass(path, { readonly: true });
+    const row = database.query('PRAGMA quick_check').get();
+    const verdict = row === null ? 'no answer' : String(Object.values(row)[0]);
+    if (verdict !== 'ok') {
+      return `${path} is not a usable GeoPackage: SQLite reports "${verdict}".`;
+    }
+    return null;
+  } catch (error) {
+    return `${path} is not a usable GeoPackage: ${reasonOf(error)}`;
+  } finally {
+    database?.close();
+  }
+}
+
 /** One sentence when `path` does not start like a gzip stream, `null` when it does. */
 export function gzipProblem(path: string): string | null {
   const magic = readBytes(path, 2, 0);
@@ -524,6 +584,29 @@ export function gzipProblem(path: string): string | null {
     return `${path} is not a gzip file: it does not start with the gzip magic bytes.`;
   }
   return null;
+}
+
+/**
+ * One sentence when `path` is not a gzip stream that decompresses to the end, `null` when it does.
+ *
+ * The magic check cannot tell a whole file from one cut after its first block — and neither can the
+ * byte count, because a truncated transfer can keep the length the server announced. Only reading
+ * the stream to its trailer says the payload survived, and the sources this guards (`qrank.csv.gz`)
+ * are read straight by the tiler, so a corrupt one has to fail here rather than inside the build.
+ *
+ * It decompresses into memory, which is why it is not the check `sourcesProblems` runs on every
+ * file: it belongs to the pre-seed script, once per source.
+ */
+export function gzipStreamProblem(path: string): string | null {
+  const magic = gzipProblem(path);
+  if (magic !== null) return magic;
+
+  try {
+    gunzipSync(readFileSync(path), { maxOutputLength: 4 * 1024 * 1024 * 1024 });
+    return null;
+  } catch (error) {
+    return `${path} is not a complete gzip stream: ${reasonOf(error)}`;
+  }
 }
 
 /** The check a source file gets, chosen so the cheap structural test is never skipped. */

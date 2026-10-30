@@ -56,7 +56,7 @@ const TILES: TileExpectation[] = [
   { tile: '13/2622/4870', labels: ['Bosque Umepay'], fills: FILLS },
   { tile: '14/5245/9741', labels: ['Bosque Umepay', 'Huerta Madre'], fills: FILLS },
   { tile: '15/10491/19483', labels: ['Bosque Umepay', 'Huerta Madre'], fills: FILLS },
-  { tile: '16/20982/38967', labels: ['Bosque Umepay', 'Huerta Madre'], fills: FILLS },
+  { tile: '16/20982/38967', labels: ['Bosque Umepay', 'Huerta Madre', 'Salón'], fills: FILLS },
 ];
 
 /** The expectation for one tile, so an assertion names the tile it read. */
