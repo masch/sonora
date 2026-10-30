@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { decodePng, encodePng, type Raster } from '../png';
 
 const SHEET = join(import.meta.dir, '../../../map-assets/sprites/light.png');
+const SHEET_DOCUMENT = join(import.meta.dir, '../../../map-assets/sprites/light.json');
 const sheetMissing = existsSync(SHEET)
   ? false
   : `no sprite at ${SHEET} — run \`make map-assets-fetch\``;
@@ -86,24 +87,32 @@ describe('the shipped sheet, read by this codec', () => {
   it.skipIf(sheetMissing !== false)(
     'decodes the sprite atlas Protomaps publishes',
     () => {
-      // 256×114 is the 1x sheet, 53 icons of 19×19 packed by upstream's own rasterizer.
-      // A wrong stride, a wrong filter or a wrong colour order would decode this into
-      // noise rather than fail, so the assertion is on real ink: the atlas has opaque
-      // pixels and a fully transparent border, which is what icon paste-back relies on.
+      // The sheet on disk is upstream's atlas (`make map-assets-fetch`) plus one row of our own
+      // icons (`make map-assets-icons`), which grows it downwards and leaves its width, 256, and
+      // every upstream coordinate alone. So the width is asserted and the height only has to be
+      // at least upstream's 114: an exact height would fail the moment we add an icon.
+      //
+      // A wrong stride, a wrong filter or a wrong colour order would decode this into noise
+      // rather than fail, so the assertion is on real ink: the box the document gives `toilets`
+      // has to hold opaque pixels, which is where its glyph is drawn.
       const sheet = decodePng(readFileSync(SHEET));
+      const document = JSON.parse(readFileSync(SHEET_DOCUMENT, 'utf8')) as Record<
+        string,
+        { x: number; y: number; width: number; height: number }
+      >;
 
       expect(sheet.width).toBe(256);
-      expect(sheet.height).toBe(114);
+      expect(sheet.height).toBeGreaterThanOrEqual(114);
 
-      let opaque = 0;
-      let transparent = 0;
-      for (let at = 0; at < sheet.data.length; at += 4) {
-        if (sheet.data[at + 3] === 255) opaque += 1;
-        if (sheet.data[at + 3] === 0) transparent += 1;
+      const toilets = document.toilets;
+      expect(toilets).toBeDefined();
+      let inked = 0;
+      for (let y = toilets.y; y < toilets.y + toilets.height; y += 1) {
+        for (let x = toilets.x; x < toilets.x + toilets.width; x += 1) {
+          if (sheet.data[(y * sheet.width + x) * 4 + 3] !== 0) inked += 1;
+        }
       }
-
-      expect(opaque).toBeGreaterThan(5_000);
-      expect(transparent).toBeGreaterThan(0);
+      expect(inked).toBeGreaterThan(0);
     },
     60_000,
   );

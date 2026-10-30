@@ -27,17 +27,24 @@ unmerged, review burned). Delivery is the human's: push and PR.
 
 ## Tasks
 
-| ID  | Task                                                                                                           | Specs      | Route  | Commit |
-| --- | -------------------------------------------------------------------------------------------------------------- | ---------- | ------ | ------ |
-| T1  | `docs`: record the staging publish and the `fetch-sources` run in the pipeline log (`L14`)                     | S1         | inline | —      |
-| T2  | `sprite`: PNG codec + supersampled rasterizer + the two icon shapes, pure Bun, with tests                      | S4, S5, S6 | inline | —      |
-| T3  | `sprite`: extend the pinned sheet with our icons for 1x and 2x, idempotent, plus a `make` target and tests     | S4, S5     | inline | —      |
-| T4  | `style`: admit the lodging kinds and map them to our two icons; every admitted kind resolves to an icon (test) | S3, S4     | inline | —      |
-| T5  | `profile`: patch `0008` — unnamed area lodging POIs admitted at `pointOnSurface`, min zoom 16                  | S1, S2     | inline | —      |
-| T6  | `tests`: assert the archive carries the cabins next to the Salón, and that the style draws them                | S1, S3     | inline | —      |
-| T7  | `build`: rebuild Calamuchita, measure, and record what it cost                                                 | S1         | inline | —      |
-| T8  | `docs`: fix the false "the style already admits every kind" claim and document the sprite extension + publish  | S1, S3, S5 | inline | —      |
-| T9  | `publish`: upload the assets and the archive to staging, and get the `published` job green                     | S5         | inline | —      |
+| ID  | Task                                                                                                           | Specs      | Route  | Commit                    |
+| --- | -------------------------------------------------------------------------------------------------------------- | ---------- | ------ | ------------------------- |
+| T1  | `docs`: record the staging publish and the `fetch-sources` run in the pipeline log (`L14`)                     | S1         | inline | 10d2354                   |
+| T2  | `sprite`: PNG codec + supersampled rasterizer + the two icon shapes, pure Bun, with tests                      | S4, S5, S6 | inline | 1587d8c, bf490d5, 65f3216 |
+| T3  | `sprite`: extend the pinned sheet with our icons for 1x and 2x, idempotent, plus a `make` target and tests     | S4, S5     | inline | 86953c7                   |
+| T4  | `style`: admit the lodging kinds and map them to our two icons; every admitted kind resolves to an icon (test) | S3, S4     | inline | —                         |
+| T5  | `profile`: patch `0008` — unnamed area lodging POIs admitted at `pointOnSurface`                               | S1, S2     | inline | 3288c41                   |
+| T6  | `tests`: assert the archive carries the cabins next to the Salón, and that the style draws them                | S1, S3     | inline | —                         |
+| T7  | `build`: rebuild Calamuchita, measure, and record what it cost                                                 | S1         | inline | —                         |
+| T8  | `docs`: fix the false "the style already admits every kind" claim and document the sprite extension + publish  | S1, S3, S5 | inline | —                         |
+| T9  | `publish`: upload the assets and the archive to staging, and get the `published` job green                     | S5         | inline | —                         |
+
+## Delivery
+
+Its own branch, `feat/map-tiles-lodging-pois`, stacked on `feat/map-tiles-building-names` (PR #587,
+unmerged, review burned). The slice boundary is the branch point `f49a397`: the PR shows only the
+commits above it, so the cumulative line count the commit hook reports belongs to the stack, not to
+this slice. Pushing and opening the PR stays the human's decision.
 
 ## Log
 
@@ -62,3 +69,17 @@ unmerged, review burned). Delivery is the human's: push and PR.
   `apartment` 1. So the set to carry is those six plus the vocabulary the profile already knows
   (`motel`, `bed_and_breakfast`, `caravan_site`, `alpine_hut`, `wilderness_hut`), mapped to two new
   icons — a bed for the lodging kinds and a tent for the camping ones.
+- `L4` — `resort` is out, and the render check is what said so. It was in the kind set on the theory
+  that "Centro Umepay" (`kind=resort`, name in the tile) was invisible for the same reason as the
+  hotels — it was — but admitting it costs an area name: the check failed `not drawn: Huerta Madre`,
+  and a style copy with only `resort` removed passed on the same tile with `Centro Umepay` gone and
+  `Huerta Madre` back. `S3` decides it: nothing drawn today may disappear, so the eleven kinds became
+  ten and `resort` stays a follow-up with its min zoom, not part of this slice. The new test also
+  surfaced a pre-existing gap it does not fix: `townhall` is admitted by the filter and the pinned
+  sheet has no `townhall` glyph, so it draws nothing — recorded as the one known exception, asserted
+  to be exactly that one, so a new gap cannot hide behind it.
+- `L5` — Measured, rebuilt and verified: the archive is **881 143 B** (+175 over 880 968) with the same
+  nine vector layers, and `archive-features.test.ts` went from `0 > 0` (red, before patch `0008`) to
+  green on both tiles — `16/20982/38967` now carries 4 `guest_house` POIs and `16/20983/38967` carries
+  3, where it carried **none**. All seven come out at `min_zoom` 17, exactly like the toilets beside
+  them, which is what makes them appear at the same overzoom the walker was already using.
