@@ -41,6 +41,7 @@ import {
   downloadVerified,
   gpkgProblem,
   gzipProblem,
+  gzipStreamProblem,
   osmPbfProblem,
   zipProblem,
 } from './download';
@@ -89,7 +90,9 @@ export const MAP_TILE_SOURCES: readonly TileSource[] = [
   {
     name: 'qrank.csv.gz',
     url: 'https://qrank.toolforge.org/download/qrank.csv.gz',
-    verify: gzipProblem,
+    // Not `gzipProblem`: the magic survives a stream that was cut, and the tiler reads this file
+    // straight, so only decompressing to the end says the payload arrived.
+    verify: gzipStreamProblem,
   },
   {
     name: 'daylight-landcover.gpkg',
@@ -276,14 +279,30 @@ function flag(argv: string[], name: string): string | undefined {
 /** Every flag `main` reads. A name outside this list is refused instead of ignored. */
 const KNOWN_FLAGS = ['region', 'cache', 'only', 'help'];
 
+/** Flags that are a question, not a value: `--help=1` reads as a flag the script cannot honour. */
+const BOOLEAN_FLAGS = ['help'];
+
+/**
+ * Refuses every argument `main` would otherwise ignore.
+ *
+ * Silence is the defect being closed: `-h`, `--help=1` or a positional region used to be skipped,
+ * and the run then fetched every source into the default cache — a command that looks like it
+ * asked for something specific and quietly did something else. Anything that is not a known
+ * `--flag` or `--flag=value` is an error now, and a boolean flag given a value is one too.
+ */
 export function assertKnownFlags(argv: string[]): void {
+  const known = KNOWN_FLAGS.map((each) => `--${each}`).join(', ');
   for (const arg of argv) {
-    if (!arg.startsWith('--')) continue;
+    if (!arg.startsWith('--')) {
+      throw new Error(`unexpected argument "${arg}": this script reads only ${known}.`);
+    }
     const name = arg.slice(2).split('=')[0] ?? '';
-    if (KNOWN_FLAGS.includes(name)) continue;
-    throw new Error(
-      `unknown option --${name}; this script reads ${KNOWN_FLAGS.map((each) => `--${each}`).join(', ')}.`,
-    );
+    if (!KNOWN_FLAGS.includes(name)) {
+      throw new Error(`unknown option --${name}; this script reads ${known}.`);
+    }
+    if (BOOLEAN_FLAGS.includes(name) && arg.includes('=')) {
+      throw new Error(`--${name} takes no value, got "${arg}"; this script reads ${known}.`);
+    }
   }
 }
 

@@ -39,6 +39,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 
 /** Bytes per second a transfer has to keep up, averaged over the window. */
 export const DEFAULT_MIN_BYTES_PER_SECOND = 64 * 1024;
@@ -526,11 +527,34 @@ export function osmPbfProblem(path: string): string | null {
  */
 const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'latin1');
 
-/** One sentence when `path` is not a GeoPackage, `null` when it starts with the SQLite header. */
+/**
+ * One sentence when `path` is not a whole GeoPackage, `null` when it is.
+ *
+ * The header alone is not enough, and this is not hypothetical: a download interrupted at the end
+ * leaves the first block intact and the rest padded with zeros, so the magic still matches while
+ * the database is gone. The SQLite header states its own length — page size at offset 16, page
+ * count at offset 28 — so the file has to be that size to count as complete.
+ */
 export function gpkgProblem(path: string): string | null {
   const magic = readBytes(path, SQLITE_MAGIC.length, 0);
   if (magic === null || !magic.equals(SQLITE_MAGIC)) {
     return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
+  }
+
+  const header = readBytes(path, 32, 0);
+  if (header === null) return `${path} is too short to be a GeoPackage.`;
+
+  const declared = header.readUInt16BE(16);
+  const pageSize = declared === 1 ? 65536 : declared;
+  const pageCount = header.readUInt32BE(28);
+  // A zero page count means "not known here", which SQLite writes while a file is still being
+  // built; a downloaded one always states it, so a zero is treated as unusable rather than trusted.
+  const expected = pageSize * pageCount;
+  if (expected === 0) return `${path} states no length in its SQLite header.`;
+
+  const size = sizeOfFile(path);
+  if (size !== expected) {
+    return `${path} claims ${expected} bytes in its SQLite header and has ${size}: it is truncated or padded.`;
   }
   return null;
 }
@@ -542,6 +566,29 @@ export function gzipProblem(path: string): string | null {
     return `${path} is not a gzip file: it does not start with the gzip magic bytes.`;
   }
   return null;
+}
+
+/**
+ * One sentence when `path` is not a gzip stream that decompresses to the end, `null` when it does.
+ *
+ * The magic check cannot tell a whole file from one cut after its first block — and neither can the
+ * byte count, because a truncated transfer can keep the length the server announced. Only reading
+ * the stream to its trailer says the payload survived, and the sources this guards (`qrank.csv.gz`)
+ * are read straight by the tiler, so a corrupt one has to fail here rather than inside the build.
+ *
+ * It decompresses into memory, which is why it is not the check `sourcesProblems` runs on every
+ * file: it belongs to the pre-seed script, once per source.
+ */
+export function gzipStreamProblem(path: string): string | null {
+  const magic = gzipProblem(path);
+  if (magic !== null) return magic;
+
+  try {
+    gunzipSync(readFileSync(path), { maxOutputLength: 4 * 1024 * 1024 * 1024 });
+    return null;
+  } catch (error) {
+    return `${path} is not a complete gzip stream: ${reasonOf(error)}`;
+  }
 }
 
 /** The check a source file gets, chosen so the cheap structural test is never skipped. */

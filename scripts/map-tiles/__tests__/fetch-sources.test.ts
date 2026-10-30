@@ -11,11 +11,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_MAP_REGION } from '../../../packages/shared/src/map/regions';
 import { planBuild } from '../build';
-import type { FetchLike } from '../download';
+import { type FetchLike, gpkgProblem, gzipProblem, gzipStreamProblem } from '../download';
 import { fetchSources, sourceOptions, sourcesForRegion } from '../fetch-sources';
 import { storedZip } from './archives';
 
@@ -181,7 +182,9 @@ describe('fetchSources', () => {
       const destination = destinationOf(root, 'qrank.csv.gz');
       mkdirSync(dirname(destination), { recursive: true });
       writeFileSync(destination, Buffer.alloc(64));
-      const gzip = Buffer.from([0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03]);
+      // A real gzip, because the verifier now reads it to the trailer: a 10-byte header would be
+      // rejected as the truncated stream it is, and this test is about the padded file on disk.
+      const gzip = gzipSync(Buffer.from('Entity,QRank\nQ1,42\n'));
       const { fetchLike, urls } = scriptedFetch(() =>
         serve(200, { 'content-length': String(gzip.length) }, [gzip]),
       );
@@ -196,7 +199,7 @@ describe('fetchSources', () => {
       expect(urls).toEqual(['https://qrank.toolforge.org/download/qrank.csv.gz']);
       expect(readFileSync(destination).equals(gzip)).toBe(true);
       // The bytes plus how many were reused: the zeros were thrown away, so nothing was reused.
-      expect(lines).toContain('qrank.csv.gz: 10 bytes (0 reused from disk)');
+      expect(lines).toContain(`qrank.csv.gz: ${gzip.length} bytes (0 reused from disk)`);
       // And the reason it was thrown away is said out loud, not swallowed.
       expect(lines.some((line) => line.includes('discarding') && line.includes('gzip'))).toBe(true);
     } finally {
@@ -264,8 +267,57 @@ describe('fetchSources', () => {
  * nobody reads is refused rather than ignored, and a bad argument reads as one line, not as the
  * runtime's stack trace.
  */
+describe('the verifiers the table uses', () => {
+  // The header of a SQLite file survives a transfer that died at the end, so magic alone called a
+  // zero-padded GeoPackage good and the build read it. The header states its own length; the check
+  // has to believe it over the file size.
+  it('rejects a GeoPackage whose header is intact but whose body never arrived', () => {
+    const root = scratch();
+    try {
+      const path = join(root, 'daylight-landcover.gpkg');
+      const header = Buffer.alloc(4096);
+      header.write('SQLite format 3\0', 0, 'latin1');
+      header.writeUInt16BE(4096, 16); // page size
+      header.writeUInt32BE(64, 28); // page count → the database claims 256 KiB
+      writeFileSync(path, header);
+
+      const problem = gpkgProblem(path);
+      expect(problem).toContain('truncated or padded');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a gzip that starts right and stops early', () => {
+    const root = scratch();
+    try {
+      const path = join(root, 'qrank.csv.gz');
+      const whole = gzipSync(Buffer.from('a,b\n1,2\n'));
+      // Keep the first half: the magic and part of the payload, without the trailer.
+      writeFileSync(path, whole.subarray(0, Math.floor(whole.length / 2)));
+
+      expect(gzipProblem(path)).toBeNull(); // the magic is intact, which is the whole problem
+      expect(gzipStreamProblem(path)).toContain('not a complete gzip stream');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('the command line', () => {
   const script = fileURLToPath(new URL('../fetch-sources.ts', import.meta.url));
+
+  // Silence was the defect: `-h`, `--help=1` and a positional region used to be skipped, and the
+  // run then fetched every source into the default cache. A command that looks specific must not
+  // quietly do the general thing, so each of these has to fail instead.
+  for (const argv of [['-h'], ['--help=1'], ['calamuchita']]) {
+    it(`refuses ${argv.join(' ')} instead of ignoring it`, () => {
+      const run = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8' });
+
+      expect(run.status).toBe(1);
+      expect(`${run.stdout}${run.stderr}`).toContain('this script reads');
+    });
+  }
 
   it('refuses a flag it does not read', () => {
     const run = spawnSync(process.execPath, [script, '--frobnicate=1'], { encoding: 'utf8' });
