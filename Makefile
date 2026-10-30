@@ -744,6 +744,15 @@ ORIGIN ?=
 map-assets-fetch: ## Download the glyphs + sprite the style names into $(MAP_ASSETS_DIR) (uploads nothing). [STYLE_URL=url|path] [MAP_ASSETS_DIR=path] [FORCE=1]
 	bun run scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
 
+# The upstream sheet has no lodging glyph, so the sprite we publish is the fetched one plus
+# this repository's own two icons. It is a separate step on purpose: `fetch` stays a mirror
+# of the pinned revision, and what we add to it is ours and testable on its own. Run it
+# after `fetch`, before uploading, and `--check` (`ICONS_CHECK=1`) to confirm what is on disk.
+
+.PHONY: map-assets-icons
+map-assets-icons: ## Append this repository's own sprite icons to the fetched sheet, 1x and 2x. Usage: make map-assets-icons [MAP_ASSETS_DIR=./map-assets] [ICONS_CHECK=1]
+	bun scripts/map-sprites/extend.ts --dir="$(MAP_ASSETS_DIR)/sprites" $(if $(ICONS_CHECK),--check,)
+
 .PHONY: map-assets-verify
 map-assets-verify: ## Probe the public glyphs + sprite urls the style requests; names what is missing. [STYLE_URL=url|path] [ORIGIN=url]
 	bun run scripts/map-assets.ts verify --style="$(STYLE_URL)" $(if $(ORIGIN),--origin="$(ORIGIN)",)

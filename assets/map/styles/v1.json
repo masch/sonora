@@ -3909,7 +3909,18 @@
               "attraction",
               "museum",
               "theatre",
-              "artwork"
+              "artwork",
+              "guest_house",
+              "hotel",
+              "hostel",
+              "chalet",
+              "apartment",
+              "motel",
+              "bed_and_breakfast",
+              "camp_site",
+              "caravan_site",
+              "alpine_hut",
+              "wilderness_hut"
             ]
           ]
         ],
@@ -3921,6 +3932,18 @@
           ["get", "kind"],
           "station",
           "train_station",
+          [
+            "guest_house",
+            "hotel",
+            "hostel",
+            "chalet",
+            "apartment",
+            "motel",
+            "bed_and_breakfast"
+          ],
+          "lodging",
+          ["camp_site", "caravan_site", "alpine_hut", "wilderness_hut"],
+          "camping",
           ["get", "kind"]
         ],
         "text-font": ["Noto Sans Regular"],

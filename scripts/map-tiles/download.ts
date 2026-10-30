@@ -554,16 +554,40 @@ const { Database: GpkgDatabaseClass } = require('bun:sqlite') as {
  *
  * `quick_check` is the cheap form of `integrity_check`: it walks the btree structures and says
  * `ok` without scanning every row, which is the right cost for a file the tiler reads next.
+ *
+ * A read-only connection to a WAL-mode database still creates `-shm` and `-wal` sidecars, and that
+ * is not a detail: verifying the cache left an empty `daylight-landcover.gpkg-wal` behind, and the
+ * build's own source check then refused the whole run for a file nobody downloaded. A verifier that
+ * writes is not a verifier, so this one notes what is already there and removes what it added.
+ *
+ * The SQLite header is not the identity either: any healthy database has it, so a truncated download
+ * that is a valid SQLite file would be kept as a cached GeoPackage and then fail inside the tiler,
+ * far from the cause. `application_id` is the field GeoPackage sets to `"GPKG"`, and it is the one
+ * fact that separates the file this verifier is about from every other SQLite database.
  */
+/** The `application_id` every GeoPackage declares: the ASCII bytes `GPKG`. */
+const GPKG_APPLICATION_ID = 0x47504b47;
+
 export function gpkgProblem(path: string): string | null {
   const magic = readBytes(path, SQLITE_MAGIC.length, 0);
   if (magic === null || !magic.equals(SQLITE_MAGIC)) {
     return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
   }
 
+  const sidecars = ['-wal', '-shm'].map((suffix) => `${path}${suffix}`);
+  const before = sidecars.map((sidecar) => existsSync(sidecar));
+
   let database: GpkgDatabase | undefined;
   try {
     database = new GpkgDatabaseClass(path, { readonly: true });
+    const identity = database.query('PRAGMA application_id').get();
+    const applicationId = identity === null ? -1 : Number(Object.values(identity)[0]);
+    if (applicationId !== GPKG_APPLICATION_ID) {
+      return (
+        `${path} is not a GeoPackage: SQLite application_id is ${applicationId}, ` +
+        `not the "GPKG" marker (${GPKG_APPLICATION_ID}).`
+      );
+    }
     const row = database.query('PRAGMA quick_check').get();
     const verdict = row === null ? 'no answer' : String(Object.values(row)[0]);
     if (verdict !== 'ok') {
@@ -574,6 +598,9 @@ export function gpkgProblem(path: string): string | null {
     return `${path} is not a usable GeoPackage: ${reasonOf(error)}`;
   } finally {
     database?.close();
+    sidecars.forEach((sidecar, index) => {
+      if (!before[index] && existsSync(sidecar)) unlinkSync(sidecar);
+    });
   }
 }
 

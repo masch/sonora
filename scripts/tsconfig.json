@@ -10,6 +10,6 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["*.ts", "map-tiles/*.ts"],
+  "include": ["*.ts", "map-tiles/*.ts", "map-sprites/*.ts"],
   "exclude": ["node_modules"]
 }

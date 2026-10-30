@@ -37,7 +37,7 @@ which only re-indents: the parsed document is unchanged, and the ignore path is 
 **A layer may only name fields the archive carries.** Labels and shields are decided against the published archive, not against the upstream schema, and three measurements settle what this map can show:
 
 - `roads_shields` needed no widening. The archive carries `shield_text` on 59 of its 670 road features, all of them `highway` (3) or `major_road` (56); `minor_road` and `aeroway` carry a `ref` but never a `shield_text`, which is the field the layer labels with.
-- The `pois` filter needed no new kind. Of the sprite's 53 icons, 34 are POI kinds and every one is already admitted; the apparent 35th, `train_station`, is the icon that the already-admitted kind `station` resolves to, not a kind of its own.
+- The `pois` filter needed new kinds, and the sheet needed new glyphs. Of the sprite's 53 icons, 34 were POI kinds and the style admitted those; the apparent 35th, `train_station`, is the icon that the already-admitted kind `station` resolves to, not a kind of its own. But there was **no lodging glyph at all**, and `icon-image` is the kind name, so every hotel, hostel and cabin in the archive drew nothing. Ten kinds now resolve to the two glyphs this repository draws (`lodging`, `camping`), and `scripts/map-tiles/__tests__/poi-icons.test.ts` fails when an admitted kind names an icon the sheet does not carry.
 - Places needed no finer layer. `places_locality` filters on `kind == "locality"` alone, and in this archive every village, hamlet and `isolated_dwelling` is exactly that: promoting `kind_detail` would have drawn a second label on the same point.
 
 A label layer over a source layer with no `name` — `landuse`, `buildings`, `boundaries` — draws nothing at all, which is why none exists here: the archive carries no names for those.
@@ -78,6 +78,24 @@ Ten files, not nine: the `@2x` sprite is a document _and_ an image. It skips a f
 
 Why the list is derived rather than written down: the day the style names a fourth font stack, a hand-written list is silently wrong and the only symptom is missing labels on a device.
 
+### Step 1b — extend: append the icons this repository draws
+
+```bash
+make map-assets-icons                   # appends lodging and camping to both ratios
+make map-assets-icons ICONS_CHECK=1     # read-only: are they there, with ink?
+```
+
+The fetched sheet is upstream's and stays upstream's; what this repository adds to it is a separate,
+testable step. `extend.ts` grows the atlas by one icon row at the bottom — every upstream coordinate
+survives — and writes all four sprite files, because MapLibre asks a high-density device for
+`@2x.json` **and** `@2x.png`. **Re-running it is safe**, which is what makes it an operator target: a
+sheet that already documents the icons is repainted in place — the drawing is deterministic, so a
+re-run changes no pixel and heals a box a half-finished write left blank — and only a sheet without
+them grows a row. Both files are written through a `.partial` sibling and renamed over the target, so
+a killed run leaves the old sheet rather than half of a new one — which is what makes running it again
+a real recovery instead of a hopeful one. `ICONS_CHECK=1` answers whether the document's box holds ink
+without writing anything. A sheet fetched before the icons existed needs no special step: the run extends it.
+
 ### Step 2 — upload: put the files where the client asks for them
 
 ```bash
@@ -85,7 +103,16 @@ make api-upload-map-assets-staging
 make api-upload-map-assets-production
 ```
 
-Walks `MAP_ASSETS_DIR` (default `./map-assets`), and uploads **one object per file** with `wrangler r2 object put --remote`, the content type picked from the extension (`.pbf` → `application/x-protobuf`, `.json` → `application/json`, `.png` → `image/png`) and `cache-control: public, max-age=31536000, immutable`.
+Walks `MAP_ASSETS_DIR` (default `./map-assets`), and uploads **one object per file** with `wrangler r2 object put --remote`, the content type picked from the extension (`.pbf` → `application/x-protobuf`, `.json` → `application/json`, `.png` → `image/png`).
+
+The cache policy is the one thing that differs by environment, and it matters because these keys carry **no version segment**:
+
+| Target     | `cache-control`                       | What a re-upload of the same key does                                         |
+| ---------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| staging    | `public, max-age=0, must-revalidate`  | reaches every client that asks again                                          |
+| production | `public, max-age=31536000, immutable` | **reaches nobody who cached it** — the browser keeps the old sheet for a year |
+
+That was harmless while the sheet was a frozen third-party artifact. It stopped being harmless the day this repository started appending icons to it: publishing a changed `sprites/light*` to production is a no-op for any device that already downloaded it, and the new icons would simply not appear. Escaping that needs one of two decisions, neither of them made yet: serve the assets with `must-revalidate` in production too, or give the sprite base a version segment (`sprites/light-v5`) so a changed sheet has a key nobody has cached.
 
 Two things about this target that bite:
 

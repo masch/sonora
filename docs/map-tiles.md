@@ -38,9 +38,9 @@ The three bold changes are ours, carried as patches on the pinned upstream commi
 
 ## 3. What it still will not show
 
-The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. Only one of the three is drawn, and the difference matters:
+The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and `pois` reaches z16. All three are drawn now, and how each one got there is worth knowing, because they failed for different reasons:
 
-- **POIs at z16 — visible now.** The style's `pois` symbol layer already admits every kind, so the toilets, cabins and viewpoints of z16 appear without touching the style.
+- **POIs at z16 — visible where the style and the sheet can draw them.** POI display needs three things to agree, and until this slice only the first was true: the profile has to emit the kind (patch `0003` takes `pois` to z16, patch `0007` keeps unnamed amenity areas, patch `0008` keeps unnamed lodging areas), the `pois` filter has to admit it, and `icon-image` has to resolve to an icon the published sheet carries. `icon-image` is `["get","kind"]` with lodging and camping mapped onto our own two glyphs, so an admitted kind the sheet has no glyph for draws **nothing at all** — not a placeholder box. `__tests__/poi-icons.test.ts` reads the admitted kinds out of the style and fails when one resolves to an icon outside the sheet; that is the check this section used to lack, and the reason the cabins next to the Salón were missing while the data sat in the tiles.
 - **Area names — drawn since `T11`.** `landuse_label` applies the document's own natural-label template (the one island and lake names use) to `landuse`: any polygon with a non-empty `name`, from z13, italic 10 px. It sits in the `green` group by prefix, so the selector can still hide it. The data sets no ceiling any more: patches `0004` and `0006` removed it (see the list below), so the only thing deciding when a name is drawn is this layer's `minzoom`.
 - **Building names — drawn from z16.** `buildings` carries `name` since patch 0002, and `buildings_label` now draws it with the same natural-label template as `landuse_label`, italic 10 px, from z16 — the layer at z15 was measured to displace "Huerta Madre", and an area name beats a building name. It sits in the `buildings` group by prefix, so the selector can hide it.
 - **`landcover` names**: by design, its features live at z0–7 where an area name buys nothing. The forests that matter are `landuse=wood`, which does carry a name.
@@ -53,13 +53,14 @@ The fork closed the **data** gap: `landuse` and `buildings` now carry `name` and
 The measurements below are kept as the record of why the old map looked the way it did — the first one is the gap `T11` closed:
 
 1. **Area names cannot exist.** `landuse` has 11 layers in the style and **all of them are fills**; there is no symbol layer. And even if there were one, `landuse` carries no `name` field: "Bosque Umepay" or "Huerta Madre" are not in our tiles at all.
-2. **The POI set is complete for what we carry.** The sprite has 53 icons; 34 are POI kinds and the style already admits every one of them. The apparent 35th, `train_station`, is the icon the already-admitted kind `station` resolves to. Nothing left to add without new data.
+2. **The POI set was not complete, and "the style admits every kind" was false.** Of the sheet's 53 icons, 34 were POI kinds and the style admitted those; the 35th apparent one, `train_station`, is what the already-admitted kind `station` resolves to. But the sheet has no lodging glyph at all, so every hotel, hostel and cabin complex in the region was in the tiles and drawn as nothing, and the unnamed cabins next to the Salón never reached a tile in the first place. Both halves are fixed: patch `0008` for the data, and `make map-assets-icons` for the two glyphs this repository now draws.
 3. **Place granularity was never missing.** `places_locality` filters on `kind == "locality"`, and in this archive every village, hamlet and isolated dwelling _is_ exactly that — a finer `kind_detail` layer drew a second label on the same point, which is why it does not exist.
 
 What OSM shows and we cannot, for the same reason — the data is not there:
 
-- names on forests, meadows, orchards, farms, and on buildings;
-- POIs at the zoom OSM shows them (z16+), and addresses (`address_label` asks for **z18**);
+- POIs deeper than z16: the archive stops at 16 and many kinds carry `min_zoom` 17, so the deepest
+  zoom draws them only when a client overzooms past the tile's own zoom. Addresses never appear:
+  `address_label` asks for **z18**;
 - one-way arrows and the rest of the z16 detail.
 
 ## 4. The options, honestly priced — and the one taken
@@ -159,6 +160,37 @@ What a run does, in order, stopping at the first failure and naming it:
 
 Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling). The three sources `download-sources` owns are the fragile ones — planetiler neither resumes nor verifies them — so `make map-tiles-fetch-sources` pre-seeds all of them, plus the extract and the two shape archives, with the same resume-and-verify rules, and a build that follows downloads nothing.
 
+### The sprite, and the two icons we own
+
+The published sheet is Protomaps' pinned atlas plus the icons this repository draws itself, and it is
+uploaded apart from the archives because it is content shared by every version:
+
+```bash
+make map-assets-fetch                  # pinned upstream glyphs + sprite into ./map-assets
+make map-assets-icons                  # append our icons to light{,@2x}.{json,png}
+make map-assets-icons ICONS_CHECK=1    # read-only: does the sheet carry them, with ink?
+make api-upload-map-assets-staging     # uploads glyphs/ and sprites/ (four sprite files)
+```
+
+- **Why we own icons at all.** The upstream sheet has 53 glyphs and no lodging one, and `icon-image`
+  is the kind name, so `icon-image` had nothing to draw for any hotel, hostel or cabin. The two
+  glyphs — `lodging` (a bed) and `camping` (a tent) — are drawn in `scripts/map-sprites/icons.ts` and
+  mapped onto eleven kinds by the style, the way `station` already maps to `train_station`.
+- **One row, both ratios.** `extend.ts` grows the atlas by one icon row at the bottom and leaves every
+  upstream coordinate alone, so a stale icon reference cannot break; it writes `.json`/`.png` **and**
+  `@2x.json`/`@2x.png`, because MapLibre asks a high-density device for both.
+- **No version segment — which is fine on staging and not on production.** The sprite urls carry no
+  version, and staging uploads write `must-revalidate`, so new bytes reach a client that asks again.
+  Production uploads write `immutable` for a year, so a changed sheet published there reaches nobody
+  who already cached it; `docs/map-assets-pipeline.md` records the two ways out and the fact that
+  neither has been decided. The drawing itself is pure Bun: a PNG codec over `node:zlib` plus a
+  supersampling painter, because every image library that could have done it is a binary package this
+  repository does not carry.
+- **Adding an icon** is three edits and one re-publish: draw it in `scripts/map-sprites/icons.ts`, add
+  the name to `OUR_SPRITE_ICONS` (`@sonora/shared`), map a kind to it in the style — then
+  `make map-assets-fetch --force`, `make map-assets-icons` and the staging upload. `poi-icons.test.ts`
+  fails until the last two agree, which is the point.
+
 ### Publishing
 
 ```bash
@@ -196,10 +228,16 @@ area names or the heath and bare-rock fills is exactly the failure this job exis
 `main` when the style or the scripts change, on pull requests touching either, and on demand for staging or
 production.
 
-### Two known gaps
+### Three known gaps
 
 - **`T9`** — planetiler's own downloads do not resume: a killed attempt discards its `.tmp`, so a slow-but-alive mirror can never finish the 932 MB water or 953 MB land archive. Until the two `osmdata` files are fetched by our downloader (which does resume), a cold cache may need them pre-seeded. The first real run hit exactly this: three attempts, 8 % lost each.
 - **`T10`** — the upload targets do not validate `ARCHIVE`/`STYLE` before uploading, so a wrong path leaves the bucket half-updated.
+- **POI kinds the sheet still cannot draw.** `townhall` is admitted by the `pois` filter and the pinned
+  sheet has no `townhall` glyph, so it draws nothing — a pre-existing instance of the same defect,
+  listed as the single known exception in `poi-icons.test.ts` so a new gap cannot hide behind it.
+  `resort` is deliberately **not** admitted: admitting it drew "Centro Umepay" and displaced "Huerta
+  Madre", which the render check refused as a lost area name. Both are one edit each once somebody
+  decides what should give way.
 
 ## 7. Budget and next steps
 

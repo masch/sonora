@@ -72,4 +72,24 @@ describe('the archive carries the objects the walker found in OSM', () => {
     },
     60_000,
   );
+
+  it.skipIf(missing !== false)(
+    'keeps the unnamed cabins next to the Salón as lodging POIs, on both tiles they straddle',
+    async () => {
+      // Patch 0008, and the reason the walker asked: OSM draws seven bed icons next to the Salón
+      // and our map drew none. They are `building=yes` + `tourism=guest_house` with no name, so
+      // upstream's "points and named polygons only" rule dropped every one of them — the same
+      // gap patch 0007 closed for the toilets, one kind class over. Four fall in the toilets
+      // tile and three in the Salón tile, so asserting one tile would pass while half the cabins
+      // were missing: the pair is the assertion, not either of them.
+      const inTile = async (tile: { z: number; x: number; y: number }) =>
+        (await readTile(ARCHIVE, tile)).filter(
+          (feature) => feature.layer === 'pois' && feature.properties.kind === 'guest_house',
+        ).length;
+
+      expect(await inTile(TOILETS_TILE)).toBeGreaterThan(0);
+      expect(await inTile(SALON_TILE)).toBeGreaterThan(0);
+    },
+    60_000,
+  );
 });
