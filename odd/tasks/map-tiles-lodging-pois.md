@@ -96,3 +96,14 @@ this slice. Pushing and opening the PR stays the human's decision.
   belongs, and `docs/map-assets-pipeline.md` carries the two ways out — serve the assets
   `must-revalidate` in production too, or give the sprite base a version segment — with neither taken
   here, because publishing to production is not this slice.
+- `L7` — Published to staging and verified against what it serves, not against the build directory.
+  `make api-upload-map-assets-staging` put the extended sheet in the bucket (the served
+  `sprites/light.json` answers with **55** icons, `lodging` at `x:0,y:114` and `camping` at `x:19`,
+  plus the `@2x` pair), then the archive and the style went up in the same version: `/config` reports
+  **`archiveBytes: 881143`**, and the served style admits 47 kinds with `icon-image` mapping the seven
+  lodging kinds to `lodging` and the four camping ones to `camping`. The `published` job's steps were
+  run here against the published object — the API named the url, the download was 881143 bytes with
+  the `PMTiles` magic, and `CI=true bun test scripts/map-tiles` with `MAP_TILES_ARCHIVE` pointing at
+  it came back **126 pass, 0 fail**, including the render check of the four measured tiles and the
+  cabins on both tiles. The GitHub job itself needs the branch pushed and a PR, which is the human's
+  call; the steps it runs are the ones that just passed.
