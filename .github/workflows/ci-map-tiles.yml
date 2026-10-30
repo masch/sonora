@@ -29,12 +29,14 @@ on:
     branches: [main]
     paths:
       - 'scripts/map-tiles/**'
+      - 'scripts/map-assets.ts'
       - 'assets/map/styles/**'
       - '.github/workflows/ci-map-tiles.yml'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'scripts/map-tiles/**'
+      - 'scripts/map-assets.ts'
       - 'assets/map/styles/**'
       - '.github/workflows/ci-map-tiles.yml'
 
@@ -76,8 +78,13 @@ jobs:
           }
           bytes=$(jq -er --arg region "$REGION" '.map.regions[$region].archiveBytes' "$config")
           echo "verifying $ENVIRONMENT: $url ($bytes bytes)"
+          style=$(jq -er '.map.styleUrl' "$config") || {
+            echo "::error::$api/config publishes no style url"
+            exit 1
+          }
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "bytes=$bytes" >> "$GITHUB_OUTPUT"
+          echo "style=$style" >> "$GITHUB_OUTPUT"
 
       - name: Fetch it and check it is the object the API described
         env:
@@ -103,6 +110,16 @@ jobs:
           }
           echo "archive ok: $size bytes"
           echo "MAP_TILES_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      # The render check proves the archive and the style agree, and it does that **offline**:
+      # the style names a reserved origin, so MapLibre draws its own glyphs and never fetches the
+      # sprite. Nothing above this line touches the glyph or sprite objects, so a bucket missing
+      # them would lose every label and every icon on a phone and leave this job green. This is the
+      # check that asks the URLs the served style names and fails naming the keys to upload.
+      - name: Check the glyphs and the sprite the served style names
+        env:
+          STYLE_URL: ${{ steps.artifact.outputs.style }}
+        run: make map-assets-verify STYLE_URL="$STYLE_URL"
 
       - name: Install the Chromium the render needs
         run: bunx playwright install --with-deps chromium
