@@ -517,6 +517,24 @@ export function osmPbfProblem(path: string): string | null {
   return null;
 }
 
+/**
+ * The header every SQLite database starts with, which is what a GeoPackage is underneath.
+ *
+ * `daylight-landcover.gpkg` has no archive to open and no extension anyone can check: it is a
+ * SQLite file, so the first 16 bytes either are this header or the file is not a GeoPackage.
+ * That is the same read as the gzip check, and it is what tells a padded download from a real one.
+ */
+const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'latin1');
+
+/** One sentence when `path` is not a GeoPackage, `null` when it starts with the SQLite header. */
+export function gpkgProblem(path: string): string | null {
+  const magic = readBytes(path, SQLITE_MAGIC.length, 0);
+  if (magic === null || !magic.equals(SQLITE_MAGIC)) {
+    return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
+  }
+  return null;
+}
+
 /** One sentence when `path` does not start like a gzip stream, `null` when it does. */
 export function gzipProblem(path: string): string | null {
   const magic = readBytes(path, 2, 0);

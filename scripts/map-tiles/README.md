@@ -65,6 +65,10 @@ The spikes lost three downloads and one afternoon to the mirrors: three truncate
 
 A download stage is `fetch-osm` (the extract, ours), then `fetch-shapes` (the two ~950 MB `osmdata` archives — water and land polygons — which planetiler's own downloader cannot finish, because it does not resume and a stalled mirror costs the whole attempt), then `download-sources` (planetiler's remaining sources: Natural Earth, the landcover file, qrank, fonts) and `verify-sources`, which opens every file before the tiler reads any of them.
 
+### Pre-seeding the sources a build keeps downloading
+
+The fragile ones are the three planetiler fetches itself — `qrank.csv.gz`, `daylight-landcover.gpkg` and `natural_earth_vector.gpkg.zip` — because its downloader neither resumes nor opens what it wrote: a stalled mirror restarts them from zero, and one padded a file with zeros until it matched the length it promised. `make map-tiles-fetch-sources` ([`fetch-sources.ts`](./fetch-sources.ts)) fetches all three, plus the region's extract and the two ~950 MB outline archives, straight into `<cache>/planetiler/data/sources` with the resume, size and integrity rules below. planetiler finds them there and skips every one of its own downloads, so running it before a build is what turns a fragile eighteen-minute download into none at all. `CACHE=` points it at another directory, `--only=qrank.csv.gz` fetches a single file, and a second run reports `cached` for everything already verified.
+
 A finished file is only renamed into place after it passes, and a file that no longer passes is discarded and fetched again. A partial is only resumed against the validator it was fetched with (`If-Range`), so an interrupted download continues but yesterday's bytes are never glued to today's file.
 
 A cached extract is kept rather than refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Delete `<cache>/planetiler/data/sources/<area>.osm.pbf` when you mean to take a newer one — the next run downloads and verifies it again.
