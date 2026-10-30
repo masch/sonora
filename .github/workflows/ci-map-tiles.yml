@@ -30,6 +30,9 @@ on:
     paths:
       - 'scripts/map-tiles/**'
       - 'scripts/map-assets.ts'
+      # The asset check reads its keys from here: a change to the sprite or glyph layout has to run
+      # the job that proves the bucket serves them.
+      - 'packages/shared/src/map/**'
       - 'assets/map/styles/**'
       - '.github/workflows/ci-map-tiles.yml'
   pull_request:
@@ -37,6 +40,7 @@ on:
     paths:
       - 'scripts/map-tiles/**'
       - 'scripts/map-assets.ts'
+      - 'packages/shared/src/map/**'
       - 'assets/map/styles/**'
       - '.github/workflows/ci-map-tiles.yml'
 

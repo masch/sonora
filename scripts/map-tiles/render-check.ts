@@ -71,9 +71,30 @@ declare const Bun: {
  */
 export const RENDER_HOST = '127.0.0.1';
 
+/** The browser `renderCheck` drives, so a caller rendering several tiles opens one. */
+export type RenderBrowser = Awaited<ReturnType<typeof chromium.launch>>;
+
+/**
+ * Opens the Chromium a render needs, or says why there is none.
+ *
+ * Split out of `renderCheck` because the four-tile test used to launch four browsers — one per
+ * tile — and under the load of a whole suite that was enough to have one of them die mid-render,
+ * which reads as a failed check rather than as a resource condition. One session for the file
+ * costs a quarter of the processes and keeps the tiles comparable.
+ */
+export async function openRenderBrowser(repoRoot: string): Promise<RenderBrowser> {
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM ?? findChromium() ?? undefined;
+  return chromium.launch({
+    ...(executablePath === undefined ? {} : { executablePath }),
+    args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+}
+
 export interface RenderCheckOptions {
   archive: string;
   style: string;
+  /** A browser to render in; when absent the check opens and closes its own. */
+  browser?: RenderBrowser;
   /** `z/x/y` of the tile the check renders, or `null` for the archive's centre. */
   tile: { z: number; x: number; y: number };
   /** Names that must appear among the labels the style placed. */
@@ -305,15 +326,13 @@ export async function renderCheck(
     },
   });
 
-  const executablePath = process.env.PLAYWRIGHT_CHROMIUM ?? findChromium() ?? undefined;
   // Declared before the launch and closed with `?.`: a launch that rejects — no browser on this
-  // machine — must not leave the server listening behind it.
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  // machine — must not leave the server listening behind it. A browser handed in belongs to the
+  // caller and survives this call, which is what lets a test render four tiles in one process.
+  const ownsBrowser = options.browser === undefined;
+  let browser: RenderBrowser | undefined;
   try {
-    browser = await chromium.launch({
-      ...(executablePath === undefined ? {} : { executablePath }),
-      args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
-    });
+    browser = options.browser ?? (await openRenderBrowser(repoRoot));
 
     const tab = await browser.newPage({ viewport: { width: 900, height: 700 } });
     await tab.goto(`http://127.0.0.1:${server.port}/`);
@@ -342,10 +361,12 @@ export async function renderCheck(
         // The style has to be parsed before `getStyle()` can be read or a layer hidden. The event
         // that says so is `styledata`: MapLibre sets the style's own loaded flag and then fires it,
         // while `isStyleLoaded()` answers something stricter — it also waits for every **source**
-        // to finish loading, which for a PMTiles archive means tiles. Waiting on that was the flake:
-        // under the load of a whole test suite it ran out of a 20 s deadline on one tile of a run,
-        // and the failure read as `the style never finished loading` when nothing was wrong with the
-        // style. Bounded, so a style that never parses still says so.
+        // to finish loading, which for a PMTiles archive means tiles. That stricter question was
+        // **one** cause of this check flaking (it ran out of its deadline on one tile of a run and
+        // read as `the style never finished loading`), and it is not the only one: a machine under
+        // enough load can still lose the browser process itself. So this wait is bounded and says
+        // what it waits for — a style that never parses — rather than claiming the check is calm.
+        // The companion fix is one browser for the four tiles, in the test beside this file.
         await new Promise<void>((resolve, reject) => {
           const deadline = setTimeout(
             () => reject(new Error('the style never finished parsing')),
@@ -483,7 +504,7 @@ export async function renderCheck(
       ...(problems.length === 0 ? {} : { message: problems.join('; ') }),
     };
   } finally {
-    await browser?.close();
+    if (ownsBrowser) await browser?.close();
     server.stop(true);
   }
 }
