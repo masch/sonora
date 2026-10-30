@@ -1,0 +1,111 @@
+name: 4-CI Map tiles
+
+# The integration test in `scripts/map-tiles` asserts what this project knows about one zone: the
+# area names, and the two areas OSM draws and this map used to leave blank. It renders the archive
+# with the style that ships in this repository, so the pair it proves is exactly what a client
+# draws — the style from the build, the archive from the bucket.
+#
+# The archive is the **published** object, not a pinned copy: staging is republished in place, and a
+# publish that loses those objects is the failure this job exists to catch. A missing object, a
+# truncated download or an error page fails here with the URL that failed.
+#
+# `CI` is set by Actions, and the suite treats a missing archive or browser as a failure rather than
+# a skip — a green run that rendered nothing would be worse than no job at all.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Published environment to verify
+        type: choice
+        options: [staging, production]
+        default: staging
+      version:
+        description: Artifact version (empty reads DEFAULT_MAP_ARTIFACT_VERSION)
+        type: string
+        required: false
+  schedule:
+    # Daily, so a republished archive is verified without waiting for somebody to touch the code.
+    - cron: '0 6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/map-tiles/**'
+      - 'assets/map/styles/**'
+      - '.github/workflows/ci-map-tiles.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/map-tiles/**'
+      - 'assets/map/styles/**'
+      - '.github/workflows/ci-map-tiles.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: map-tiles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  published:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REGION: calamuchita
+      ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Resolve the artifact version and its origin
+        id: artifact
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ]; then
+            version=$(bun -e "import { DEFAULT_MAP_ARTIFACT_VERSION as v } from './packages/shared/src/map/artifacts'; console.log(v)")
+          fi
+          case "$version" in
+            v[0-9]*) ;;
+            *) echo "::error::artifact version '$version' is not of the form vN"; exit 1 ;;
+          esac
+          case "$ENVIRONMENT" in
+            staging) base="https://sonora-api-staging.sonora-api.workers.dev/media/public" ;;
+            production) base="https://sonora-api.sonora-api.workers.dev/media/public" ;;
+            *) echo "::error::unknown environment '$ENVIRONMENT'"; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "verifying $ENVIRONMENT $version"
+
+      - name: Fetch the published archive and check it is one
+        env:
+          BASE: ${{ steps.artifact.outputs.base }}
+          VERSION: ${{ steps.artifact.outputs.version }}
+        run: |
+          archive="$RUNNER_TEMP/$REGION.pmtiles"
+          url="$BASE/tiles/$REGION/$VERSION.pmtiles"
+          echo "fetching $url"
+          curl -fsSL --retry 3 --retry-all-errors -o "$archive" "$url" || {
+            echo "::error::could not fetch $url — publish the $VERSION archive for $ENVIRONMENT first"
+            exit 1
+          }
+          magic=$(head -c 7 "$archive")
+          [ "$magic" = "PMTiles" ] || {
+            echo "::error::$url did not answer with a PMTiles archive"
+            exit 1
+          }
+          size=$(wc -c < "$archive")
+          echo "archive bytes: $size"
+          [ "$size" -gt 100000 ] || {
+            echo "::error::$url is $size bytes, too small to be the region archive"
+            exit 1
+          }
+          echo "MAP_TILES_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Install the Chromium the render needs
+        run: bunx playwright install --with-deps chromium
+
+      - name: Render the published archive with this repository's style
+        run: bun test scripts/map-tiles

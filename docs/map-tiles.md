@@ -187,6 +187,15 @@ make map-tiles-render-check ARCHIVE=<cache>/out/calamuchita.pmtiles
 
 Headless Chromium renders the built archive with the repository style and reports the labels it placed, so a filter, a zoom range or a font mistake fails before a phone is involved. The same render also runs in `bun test` (`__tests__/render.test.ts`), where the expectations live — that test owns them, and the standalone command asserts only what its flags name; it skips, saying why, when there is no archive or no browser on the machine. Offline on purpose: the style names the reserved origin, so MapLibre draws the glyphs locally. It also measures the layer selector — it hides the layers `layerIdsForGroup` assigns to the `green` group, the same resolution the web control runs, and fails if a label stays or if the group claims no layer. What that proves is the group table and the renderer's answer to it; what the control shows is `experience-map-web.test.tsx`, and what neither can prove is the native plumbing — the `pmtiles://file://` protocol, the font ranges written to disk, the per-session style cache — which is what a device still checks.
 
+**The same check runs in CI, against the published archive.** `.github/workflows/ci-map-tiles.yml` resolves
+`DEFAULT_MAP_ARTIFACT_VERSION` (or takes a version and an environment on dispatch), fetches
+`tiles/<region>/<version>.pmtiles` from the API that serves it, refuses anything that is not a PMTiles
+archive of a plausible size, and runs `bun test scripts/map-tiles` with `MAP_TILES_ARCHIVE` pointing at it.
+The archive is the published object on purpose: staging is republished in place, so a publish that loses the
+area names or the heath and bare-rock fills is exactly the failure this job exists to catch. It runs daily, on
+`main` when the style or the scripts change, on pull requests touching either, and on demand for staging or
+production.
+
 ### Two known gaps
 
 - **`T9`** — planetiler's own downloads do not resume: a killed attempt discards its `.tmp`, so a slow-but-alive mirror can never finish the 932 MB water or 953 MB land archive. Until the two `osmdata` files are fetched by our downloader (which does resume), a cold cache may need them pre-seeded. The first real run hit exactly this: three attempts, 8 % lost each.
