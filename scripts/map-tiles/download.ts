@@ -668,8 +668,15 @@ export function sourcesProblems(directory: string): string[] {
     return [`${directory} is empty: no source was downloaded.`];
   }
 
+  // SQLite's `-wal`, `-shm` and `-journal` are sidecars, not sources: a reader creates them and a
+  // killed process leaves them behind, and a zero-byte one then reads as "a source that
+  // downloaded nothing" — which is how a `daylight-landcover.gpkg-wal` failed a whole build for a
+  // file nobody had fetched. The verifier that opens the database cleans up after itself; this
+  // also means a leftover from a machine that died mid-verify cannot block the next run.
+  const SIDECARS = /-(wal|shm|journal)$/;
+
   const problems: string[] = [];
-  for (const entry of entries) {
+  for (const entry of entries.filter((name) => !SIDECARS.test(name))) {
     const problem = sourceProblem(join(directory, entry));
     if (problem !== null) problems.push(problem);
   }

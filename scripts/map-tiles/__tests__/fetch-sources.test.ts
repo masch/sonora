@@ -29,7 +29,13 @@ import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_MAP_REGION } from '../../../packages/shared/src/map/regions';
 import { planBuild } from '../build';
-import { type FetchLike, gpkgProblem, gzipProblem, gzipStreamProblem } from '../download';
+import {
+  type FetchLike,
+  gpkgProblem,
+  gzipProblem,
+  gzipStreamProblem,
+  sourcesProblems,
+} from '../download';
 import { fetchSources, sourceOptions, sourcesForRegion } from '../fetch-sources';
 import { storedZip } from './archives';
 
@@ -321,6 +327,26 @@ describe('the verifiers the table uses', () => {
       whole.close();
 
       expect(gpkgProblem(path)).toBeNull();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores SQLite sidecars instead of calling them sources that downloaded nothing', () => {
+    // A killed reader leaves `-wal`/`-shm` behind, and an empty one used to fail a whole build
+    // with "is empty" — a file nobody downloaded blocking a source that verified fine.
+    const root = scratch();
+    try {
+      const path = join(root, 'daylight-landcover.gpkg');
+      const whole = new Database(path, { create: true });
+      whole.run('PRAGMA application_id = 0x47504b47');
+      whole.run('CREATE TABLE t (id INTEGER PRIMARY KEY)');
+      whole.run('INSERT INTO t DEFAULT VALUES');
+      whole.close();
+      writeFileSync(`${path}-wal`, '');
+      writeFileSync(`${path}-shm`, '');
+
+      expect(sourcesProblems(root)).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

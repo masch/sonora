@@ -19,7 +19,7 @@ diff -ruN a/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java b/tiles/s
    private static final java.util.Set<String> AREA_POI_KINDS = java.util.Set.of(
 -    "toilets", "drinking_water", "bench"
 +    "toilets", "drinking_water", "bench",
-+    "guest_house", "hotel", "hostel", "chalet", "apartment", "motel", "bed_and_breakfast", "resort",
++    "guest_house", "hotel", "hostel", "chalet", "apartment", "motel", "bed_and_breakfast",
 +    "camp_site", "caravan_site", "alpine_hut", "wilderness_hut"
    );
  
