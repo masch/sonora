@@ -554,12 +554,20 @@ const { Database: GpkgDatabaseClass } = require('bun:sqlite') as {
  *
  * `quick_check` is the cheap form of `integrity_check`: it walks the btree structures and says
  * `ok` without scanning every row, which is the right cost for a file the tiler reads next.
+ *
+ * A read-only connection to a WAL-mode database still creates `-shm` and `-wal` sidecars, and that
+ * is not a detail: verifying the cache left an empty `daylight-landcover.gpkg-wal` behind, and the
+ * build's own source check then refused the whole run for a file nobody downloaded. A verifier that
+ * writes is not a verifier, so this one notes what is already there and removes what it added.
  */
 export function gpkgProblem(path: string): string | null {
   const magic = readBytes(path, SQLITE_MAGIC.length, 0);
   if (magic === null || !magic.equals(SQLITE_MAGIC)) {
     return `${path} is not a GeoPackage: it does not start with the SQLite format 3 header.`;
   }
+
+  const sidecars = ['-wal', '-shm'].map((suffix) => `${path}${suffix}`);
+  const before = sidecars.map((sidecar) => existsSync(sidecar));
 
   let database: GpkgDatabase | undefined;
   try {
@@ -574,6 +582,9 @@ export function gpkgProblem(path: string): string | null {
     return `${path} is not a usable GeoPackage: ${reasonOf(error)}`;
   } finally {
     database?.close();
+    sidecars.forEach((sidecar, index) => {
+      if (!before[index] && existsSync(sidecar)) unlinkSync(sidecar);
+    });
   }
 }
 
