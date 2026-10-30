@@ -174,8 +174,22 @@ describe('checking the sheet', () => {
       writeFileSync(join(dir, document), JSON.stringify(entries));
     }
 
-    expect(() => checkSheet(dir)).toThrow(/light\.json does not carry lodging/);
-    expect(() => checkSheet(dir)).toThrow(/light@2x\.json does not carry camping/);
+    // All four, from one call: an implementation that reported only one per run would satisfy
+    // two separate assertions by simply being called twice.
+    let message = '';
+    try {
+      checkSheet(dir);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    for (const [document, icon] of [
+      ['light.json', 'lodging'],
+      ['light.json', 'camping'],
+      ['light@2x.json', 'lodging'],
+      ['light@2x.json', 'camping'],
+    ] as const) {
+      expect(message).toContain(`${document} does not carry ${icon}`);
+    }
   });
 
   it('grows one extra row when a run died between the image and the document write', () => {

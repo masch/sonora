@@ -235,9 +235,16 @@ async function verifyAssets(args: VerifyArgs, client: MapAssetClient): Promise<n
     args.origin === undefined ? {} : { origin: args.origin },
   );
 
+  // Zero requests is not "nothing to check", it is the failure this command exists to report: a
+  // served style that lost its `glyphs` and `sprite` fields makes every client ask for nothing, and
+  // a check that answered "nothing to verify" would go green on the one document it should refuse.
+  // `fetch` may legitimately find nothing to do; `verify` may not.
   if (requests.length === 0) {
-    console.log(`${args.style} names no glyphs and no sprite: nothing to verify.`);
-    return 0;
+    console.error(
+      `${args.style} names no glyphs and no sprite: refusing to verify an empty asset set. ` +
+        'A style that lost them would draw no labels and no icons.',
+    );
+    return 1;
   }
 
   const origin = args.origin === undefined ? 'the origin the style names' : args.origin;
