@@ -593,7 +593,7 @@ map-tiles-render-check: ## Render a built archive with the repo style in headles
 # follows finds them on disk and planetiler downloads nothing of its own.
 .PHONY: map-tiles-fetch-sources
 map-tiles-fetch-sources: ## Pre-seed every tiler source (resumed + verified) so a build downloads nothing. Usage: make map-tiles-fetch-sources [REGION=calamuchita] [CACHE=dir]
-	bun scripts/map-tiles/fetch-sources.ts --region="$(REGION)" $(if $(CACHE),--cache="$(CACHE)",)
+	bun scripts/map-tiles/fetch-sources.ts $(if $(REGION),--region="$(REGION)",) $(if $(CACHE),--cache="$(CACHE)",)
 
 .PHONY: map-tiles-build
 map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
