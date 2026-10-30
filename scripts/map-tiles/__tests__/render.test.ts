@@ -14,13 +14,13 @@
  *
  * `MAP_TILES_ARCHIVE` points at another archive; `PLAYWRIGHT_CHROMIUM` at another browser.
  */
-import { describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_CACHE_DIR } from '../build';
-import { findChromium, renderCheck } from '../render-check';
+import { findChromium, openRenderBrowser, type RenderBrowser, renderCheck } from '../render-check';
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 const REGION = 'calamuchita';
@@ -28,6 +28,31 @@ const ARCHIVE =
   process.env.MAP_TILES_ARCHIVE ?? join(DEFAULT_CACHE_DIR, 'out', `${REGION}.pmtiles`);
 const CHROMIUM = process.env.PLAYWRIGHT_CHROMIUM ?? findChromium();
 const STYLE = join(REPO, 'assets/map/styles/v1.json');
+
+/**
+ * One Chromium for every tile in this file.
+ *
+ * It used to be one per tile, and four concurrent launches — next to every other test file — was
+ * enough for one of them to die mid-render, which surfaced as a failed check rather than as the
+ * resource condition it is. Lazily opened, so the tiles that skip for want of an archive or a
+ * browser never launch anything.
+ */
+let browser: RenderBrowser | undefined;
+let browserProblem: string | undefined;
+
+beforeAll(async () => {
+  if (blocked !== false) return;
+  try {
+    browser = await openRenderBrowser(REPO);
+  } catch (error) {
+    browserProblem = error instanceof Error ? error.message : String(error);
+  }
+});
+
+afterAll(async () => {
+  await browser?.close();
+  browser = undefined;
+});
 
 /** What one tile promises the style draws. */
 interface TileExpectation {
@@ -109,10 +134,13 @@ describe('the published style draws what the archive carries', () => {
     it.skipIf(blocked !== false)(
       `${expectation.tile} places ${expectation.labels.join(' and ')} and paints ${expectation.fills.join(', ')}`,
       async () => {
+        if (browserProblem !== undefined)
+          throw new Error(`no browser to render in: ${browserProblem}`);
         const result = await renderCheck(
           {
             archive: ARCHIVE,
             style: STYLE,
+            ...(browser === undefined ? {} : { browser }),
             tile: { z, x, y },
             expect: expectation.labels,
             expectFills: expectation.fills,
