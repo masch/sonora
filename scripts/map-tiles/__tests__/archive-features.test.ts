@@ -22,10 +22,12 @@ const ARCHIVE =
   process.env.MAP_TILES_ARCHIVE ?? join(DEFAULT_CACHE_DIR, 'out', `${REGION}.pmtiles`);
 
 /**
- * The tile the walker compared against OSM: the `Salón` building and, right under it, the two
- * `amenity=toilets` mapped as small unnamed buildings.
+ * The tiles the walker compared against OSM. They are neighbours on purpose: the building sits in
+ * one and the two `amenity=toilets` mapped as small unnamed buildings fall in the one to its west,
+ * because the pair straddles a tile boundary at z16.
  */
-const WALKER_TILE = { z: 16, x: 20983, y: 38967 };
+const SALON_TILE = { z: 16, x: 20983, y: 38967 };
+const TOILETS_TILE = { z: 16, x: 20982, y: 38967 };
 
 const RENDER_REQUIRED = !['', '0', 'false'].includes((process.env.CI ?? '').toLowerCase());
 const missing = existsSync(ARCHIVE)
@@ -41,11 +43,11 @@ describe('the archive carries the objects the walker found in OSM', () => {
   });
 
   it.skipIf(missing !== false)(
-    `names the building OSM labels "Salón" (${WALKER_TILE.z}/${WALKER_TILE.x}/${WALKER_TILE.y})`,
+    `names the building OSM labels "Salón" (${SALON_TILE.z}/${SALON_TILE.x}/${SALON_TILE.y})`,
     async () => {
       // Patch 0002 put `name` on `buildings`: without it the style has nothing to draw, which is
       // why the label was missing until it was fixed.
-      const features = await readTile(ARCHIVE, WALKER_TILE);
+      const features = await readTile(ARCHIVE, SALON_TILE);
       const named = features.filter(
         (feature) => feature.layer === 'buildings' && feature.properties.name === 'Salón',
       );
@@ -56,12 +58,12 @@ describe('the archive carries the objects the walker found in OSM', () => {
   );
 
   it.skipIf(missing !== false)(
-    'keeps the unnamed toilets as a POI, because a walker looks for them',
+    `keeps the unnamed toilets as a POI (${TOILETS_TILE.z}/${TOILETS_TILE.x}/${TOILETS_TILE.y})`,
     async () => {
       // Patch 0007. Upstream drops every POI that is neither a point nor a named polygon, and
       // these two are `amenity=toilets` drawn as small buildings with no name: they were in OSM
       // and nowhere in our tiles. Asserting the kind is what says the profile kept them.
-      const features = await readTile(ARCHIVE, WALKER_TILE);
+      const features = await readTile(ARCHIVE, TOILETS_TILE);
       const toilets = features.filter(
         (feature) => feature.layer === 'pois' && feature.properties.kind === 'toilets',
       );
