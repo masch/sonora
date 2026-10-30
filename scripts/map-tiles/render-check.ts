@@ -339,17 +339,23 @@ export async function renderCheck(
           attributionControl: false,
           fadeDuration: 0,
         });
-        // The style has to be parsed before `getStyle()` can be read or a layer hidden, and that
-        // is what `isStyleLoaded` states — not `load`, which also waits for a first painted frame
-        // and therefore hangs when a tile does: one run in six sat there until the test's own
-        // sixty-second timeout. Polled, bounded, so a style that never parses says so.
-        const styleDeadline = Date.now() + 20_000;
-        while (!map.isStyleLoaded()) {
-          if (Date.now() > styleDeadline) {
-            throw new Error('the style never finished loading');
-          }
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
+        // The style has to be parsed before `getStyle()` can be read or a layer hidden. The event
+        // that says so is `styledata`: MapLibre sets the style's own loaded flag and then fires it,
+        // while `isStyleLoaded()` answers something stricter — it also waits for every **source**
+        // to finish loading, which for a PMTiles archive means tiles. Waiting on that was the flake:
+        // under the load of a whole test suite it ran out of a 20 s deadline on one tile of a run,
+        // and the failure read as `the style never finished loading` when nothing was wrong with the
+        // style. Bounded, so a style that never parses still says so.
+        await new Promise<void>((resolve, reject) => {
+          const deadline = setTimeout(
+            () => reject(new Error('the style never finished parsing')),
+            20_000,
+          );
+          map.once('styledata', () => {
+            clearTimeout(deadline);
+            resolve();
+          });
+        });
 
         // What the assertions need is the data, not the renderer's opinion about its own
         // bookkeeping. `idle` waited for every request to settle — tiles, fonts and the sprite —
