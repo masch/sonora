@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveDocument } from '../publish-map-document';
+import { deriveDocument, parseArgs } from '../publish-map-document';
 
 /** A file-shaped collection; the text is what the mapping reads. */
 function collection(features: unknown[]): unknown {
@@ -62,6 +62,15 @@ describe('deriveDocument', () => {
     expect(keyBased).toBe(1);
   });
 
+  it('counts a feature as key-based when any of its text still names a key', () => {
+    const { selfContained, keyBased } = deriveDocument(
+      collection([point({ label: { es: 'Salón', en: 'Hall' }, descriptionKey: 'map.a.body' })]),
+      global,
+    );
+
+    expect({ selfContained, keyBased }).toEqual({ selfContained: 0, keyBased: 1 });
+  });
+
   it('refuses a feature with neither text nor a key', () => {
     expect(() => deriveDocument(collection([point({})]), global)).toThrow(
       /a reference needs label or labelKey/,
@@ -94,5 +103,19 @@ describe('deriveDocument', () => {
         scope: 'global',
       }),
     ).toThrow(/does not validate/);
+  });
+});
+
+describe('parseArgs', () => {
+  it('refuses --publish together with --dry-run instead of choosing one', () => {
+    expect(() => parseArgs(['--file=x.geojson', '--publish', '--dry-run'])).toThrow(
+      /--publish and --dry-run are exclusive/,
+    );
+  });
+
+  it('publishes only when --publish is given', () => {
+    expect(parseArgs(['--file=x.geojson']).publish).toBe(false);
+    expect(parseArgs(['--file=x.geojson', '--publish']).publish).toBe(true);
+    expect(parseArgs(['--file=x.geojson', '--dry-run']).publish).toBe(false);
   });
 });

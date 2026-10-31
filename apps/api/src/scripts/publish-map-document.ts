@@ -102,14 +102,18 @@ export function deriveDocument(collection: unknown, metadata: DocumentMetadata):
   }
 
   const document = parsed.data as MapDocument;
-  const selfContained = document.collection.features.filter(
-    (feature) => feature.properties.label !== undefined,
+  // A feature is self-contained only when nothing about it needs the translations table:
+  // `label` and `description` are authored independently, so a label block next to a
+  // `descriptionKey` still costs a row and must not count as key-free.
+  const keyBased = document.collection.features.filter(
+    (feature) =>
+      feature.properties.labelKey !== undefined || feature.properties.descriptionKey !== undefined,
   ).length;
 
   return {
     document,
-    selfContained,
-    keyBased: document.collection.features.length - selfContained,
+    selfContained: document.collection.features.length - keyBased,
+    keyBased,
   };
 }
 
@@ -128,9 +132,16 @@ function flag(argv: string[], name: string): string | undefined {
     .join('=');
 }
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const file = flag(argv, 'file');
   if (file === undefined) throw new Error('--file=<path.geojson> is required');
+
+  // `--dry-run` is documented, so it has to be read: with both flags the run would
+  // otherwise publish while the caller believes it is previewing. Refusing is the only
+  // honest answer to a request that says two opposite things.
+  if (argv.includes('--publish') && argv.includes('--dry-run')) {
+    throw new Error('--publish and --dry-run are exclusive: refusing to guess which one you meant');
+  }
 
   return {
     file,

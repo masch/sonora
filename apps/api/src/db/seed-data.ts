@@ -19,7 +19,9 @@ import {
  */
 export function assertSeedEnv(entry: 'base' | 'staging', seedEnv: string | undefined): void {
   if (entry === 'staging' && seedEnv !== 'staging') {
-    logger.error(`SEED_ENV=staging is required (got ${seedEnv ?? 'unset'}). Refusing to seed.`);
+    logger.error(
+      `seed-staging.ts requires SEED_ENV=staging (got ${seedEnv ?? 'unset'}). Refusing to seed.`,
+    );
     process.exit(1);
   }
   if (entry === 'base' && seedEnv !== undefined && seedEnv !== 'production') {
