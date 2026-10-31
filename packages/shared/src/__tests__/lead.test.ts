@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  LEAD_SOURCES,
-  LeadPostBodySchema,
-  type LeadPostBody,
-  type LeadResponse,
-  type LeadSource,
-} from '../index';
+import { LEAD_SOURCES, LeadPostBodySchema, type LeadPostBody } from '../index';
 
 describe('LEAD_SOURCES enum', () => {
   it('contains expected sources', () => {

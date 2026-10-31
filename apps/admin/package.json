@@ -40,7 +40,7 @@
   "scripts": {
     "dev": "expo start --web --port 8082",
     "web": "expo export --platform web",
-    "lint": "expo lint",
+    "lint": "expo lint --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests --watchAll=false"
   },

@@ -49,7 +49,7 @@ interface MockOptions {
   bindings?: string[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial drizzle double, as in the sibling suites
+// Partial drizzle double, as in the sibling suites.
 function createMockDb(options: MockOptions = {}): any {
   const inserts: { values: unknown }[] = [];
   const documentRow = {
