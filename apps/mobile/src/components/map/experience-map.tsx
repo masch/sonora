@@ -47,6 +47,7 @@ import { logger } from '@/utils/logger';
 import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
@@ -553,11 +554,34 @@ export default function ExperienceMap({
   const focusLatitude = focus?.latitude;
   useEffect(() => {
     if (focusLongitude === undefined || focusLatitude === undefined) return;
-    cameraRef.current?.flyTo({
-      center: [focusLongitude, focusLatitude],
-      duration: FOCUS_DURATION_MS,
-      easing: 'fly',
-    });
+
+    /**
+     * The zoom is asked for and not assumed: the camera has to end up as close as
+     * `FOCUS_MIN_ZOOM` even when the world was opened further out, which is the one
+     * thing a flight without `zoom` cannot do — it keeps what the map had, and a
+     * point tapped from the opening frame would stay a pixel among crowded labels.
+     * The web renderer already floors its flight the same way.
+     *
+     * `getZoom()` is asynchronous, so the move is guarded: a focus replaced while
+     * the answer is in flight must not fly to the place the walker stopped asking
+     * for. An unavailable zoom still flies, at the floor, because a tap that does
+     * nothing is worse than a flight that chooses the close-up.
+     */
+    let cancelled = false;
+    void (async () => {
+      const currentZoom = await mapRef.current?.getZoom();
+      if (cancelled) return;
+      cameraRef.current?.flyTo({
+        center: [focusLongitude, focusLatitude],
+        duration: FOCUS_DURATION_MS,
+        zoom: Math.max(currentZoom ?? FOCUS_MIN_ZOOM, FOCUS_MIN_ZOOM),
+        easing: 'fly',
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [focusLongitude, focusLatitude]);
 
   const retry = useCallback(() => {
