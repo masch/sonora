@@ -7,5 +7,6 @@ export * from './layer-groups';
 export * from './itinerary';
 export * from './links';
 export * from './regions';
+export * from './world';
 export * from './artifacts';
 export * from './map-like';

@@ -1,6 +1,7 @@
 import type {
   CameraBoundsStop,
   CameraCenterStop,
+  CameraRef,
   LngLat,
   MapRef,
   PixelPointBounds,
@@ -45,6 +46,8 @@ import { logger } from '@/utils/logger';
 
 import {
   documentKeyOfLayer,
+  FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
@@ -418,6 +421,9 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
+  if (typeof properties.experienceSlug === 'string') {
+    reference.experienceSlug = properties.experienceSlug;
+  }
   if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
   if (typeof properties.descriptionText === 'string') {
@@ -516,6 +522,7 @@ export default function ExperienceMap({
   zoom = 14,
   showLabels = true,
   layerSelection,
+  focus,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -534,6 +541,48 @@ export default function ExperienceMap({
   const archive = useMapArchiveFile(source, archiveAttempt);
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
+  const cameraRef = useRef<CameraRef>(null);
+
+  /**
+   * Travels to the place the caller asked for, and does nothing else.
+   *
+   * The camera stays declarative for its opening frame (`bounds` or `center`), and
+   * this is the one imperative move: a point that was tapped is a destination the
+   * walker chose, so the map follows it instead of being rebuilt around it.
+   */
+  const focusLongitude = focus?.longitude;
+  const focusLatitude = focus?.latitude;
+  useEffect(() => {
+    if (focusLongitude === undefined || focusLatitude === undefined) return;
+
+    /**
+     * The zoom is asked for and not assumed: the camera has to end up as close as
+     * `FOCUS_MIN_ZOOM` even when the world was opened further out, which is the one
+     * thing a flight without `zoom` cannot do — it keeps what the map had, and a
+     * point tapped from the opening frame would stay a pixel among crowded labels.
+     * The web renderer already floors its flight the same way.
+     *
+     * `getZoom()` is asynchronous, so the move is guarded: a focus replaced while
+     * the answer is in flight must not fly to the place the walker stopped asking
+     * for. An unavailable zoom still flies, at the floor, because a tap that does
+     * nothing is worse than a flight that chooses the close-up.
+     */
+    let cancelled = false;
+    void (async () => {
+      const currentZoom = await mapRef.current?.getZoom();
+      if (cancelled) return;
+      cameraRef.current?.flyTo({
+        center: [focusLongitude, focusLatitude],
+        duration: FOCUS_DURATION_MS,
+        zoom: Math.max(currentZoom ?? FOCUS_MIN_ZOOM, FOCUS_MIN_ZOOM),
+        easing: 'fly',
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusLongitude, focusLatitude]);
 
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
@@ -732,7 +781,7 @@ export default function ExperienceMap({
         accessibilityLabel={t('map.mapLabel')}
         testID={`${testID}-map`}
       >
-        <Camera {...camera} />
+        <Camera ref={cameraRef} {...camera} />
       </MapLibreMap>
       {/* One honest line over the reference plane: the map is not broken, this place
           is outside the regions the app publishes. */}

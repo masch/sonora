@@ -12,10 +12,13 @@ import { useEffect, useImperativeHandle, type Ref } from 'react';
 import { View } from 'react-native';
 
 import {
+  mockCameraFlights,
   mockCameraProps,
   mockMapProps,
   mockMapStyles,
+  mockMapZoom,
   mockQueryRenderedFeatures,
+  type CameraDoubleRef,
   type MapDoubleProps,
   type MapDoubleRef,
 } from './maplibre-react-native-double';
@@ -23,7 +26,16 @@ import {
 export function Map(props: MapDoubleProps & { ref?: Ref<MapDoubleRef> }) {
   const { ref, mapStyle, onPress, testID, accessibilityLabel, children } = props;
 
-  useImperativeHandle(ref, () => ({ queryRenderedFeatures: mockQueryRenderedFeatures }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      queryRenderedFeatures: mockQueryRenderedFeatures,
+      // Read through the module value, not captured: a suite sets the zoom before
+      // the component asks, and the answer has to be the one it set.
+      getZoom: async () => mockMapZoom,
+    }),
+    [],
+  );
 
   // Recorded from an effect, not while rendering: the compiler forbids mutating a
   // module value during render, and `render()` flushes effects before a test asserts.
@@ -43,10 +55,18 @@ export function Map(props: MapDoubleProps & { ref?: Ref<MapDoubleRef> }) {
   return <View testID={testID}>{children}</View>;
 }
 
-export function Camera(props: Record<string, unknown>) {
+export function Camera(props: Record<string, unknown> & { ref?: Ref<CameraDoubleRef> }) {
+  const { ref, ...cameraProps } = props;
+
+  // The one imperative move the component makes: recorded as the options object the
+  // real `CameraRef.flyTo` receives, because that object is the decision under test.
+  useImperativeHandle(ref, () => ({ flyTo: (options) => mockCameraFlights.push(options) }), []);
+
   useEffect(() => {
     mockCameraProps.length = 0;
-    mockCameraProps.push(props);
+    // `ref` is stripped so an assertion on the camera's declarative props keeps
+    // comparing the camera options and nothing else.
+    mockCameraProps.push(cameraProps);
   });
 
   return null;

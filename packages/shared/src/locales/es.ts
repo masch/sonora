@@ -50,6 +50,19 @@ export const es = {
       visible: 'Capa visible: {{name}}',
       hidden: 'Capa oculta: {{name}}',
     },
+    // El mundo Deriva del inicio: los puntos de las experiencias sobre el mapa.
+    world: {
+      mapLabel: 'Mundo Deriva',
+      filterLabel: 'Filtrar experiencias por formato',
+      filterAll: 'Todo',
+      filterTrip: 'Derivas',
+      filterTrack: 'Relatos',
+      labelDuration: '{{minutes}} min',
+      labelSeconds: '{{seconds}} s',
+      free: 'Gratis',
+      open: 'Abrir experiencia',
+      empty: 'Todavía no hay experiencias publicadas en el mapa',
+    },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
     // Not a failure: the place is real, it is simply outside every region we publish.

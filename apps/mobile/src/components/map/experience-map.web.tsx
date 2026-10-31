@@ -26,9 +26,12 @@ import { logger } from '@/utils/logger';
 
 import {
   documentKeyOfLayer,
+  FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
+import { useMapFocusFlight, type FocusFlightOptions } from './use-map-focus-flight';
 
 // MapLibre runs in a Web Worker that the metro web build does not emit, so the app
 // gets a request for a chunk that is not deployed and the map dies with "Worker
@@ -59,6 +62,9 @@ interface MapHandle {
    */
   setLayoutProperty(layerId: string, name: string, value: string): void;
   fitBounds(bounds: [[number, number], [number, number]], options?: unknown): void;
+  /** Travels to a place, animating: the map is not rebuilt for a destination. */
+  flyTo(options: FocusFlightOptions): void;
+  getZoom(): number;
   queryRenderedFeatures(point: unknown): RenderedFeature[];
 }
 
@@ -73,6 +79,9 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
+  if (typeof properties.experienceSlug === 'string') {
+    reference.experienceSlug = properties.experienceSlug;
+  }
   if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
   if (typeof properties.descriptionText === 'string') {
@@ -107,6 +116,7 @@ export default function ExperienceMap({
   zoom = 14,
   showLabels = true,
   layerSelection,
+  focus,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -139,6 +149,12 @@ export default function ExperienceMap({
   const [error, setError] = useState<string | null>(null);
 
   const [centerLng, centerLat] = center;
+
+  /**
+   * A tapped destination moves the camera, and never rebuilds the map: `center` above
+   * is an input of the map's creation, so a flight is the only honest way to travel.
+   */
+  useMapFocusFlight(mapRef, ready, focus, FOCUS_DURATION_MS, FOCUS_MIN_ZOOM);
   const boundsWest = bounds?.west;
   const boundsSouth = bounds?.south;
   const boundsEast = bounds?.east;

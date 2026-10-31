@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { SPLASH_ICONS } from '@/constants/images';
 import { SPLASH_COLORS } from '@/constants/theme';
 import { resolveMapRenderer } from '@/components/map/resolve-renderer';
+import { resolveWorldPreview } from '@/components/map/world-preview-variant';
 
 /**
  * Extract the machine's local IP from the Expo Go debugger host.
@@ -120,4 +121,10 @@ export const APP_CONFIG = {
    * remote flag with a version gate replaces it (T10).
    */
   mapRenderer: resolveMapRenderer(process.env.EXPO_PUBLIC_MAP_RENDERER),
+  /**
+   * How the home's Deriva world presents a tapped point (variant A or B, see
+   * `world-preview-variant.ts`). A development choice while the shape is decided on
+   * a device; it grants nothing at runtime and reaches no server.
+   */
+  worldPreview: resolveWorldPreview(process.env.EXPO_PUBLIC_WORLD_MAP_PREVIEW),
 } as const;

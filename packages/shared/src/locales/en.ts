@@ -49,6 +49,19 @@ export const en = {
       visible: 'Layer visible: {{name}}',
       hidden: 'Layer hidden: {{name}}',
     },
+    // The home's Deriva world: the experiences' points over the map.
+    world: {
+      mapLabel: 'Deriva world',
+      filterLabel: 'Filter experiences by format',
+      filterAll: 'All',
+      filterTrip: 'Derivas',
+      filterTrack: 'Short pieces',
+      labelDuration: '{{minutes}} min',
+      labelSeconds: '{{seconds}} s',
+      free: 'Free',
+      open: 'Open experience',
+      empty: 'No experiences are published on the map yet',
+    },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',
     // Not a failure: the place is real, it is simply outside every region we publish.

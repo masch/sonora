@@ -50,6 +50,14 @@ export interface MapSourceConfig {
 export interface MapReferencePress {
   /** Document key the reference belongs to. */
   documentKey: string;
+  /**
+   * The experience this reference draws, when it draws one.
+   *
+   * The world's points share one document, so the key cannot name the experience a
+   * tap landed on; this is what the tap reports instead, and it is the value the
+   * preview resolves to the experience in the payload.
+   */
+  experienceSlug?: string;
   /** The label already resolved to the active language, from the document or a key. */
   labelText?: string;
   /** The description already resolved, when the reference has one. */
@@ -59,6 +67,12 @@ export interface MapReferencePress {
   imageUrl?: string;
   linkUrl?: string;
 }
+
+/** How long the camera takes to reach a point the caller asked it to focus. */
+export const FOCUS_DURATION_MS = 700;
+
+/** The closest the focus flight goes: a point has to land as a place, not as a pixel. */
+export const FOCUS_MIN_ZOOM = 15;
 
 export interface ExperienceMapProps {
   source: MapSourceConfig;
@@ -87,6 +101,15 @@ export interface ExperienceMapProps {
    * it authored.
    */
   layerSelection?: readonly MapLayerSelection[];
+  /**
+   * A place the caller asked the camera to move to.
+   *
+   * Deliberately not `center`: on both renderers `center` is an input of the map's
+   * creation, so changing it rebuilds the map — a new style, new tiles, a visible
+   * flash — while this only asks the camera to travel. Absent or null means nothing
+   * moved.
+   */
+  focus?: { latitude: number; longitude: number } | null;
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;

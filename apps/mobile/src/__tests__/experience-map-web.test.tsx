@@ -21,7 +21,11 @@ jest.mock('pmtiles', () => ({
 
 import ExperienceMap from '@/components/map/experience-map.web';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
-import { documentKeyOfLayer } from '@/components/map/map-view.types';
+import {
+  documentKeyOfLayer,
+  FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
+} from '@/components/map/map-view.types';
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const STYLE_URL = 'https://api.example/media/public/styles/v1.json';
 /** The archive registry is module-level: this test needs one that was never downloaded. */
@@ -281,6 +285,68 @@ describe('ExperienceMap (web)', () => {
     });
 
     expect(mockMapInstances).toHaveLength(1);
+  });
+
+  it('travels to a focused point once, without rebuilding the map when the world filters', async () => {
+    // The world hands the map its documents and nothing else when a chip is pressed:
+    // the frame stays the whole place, so only `overlays` changes. A rebuilt map would
+    // re-fetch its style and tiles and fire `load` again, which is what this pins.
+    const path: MapDocument = {
+      key: 'world-path-deriva-centro',
+      scope: 'experience',
+      zIndex: -1,
+      collection: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [-64.738, -32.212],
+                [-64.74, -32.214],
+              ],
+            },
+            properties: {},
+          },
+        ],
+      },
+    };
+    const source = { archiveUrl: ARCHIVE, style: styleWith(false) };
+    const focus = { latitude: -32.212, longitude: -64.738 };
+
+    const view = await render(<ExperienceMap source={source} overlays={[document, path]} />);
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    await act(async () => {
+      map.emit('load');
+    });
+    expect(map.flights).toEqual([]);
+
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[document, path]} focus={focus} />);
+    });
+
+    // One flight, to the point, at the closest zoom a place is still a place at.
+    // The shape is MapLibre's own — a single options object — because the real
+    // `flyTo(options)` ignores a second argument, which is how a positional call
+    // could pass a fake that mirrored it and still never move the camera.
+    expect(map.flights).toEqual([
+      {
+        center: [focus.longitude, focus.latitude],
+        duration: FOCUS_DURATION_MS,
+        zoom: FOCUS_MIN_ZOOM,
+      },
+    ]);
+
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[document]} focus={focus} />);
+    });
+
+    expect(mockMapInstances).toHaveLength(1);
+    expect(mockMapInstances[0]).toBe(map);
+    // Nothing moved the camera a second time: the same point was already reached.
+    expect(map.flights).toHaveLength(1);
   });
 
   it('removes the map instance on unmount', async () => {

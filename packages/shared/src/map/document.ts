@@ -48,6 +48,16 @@ export interface MapReferenceProperties {
   minzoom?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
+  /**
+   * The experience this reference stands for, when it draws one.
+   *
+   * The world's points are derived from the experiences payload, so the tap has to
+   * name the experience it landed on. It cannot come from the label — the label is
+   * prose the walker reads — and it must not come from the document key, because
+   * every point shares one document. Absent for a reference that is not a place an
+   * experience happens at.
+   */
+  experienceSlug?: string;
   /** Injected at runtime from `label` or `labelKey`, in the active language. */
   labelText?: string;
   /** Injected at runtime from `description` or `descriptionKey`, in that language. */

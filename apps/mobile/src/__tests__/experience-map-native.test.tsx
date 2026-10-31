@@ -108,13 +108,16 @@ jest.mock('@/components/loading-view', () => {
 // the components write to — the style, the camera and the press handling the
 // component hands to the map — live in the sibling `.ts` module.
 import {
+  mockCameraFlights,
   mockCameraProps,
   mockHit,
   mockMapProps,
   mockMapStyles,
   mockQueryRenderedFeatures,
   resetMapDouble,
+  setMockMapZoom,
 } from '@/test-utils/maplibre-react-native-double';
+import { FOCUS_DURATION_MS, FOCUS_MIN_ZOOM } from '@/components/map/map-view.types';
 
 const mockedUseMapArchiveFile = jest.mocked(useMapArchiveFile);
 
@@ -1285,6 +1288,47 @@ describe('ExperienceMap (native)', () => {
     // there; switching them off is the control's job and is pinned in the switch's
     // own suite, where pressing it is the thing being tested.
     expect(drawnLayerIds()).toContain('refs:itinerary:label');
+  });
+
+  it('flies to the tapped point at the closest zoom a place is still a place at', async () => {
+    // The world opens further out than the floor. A flight without `zoom` keeps the
+    // map's own, so the point would stay a pixel among labels crowded together:
+    // this is the native half of the asymmetry the web renderer never had.
+    setMockMapZoom(12);
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(false) }}
+        overlays={[document]}
+        focus={{ latitude: -32.212, longitude: -64.738 }}
+      />,
+    );
+
+    await waitFor(() => expect(mockCameraFlights).toHaveLength(1));
+    expect(mockCameraFlights[0]).toEqual({
+      center: [-64.738, -32.212],
+      duration: FOCUS_DURATION_MS,
+      zoom: FOCUS_MIN_ZOOM,
+      easing: 'fly',
+    });
+  });
+
+  it('keeps a closer zoom than the floor when the map is already closer', async () => {
+    const closer = FOCUS_MIN_ZOOM + 1.5;
+    setMockMapZoom(closer);
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(false) }}
+        overlays={[document]}
+        focus={{ latitude: -32.212, longitude: -64.738 }}
+      />,
+    );
+
+    await waitFor(() => expect(mockCameraFlights).toHaveLength(1));
+    // The floor is a minimum, not a destination: a walker already zoomed in is not
+    // pulled back out by tapping a point.
+    expect(mockCameraFlights[0]?.zoom).toBe(closer);
   });
 });
 
