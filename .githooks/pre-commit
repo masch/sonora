@@ -67,8 +67,34 @@ else
   printf "%s — non-blocking\n" "$RESULT"
 fi
 
-# gga: 0 = passed/no files, 1 = violations found (blocks commit)
-run_step "gga" "make gga"
+# gga: 0 = passed/no files, 1 = violations found (blocks commit).
+#
+# Its exit code cannot be trusted alone: with STRICT_MODE off, a provider that is
+# unreachable, out of funds or naming a model that no longer exists exits **0** after
+# printing the failure — the gate then reports "ok" having reviewed nothing, which is
+# how several commits passed a review that never ran. Strict mode catches that but
+# also rejects a verdict the model words differently, and this repo's only usable
+# models are the free tiers, which do word it differently. So the failure is detected
+# here instead: a run that says its provider failed is a failed step, whatever it
+# exits with.
+printf "  ✓ %s... " "gga"
+TMPFILE="/tmp/sonora-precommit-${_RUN_TS}-gga.log"
+make gga > "$TMPFILE" 2>&1
+GGA_EXIT=$?
+if grep -qE 'Provider execution failed|Model unavailable|Insufficient account funds|STRICT MODE: Failing' "$TMPFILE"; then
+  printf "FAILED (provider did not review)\n"
+  cat "$TMPFILE"
+  rm -f "$TMPFILE"
+  exit 1
+fi
+if [ "$GGA_EXIT" -ne 0 ]; then
+  printf "FAILED (exit %d)\n" "$GGA_EXIT"
+  cat "$TMPFILE"
+  rm -f "$TMPFILE"
+  exit 1
+fi
+printf "ok\n"
+rm -f "$TMPFILE"
 
 echo "  ✓ All checks passed"
 exit 0
