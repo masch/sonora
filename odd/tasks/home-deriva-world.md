@@ -96,5 +96,14 @@ The region is 0.17° × 0.16° and the seeded points sit inside ~0.02° of it, s
 
 ## Slices
 
-- `8594633` — shared derivation, press contract, i18n, tests (617 authored lines: `T1`–`T2` plus this document).
-- slice 2 — mobile world map, preview card, camera focus, home slot, five suites (`T3`–`T5`).
+Five commits on `feat/home-deriva-world`, each one reviewable alone:
+
+- `8594633` — shared derivation, the `experienceSlug` press field, i18n, tests (`T1`–`T2`).
+- `cbee705` — the camera `focus` capability: `focus` on the renderer contract, the shared flight hook, the fake map's `flyTo`/`getZoom`, the web suite's flight test.
+- `e643e8d` — the preview card, its badges and its route, plus the variant resolver and the build-time switch (`T4`).
+- `027a1ec` — the world itself: the experiences hook, `world-map.tsx`, and the ten-test suite that pins it (`T3`).
+- `9729f3b` — the home slot and its decision, the still-map fallback for Leaflet, and this document (`T5`).
+
+Checks at close: mobile Jest 121 suites / 1065 tests, `tsc --noEmit` clean, `expo lint --max-warnings 0` clean, `react-doctor --scope changed --blocking warning` 100/100, shared Vitest 366 tests, and the Leaflet deprecation suite green.
+
+**Not verified**: nothing has run on a device or a browser. The map's opening frame, the label collisions under real fonts, the archive download the home now triggers on first open, and both preview variants are design questions a screenshot cannot answer — they need the device, which is also what `L6` left open.
