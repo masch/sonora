@@ -65,7 +65,10 @@ describe('seedMapDocuments', () => {
     const written: { table: unknown; values: unknown }[] = [];
     const deleted: unknown[] = [];
 
-    const db = {
+    // Every write must go through the transaction handle. The outer client throws if
+    // one escapes it, so a code path that writes three statements separately fails here
+    // instead of merely leaving an assertion unvisited.
+    const handle = {
       insert: vi.fn((table: unknown) => ({
         values: vi.fn((values: unknown) => {
           written.push({ table, values });
@@ -86,7 +89,20 @@ describe('seedMapDocuments', () => {
       })),
     };
 
+    const outsideTheTransaction = (name: string) =>
+      vi.fn(() => {
+        throw new Error(`${name} was written outside the transaction`);
+      });
+
+    const db = {
+      transaction: vi.fn((run: (tx: unknown) => Promise<unknown>) => run(handle)),
+      insert: outsideTheTransaction('insert'),
+      delete: outsideTheTransaction('delete'),
+    };
+
     await seedMapDocuments(db as never, loadSeedDocuments());
+
+    expect(db.transaction).toHaveBeenCalledOnce();
 
     const documentWrite = written.find((entry) => entry.table === mapDocuments);
     const values = documentWrite?.values as Record<string, unknown>;

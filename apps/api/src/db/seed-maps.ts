@@ -23,7 +23,9 @@ import { boundsOfDocuments, logger, type MapDocument } from '@sonora/shared';
 import { eq } from 'drizzle-orm';
 
 import { deriveDocument, type DocumentMetadata } from '../scripts/publish-map-document';
-import type { DbClient } from './index';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+
+import type * as schema from './schema';
 import { mapDocumentBindings, mapDocuments, type NewMapDocument } from './schema';
 
 /** Where the staging-only documents live, beside the seed that reads them. */
@@ -78,9 +80,16 @@ export function loadSeedDocuments(dir: string = STAGING_MAPS_DIRECTORY): SeedMap
  * The seed owns its documents outright — a re-run replaces them and drops the bindings
  * the file no longer names — which is what makes it idempotent and what keeps a
  * document edited out of a file from lingering in the database.
+ *
+ * The document and its bindings are written in **one transaction**. Idempotence is not
+ * atomicity: three separate writes leave a window where the bindings are gone and the
+ * next insert fails, and a published document with no bindings hides the map from its
+ * experience until someone re-runs the seed. `NodePgDatabase` is the type that can
+ * promise this — `neon-http` has no interactive transactions, which is why the route
+ * reconciles by difference instead.
  */
 export async function seedMapDocuments(
-  db: DbClient,
+  db: NodePgDatabase<typeof schema>,
   documents: readonly SeedMapDocument[],
 ): Promise<void> {
   if (documents.length === 0) {
@@ -109,18 +118,20 @@ export async function seedMapDocuments(
       updatedAt: new Date(),
     };
 
-    const [row] = await db
-      .insert(mapDocuments)
-      .values(values)
-      .onConflictDoUpdate({ target: mapDocuments.key, set: values })
-      .returning();
+    await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(mapDocuments)
+        .values(values)
+        .onConflictDoUpdate({ target: mapDocuments.key, set: values })
+        .returning();
 
-    await db.delete(mapDocumentBindings).where(eq(mapDocumentBindings.documentId, row.id));
-    if (experienceIds.length > 0) {
-      await db
-        .insert(mapDocumentBindings)
-        .values(experienceIds.map((experienceId) => ({ documentId: row.id, experienceId })));
-    }
+      await tx.delete(mapDocumentBindings).where(eq(mapDocumentBindings.documentId, row.id));
+      if (experienceIds.length > 0) {
+        await tx
+          .insert(mapDocumentBindings)
+          .values(experienceIds.map((experienceId) => ({ documentId: row.id, experienceId })));
+      }
+    });
 
     logger.info(
       `Seeded map document ${document.key} (${document.scope}, ` +
