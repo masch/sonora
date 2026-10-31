@@ -110,6 +110,17 @@ Two clean-ups came from the same review: an unreachable `failure ? … : …` ar
 
 The component-size rule (`react-doctor/no-giant-component`) refused the web renderer twice as this work landed, and both times the answer was an extraction rather than a waiver: the failure surface became `map-error-view.tsx`, and the map's instance lifecycle became `use-web-map-instance.ts` — the same shape `use-map-focus-flight.ts` and `use-native-focus-flight.ts` already have.
 
+**L15** — the third review pass escalated, and the four findings it left behind.
+
+The batch that fixed the gate and closed the gga findings went through review with a single lens (`lenses-invalid` rejected three and four; the provider created the lineage anyway), and it stopped at `native_stop_required` with `unknown_causality` on a `CRITICAL`. The stop is informational, and the findings were real:
+
+- `R3-001` — each web flight registered its own `once('moveend')` while a single flag said "a flight is pending". A second tap interrupted the first animation, MapLibre emitted the `moveend` of the transition it had just cut off, and the stale listener reported a landing that had not happened: the card opened before the second flight started. The double kept one handler per event, which is why the rapid-retap test never saw it. Now each flight owns a number, the listener is armed **after** `flyTo`, and a replaced flight's landing is inert.
+- `R3-002` — the same shape on native, where the cleanup left the flag armed.
+- `R3-003` — the new map-level retry rebuilt the instance while `ready` stayed `true`, so the ready-gated effects (pending flight, layer selection) never ran for the new map: a retried map could be one that neither travels nor honours the chosen layers. `ready` is now derived from the build that reported `load`, so a rebuild passes through false→true.
+- `R3-004` — the retry kept a loaded style but not a downloaded archive, so retrying a style failure downloaded the whole archive again. Both waits now keep what landed.
+
+Each fix landed with a test that fails against the previous code; the double gained a listener list so the interrupted-transition path is reproducible at all.
+
 **L13** — the review, end to end: two lineages, four findings, both criticals real.
 
 Lineage `review-25af80b61f5fe026` (3 lenses + refuter) found `R3-001`/`R4-001`: the web flight called `map.flyTo(center, options)`, a signature MapLibre GL JS does not have — it takes one options object — and the test double had been written to match the invented shape, so the suite passed while the camera would never have moved. Fixed in `ca4a538`; the double now takes exactly what the library takes.

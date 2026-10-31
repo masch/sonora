@@ -47,9 +47,10 @@ export interface NativeFocusFlightOptions {
  *
  * Returns the region-change handler the map must be given. Native maps report every
  * region change, the walker's own pan included, so the returned handler reports only
- * the landing of a flight this hook started — the flag is what keeps a pan from
- * opening a card nobody asked for. It is stable, because a new identity per render
- * would re-register the listener on every render.
+ * the landing of a flight this hook started — the flight it names is what keeps a pan,
+ * and a flight that was replaced before it landed, from opening a card nobody asked
+ * for. It is stable, because a new identity per render would re-register the listener
+ * on every render.
  */
 export function useNativeFocusFlight({
   focus,
@@ -59,8 +60,17 @@ export function useNativeFocusFlight({
   durationMs,
   minZoom,
 }: NativeFocusFlightOptions): () => void {
-  /** A flight this hook started has not reported its landing yet. */
-  const pendingRef = useRef(false);
+  /**
+   * The flight whose landing is still awaited, by number, or `null` when none is.
+   *
+   * A number and not a flag: a region change carries no identity of its own, so the only
+   * way to keep the flight that was replaced from reporting is to disarm it the moment
+   * it is replaced — the next effect run does that before it awaits anything — and to
+   * arm nothing but the flight that really asked the camera to move.
+   */
+  const awaitingRef = useRef<number | null>(null);
+  /** The last number handed out. Monotonic for the life of the component. */
+  const flightsRef = useRef(0);
   /**
    * Read through a ref: the caller rebuilds the callback on every render, and a new
    * identity must neither re-arm the flag nor report a landing twice.
@@ -75,22 +85,28 @@ export function useNativeFocusFlight({
   const latitude = focus?.latitude;
 
   useEffect(() => {
+    // Whatever was in the air is replaced: its landing, whenever the map reports it, is
+    // no longer anybody's to report. Set before the zoom is asked for, so the region
+    // change of the interrupted flight cannot be read as the landing of this one.
+    awaitingRef.current = null;
+
     if (longitude === undefined || latitude === undefined) {
       // The request was withdrawn before it landed: the next region change belongs
       // to the walker, and reporting it would open a card nobody asked for.
-      pendingRef.current = false;
       return;
     }
 
+    const flight = flightsRef.current + 1;
+    flightsRef.current = flight;
     let cancelled = false;
     void (async () => {
       const currentZoom = await mapRef.current?.getZoom();
       if (cancelled) return;
       const camera = cameraRef.current;
       if (!camera) return;
-      // Set right before the move, so the region change that follows is recognised
+      // Armed right before the move, so the region change that follows is recognised
       // as this flight's landing instead of as a pan the walker made.
-      pendingRef.current = true;
+      awaitingRef.current = flight;
       camera.flyTo({
         center: [longitude, latitude],
         duration: durationMs,
@@ -101,12 +117,15 @@ export function useNativeFocusFlight({
 
     return () => {
       cancelled = true;
+      // Replaced or unmounted: this flight can no longer report, and the flag it armed
+      // must not survive as the answer to a region change it never made.
+      if (awaitingRef.current === flight) awaitingRef.current = null;
     };
   }, [mapRef, cameraRef, longitude, latitude, durationMs, minZoom]);
 
   return useCallback(() => {
-    if (!pendingRef.current) return;
-    pendingRef.current = false;
+    if (awaitingRef.current === null) return;
+    awaitingRef.current = null;
     onSettledRef.current?.();
   }, []);
 }

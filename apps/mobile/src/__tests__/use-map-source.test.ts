@@ -66,6 +66,9 @@ const STYLE_RAW = 'https://api.example/media/public/styles/raw.json';
 const STYLE_POISON = 'https://api.example/media/public/styles/poison.json';
 const ARCHIVE_RETRY = 'https://api.example/media/public/tiles/retry/v1.pmtiles';
 const STYLE_RETRY = 'https://api.example/media/public/styles/retry.json';
+/** A retry after a style failure, so its own pair of urls: the registries are page-wide. */
+const ARCHIVE_RETRY_STYLE = 'https://api.example/media/public/tiles/retry-style/v1.pmtiles';
+const STYLE_RETRY_STYLE = 'https://api.example/media/public/styles/retry-style.json';
 
 // The codes and the retry cases: one archive and one style url each, because the page
 // keeps both registries in memory and a case that reused a url would read an earlier
@@ -496,13 +499,11 @@ describe('the code a failed run reports', () => {
   });
 
   it('reports a failed archive download as a code, not as the response line', async () => {
-    globalThis.fetch = jest
-      .fn()
-      .mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      }) as unknown as typeof fetch;
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    }) as unknown as typeof fetch;
 
     const { result } = await renderHook(() => useMapSource(ARCHIVE_CODE_DOWNLOAD));
 
@@ -634,5 +635,41 @@ describe('a retry', () => {
     // first run had already loaded instead of asking for it again.
     expect(fetchMock.mock.calls.filter(([url]) => url === STYLE_CODE_KEEP)).toHaveLength(1);
     expect(downloads).toBe(2);
+  });
+
+  it('reuses an archive that already downloaded when the style was the wait that failed', async () => {
+    const style = { version: 8, sources: {}, layers: [{ id: 'water' }] };
+    let archiveDownloads = 0;
+    let styleRequests = 0;
+    const fetchMock = jest.fn((url: string) => {
+      if (url === ARCHIVE_RETRY_STYLE) {
+        archiveDownloads += 1;
+        return Promise.resolve(archiveResponse(2048));
+      }
+      if (url === STYLE_RETRY_STYLE) {
+        styleRequests += 1;
+        return styleRequests === 1 ? networkFailure() : Promise.resolve(styleResponse(style));
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, rerender } = await renderHook(
+      ({ attempt }: { attempt: number }) =>
+        useMapSource(ARCHIVE_RETRY_STYLE, STYLE_RETRY_STYLE, attempt),
+      { initialProps: { attempt: 0 } },
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('styleRequestFailed'));
+
+    await rerender({ attempt: 1 });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.style).toEqual(style);
+    expect(result.current.bytes).toBe(2048);
+    // Only the wait that failed is paid for again: the download that had already landed is
+    // kept exactly the way the style keeps a document that already arrived.
+    expect(archiveDownloads).toBe(1);
+    expect(styleRequests).toBe(2);
   });
 });

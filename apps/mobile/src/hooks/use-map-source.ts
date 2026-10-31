@@ -97,6 +97,22 @@ const styles = new Map<string, StyleSpecification>();
  * new run wants, so restarting the archive must not throw it away.
  */
 const styleTransfers = new Map<string, Promise<StyleSpecification | undefined>>();
+/**
+ * Archive bytes already downloaded, keyed by archive as `archives` is.
+ *
+ * The mirror of `styles`, and for the same reason: the two waits do not depend on each
+ * other, so whichever one landed is kept the moment it lands. A retry after a style
+ * failure then reuses the download that already succeeded instead of paying for it
+ * twice — the rule the style already followed in the other direction.
+ */
+const archiveBytes = new Map<string, ArrayBuffer>();
+/**
+ * Archive downloads in flight, keyed by archive.
+ *
+ * A run that starts while another is still downloading the same archive joins it rather
+ * than starting a second one, which is what keeps `archiveBytes` a single transfer.
+ */
+const archiveTransfers = new Map<string, Promise<ArrayBuffer>>();
 const headers = new Map<string, { minZoom: number; maxZoom: number; bounds: number[] }>();
 let protocolRegistered = false;
 
@@ -188,14 +204,46 @@ async function downloadArchive(archiveUrl: string): Promise<Response> {
 }
 
 /**
+ * The bytes of this archive: the page's copy, the download already in flight for it, or
+ * a fresh one — kept the moment it lands.
+ *
+ * Kept as soon as it resolves, not when the run it travels with settles: a retry after a
+ * style failure then reuses the bytes that already downloaded instead of paying for the
+ * same transfer twice. A failed download is not kept, so the retry really asks again.
+ */
+async function bytesFor(archiveUrl: string): Promise<ArrayBuffer> {
+  const key = keyFor(archiveUrl);
+  const cached = archiveBytes.get(key);
+  if (cached) return cached;
+
+  const inFlight = archiveTransfers.get(key);
+  if (inFlight) return inFlight;
+
+  const transfer = downloadArchive(archiveUrl)
+    .then((response) => response.arrayBuffer())
+    .then((buffer) => {
+      archiveBytes.set(key, buffer);
+      return buffer;
+    });
+  archiveTransfers.set(key, transfer);
+
+  try {
+    return await transfer;
+  } finally {
+    // A newer transfer of the same archive may already have replaced this entry.
+    if (archiveTransfers.get(key) === transfer) archiveTransfers.delete(key);
+  }
+}
+
+/**
  * Downloads an archive (and its style, when configured) into the page registry.
  * Exported so it can be exercised directly, without mounting a component.
  */
 async function loadArchive(archiveUrl: string, styleUrl?: string): Promise<MapSourceState> {
-  // The style and the archive do not depend on each other: both are requested at once.
-  const [response, style] = await Promise.all([downloadArchive(archiveUrl), styleFor(styleUrl)]);
+  // The style and the archive do not depend on each other: both are requested at once,
+  // and each one keeps what it got even when the other is the wait that failed.
+  const [buffer, style] = await Promise.all([bytesFor(archiveUrl), styleFor(styleUrl)]);
 
-  const buffer = await response.arrayBuffer();
   const key = keyFor(archiveUrl);
 
   const source: MemorySource = {

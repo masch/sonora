@@ -46,6 +46,10 @@ export interface FocusFlightMap {
  * extended here and not in the renderer because only this effect knows whether a
  * flight really started: a map that was not ready never asked the camera for
  * anything, so there is nothing to report.
+ *
+ * Every flight numbers itself, and the landing is reported by the number: two focuses
+ * in a row leave two listeners on one map, and MapLibre reports a camera move to all of
+ * them, so a listener may only answer for the flight it belongs to.
  */
 export function useMapFocusFlight(
   mapRef: { readonly current: FocusFlightMap | null },
@@ -63,8 +67,16 @@ export function useMapFocusFlight(
    * identity must neither re-register the listener nor fly the camera again.
    */
   const onSettledRef = useRef(onSettled);
-  /** A flight this hook started is in the air: the next landing is its own. */
-  const pendingRef = useRef(false);
+  /**
+   * The flight whose landing is still awaited, by number, or `null` when none is.
+   *
+   * A number rather than a flag, because a flag cannot tell one flight's landing from
+   * another's: a listener registered for a flight that was replaced would find it `true`
+   * and report a camera move it never asked for.
+   */
+  const awaitingRef = useRef<number | null>(null);
+  /** The last number handed out. Monotonic for the life of the component. */
+  const flightsRef = useRef(0);
 
   useEffect(() => {
     onSettledRef.current = onSettled;
@@ -75,36 +87,47 @@ export function useMapFocusFlight(
   // reporting a flight the caller had already abandoned.
   useEffect(
     () => () => {
-      pendingRef.current = false;
+      awaitingRef.current = null;
     },
     [],
   );
 
   useEffect(() => {
+    // Whatever was in the air is replaced, and its landing is no longer anybody's to
+    // report — including the landing MapLibre emits below, when this flight cuts that
+    // move off in the middle.
+    awaitingRef.current = null;
+
     const map = mapRef.current;
     if (!ready || !map) return;
     if (longitude === undefined || latitude === undefined) {
       // The request was withdrawn before it landed: whatever move ends next is the
       // walker's, not the flight this hook started.
-      pendingRef.current = false;
       return;
     }
 
-    if (map.once) {
-      // Registered before the move, so a flight that ends as soon as it starts still
-      // reports its landing.
-      pendingRef.current = true;
-      map.once('moveend', () => {
-        if (!pendingRef.current) return;
-        pendingRef.current = false;
-        onSettledRef.current?.();
-      });
-    }
+    const flight = flightsRef.current + 1;
+    flightsRef.current = flight;
 
     map.flyTo({
       center: [longitude, latitude],
       duration: durationMs,
       zoom: Math.max(map.getZoom(), minZoom),
+    });
+
+    if (!map.once) return;
+    // Armed after the move and not before, which is the opposite of the obvious order
+    // and is what makes a replaced flight survivable: `flyTo` stops the move in progress,
+    // and stopping it reports the landing of the transition it just cut off. That report
+    // reaches every listener registered at that moment — a listener registered for this
+    // flight included — and `once` would spend it on a landing this flight did not make.
+    // The cost of arming afterwards is a flight that ends inside the call itself (a zero
+    // duration), which reports nothing and is covered by the caller's own bound.
+    awaitingRef.current = flight;
+    map.once('moveend', () => {
+      if (awaitingRef.current !== flight) return;
+      awaitingRef.current = null;
+      onSettledRef.current?.();
     });
   }, [mapRef, ready, longitude, latitude, durationMs, minZoom]);
 }

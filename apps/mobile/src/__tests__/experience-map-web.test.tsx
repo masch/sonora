@@ -396,6 +396,51 @@ describe('ExperienceMap (web)', () => {
     await waitFor(() => expect(mockMapInstances).toHaveLength(2));
   });
 
+  it('hands a rebuilt map the layer selection and the pending flight', async () => {
+    // The rebuilt instance takes a false→true transition in `ready`, because the effects
+    // that apply what does not belong to the map's creation — the layer selection and the
+    // flight the caller asked for — only run while it passes through "not loaded yet".
+    const source = { archiveUrl: ARCHIVE, style: styleWithBasemapLayers() };
+    const focus = { latitude: -32.212, longitude: -64.738 };
+    const hidden: MapLayerSelection[] = [{ id: 'water', visible: false, declared: true }];
+
+    const view = await render(
+      <ExperienceMap source={source} overlays={[document]} focus={focus} layerSelection={hidden} />,
+    );
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    await act(async () => {
+      mockMapInstances[0].emit('error', { error: new Error('WebGL context lost') });
+    });
+    await act(async () => {
+      fireEvent.press(view.getByTestId('experience-map-retry'));
+    });
+    await waitFor(() => expect(mockMapInstances).toHaveLength(2));
+
+    const rebuilt = mockMapInstances[1];
+    // Nothing has been drawn on it or asked of its camera yet: it has not loaded.
+    expect(rebuilt.layoutProperties).toEqual([]);
+    expect(rebuilt.flights).toEqual([]);
+
+    await act(async () => {
+      rebuilt.emit('load');
+    });
+
+    expect(rebuilt.layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+    ]);
+    expect(rebuilt.flights).toEqual([
+      {
+        center: [focus.longitude, focus.latitude],
+        duration: FOCUS_DURATION_MS,
+        zoom: FOCUS_MIN_ZOOM,
+      },
+    ]);
+  });
+
   it('gives the interactive map surface a name and a test hook', async () => {
     const view = await render(
       <ExperienceMap
@@ -536,6 +581,70 @@ describe('ExperienceMap (web)', () => {
       map.emit('moveend');
     });
     // One flight, one report: a second landing belongs to a move nobody asked for.
+    expect(onFocusSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports only the landing of the flight that is still in the air', async () => {
+    // A second focus replaces a flight that has not landed yet. MapLibre stops the move
+    // in progress, which reports the landing of the transition it just cut off, and the
+    // listener the replaced flight registered is still there to receive it: consuming the
+    // newest flight's report with it is what opened a card before its camera moved.
+    const onFocusSettled = jest.fn();
+    const source = { archiveUrl: ARCHIVE, style: styleWith(false) };
+    const first = { latitude: -32.212, longitude: -64.738 };
+    const second = { latitude: -31.9, longitude: -64.5 };
+
+    const view = await render(
+      <ExperienceMap source={source} overlays={[document]} onFocusSettled={onFocusSettled} />,
+    );
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    await act(async () => {
+      map.emit('load');
+    });
+
+    await act(async () => {
+      view.rerender(
+        <ExperienceMap
+          source={source}
+          overlays={[document]}
+          focus={first}
+          onFocusSettled={onFocusSettled}
+        />,
+      );
+    });
+    expect(map.flights).toHaveLength(1);
+
+    await act(async () => {
+      view.rerender(
+        <ExperienceMap
+          source={source}
+          overlays={[document]}
+          focus={second}
+          onFocusSettled={onFocusSettled}
+        />,
+      );
+    });
+
+    // The second request cut the first flight off, and the double reports the landing of
+    // the transition it cut off the way MapLibre does: to every listener registered at
+    // that moment, the replaced flight's included. Nothing may be reported yet — the
+    // camera has not even started towards `second`.
+    expect(map.flights.map((flight) => flight.center)).toEqual([
+      [first.longitude, first.latitude],
+      [second.longitude, second.latitude],
+    ]);
+    expect(onFocusSettled).not.toHaveBeenCalled();
+
+    await act(async () => {
+      map.emit('moveend');
+    });
+    expect(onFocusSettled).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      map.emit('moveend');
+    });
+    // The second flight is reported once, and only once.
     expect(onFocusSettled).toHaveBeenCalledTimes(1);
   });
 

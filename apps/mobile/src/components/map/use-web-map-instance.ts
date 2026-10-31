@@ -137,9 +137,26 @@ export function useWebMapInstance({
   const mapRef = useRef<MapHandle | null>(null);
   const cancelledRef = useRef(false);
 
-  const [ready, setReady] = useState(false);
+  /**
+   * The build whose map reported its load, or `null` before the first one does.
+   *
+   * The build and not a boolean, because readiness is a fact about one instance: a map
+   * that is being replaced has not reported anything, and the replacement has to pass
+   * through "not loaded yet" for the effects below to run against it.
+   */
+  const [loadedAttempt, setLoadedAttempt] = useState<number | null>(null);
   /** The map's own failure, as the code the screen translates. */
   const [mapErrorCode, setMapErrorCode] = useState<MapLoadErrorCode | null>(null);
+
+  /**
+   * The instance in `mapRef` is drawn: it loaded, and it is the build this render is for.
+   *
+   * Derived during render rather than reset inside the effect, which keeps the
+   * false→true transition the ready-gated effects need. Left `true` across a retry, the
+   * pending focus flight and the layer selection never ran for the new instance, so a
+   * rebuilt map never travelled to the selected point and ignored the active layers.
+   */
+  const ready = loadedAttempt !== null && loadedAttempt === attempt;
 
   const [centerLng, centerLat] = center;
   const boundsWest = bounds?.west;
@@ -209,7 +226,8 @@ export function useWebMapInstance({
 
         map.on('load', (() => {
           if (cancelledRef.current) return;
-          setReady(true);
+          // The build this instance drew, not a bare flag: the next build starts unloaded.
+          setLoadedAttempt(attempt);
           applyOverlays(map);
           if (boundsWest !== undefined) {
             map.fitBounds(
@@ -242,8 +260,8 @@ export function useWebMapInstance({
       cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      // `ready` is not reset: the new map reports its own load, and the overlay
-      // effect already ignores the case where no map exists.
+      // `ready` is not touched here: it is read from the build the map loaded for, so the
+      // replacement is reported as not ready until it says otherwise.
     };
     // The two refs are stable, and the callback the renderer hands in is built with no
     // dependencies of its own: `source` and `archive` are read by the fields listed, so

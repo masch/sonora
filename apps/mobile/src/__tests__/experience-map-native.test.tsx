@@ -1,10 +1,11 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, renderHook, waitFor } from '@testing-library/react-native';
 
 import type { StyleSpecification } from 'maplibre-gl';
 import { en, es, type MapDocument } from '@sonora/shared';
 
 import ExperienceMap from '@/components/map/experience-map';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import { useNativeFocusFlight } from '@/components/map/use-native-focus-flight';
 import type { TripExperience } from '@/data/experiences';
 import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
 import { styleCacheKey } from '@/services/map-style-cache';
@@ -265,6 +266,33 @@ function drawnFeatures(documentKey: string) {
   const source = mockMapProps[0].mapStyle.sources?.[`refs:${documentKey}`] as
     { data?: { features?: { properties?: Record<string, unknown> }[] } } | undefined;
   return source?.data?.features ?? [];
+}
+
+/**
+ * The camera's zoom, answered by the test one flight at a time.
+ *
+ * The hook asks for the zoom before it moves, so a zoom held open is the only way to put
+ * a region change in the window where a flight has been asked for and has not started —
+ * the window a flight that was replaced could report in.
+ */
+function deferredZoom() {
+  const waiting: ((zoom: number) => void)[] = [];
+  const answers: number[] = [];
+  return {
+    /** The answer to one `getZoom()` call, once the test gives it. */
+    next: () => {
+      if (answers.length > 0) return Promise.resolve(answers.shift() as number);
+      return new Promise<number>((resolve) => {
+        waiting.push(resolve);
+      });
+    },
+    /** Answers the oldest unanswered `getZoom()` call, or the next one to be made. */
+    answer: (zoom: number) => {
+      const consumer = waiting.shift();
+      if (consumer) consumer(zoom);
+      else answers.push(zoom);
+    },
+  };
 }
 
 describe('ExperienceMap (native)', () => {
@@ -1359,6 +1387,69 @@ describe('ExperienceMap (native)', () => {
     });
     // The flight landed once, so it is reported once.
     expect(onFocusSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports nothing for the region change the replaced flight left behind', async () => {
+    // The next point replaces a flight that is still in the air. The camera is asked for
+    // its zoom before it moves, so the region change of the interrupted flight can arrive
+    // while the new one has not started: it belongs to a flight that was replaced, and
+    // reporting it would open the new point's card before its camera moved. Driven on the
+    // hook, because only a zoom the test holds open puts the region change in that window.
+    const zoom = deferredZoom();
+    const onSettled = jest.fn();
+    const flyTo = jest.fn();
+    const mapRef = { current: { getZoom: () => zoom.next() } };
+    const cameraRef = { current: { flyTo } };
+    const first = { latitude: -32.212, longitude: -64.738 };
+    const second = { latitude: -31.9, longitude: -64.5 };
+
+    const view = await renderHook(
+      ({ focus }: { focus: { latitude: number; longitude: number } }) =>
+        useNativeFocusFlight({
+          focus,
+          mapRef,
+          cameraRef,
+          onSettled,
+          durationMs: FOCUS_DURATION_MS,
+          minZoom: FOCUS_MIN_ZOOM,
+        }),
+      { initialProps: { focus: first } },
+    );
+
+    await act(async () => {
+      zoom.answer(12);
+    });
+    expect(flyTo).toHaveBeenCalledTimes(1);
+
+    // The replacement is asked for while the first flight is still unreported, and the
+    // camera's zoom for it has not answered yet: nothing has moved.
+    await view.rerender({ focus: second });
+    expect(flyTo).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      view.result.current();
+    });
+    // The region change of the flight that was replaced reports nothing.
+    expect(onSettled).not.toHaveBeenCalled();
+
+    await act(async () => {
+      zoom.answer(12);
+    });
+    expect(flyTo).toHaveBeenCalledTimes(2);
+    expect(flyTo.mock.calls[1]?.[0]).toMatchObject({
+      center: [second.longitude, second.latitude],
+    });
+
+    await act(async () => {
+      view.result.current();
+    });
+    // The flight that really moved is reported once, and only once.
+    expect(onSettled).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      view.result.current();
+    });
+    expect(onSettled).toHaveBeenCalledTimes(1);
   });
 
   it('reports nothing for a camera move the walker made', async () => {
