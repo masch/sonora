@@ -73,6 +73,9 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
+  if (typeof properties.experienceSlug === 'string') {
+    reference.experienceSlug = properties.experienceSlug;
+  }
   if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
   if (typeof properties.descriptionText === 'string') {

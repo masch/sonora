@@ -50,6 +50,14 @@ export interface MapSourceConfig {
 export interface MapReferencePress {
   /** Document key the reference belongs to. */
   documentKey: string;
+  /**
+   * The experience this reference draws, when it draws one.
+   *
+   * The world's points share one document, so the key cannot name the experience a
+   * tap landed on; this is what the tap reports instead, and it is the value the
+   * preview resolves to the experience in the payload.
+   */
+  experienceSlug?: string;
   /** The label already resolved to the active language, from the document or a key. */
   labelText?: string;
   /** The description already resolved, when the reference has one. */
