@@ -328,10 +328,14 @@ describe('ExperienceMap (web)', () => {
     });
 
     // One flight, to the point, at the closest zoom a place is still a place at.
+    // The shape is MapLibre's own — a single options object — because the real
+    // `flyTo(options)` ignores a second argument, which is how a positional call
+    // could pass a fake that mirrored it and still never move the camera.
     expect(map.flights).toEqual([
       {
         center: [focus.longitude, focus.latitude],
-        options: { duration: FOCUS_DURATION_MS, zoom: FOCUS_MIN_ZOOM },
+        duration: FOCUS_DURATION_MS,
+        zoom: FOCUS_MIN_ZOOM,
       },
     ]);
 

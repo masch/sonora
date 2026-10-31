@@ -1,8 +1,21 @@
 import { useEffect } from 'react';
 
+/**
+ * The options MapLibre's `flyTo` takes, narrowed to what a flight decides.
+ *
+ * One object, because that is the API: `flyTo(options)`, never `flyTo(center, options)`.
+ * The narrower type is deliberate — a flight decides where to, how long and how close —
+ * and it is what makes the call impossible to get wrong without the type complaining.
+ */
+export interface FocusFlightOptions {
+  center: [number, number];
+  duration?: number;
+  zoom?: number;
+}
+
 /** The slice of a MapLibre map a flight needs. Nothing else is touched. */
 export interface FocusFlightMap {
-  flyTo(center: [number, number], options?: unknown): void;
+  flyTo(options: FocusFlightOptions): void;
   getZoom(): number;
 }
 
@@ -32,7 +45,8 @@ export function useMapFocusFlight(
     const map = mapRef.current;
     if (!ready || !map) return;
     if (longitude === undefined || latitude === undefined) return;
-    map.flyTo([longitude, latitude], {
+    map.flyTo({
+      center: [longitude, latitude],
       duration: durationMs,
       zoom: Math.max(map.getZoom(), minZoom),
     });

@@ -31,7 +31,7 @@ import {
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
-import { useMapFocusFlight } from './use-map-focus-flight';
+import { useMapFocusFlight, type FocusFlightOptions } from './use-map-focus-flight';
 
 // MapLibre runs in a Web Worker that the metro web build does not emit, so the app
 // gets a request for a chunk that is not deployed and the map dies with "Worker
@@ -63,7 +63,7 @@ interface MapHandle {
   setLayoutProperty(layerId: string, name: string, value: string): void;
   fitBounds(bounds: [[number, number], [number, number]], options?: unknown): void;
   /** Travels to a place, animating: the map is not rebuilt for a destination. */
-  flyTo(center: [number, number], options?: unknown): void;
+  flyTo(options: FocusFlightOptions): void;
   getZoom(): number;
   queryRenderedFeatures(point: unknown): RenderedFeature[];
 }

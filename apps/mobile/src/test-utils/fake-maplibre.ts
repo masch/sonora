@@ -19,8 +19,14 @@ export interface FakeMapInstance {
    * shows up here as `visibility: none` on each layer it owns.
    */
   layoutProperties: { layerId: string; name: string; value: string }[];
-  /** Every camera flight the renderer asked for, in call order. */
-  flights: { center: [number, number]; options?: Record<string, unknown> }[];
+  /**
+   * Every camera flight the renderer asked for, in call order.
+   *
+   * MapLibre's own shape: one options object per call (`flyTo(options)`), so a
+   * renderer that invented a two-argument signature cannot pass through here
+   * unnoticed — the real library would ignore the second argument.
+   */
+  flights: { center: [number, number]; duration?: number; zoom?: number }[];
   emit(event: string, payload?: unknown): void;
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
@@ -34,7 +40,7 @@ export class FakeMap implements FakeMapInstance {
   options: Record<string, unknown>;
   features: { layer: { id: string }; properties: Record<string, unknown> }[] = [];
   layoutProperties: { layerId: string; name: string; value: string }[] = [];
-  flights: { center: [number, number]; options?: Record<string, unknown> }[] = [];
+  flights: { center: [number, number]; duration?: number; zoom?: number }[] = [];
 
   constructor(options: Record<string, unknown>) {
     this.options = options;
@@ -83,8 +89,8 @@ export class FakeMap implements FakeMapInstance {
 
   fitBounds() {}
 
-  flyTo(center: [number, number], options?: Record<string, unknown>) {
-    this.flights.push({ center, options });
+  flyTo(options: { center: [number, number]; duration?: number; zoom?: number }) {
+    this.flights.push(options);
   }
 
   getZoom() {
