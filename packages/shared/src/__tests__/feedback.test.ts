@@ -81,6 +81,32 @@ describe('FeedbackPostBodySchema', () => {
   });
 
   describe('error messages', () => {
+    it('uses the custom required message for a missing field', () => {
+      const result = FeedbackPostBodySchema.safeParse({});
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messageFor = (field: string) =>
+          result.error.issues.find((issue) => issue.path.includes(field))?.message;
+
+        expect(messageFor('experienceId')).toBe(
+          'experienceId is required and must be a non-empty string',
+        );
+        expect(messageFor('message')).toBe('message is required and must be a non-empty string');
+      }
+    });
+
+    it('does not call a present but wrong value "required"', () => {
+      const result = FeedbackPostBodySchema.safeParse({ ...validPayload, experienceId: null });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        // The helper applies its message only when the value is missing; a null is
+        // present and wrong, so zod's own text has to survive.
+        expect(result.error.issues[0]?.message).toBe(
+          'Invalid input: expected string, received null',
+        );
+      }
+    });
+
     it('includes field name in required error', () => {
       const result = FeedbackPostBodySchema.safeParse({});
       expect(result.success).toBe(false);
