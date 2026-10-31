@@ -36,7 +36,7 @@ describe('deriveDocument', () => {
 
   it('refuses a label block that leaves a language without text', () => {
     expect(() => deriveDocument(collection([point({ label: { es: 'Salón' } })]), global)).toThrow(
-      /properties\.label every supported language must carry a value/,
+      /properties\.label\.en Invalid input: expected string/,
     );
   });
 
@@ -46,7 +46,7 @@ describe('deriveDocument', () => {
         collection([point({ label: { es: 'Salón', en: 'Hall' }, description: { en: 'Only' } })]),
         global,
       ),
-    ).toThrow(/properties\.description every supported language must carry a value/);
+    ).toThrow(/properties\.description\.es Invalid input: expected string/);
   });
 
   it('leaves a key-based feature untouched, because its rows already exist', () => {

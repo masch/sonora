@@ -6,13 +6,11 @@ export const CreatePaymentBodySchema = z.object({
   redirectUrl: z.string().url().optional(),
 });
 
-export const WebhookBodySchema = z
-  .object({
-    type: z.string().optional(),
-    data: z.object({ id: z.string().optional() }).optional(),
-    action: z.string().optional(),
-  })
-  .passthrough();
+export const WebhookBodySchema = z.looseObject({
+  type: z.string().optional(),
+  data: z.object({ id: z.string().optional() }).optional(),
+  action: z.string().optional(),
+});
 
 export const LogAccessBodySchema = z.object({
   source: z.enum(ACCESS_SOURCES),
