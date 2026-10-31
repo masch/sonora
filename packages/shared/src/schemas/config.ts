@@ -124,7 +124,9 @@ export const MapConfigSchema = z
     styleUrl: z.string(),
     regions: z.record(z.string(), MapRegionPayloadSchema),
     download: MapDownloadPolicySchema,
-    layers: MapLayerSelectionSchema.default({}),
+    // `.prefault` is the v4 form of what `.default` did in v3: apply the value and
+    // then parse it, so an omitted `layers` still materializes its own defaults.
+    layers: MapLayerSelectionSchema.prefault({}),
   })
   .passthrough();
 

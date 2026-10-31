@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { LEAD_SOURCES } from '../enums';
 
 export const LeadEmailSchema = z
-  .string({ required_error: 'email is required' })
+  .string({ error: (issue) => (issue.input === undefined ? 'email is required' : undefined) })
   .trim()
   .min(1, 'email is required')
   .max(255, 'email must not exceed 255 characters')

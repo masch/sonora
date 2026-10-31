@@ -2,17 +2,37 @@ import { z } from 'zod';
 
 export const FeedbackPostBodySchema = z.object({
   experienceId: z
-    .string({ required_error: 'experienceId is required and must be a non-empty string' })
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'experienceId is required and must be a non-empty string'
+          : undefined,
+    })
     .min(1, 'experienceId is required and must be a non-empty string'),
   message: z
-    .string({ required_error: 'message is required and must be a non-empty string' })
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'message is required and must be a non-empty string'
+          : undefined,
+    })
     .min(1, 'message is required and must be a non-empty string')
     .max(1000, 'message must not exceed 1000 characters'),
   idempotencyKey: z
-    .string({ required_error: 'idempotencyKey is required and must be a non-empty string' })
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'idempotencyKey is required and must be a non-empty string'
+          : undefined,
+    })
     .min(1, 'idempotencyKey is required and must be a non-empty string'),
   createdAt: z
-    .string({ required_error: 'createdAt is required and must be a non-empty string' })
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'createdAt is required and must be a non-empty string'
+          : undefined,
+    })
     .min(1, 'createdAt is required and must be a non-empty string'),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
