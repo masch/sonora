@@ -5,8 +5,23 @@
  * Kept outside `__tests__` on purpose: files there are collected as suites.
  */
 
+/** One listener the map holds for an event, and whether the map spends it. */
+export interface FakeListener {
+  handler: (payload: unknown) => void;
+  /** `once`: the map removes it as it fires it, the way MapLibre's `Evented.fire` does. */
+  once: boolean;
+}
+
 export interface FakeMapInstance {
-  handlers: Map<string, (payload: unknown) => void>;
+  /**
+   * Every listener registered for an event, in registration order.
+   *
+   * A list and not one handler per event: MapLibre holds as many listeners as were
+   * registered and calls all of them for an event. A flight that was replaced still has
+   * the listener it registered, so a double that kept only the newest would hide the
+   * path where the stale one is called first.
+   */
+  listeners: Map<string, FakeListener[]>;
   layers: { id: string; source?: string }[];
   sources: Record<string, { setData: (data: unknown) => void }>;
   options: Record<string, unknown>;
@@ -27,6 +42,14 @@ export interface FakeMapInstance {
    * unnoticed — the real library would ignore the second argument.
    */
   flights: { center: [number, number]; duration?: number; zoom?: number }[];
+  on(event: string, handler: (payload: unknown) => void): void;
+  /**
+   * Registers a handler that fires once and then unregisters itself, the way
+   * MapLibre's `once` does: a flight is one move, and `moveend` fires for every
+   * move the map makes.
+   */
+  once(event: string, handler: (payload: unknown) => void): void;
+  /** Calls every listener registered for the event, then spends the one-time ones. */
   emit(event: string, payload?: unknown): void;
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
@@ -34,7 +57,9 @@ export interface FakeMapInstance {
 export const mockMapInstances: FakeMapInstance[] = [];
 
 export class FakeMap implements FakeMapInstance {
-  handlers = new Map<string, (payload: unknown) => void>();
+  listeners = new Map<string, FakeListener[]>();
+  /** A camera move is in the air: the next `flyTo` stops it and reports its landing. */
+  moving = false;
   layers: { id: string; source?: string }[] = [];
   sources: Record<string, { setData: (data: unknown) => void }> = {};
   options: Record<string, unknown>;
@@ -47,8 +72,18 @@ export class FakeMap implements FakeMapInstance {
     mockMapInstances.push(this);
   }
 
+  private register(event: string, handler: (payload: unknown) => void, once: boolean) {
+    const registered = this.listeners.get(event) ?? [];
+    registered.push({ handler, once });
+    this.listeners.set(event, registered);
+  }
+
   on(event: string, handler: (payload: unknown) => void) {
-    this.handlers.set(event, handler);
+    this.register(event, handler, false);
+  }
+
+  once(event: string, handler: (payload: unknown) => void) {
+    this.register(event, handler, true);
   }
 
   remove() {}
@@ -90,6 +125,12 @@ export class FakeMap implements FakeMapInstance {
   fitBounds() {}
 
   flyTo(options: { center: [number, number]; duration?: number; zoom?: number }) {
+    // MapLibre stops the move in progress before it starts the new one, and stopping it
+    // reports the landing of the transition that was cut off (`Camera.stop` →
+    // `_afterEase` in the real library). That report reaches every listener registered
+    // at that moment — including one a flight that was replaced left behind.
+    if (this.moving) this.emit('moveend');
+    this.moving = true;
     this.flights.push(options);
   }
 
@@ -102,7 +143,17 @@ export class FakeMap implements FakeMapInstance {
   }
 
   emit(event: string, payload?: unknown) {
-    this.handlers.get(event)?.(payload);
+    if (event === 'moveend') this.moving = false;
+    const registered = this.listeners.get(event) ?? [];
+    // MapLibre's own order (`Evented.fire`): the lasting listeners are called first, and
+    // each one-time listener is removed as it is spent. A listener registered for an
+    // earlier flight is therefore called before the one the current flight registered.
+    for (const listener of registered.filter((entry) => !entry.once)) listener.handler(payload);
+    for (const listener of registered.filter((entry) => entry.once)) {
+      const index = registered.indexOf(listener);
+      if (index >= 0) registered.splice(index, 1);
+      listener.handler(payload);
+    }
   }
 
   /** Simulates a tap: sets which features the hit test returns and emits the click. */

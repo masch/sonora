@@ -12,15 +12,16 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import LoadingView from '@/components/loading-view';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useWorldExperiences } from '@/hooks/use-world-experiences';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
-import { TwPressable, TwView } from '@/tw';
+import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
-import { FOCUS_DURATION_MS } from './map-view.types';
+import { FOCUS_SETTLE_FALLBACK_MS } from './map-view.types';
 import ExperiencePreviewCard from './experience-preview-card';
 import type { MapReferencePress } from './map-view.types';
 
@@ -130,23 +131,39 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
 
   /** The place the camera is travelling to, in variant B. */
   const traveller = useMemo(
-    () => (flight ? (experiences.find((e) => e.slug === flight.slug) ?? null) : null),
-    [experiences, flight],
+    () =>
+      centerOnSelect && flight ? (experiences.find((e) => e.slug === flight.slug) ?? null) : null,
+    [centerOnSelect, experiences, flight],
   );
 
   /**
    * Opens the card once the flight it started has landed.
    *
-   * A timer rather than a camera callback: the flight and this wait are the same
-   * constant, so they cannot disagree, and neither renderer has to learn to report
-   * that its camera settled. A tap replaced by another one cancels the wait, so the
-   * walker never gets a card for the point they did not choose last.
+   * The signal is the camera's, not a clock: a renderer reports that the move it was
+   * asked for came to rest, so a walker who pans or pinches during it still gets the
+   * card when the travel ends. A tap replaced by another one supersedes the wait, and
+   * the walker never gets a card for the point they did not choose last.
+   *
+   * The flight is cleared with it: the camera owes nothing once it has arrived, and
+   * keeping the request would leave `focus` asking for a place already reached — a
+   * second tap on that same place would then look like no change at all.
+   */
+  const landFlight = useCallback(() => {
+    if (!flight) return;
+    setOpenedSlug(flight.slug);
+    setFlight(null);
+  }, [flight]);
+
+  /**
+   * The dead-man fallback, and the only timer here: a renderer that never reports
+   * would otherwise eat the tap. It is longer than any flight, so it can never race
+   * the camera, and it reveals the card the walker is already waiting for.
    */
   useEffect(() => {
     if (!flight) return;
-    const timer = setTimeout(() => setOpenedSlug(flight?.slug ?? null), FOCUS_DURATION_MS);
+    const timer = setTimeout(landFlight, FOCUS_SETTLE_FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [flight]);
+  }, [flight, landFlight]);
 
   /**
    * A tap reports the reference, and the reference names its experience. Anything
@@ -207,34 +224,20 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
 
   return (
     <TwView testID={testID} className="gap-3">
-      <TwView
-        className="flex-row gap-2"
-        testID={`${testID}-filters`}
-        accessibilityLabel={t('map.world.filterLabel')}
-      >
+      {/* The row is a layout, not a control: labelling it would need `accessible`, which
+          would in turn swallow the chips' own names. Each chip announces itself. */}
+      <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
         {([null, ...USER_EXPERIENCE_FORMATS] as const).map((option) => {
-          const isSelected = format === option;
+          const filter = option ?? 'all';
           return (
-            <TwPressable
-              key={option ?? 'all'}
+            <Chip
+              key={filter}
+              label={t(FILTER_LABEL_KEYS[filter])}
+              selected={format === option}
               onPress={() => setFormat(option)}
-              className={`px-4 py-1.5 rounded-lg border ${
-                isSelected
-                  ? 'bg-text border-text'
-                  : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-              } active:opacity-75`}
-              testID={`world-filter-${option ?? 'all'}`}
-              accessibilityLabel={t(FILTER_LABEL_KEYS[option ?? 'all'])}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-            >
-              <ThemedText
-                themeColor={isSelected ? 'background' : 'text'}
-                className="text-xs font-bold"
-              >
-                {t(FILTER_LABEL_KEYS[option ?? 'all'])}
-              </ThemedText>
-            </TwPressable>
+              testID={`world-filter-${filter}`}
+              accessibilityLabel={t(FILTER_LABEL_KEYS[filter])}
+            />
           );
         })}
       </TwView>
@@ -250,6 +253,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
           focus={
             traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null
           }
+          onFocusSettled={landFlight}
           onFeaturePress={handleFeaturePress}
         />
 

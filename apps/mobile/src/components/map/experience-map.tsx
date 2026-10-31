@@ -51,6 +51,7 @@ import {
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
+import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
@@ -523,6 +524,7 @@ export default function ExperienceMap({
   showLabels = true,
   layerSelection,
   focus,
+  onFocusSettled,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -542,47 +544,21 @@ export default function ExperienceMap({
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
-
   /**
-   * Travels to the place the caller asked for, and does nothing else.
+   * The one imperative camera move, and the landing it reports.
    *
-   * The camera stays declarative for its opening frame (`bounds` or `center`), and
-   * this is the one imperative move: a point that was tapped is a destination the
-   * walker chose, so the map follows it instead of being rebuilt around it.
+   * Both live in `use-native-focus-flight.ts`: the same decision the web renderer
+   * makes, kept in one place per platform rather than inline in a component that is
+   * already the longest in this directory.
    */
-  const focusLongitude = focus?.longitude;
-  const focusLatitude = focus?.latitude;
-  useEffect(() => {
-    if (focusLongitude === undefined || focusLatitude === undefined) return;
-
-    /**
-     * The zoom is asked for and not assumed: the camera has to end up as close as
-     * `FOCUS_MIN_ZOOM` even when the world was opened further out, which is the one
-     * thing a flight without `zoom` cannot do — it keeps what the map had, and a
-     * point tapped from the opening frame would stay a pixel among crowded labels.
-     * The web renderer already floors its flight the same way.
-     *
-     * `getZoom()` is asynchronous, so the move is guarded: a focus replaced while
-     * the answer is in flight must not fly to the place the walker stopped asking
-     * for. An unavailable zoom still flies, at the floor, because a tap that does
-     * nothing is worse than a flight that chooses the close-up.
-     */
-    let cancelled = false;
-    void (async () => {
-      const currentZoom = await mapRef.current?.getZoom();
-      if (cancelled) return;
-      cameraRef.current?.flyTo({
-        center: [focusLongitude, focusLatitude],
-        duration: FOCUS_DURATION_MS,
-        zoom: Math.max(currentZoom ?? FOCUS_MIN_ZOOM, FOCUS_MIN_ZOOM),
-        easing: 'fly',
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [focusLongitude, focusLatitude]);
+  const reportLanding = useNativeFocusFlight({
+    focus,
+    mapRef,
+    cameraRef,
+    onSettled: onFocusSettled,
+    durationMs: FOCUS_DURATION_MS,
+    minZoom: FOCUS_MIN_ZOOM,
+  });
 
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
@@ -730,7 +706,7 @@ export default function ExperienceMap({
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {/* Both waits report a code; the sentence is ours and it is translated here,
               so no English text from a request or from the filesystem reaches the screen. */}
-          {failure ? t(ERROR_MESSAGE_KEYS[failure]) : t('map.offlineDescription')}
+          {t(ERROR_MESSAGE_KEYS[failure])}
         </ThemedText>
         {/* Each wait starts over on its own, so the other one is never thrown away. */}
         <Button
@@ -776,6 +752,8 @@ export default function ExperienceMap({
         ref={mapRef}
         mapStyle={style}
         onPress={reportPress}
+        // The only report of a camera landing: the flight's, never the walker's.
+        onRegionDidChange={reportLanding}
         // The label describes the map itself: the loading key would be announced by
         // a screen reader over a map that has already drawn.
         accessibilityLabel={t('map.mapLabel')}

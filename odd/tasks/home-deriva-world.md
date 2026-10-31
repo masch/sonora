@@ -94,6 +94,33 @@ The region is 0.17° × 0.16° and the seeded points sit inside ~0.02° of it, s
 
 **L12** — `lint` failed on the first pass of `use-world-experiences`: a `setState` written synchronously in the effect body to mark the new attempt as loading. The attempt id already answers that question, so the write was removed and the render derives loading from "this run has not settled".
 
+**L14** — a broken gate, and the debt it had been hiding.
+
+`make gga` — the repo's AI pre-commit review — had stopped working twice over. Its configured model (`opencode/ling-3.1-flash-free`) no longer exists in the catalog, and `gga run` exits **0** when its provider fails, so the hook printed `✓ gga... ok` having reviewed nothing. That is why several commits on this branch passed a review that never ran. Fixed by pointing `PROVIDER` at the human's own plan (`opencode-go/deepseek-v4.1-flash`; the `opencode/*` namespace is pay-per-use and answered `Insufficient account funds`) and by teaching `.githooks/pre-commit` that a run which says its provider failed is a failed step, whatever it exits with. `STRICT_MODE` cannot do that job: it also rejects a verdict the model words differently, and every model tried puts `STATUS:` past the line the parser reads.
+
+Run against its own branch, the gate then found seven real things in files this feature touches:
+
+- the format and theme filter chips were hand-rolled `TwPressable` toggles. `Button` fixes its own radius, typography and `accessibilityState`, so a chip cannot be expressed through it — the design system gained `Chip` (`shape: square | pill`), both rows moved to it, and `AGENTS.md` §1 now names the primitive and the rule that only `src/components/ui` builds a single-press surface;
+- the ad-hoc retry button on the experiences screen became `<Button>`;
+- the **web** renderer drew request prose on screen (`archive.error` and two English literals) while the native one translated stable codes: the web now holds codes, maps them through the same keys, and logs the detail;
+- the web error state offered no retry at all: it now has one, with a counter per wait so a retry never throws away the wait that worked;
+- the web map surface carried no `aria-label`/`data-testid`, unlike the native map; and the native test double used a raw `View` where §3 asks for `TwView`.
+
+Two clean-ups came from the same review: an unreachable `failure ? … : …` arm in the native renderer and one locale key left behind by the chip migration.
+
+The component-size rule (`react-doctor/no-giant-component`) refused the web renderer twice as this work landed, and both times the answer was an extraction rather than a waiver: the failure surface became `map-error-view.tsx`, and the map's instance lifecycle became `use-web-map-instance.ts` — the same shape `use-map-focus-flight.ts` and `use-native-focus-flight.ts` already have.
+
+**L15** — the third review pass escalated, and the four findings it left behind.
+
+The batch that fixed the gate and closed the gga findings went through review with a single lens (`lenses-invalid` rejected three and four; the provider created the lineage anyway), and it stopped at `native_stop_required` with `unknown_causality` on a `CRITICAL`. The stop is informational, and the findings were real:
+
+- `R3-001` — each web flight registered its own `once('moveend')` while a single flag said "a flight is pending". A second tap interrupted the first animation, MapLibre emitted the `moveend` of the transition it had just cut off, and the stale listener reported a landing that had not happened: the card opened before the second flight started. The double kept one handler per event, which is why the rapid-retap test never saw it. Now each flight owns a number, the listener is armed **after** `flyTo`, and a replaced flight's landing is inert.
+- `R3-002` — the same shape on native, where the cleanup left the flag armed.
+- `R3-003` — the new map-level retry rebuilt the instance while `ready` stayed `true`, so the ready-gated effects (pending flight, layer selection) never ran for the new map: a retried map could be one that neither travels nor honours the chosen layers. `ready` is now derived from the build that reported `load`, so a rebuild passes through false→true.
+- `R3-004` — the retry kept a loaded style but not a downloaded archive, so retrying a style failure downloaded the whole archive again. Both waits now keep what landed.
+
+Each fix landed with a test that fails against the previous code; the double gained a listener list so the interrupted-transition path is reproducible at all.
+
 **L13** — the review, end to end: two lineages, four findings, both criticals real.
 
 Lineage `review-25af80b61f5fe026` (3 lenses + refuter) found `R3-001`/`R4-001`: the web flight called `map.flyTo(center, options)`, a signature MapLibre GL JS does not have — it takes one options object — and the test double had been written to match the invented shape, so the suite passed while the camera would never have moved. Fixed in `ca4a538`; the double now takes exactly what the library takes.

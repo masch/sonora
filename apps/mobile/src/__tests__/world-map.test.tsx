@@ -10,7 +10,7 @@ import {
 } from '@sonora/shared';
 
 import WorldMap from '@/components/map/world-map';
-import type { MapReferencePress } from '@/components/map/map-view.types';
+import { FOCUS_SETTLE_FALLBACK_MS, type MapReferencePress } from '@/components/map/map-view.types';
 import { fetchExperiences } from '@/data/experiences';
 import type { Experience, TrackExperience, TripExperience } from '@/data/experiences';
 
@@ -26,6 +26,8 @@ interface RecordedMapProps {
   center?: [number, number];
   focus?: { latitude: number; longitude: number } | null;
   onFeaturePress?: (reference: MapReferencePress) => void;
+  /** What the renderer calls when the flight it ran comes to rest. */
+  onFocusSettled?: () => void;
 }
 
 const mockMapProps: RecordedMapProps[] = [];
@@ -169,6 +171,30 @@ async function renderWith(payload: Experience[]): Promise<void> {
   await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
 }
 
+/** Draws the world in variant B, where a tap travels before the card opens. */
+async function renderVariantB(): Promise<void> {
+  mockedFetch.mockResolvedValue(PAYLOAD);
+  await render(<WorldMap centerOnSelect />);
+  await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+}
+
+/** Fires the tap a point makes, as the renderer reports it. */
+async function tapPoint(slug: string): Promise<void> {
+  await act(async () => {
+    latestMap().onFeaturePress?.({
+      documentKey: WORLD_POINTS_DOCUMENT_KEY,
+      experienceSlug: slug,
+    });
+  });
+}
+
+/** Fires the camera's landing, as the renderer reports the flight it ran. */
+async function landFlight(): Promise<void> {
+  await act(async () => {
+    latestMap().onFocusSettled?.();
+  });
+}
+
 describe('WorldMap', () => {
   beforeEach(() => {
     mockMapProps.length = 0;
@@ -307,27 +333,102 @@ describe('WorldMap', () => {
     expect(latestMap().focus).toEqual({ latitude: track.latitude, longitude: track.longitude });
   });
 
-  it('opens the card only once the flight it started has landed', async () => {
+  it('opens the card when the flight it started reports its landing', async () => {
     // Variant B is "travel, then show": the card must not cover the camera move it
-    // just asked for, and it must still arrive when that move is over.
-    mockedFetch.mockResolvedValue(PAYLOAD);
-    await render(<WorldMap centerOnSelect />);
-    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+    // just asked for, and it must arrive when that move is over — on the camera's
+    // own signal, never on a clock.
+    await renderVariantB();
+    jest.useFakeTimers();
+    try {
+      await tapPoint(track.slug);
+
+      expect(latestMap().focus).toEqual({ latitude: track.latitude, longitude: track.longitude });
+      expect(screen.queryByTestId('experience-preview-card')).toBeNull();
+
+      // Time passing is not the signal: just short of the dead-man bound, the card
+      // is still waiting for the camera. A walker who pans or pinches during the
+      // flight gets the card when the flight lands, not when a timer says so.
+      await act(async () => {
+        jest.advanceTimersByTime(FOCUS_SETTLE_FALLBACK_MS - 1);
+      });
+      expect(screen.queryByTestId('experience-preview-card')).toBeNull();
+
+      await landFlight();
+
+      expect(screen.getByTestId('experience-preview-card')).toBeTruthy();
+      expect(screen.getAllByText(track.title).length).toBeGreaterThan(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('still opens the card when the renderer never reports the landing', async () => {
+    // A renderer that never reports would otherwise eat the tap: the fallback bounds
+    // the wait, and it is longer than any flight so it can never race one.
+    await renderVariantB();
+    jest.useFakeTimers();
+    try {
+      await tapPoint(track.slug);
+
+      await act(async () => {
+        jest.advanceTimersByTime(FOCUS_SETTLE_FALLBACK_MS);
+      });
+
+      expect(screen.getByTestId('experience-preview-card')).toBeTruthy();
+      expect(screen.getAllByText(track.title).length).toBeGreaterThan(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('replaces the wait when a second tap names another point', async () => {
+    await renderVariantB();
+    jest.useFakeTimers();
+    try {
+      await tapPoint(track.slug);
+      await tapPoint(trip.slug);
+
+      // The camera is now travelling to the second point, and the wait with it: the
+      // walker never gets the card of the point they did not choose last.
+      expect(latestMap().focus).toEqual({ latitude: trip.latitude, longitude: trip.longitude });
+      await act(async () => {
+        jest.advanceTimersByTime(FOCUS_SETTLE_FALLBACK_MS - 1);
+      });
+      expect(screen.queryByTestId('experience-preview-card')).toBeNull();
+      expect(screen.queryByText(track.title)).toBeNull();
+
+      await landFlight();
+
+      expect(screen.getAllByText(trip.title).length).toBeGreaterThan(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('clears the flight and the card on dismiss, and travels again for the same point', async () => {
+    await renderVariantB();
+    await tapPoint(track.slug);
+    await landFlight();
+    expect(screen.getByTestId('experience-preview-card')).toBeTruthy();
 
     await act(async () => {
-      latestMap().onFeaturePress?.({
-        documentKey: WORLD_POINTS_DOCUMENT_KEY,
-        experienceSlug: track.slug,
-      });
+      fireEvent.press(screen.getByTestId('experience-preview-close'));
     });
 
-    // The camera is on its way and nothing is covering it yet.
+    expect(screen.queryByTestId('experience-preview-card')).toBeNull();
+    // Dismissed is not pending: the camera owes nothing, so a walker's own pan is
+    // not mistaken for a landing.
+    expect(latestMap().focus).toBeNull();
+
+    // The same point again is a new request: the id is what keeps it from looking
+    // like no change at all.
+    await tapPoint(track.slug);
     expect(latestMap().focus).toEqual({ latitude: track.latitude, longitude: track.longitude });
     expect(screen.queryByTestId('experience-preview-card')).toBeNull();
 
-    await waitFor(() => expect(screen.getByTestId('experience-preview-card')).toBeTruthy(), {
-      timeout: 2000,
-    });
+    await landFlight();
+
+    expect(screen.getByTestId('experience-preview-card')).toBeTruthy();
   });
 
   it('leaves the camera alone when the variant does not ask for it', async () => {

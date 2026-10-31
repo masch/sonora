@@ -18,7 +18,9 @@
  * the reset helper live here so that module exports components only.
  */
 
+import type { ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
 import type { ReactNode } from 'react';
+import type { NativeSyntheticEvent } from 'react-native';
 
 /** The slice of a MapLibre style this double inspects. */
 export interface StyleDouble {
@@ -33,6 +35,12 @@ export interface MapDoubleProps {
   accessibilityLabel?: string;
   /** The component's press handler, driven by the test the way the device would. */
   onPress?: (event: { nativeEvent: { point: [number, number]; lngLat: [number, number] } }) => void;
+  /**
+   * The camera's own report that a region change ended: the test fires it the way
+   * the device does, both for a flight the component started and for a pan the
+   * walker made, because the component has to tell the two apart.
+   */
+  onRegionDidChange?: (event: NativeSyntheticEvent<ViewStateChangeEvent>) => void;
   children?: ReactNode;
 }
 
