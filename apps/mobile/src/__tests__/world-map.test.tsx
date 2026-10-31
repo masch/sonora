@@ -307,6 +307,29 @@ describe('WorldMap', () => {
     expect(latestMap().focus).toEqual({ latitude: track.latitude, longitude: track.longitude });
   });
 
+  it('opens the card only once the flight it started has landed', async () => {
+    // Variant B is "travel, then show": the card must not cover the camera move it
+    // just asked for, and it must still arrive when that move is over.
+    mockedFetch.mockResolvedValue(PAYLOAD);
+    await render(<WorldMap centerOnSelect />);
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+
+    await act(async () => {
+      latestMap().onFeaturePress?.({
+        documentKey: WORLD_POINTS_DOCUMENT_KEY,
+        experienceSlug: track.slug,
+      });
+    });
+
+    // The camera is on its way and nothing is covering it yet.
+    expect(latestMap().focus).toEqual({ latitude: track.latitude, longitude: track.longitude });
+    expect(screen.queryByTestId('experience-preview-card')).toBeNull();
+
+    await waitFor(() => expect(screen.getByTestId('experience-preview-card')).toBeTruthy(), {
+      timeout: 2000,
+    });
+  });
+
   it('leaves the camera alone when the variant does not ask for it', async () => {
     await renderWith(PAYLOAD);
 

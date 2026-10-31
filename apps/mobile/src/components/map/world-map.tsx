@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   USER_EXPERIENCE_FORMATS,
@@ -20,6 +20,7 @@ import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwPressable, TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
+import { FOCUS_DURATION_MS } from './map-view.types';
 import ExperiencePreviewCard from './experience-preview-card';
 import type { MapReferencePress } from './map-view.types';
 
@@ -60,7 +61,17 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const { t, language } = useAppTranslation();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  /**
+   * What a tap asked for, and only what the camera still owes it.
+   *
+   * Variant B travels before the card opens, so a tap cannot open it directly: the
+   * request is the destination the camera is flying to, and `id` makes every tap a
+   * new request even when it names the place the previous one did — otherwise
+   * tapping the same point twice would look like no change and never open again.
+   */
+  const [flight, setFlight] = useState<{ slug: string; id: number } | null>(null);
+  const [openedSlug, setOpenedSlug] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   /** MapLibre cannot call the translation layer, so labels are resolved before drawing. */
   const translate = useMemo<TranslateKey>(
@@ -112,19 +123,48 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     [experiences, regionBounds],
   );
 
-  const selected = useMemo(
-    () => experiences.find((experience) => experience.slug === selectedSlug) ?? null,
-    [experiences, selectedSlug],
+  const opened = useMemo(
+    () => experiences.find((experience) => experience.slug === openedSlug) ?? null,
+    [experiences, openedSlug],
   );
+
+  /** The place the camera is travelling to, in variant B. */
+  const traveller = useMemo(
+    () => (flight ? (experiences.find((e) => e.slug === flight.slug) ?? null) : null),
+    [experiences, flight],
+  );
+
+  /**
+   * Opens the card once the flight it started has landed.
+   *
+   * A timer rather than a camera callback: the flight and this wait are the same
+   * constant, so they cannot disagree, and neither renderer has to learn to report
+   * that its camera settled. A tap replaced by another one cancels the wait, so the
+   * walker never gets a card for the point they did not choose last.
+   */
+  useEffect(() => {
+    if (!flight) return;
+    const timer = setTimeout(() => setOpenedSlug(flight?.slug ?? null), FOCUS_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [flight]);
 
   /**
    * A tap reports the reference, and the reference names its experience. Anything
    * else drawn on this map — a trip's path — reports nothing and selects nothing.
    */
-  const handleFeaturePress = useCallback((reference: MapReferencePress) => {
-    if (!reference.experienceSlug) return;
-    setSelectedSlug(reference.experienceSlug);
-  }, []);
+  const handleFeaturePress = useCallback(
+    (reference: MapReferencePress) => {
+      if (!reference.experienceSlug) return;
+      requestId.current += 1;
+      // Variant A has no travel to wait for: the card is the whole answer.
+      if (!centerOnSelect) {
+        setOpenedSlug(reference.experienceSlug);
+        return;
+      }
+      setFlight({ slug: reference.experienceSlug, id: requestId.current });
+    },
+    [centerOnSelect],
+  );
 
   if (status === 'loading') {
     return (
@@ -208,9 +248,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
           bounds={cameraBounds}
           center={worldCenter ? [worldCenter.longitude, worldCenter.latitude] : undefined}
           focus={
-            centerOnSelect && selected
-              ? { latitude: selected.latitude, longitude: selected.longitude }
-              : null
+            traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null
           }
           onFeaturePress={handleFeaturePress}
         />
@@ -229,7 +267,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         )}
       </TwView>
 
-      <ExperiencePreviewCard experience={selected} onDismiss={() => setSelectedSlug(null)} />
+      <ExperiencePreviewCard
+        experience={opened}
+        onDismiss={() => {
+          setOpenedSlug(null);
+          setFlight(null);
+        }}
+      />
     </TwView>
   );
 }
