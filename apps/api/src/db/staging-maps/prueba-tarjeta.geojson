@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "sonora": {
+    "key": "prueba-tarjeta",
+    "scope": "experience",
+    "experienceIds": ["a23baa7e-2c82-472f-9241-4f23e00c1732"],
+    "zIndex": 10,
+    "version": 1,
+    "published": true
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-64.73809, -32.211913] },
+      "properties": {
+        "label": { "es": "Arroyo Mágico", "en": "Magic Creek" },
+        "description": {
+          "es": "Referencia de ejemplo: el punto de partida de la deriva. Editá este texto acá y volvé a publicar.",
+          "en": "Example reference: the starting point of the drift. Edit this text here and publish again."
+        },
+        "linkUrl": "https://www.instagram.com/sonora.derivapoetica",
+        "color": "#b91c1c",
+        "minzoom": 13
+      }
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import {
   seedTerms,
 } from './seed-data';
 import { stagingOnlyExperiences, stagingOnlyWaypoints } from './seed-staging-data';
+import { loadSeedDocuments, seedMapDocuments } from './seed-maps';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -39,6 +40,10 @@ async function main() {
     });
 
     await seedTerms(db, baseTerms);
+
+    // After the experiences: the documents bind to them. Staging-only by construction —
+    // this entry point is the only caller and it refuses any other environment.
+    await seedMapDocuments(db, loadSeedDocuments());
 
     logger.info('Staging seeding completed successfully! 🌱');
   } catch (error) {
