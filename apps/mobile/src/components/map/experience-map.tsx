@@ -25,6 +25,7 @@ import {
   type MapDocument,
   type MapLayerSelection,
   type MapStyleLayer,
+  type SupportedLanguage,
   type TranslateKey,
 } from '@sonora/shared';
 
@@ -417,8 +418,11 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
-  if (typeof properties.label === 'string') reference.label = properties.label;
+  if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
+  if (typeof properties.descriptionText === 'string') {
+    reference.descriptionText = properties.descriptionText;
+  }
   if (typeof properties.descriptionKey === 'string') {
     reference.descriptionKey = properties.descriptionKey;
   }
@@ -445,9 +449,11 @@ function buildMapStyle(
     selection: readonly MapLayerSelection[];
     showLabels: boolean;
     translate: TranslateKey;
+    /** The active language: a self-contained reference draws its own text for it. */
+    language: SupportedLanguage;
   },
 ): StyleSpecification {
-  const { archiveUri, documents, selection, showLabels, translate } = options;
+  const { archiveUri, documents, selection, showLabels, translate, language } = options;
   // A label layer is a symbol layer: without a glyphs source MapLibre fails to
   // draw it, so labels only exist when the base style can serve them.
   const includeLabels = showLabels && Boolean(base.glyphs);
@@ -473,7 +479,7 @@ function buildMapStyle(
     const sourceId = referenceSourceId(document.key);
     sources[sourceId] = {
       type: 'geojson',
-      data: withResolvedLabels(document, translate).collection,
+      data: withResolvedLabels(document, translate, language).collection,
     };
     layers.push(
       ...buildReferenceStyleLayers(sourceId, {
@@ -588,6 +594,7 @@ export default function ExperienceMap({
         selection: effectiveSelection,
         showLabels,
         translate,
+        language,
       });
     }
     if (!archiveUri) return null;
@@ -597,6 +604,7 @@ export default function ExperienceMap({
       selection: effectiveSelection,
       showLabels,
       translate,
+      language,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents and the selection are inputs by content (`documentsKey`, `selectionKey`), not by array identity
   }, [
@@ -606,6 +614,7 @@ export default function ExperienceMap({
     attribution,
     showLabels,
     translate,
+    language,
     documentsKey,
     selectionKey,
   ]);

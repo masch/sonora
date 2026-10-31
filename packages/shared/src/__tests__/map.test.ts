@@ -199,14 +199,14 @@ describe('label resolution', () => {
       key === 'map.references.taller' ? 'Taller' : 'Sendero',
     );
 
-    expect(resolved.collection.features[0].properties.label).toBe('Taller');
-    expect(resolved.collection.features[1].properties.label).toBe('Sendero');
+    expect(resolved.collection.features[0].properties.labelText).toBe('Taller');
+    expect(resolved.collection.features[1].properties.labelText).toBe('Sendero');
   });
 
   it('falls back to the key itself when the translation is missing', () => {
     const resolved = withResolvedLabels(documentWith('sendero', [point]), (key) => key);
 
-    expect(resolved.collection.features[0].properties.label).toBe('map.references.taller');
+    expect(resolved.collection.features[0].properties.labelText).toBe('map.references.taller');
   });
 
   it('interpolates the label index into the translation options', () => {
@@ -218,7 +218,66 @@ describe('label resolution', () => {
       key === 'map.point' ? `Pt ${(options as { index: number }).index}` : key,
     );
 
-    expect(resolved.collection.features[0].properties.label).toBe('Pt 3');
+    expect(resolved.collection.features[0].properties.labelText).toBe('Pt 3');
+  });
+});
+
+describe('self-contained reference text', () => {
+  const card = {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
+    properties: {
+      label: { es: 'Salón', en: 'Hall' },
+      description: { es: 'Donde empieza', en: 'Where it begins' },
+    },
+  };
+
+  it('accepts a reference that carries its own text in every language', () => {
+    expect(() => parseMapDocument(documentWith('fichas', [card]))).not.toThrow();
+  });
+
+  it('rejects a label block that leaves one language without text', () => {
+    const partial = documentWith('fichas', [{ ...point, properties: { label: { es: 'Salón' } } }]);
+
+    expect(() => parseMapDocument(partial)).toThrow();
+  });
+
+  it('rejects a reference that carries both its own text and a key', () => {
+    const both = documentWith('fichas', [
+      { ...point, properties: { labelKey: 'map.a', label: { es: 'A', en: 'A' } } },
+    ]);
+
+    expect(() => parseMapDocument(both)).toThrow();
+  });
+});
+
+describe('label resolution for self-contained text', () => {
+  const card = {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
+    properties: {
+      label: { es: 'Salón', en: 'Hall' },
+      description: { es: 'Donde empieza', en: 'Where it begins' },
+    },
+  };
+  const translate = (key: string) => `traducido:${key}`;
+
+  it('draws the text the document carries for the active language', () => {
+    const resolved = withResolvedLabels(documentWith('fichas', [card]), translate, 'en');
+
+    expect(resolved.collection.features[0].properties.labelText).toBe('Hall');
+  });
+
+  it('resolves the description in that language without the translation layer', () => {
+    const resolved = withResolvedLabels(documentWith('fichas', [card]), translate, 'es');
+
+    expect(resolved.collection.features[0].properties.descriptionText).toBe('Donde empieza');
+  });
+
+  it('falls back to the default language when the caller passes none', () => {
+    const resolved = withResolvedLabels(documentWith('fichas', [card]), translate);
+
+    expect(resolved.collection.features[0].properties.labelText).toBe('Salón');
   });
 });
 
@@ -250,7 +309,7 @@ describe('reference style layers', () => {
     ]);
     expect(layers.map((layer) => layer.type)).toEqual(['fill', 'line', 'circle', 'symbol']);
     // The map cannot translate keys, so it reads the label injected before drawing.
-    expect(layers[3].layout).toMatchObject({ 'text-field': ['get', 'label'] });
+    expect(layers[3].layout).toMatchObject({ 'text-field': ['get', 'labelText'] });
   });
 
   it('gates every layer on the zoom the feature asks for', () => {

@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
+import { SUPPORTED_LANGUAGES } from '../enums';
 import type { MapDocument } from './document';
 
 /** Hard limits that keep a document cheap to validate, ship and draw. */
 export const MAP_REFERENCE_LIMITS = {
   maxFeatures: 500,
   maxPointsPerGeometry: 5000,
+  /** Bound on one label, so a document cannot carry a paragraph as a name. */
+  maxLabelLength: 120,
+  /** Bound on one description, matching what a card is willing to render. */
+  maxDescriptionLength: 2000,
 } as const;
 
 /** Reference documents are authored by hand, so keys stay simple and stable. */
@@ -44,21 +49,56 @@ const httpsUrlSchema = z
   .url()
   .refine((value) => value.startsWith('https://'), 'must be an https URL');
 
-const propertiesSchema = z.object({
-  labelKey: z.string().regex(MAP_LABEL_KEY_PATTERN),
-  descriptionKey: z.string().regex(MAP_LABEL_KEY_PATTERN).optional(),
-  /** Any absolute URL: the API only accepts images from its own upload endpoint. */
-  imageUrl: z.string().url().optional(),
-  /** Card actions leave the app, so they must be https and allowlisted by the API. */
-  linkUrl: httpsUrlSchema.optional(),
-  color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .optional(),
-  minzoom: z.number().int().min(0).max(22).optional(),
-  /** 1-based position in a numbered series, e.g. the stops of an itinerary. */
-  labelIndex: z.number().int().min(1).optional(),
-});
+/**
+ * A reference's own text, keyed by language, carried by the document itself. A
+ * reference that uses it needs no row in the `translations` table, so editing a word
+ * never touches the codebase.
+ *
+ * Every supported language must be present: a gap would render as a blank label in one
+ * locale, which is the failure the key-based path already refuses at write time.
+ */
+function mapReferenceTextSchema(max: number) {
+  return z
+    .record(z.enum(SUPPORTED_LANGUAGES), z.string().min(1).max(max))
+    .refine((value) => SUPPORTED_LANGUAGES.every((lang) => value[lang] !== undefined), {
+      message: `every supported language must carry a value: ${SUPPORTED_LANGUAGES.join(', ')}`,
+    });
+}
+
+const propertiesSchema = z
+  .object({
+    labelKey: z.string().regex(MAP_LABEL_KEY_PATTERN).optional(),
+    descriptionKey: z.string().regex(MAP_LABEL_KEY_PATTERN).optional(),
+    /** The label travels with the document, in every language; excludes the key. */
+    label: mapReferenceTextSchema(MAP_REFERENCE_LIMITS.maxLabelLength).optional(),
+    /** The description travels with the document too; excludes its key. */
+    description: mapReferenceTextSchema(MAP_REFERENCE_LIMITS.maxDescriptionLength).optional(),
+    /** Any absolute URL: the API only accepts images from its own upload endpoint. */
+    imageUrl: z.string().url().optional(),
+    /** Card actions leave the app, so they must be https and allowlisted by the API. */
+    linkUrl: httpsUrlSchema.optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    minzoom: z.number().int().min(0).max(22).optional(),
+    /** 1-based position in a numbered series, e.g. the stops of an itinerary. */
+    labelIndex: z.number().int().min(1).optional(),
+  })
+  .superRefine((value, ctx) => {
+    // Two ways to name a reference, never both: the text lives in the document or it
+    // lives in the translations table, and a document that claims both would render
+    // one of them silently.
+    if (value.label !== undefined && value.labelKey !== undefined) {
+      ctx.addIssue({ code: 'custom', message: 'label and labelKey are exclusive' });
+    }
+    if (value.description !== undefined && value.descriptionKey !== undefined) {
+      ctx.addIssue({ code: 'custom', message: 'description and descriptionKey are exclusive' });
+    }
+    if (value.label === undefined && value.labelKey === undefined) {
+      ctx.addIssue({ code: 'custom', message: 'a reference needs label or labelKey' });
+    }
+  });
 
 const featureSchema = z.object({
   type: z.literal('Feature'),

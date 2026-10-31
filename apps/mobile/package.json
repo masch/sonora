@@ -89,7 +89,7 @@
     "start-web": "expo start --web -c",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "expo lint",
+    "lint": "expo lint --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "jest --watchAll",
     "doctor": "react-doctor",

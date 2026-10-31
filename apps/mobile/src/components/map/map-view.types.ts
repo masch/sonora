@@ -50,7 +50,10 @@ export interface MapSourceConfig {
 export interface MapReferencePress {
   /** Document key the reference belongs to. */
   documentKey: string;
-  label?: string;
+  /** The label already resolved to the active language, from the document or a key. */
+  labelText?: string;
+  /** The description already resolved, when the reference has one. */
+  descriptionText?: string;
   labelKey?: string;
   descriptionKey?: string;
   imageUrl?: string;

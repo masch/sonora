@@ -609,7 +609,7 @@ describe('TripDetailView map', () => {
     await act(async () => {
       onFeaturePress({
         documentKey: 'referencias',
-        label: 'Centro Umepay',
+        labelText: 'Centro Umepay',
         // Cards need content, not just a label (D8): a label-only feature is
         // drawing, so this fixture carries the description a real one has.
         descriptionKey: 'map.centroUmepay.description',
@@ -631,7 +631,7 @@ describe('TripDetailView map', () => {
     await act(async () => {
       onFeaturePress({
         documentKey: 'referencias',
-        label: 'Centro Umepay',
+        labelText: 'Centro Umepay',
         descriptionKey: 'map.centroUmepay.description',
       });
     });
@@ -648,7 +648,7 @@ describe('TripDetailView map', () => {
     await act(async () => {
       onFeaturePress({
         documentKey: 'referencias',
-        label: 'Taller',
+        labelText: 'Taller',
         descriptionKey: 'map.taller.description',
       });
     });
@@ -673,7 +673,7 @@ describe('TripDetailView map', () => {
       // own content rule would open it, and only the switch guard keeps it shut.
       onFeaturePress({
         documentKey: 'itinerary',
-        label: 'Pt 1',
+        labelText: 'Pt 1',
         labelKey: 'map.point',
         descriptionKey: 'map.centroUmepay.description',
       });

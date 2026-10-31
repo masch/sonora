@@ -13,7 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
     "@hono/node-server": "2.1.3",

@@ -196,7 +196,9 @@ async function main() {
     if (!feature) continue;
 
     features.push(feature);
-    translations.set(feature.properties.labelKey, element.tags?.name?.trim() ?? '');
+    // Recomputed from the element, not read back: `labelKey` is optional on the shared
+    // type now that a document may carry its own text instead.
+    translations.set(labelKeyFor(element), element.tags?.name?.trim() ?? '');
     byClass.set(spec.key, (byClass.get(spec.key) ?? 0) + 1);
   }
 
@@ -231,8 +233,9 @@ async function main() {
   console.log(argv.includes('--list') ? 'etiquetas:' : 'muestra:');
   const listed = argv.includes('--list') ? features : features.slice(0, 6);
   for (const feature of listed) {
-    const name = translations.get(feature.properties.labelKey);
-    console.log(`  ${feature.properties.labelKey.padEnd(24)} ${name}`);
+    const labelKey = feature.properties.labelKey ?? '';
+    const name = translations.get(labelKey);
+    console.log(`  ${labelKey.padEnd(24)} ${name}`);
   }
 
   const out = process.argv
