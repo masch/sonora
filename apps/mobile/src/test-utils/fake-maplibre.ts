@@ -27,6 +27,12 @@ export interface FakeMapInstance {
    * unnoticed — the real library would ignore the second argument.
    */
   flights: { center: [number, number]; duration?: number; zoom?: number }[];
+  /**
+   * Registers a handler that fires once and then unregisters itself, the way
+   * MapLibre's `once` does: a flight is one move, and `moveend` fires for every
+   * move the map makes.
+   */
+  once(event: string, handler: (payload: unknown) => void): void;
   emit(event: string, payload?: unknown): void;
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
@@ -49,6 +55,15 @@ export class FakeMap implements FakeMapInstance {
 
   on(event: string, handler: (payload: unknown) => void) {
     this.handlers.set(event, handler);
+  }
+
+  once(event: string, handler: (payload: unknown) => void) {
+    const registered = (payload: unknown) => {
+      // Spent by the landing it was registered for, and by nothing else.
+      if (this.handlers.get(event) === registered) this.handlers.delete(event);
+      handler(payload);
+    };
+    this.handlers.set(event, registered);
   }
 
   remove() {}

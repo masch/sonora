@@ -52,7 +52,6 @@ export const en = {
     // The home's Deriva world: the experiences' points over the map.
     world: {
       mapLabel: 'Deriva world',
-      filterLabel: 'Filter experiences by format',
       filterAll: 'All',
       filterTrip: 'Derivas',
       filterTrack: 'Short pieces',
@@ -86,6 +85,7 @@ export const en = {
       archiveInvalid: 'The downloaded map is damaged',
       styleUnavailable: "We couldn't load the map style",
       styleTimeout: 'The map style took too long to load',
+      mapUnavailable: "We couldn't draw the map",
     },
   },
   tabs: {

@@ -67,6 +67,18 @@ const STYLE_POISON = 'https://api.example/media/public/styles/poison.json';
 const ARCHIVE_RETRY = 'https://api.example/media/public/tiles/retry/v1.pmtiles';
 const STYLE_RETRY = 'https://api.example/media/public/styles/retry.json';
 
+// The codes and the retry cases: one archive and one style url each, because the page
+// keeps both registries in memory and a case that reused a url would read an earlier
+// case's download.
+const ARCHIVE_CODE_DOWNLOAD = 'https://api.example/media/public/tiles/code-download/v1.pmtiles';
+const ARCHIVE_CODE_STYLE = 'https://api.example/media/public/tiles/code-style/v1.pmtiles';
+const ARCHIVE_CODE_INVALID = 'https://api.example/media/public/tiles/code-invalid/v1.pmtiles';
+const ARCHIVE_CODE_RETRY = 'https://api.example/media/public/tiles/code-retry/v1.pmtiles';
+const ARCHIVE_CODE_KEEP = 'https://api.example/media/public/tiles/code-keep/v1.pmtiles';
+const STYLE_CODE_STYLE = 'https://api.example/media/public/styles/code-style.json';
+const STYLE_CODE_INVALID = 'https://api.example/media/public/styles/code-invalid.json';
+const STYLE_CODE_KEEP = 'https://api.example/media/public/styles/code-keep.json';
+
 /** The storage key each of the styles above is cached under (see `styleCacheKey`). */
 const KEY_WRITE = 'map_style_cache_29842252';
 const KEY_CACHED = 'map_style_cache_ea9748bb';
@@ -144,7 +156,7 @@ describe('useMapSource', () => {
     const { result } = await renderHook(() => useMapSource(ARCHIVE_ERROR));
 
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.error).toContain('404');
+    expect(result.current.error).toBe('archiveDownloadFailed');
   });
 
   it('does not download twice for the same archive', async () => {
@@ -207,7 +219,7 @@ describe('useMapSource', () => {
 
     currentDownload.resolve({ ok: false, status: 503, statusText: 'Unavailable' });
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.error).toContain('503');
+    expect(result.current.error).toBe('archiveDownloadFailed');
 
     // The abandoned run resolves late: it must not overwrite the current result.
     staleDownload.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(1024) });
@@ -364,9 +376,10 @@ describe('the style the web renderer keeps across a reload', () => {
     const { result } = await renderHook(() => useMapSource(ARCHIVE_NONE, STYLE_NONE));
 
     await waitFor(() => expect(result.current.status).toBe('error'));
-    // The error the network produced, unwrapped: the storage read found nothing, so the
-    // first visit fails exactly as it did before the cache existed.
-    expect(result.current.error).toBe('Network request failed');
+    // The storage read found nothing, so the first visit fails exactly as it did before
+    // the cache existed — and it fails with the code the screen translates, not with the
+    // sentence the request produced.
+    expect(result.current.error).toBe('styleRequestFailed');
     expect(result.current.style).toBeUndefined();
   });
 
@@ -384,7 +397,7 @@ describe('the style the web renderer keeps across a reload', () => {
     expect(result.current.style).toBeUndefined();
     // Nothing drawable was kept, so the failure the walker sees is the one that really
     // happened: the network. The undrawable body never even reaches the drawable check.
-    expect(result.current.error).toBe('Network request failed');
+    expect(result.current.error).toBe('styleRequestFailed');
   });
 
   it('never lets an undrawable 200 replace the document the device already kept', async () => {
@@ -457,5 +470,169 @@ describe('the style the web renderer keeps across a reload', () => {
     const archiveCalls = fetchMock.mock.calls.filter(([url]) => url === ARCHIVE_RAW);
     expect(archiveCalls).toHaveLength(1);
     expect(archiveCalls[0]).toHaveLength(1);
+  });
+});
+
+/**
+ * What a failed run reports: a stable code, never the sentence a request or the
+ * filesystem produced.
+ *
+ * The native renderer already works this way (`ERROR_MESSAGE_KEYS` in
+ * `experience-map.tsx`): the hook names the stage that failed and the view translates it
+ * at the edge, so an English status line from a server is a log entry instead of copy on
+ * a screen a walker reads.
+ */
+describe('the code a failed run reports', () => {
+  beforeEach(() => {
+    mockGetHeader.mockReset().mockResolvedValue({
+      minZoom: 0,
+      maxZoom: 15,
+      minLon: -64.83,
+      minLat: -32.28,
+      maxLon: -64.66,
+      maxLat: -32.12,
+    });
+    mockGetZxy.mockReset();
+  });
+
+  it('reports a failed archive download as a code, not as the response line', async () => {
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_CODE_DOWNLOAD));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('archiveDownloadFailed');
+    // The status line the server answered with is the log's business, not the screen's.
+    expect(result.current.error).not.toContain('404');
+    expect(result.current.error).not.toContain('Not Found');
+  });
+
+  it('names the style as the stage that failed', async () => {
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_CODE_STYLE) return Promise.resolve(archiveResponse());
+      return networkFailure();
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_CODE_STYLE, STYLE_CODE_STYLE));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('styleRequestFailed');
+    // Nothing the network threw is handed over as copy.
+    expect(result.current.error).not.toContain('Network request failed');
+  });
+
+  it('reports a body that is not a drawable style as styleInvalid', async () => {
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_CODE_INVALID) return Promise.resolve(archiveResponse());
+      // No `version`: a document MapLibre cannot draw.
+      if (url === STYLE_CODE_INVALID) {
+        return Promise.resolve(styleResponse({ sources: {}, layers: [{ id: 'land' }] }));
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }) as unknown as typeof fetch;
+
+    const { result } = await renderHook(() =>
+      useMapSource(ARCHIVE_CODE_INVALID, STYLE_CODE_INVALID),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.error).toBe('styleInvalid');
+    expect(result.current.style).toBeUndefined();
+  });
+
+  it('reports a map with no archive configured as archiveMissing', async () => {
+    const { result } = await renderHook(() => useMapSource(undefined));
+
+    expect(result.current).toEqual({ status: 'error', error: 'archiveMissing' });
+  });
+});
+
+/**
+ * A retry, taken the way `use-map-archive-file` takes it: `attempt` identifies the run,
+ * so the failure of the attempt that was given up never answers for the new one, and a
+ * wait that already settled is reused instead of being paid for twice.
+ */
+describe('a retry', () => {
+  beforeEach(() => {
+    mockGetHeader.mockReset().mockResolvedValue({
+      minZoom: 0,
+      maxZoom: 15,
+      minLon: -64.83,
+      minLat: -32.28,
+      maxLon: -64.66,
+      maxLat: -32.12,
+    });
+    mockGetZxy.mockReset();
+  });
+
+  it('restarts the load and reports the run it belongs to', async () => {
+    const retryDownload = deferred<unknown>();
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Unavailable' })
+      .mockReturnValueOnce(retryDownload.promise);
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, rerender } = await renderHook(
+      ({ attempt }: { attempt: number }) => useMapSource(ARCHIVE_CODE_RETRY, undefined, attempt),
+      { initialProps: { attempt: 0 } },
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('archiveDownloadFailed'));
+
+    await rerender({ attempt: 1 });
+
+    // Back into the wait: the failure of the attempt that was given up no longer answers
+    // for the new one, which has not settled yet.
+    expect(result.current.status).toBe('loading');
+
+    await act(async () => {
+      retryDownload.resolve(archiveResponse());
+      await retryDownload.promise;
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(fetchMock.mock.calls.filter(([url]) => url === ARCHIVE_CODE_RETRY)).toHaveLength(2);
+  });
+
+  it('reuses a style that already loaded when the load is restarted', async () => {
+    const style = { version: 8, sources: {}, layers: [{ id: 'water' }] };
+    let downloads = 0;
+    const fetchMock = jest.fn((url: string) => {
+      if (url === STYLE_CODE_KEEP) return Promise.resolve(styleResponse(style));
+      if (url === ARCHIVE_CODE_KEEP) {
+        downloads += 1;
+        return Promise.resolve(
+          downloads === 1
+            ? { ok: false, status: 503, statusText: 'Unavailable' }
+            : archiveResponse(),
+        );
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, rerender } = await renderHook(
+      ({ attempt }: { attempt: number }) =>
+        useMapSource(ARCHIVE_CODE_KEEP, STYLE_CODE_KEEP, attempt),
+      { initialProps: { attempt: 0 } },
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('archiveDownloadFailed'));
+
+    await rerender({ attempt: 1 });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.style).toEqual(style);
+    // One transfer of the style for the whole sequence: the restart drew the document the
+    // first run had already loaded instead of asking for it again.
+    expect(fetchMock.mock.calls.filter(([url]) => url === STYLE_CODE_KEEP)).toHaveLength(1);
+    expect(downloads).toBe(2);
   });
 });

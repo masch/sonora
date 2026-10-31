@@ -1330,6 +1330,55 @@ describe('ExperienceMap (native)', () => {
     // pulled back out by tapping a point.
     expect(mockCameraFlights[0]?.zoom).toBe(closer);
   });
+
+  it('reports the landing of the flight it started', async () => {
+    // The map reports every camera move; the caller opens its card on the one it
+    // asked for, so the flight has to be reported once and only when it ends.
+    const onFocusSettled = jest.fn();
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(false) }}
+        overlays={[document]}
+        focus={{ latitude: -32.212, longitude: -64.738 }}
+        onFocusSettled={onFocusSettled}
+      />,
+    );
+
+    await waitFor(() => expect(mockCameraFlights).toHaveLength(1));
+    // The camera is on its way: nothing has come to rest yet.
+    expect(onFocusSettled).not.toHaveBeenCalled();
+
+    await act(async () => {
+      mockMapProps[0].onRegionDidChange?.();
+    });
+    expect(onFocusSettled).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      mockMapProps[0].onRegionDidChange?.();
+    });
+    // The flight landed once, so it is reported once.
+    expect(onFocusSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports nothing for a camera move the walker made', async () => {
+    const onFocusSettled = jest.fn();
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(false) }}
+        overlays={[document]}
+        onFocusSettled={onFocusSettled}
+      />,
+    );
+
+    await act(async () => {
+      mockMapProps[0].onRegionDidChange?.();
+    });
+
+    // No flight was started, so no move this map made is a landing to report.
+    expect(onFocusSettled).not.toHaveBeenCalled();
+  });
 });
 
 const trip: TripExperience = {

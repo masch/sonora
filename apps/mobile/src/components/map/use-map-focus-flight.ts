@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * The options MapLibre's `flyTo` takes, narrowed to what a flight decides.
@@ -17,6 +17,16 @@ export interface FocusFlightOptions {
 export interface FocusFlightMap {
   flyTo(options: FocusFlightOptions): void;
   getZoom(): number;
+  /**
+   * One report for the next camera move to end, then gone.
+   *
+   * Optional because reporting is not what a flight needs: a map that cannot say
+   * when it came to rest still travels, and the caller's own bound covers the
+   * silence. `once` and not `on`, because a flight is one move — MapLibre reports
+   * every move, the walker's own pan included, and only the requested one is a
+   * landing worth reporting.
+   */
+  once?(event: 'moveend', handler: () => void): void;
 }
 
 /**
@@ -30,6 +40,12 @@ export interface FocusFlightMap {
  *
  * The zoom never drops below `minZoom` (judged against where the map already is,
  * so a closer view is left alone): a point has to land as a place, not as a pixel.
+ *
+ * `onSettled` is called when a flight this hook started comes to rest, which is what
+ * lets a caller sequence UI on the camera rather than on `durationMs`. It is
+ * extended here and not in the renderer because only this effect knows whether a
+ * flight really started: a map that was not ready never asked the camera for
+ * anything, so there is nothing to report.
  */
 export function useMapFocusFlight(
   mapRef: { readonly current: FocusFlightMap | null },
@@ -37,14 +53,54 @@ export function useMapFocusFlight(
   focus: { latitude: number; longitude: number } | null | undefined,
   durationMs: number,
   minZoom: number,
+  onSettled?: () => void,
 ): void {
   const longitude = focus?.longitude;
   const latitude = focus?.latitude;
 
+  /**
+   * Read through a ref: the caller rebuilds the callback on every render, and a new
+   * identity must neither re-register the listener nor fly the camera again.
+   */
+  const onSettledRef = useRef(onSettled);
+  /** A flight this hook started is in the air: the next landing is its own. */
+  const pendingRef = useRef(false);
+
+  useEffect(() => {
+    onSettledRef.current = onSettled;
+  }, [onSettled]);
+
+  // A landing nobody waits for must stay inert: the map is removed with the
+  // component, which drops the listener, and this keeps the moment in between from
+  // reporting a flight the caller had already abandoned.
+  useEffect(
+    () => () => {
+      pendingRef.current = false;
+    },
+    [],
+  );
+
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    if (longitude === undefined || latitude === undefined) return;
+    if (longitude === undefined || latitude === undefined) {
+      // The request was withdrawn before it landed: whatever move ends next is the
+      // walker's, not the flight this hook started.
+      pendingRef.current = false;
+      return;
+    }
+
+    if (map.once) {
+      // Registered before the move, so a flight that ends as soon as it starts still
+      // reports its landing.
+      pendingRef.current = true;
+      map.once('moveend', () => {
+        if (!pendingRef.current) return;
+        pendingRef.current = false;
+        onSettledRef.current?.();
+      });
+    }
+
     map.flyTo({
       center: [longitude, latitude],
       duration: durationMs,

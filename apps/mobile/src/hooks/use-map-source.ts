@@ -4,6 +4,7 @@ import type { StyleSpecification } from 'maplibre-gl';
 import { PMTiles } from 'pmtiles';
 
 import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
+import { logger } from '@/utils/logger';
 
 /**
  * Loads a PMTiles archive **whole** and serves its tiles from memory.
@@ -32,6 +33,37 @@ interface MapLibreWithProtocols {
 
 export type MapSourceStatus = 'loading' | 'ready' | 'error';
 
+/**
+ * Why a run failed, as a stable code.
+ *
+ * The native renderer translates the codes its waits report (`ERROR_MESSAGE_KEYS` in
+ * `experience-map.tsx`), and this is the same kind of answer: the stage that failed, not
+ * the sentence a request or the filesystem produced. The detail stays in the log.
+ */
+export type MapSourceErrorCode =
+  'archiveMissing' | 'archiveDownloadFailed' | 'styleRequestFailed' | 'styleInvalid';
+
+/**
+ * A failure that carries the code the screen translates, and the detail the log keeps.
+ *
+ * `detail` is whatever the request layer produced — the status line of a 404, the error
+ * a browser threw, the body that was not a style — and it never reaches the screen.
+ */
+class MapSourceFailure extends Error {
+  constructor(
+    readonly code: MapSourceErrorCode,
+    readonly detail: unknown,
+  ) {
+    super(code);
+    this.name = 'MapSourceFailure';
+  }
+}
+
+/** The code a failed run reports; a throw that named none is an archive download failure. */
+function failureCode(error: unknown): MapSourceErrorCode {
+  return error instanceof MapSourceFailure ? error.code : 'archiveDownloadFailed';
+}
+
 export interface MapSourceState {
   status: MapSourceStatus;
   /** `sonora://<key>`, ready to be used as a vector source url. */
@@ -48,7 +80,8 @@ export interface MapSourceState {
   style?: StyleSpecification;
   /** Size of the downloaded archive, for the UI and for tests. */
   bytes?: number;
-  error?: string;
+  /** The stable code of a failed run, translated where the screen shows it. */
+  error?: MapSourceErrorCode;
 }
 
 /** One registry per page: the protocol is global to MapLibre, the archives are not. */
@@ -56,6 +89,14 @@ const archives = new Map<string, PMTiles>();
 const sizes = new Map<string, number>();
 /** Keyed by style url: a style has its own version and changes without the archive. */
 const styles = new Map<string, StyleSpecification>();
+/**
+ * Style transfers in flight, keyed by style url.
+ *
+ * A restarted run joins the transfer the page already has instead of starting a second
+ * one: the style that was still arriving when the archive failed is the same document the
+ * new run wants, so restarting the archive must not throw it away.
+ */
+const styleTransfers = new Map<string, Promise<StyleSpecification | undefined>>();
 const headers = new Map<string, { minZoom: number; maxZoom: number; bounds: number[] }>();
 let protocolRegistered = false;
 
@@ -81,24 +122,69 @@ function keyFor(url: string): string {
  */
 async function fetchStyle(url?: string): Promise<StyleSpecification | undefined> {
   if (!url) return undefined;
-  const document = await fetchStyleDocument(url);
+
+  let document: unknown;
+  try {
+    document = await fetchStyleDocument(url);
+  } catch (error) {
+    // The request could not answer: the detail is the log's business and the code is what
+    // the screen translates.
+    throw new MapSourceFailure('styleRequestFailed', error);
+  }
   if (!isDrawableStyle<StyleSpecification>(document)) {
-    throw new Error(`style ${url} is not a drawable document`);
+    throw new MapSourceFailure(
+      'styleInvalid',
+      new Error(`style ${url} is not a drawable document`),
+    );
   }
   return document;
 }
 
 /**
- * Fetches a configured style into the page registry, reusing the cached document.
- * Keyed by url, not by archive: the style can be republished while the archive stays.
+ * The style this run draws: the page's document for `url`, the transfer already in flight
+ * for it, or a fresh one — kept the moment it lands.
+ *
+ * Kept as soon as it resolves rather than when the archive it travels with settles: a
+ * retry after an archive failure then reuses the document that already loaded instead of
+ * paying for the same request twice.
  */
-async function loadStyle(url: string): Promise<StyleSpecification> {
+async function styleFor(url?: string): Promise<StyleSpecification | undefined> {
+  if (!url) return undefined;
   const cached = styles.get(url);
   if (cached) return cached;
-  const style = await fetchStyle(url);
-  if (!style) throw new Error(`style ${url} did not return a document`);
-  styles.set(url, style);
-  return style;
+
+  const inFlight = styleTransfers.get(url);
+  if (inFlight) return inFlight;
+
+  const transfer = fetchStyle(url).then((style) => {
+    if (style) styles.set(url, style);
+    return style;
+  });
+  styleTransfers.set(url, transfer);
+
+  try {
+    return await transfer;
+  } finally {
+    // A newer transfer of the same url may already have replaced this entry.
+    if (styleTransfers.get(url) === transfer) styleTransfers.delete(url);
+  }
+}
+
+/**
+ * One whole download of the archive, as a response or as a coded failure.
+ *
+ * The status line a server answered with is not a sentence for a walker to read, so it
+ * travels in the failure's detail — where the log keeps it — and not in the state.
+ */
+async function downloadArchive(archiveUrl: string): Promise<Response> {
+  const response = await fetch(archiveUrl);
+  if (!response.ok) {
+    throw new MapSourceFailure(
+      'archiveDownloadFailed',
+      new Error(`${response.status} ${response.statusText}`),
+    );
+  }
+  return response;
 }
 
 /**
@@ -107,8 +193,7 @@ async function loadStyle(url: string): Promise<StyleSpecification> {
  */
 async function loadArchive(archiveUrl: string, styleUrl?: string): Promise<MapSourceState> {
   // The style and the archive do not depend on each other: both are requested at once.
-  const [response, style] = await Promise.all([fetch(archiveUrl), fetchStyle(styleUrl)]);
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  const [response, style] = await Promise.all([downloadArchive(archiveUrl), styleFor(styleUrl)]);
 
   const buffer = await response.arrayBuffer();
   const key = keyFor(archiveUrl);
@@ -123,7 +208,6 @@ async function loadArchive(archiveUrl: string, styleUrl?: string): Promise<MapSo
 
   archives.set(key, archive);
   sizes.set(key, buffer.byteLength);
-  if (style && styleUrl) styles.set(styleUrl, style);
   headers.set(key, {
     minZoom: header.minZoom,
     maxZoom: header.maxZoom,
@@ -190,12 +274,21 @@ function readyState(key: string, style?: StyleSpecification): MapSourceState {
  * @param archiveUrl remote url of the `.pmtiles`, or undefined when the map has
  *                   no archive configured yet.
  * @param styleUrl   remote url of the MapLibre style, when one is configured.
+ * @param attempt    which run this is: a retry starts the load over, and a settled result
+ *                   belongs to the run that produced it, never to the run that replaced
+ *                   it. The waits that already settled are reused, so a restart costs
+ *                   only what really has to be asked for again.
  */
-export function useMapSource(archiveUrl: string | undefined, styleUrl?: string): MapSourceState {
+export function useMapSource(
+  archiveUrl: string | undefined,
+  styleUrl?: string,
+  attempt = 0,
+): MapSourceState {
   // The status is derived from the registry, so the effect never has to reset it.
   const [result, setResult] = useState<{
     key: string;
     styleUrl?: string;
+    attempt: number;
     state: MapSourceState;
   } | null>(null);
   const key = archiveUrl ? keyFor(archiveUrl) : null;
@@ -209,27 +302,27 @@ export function useMapSource(archiveUrl: string | undefined, styleUrl?: string):
 
     const fail = (error: unknown) => {
       if (cancelled) return;
-      setResult({
-        key,
-        styleUrl,
-        state: {
-          status: 'error',
-          error: error instanceof Error ? error.message : 'archive download failed',
-        },
-      });
+      const code = failureCode(error);
+      // The detail a request or the filesystem produced stays here; the screen only ever
+      // receives the code, which it translates.
+      logger.warn(
+        `map source failed (${code})`,
+        error instanceof MapSourceFailure ? error.detail : error,
+      );
+      setResult({ key, styleUrl, attempt, state: { status: 'error', error: code } });
     };
 
     if (!archives.has(key)) {
       loadArchive(archiveUrl, styleUrl)
         .then((state) => {
-          if (!cancelled) setResult({ key, styleUrl, state });
+          if (!cancelled) setResult({ key, styleUrl, attempt, state });
         })
         .catch(fail);
     } else if (styleUrl && !styles.has(styleUrl)) {
       // The archive is already in memory; only its new style document is missing.
-      loadStyle(styleUrl)
+      styleFor(styleUrl)
         .then((style) => {
-          if (!cancelled) setResult({ key, styleUrl, state: readyState(key, style) });
+          if (!cancelled) setResult({ key, styleUrl, attempt, state: readyState(key, style) });
         })
         .catch(fail);
     }
@@ -237,13 +330,17 @@ export function useMapSource(archiveUrl: string | undefined, styleUrl?: string):
     return () => {
       cancelled = true;
     };
-  }, [archiveUrl, key, styleUrl]);
+  }, [archiveUrl, key, styleUrl, attempt]);
 
-  if (!key) return { status: 'error', error: 'no archive configured' };
+  if (!key) return { status: 'error', error: 'archiveMissing' };
   const style = styleUrl ? styles.get(styleUrl) : undefined;
   if (archives.has(key) && (!styleUrl || style)) {
     return readyState(key, style);
   }
-  if (result?.key === key && result.styleUrl === styleUrl) return result.state;
+  // A settled result for another archive — or for another attempt of this one — says
+  // nothing about this run.
+  if (result?.key === key && result.styleUrl === styleUrl && result.attempt === attempt) {
+    return result.state;
+  }
   return { status: 'loading' };
 }
