@@ -3,6 +3,8 @@ import { Icon } from '@/components/icon';
 import LoadingView from '@/components/loading-view';
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import {
   DEFAULT_TRACK_IMAGE,
   SONORA_TRACKS_BG,
@@ -109,16 +111,13 @@ export default function ExperiencesScreen({
             {t('experiences.errorLoading')}
           </ThemedText>
 
-          <TwPressable
+          <Button
             onPress={() => loadData()}
-            className="px-6 py-2.5 bg-text rounded-xl active:opacity-75"
-            testID="experiences-retry-button"
+            label={t('experiences.retry')}
             accessibilityLabel={t('experiences.retry')}
-          >
-            <ThemedText themeColor="background" className="font-semibold">
-              {t('experiences.retry')}
-            </ThemedText>
-          </TwPressable>
+            testID="experiences-retry-button"
+            variant="primary"
+          />
         </TwView>
       </ScrollScreenWrapper>
     );
@@ -211,30 +210,22 @@ function ExperiencesContent({
         {!isFormatLocked && showChips && (
           <TwView className="flex-row gap-2 mb-4 justify-center">
             {USER_EXPERIENCE_FORMATS.map((format) => {
-              const isSelected = selectedFormat === format;
               const translationKey = `experiences.types.${format}` as TranslationKeys;
               return (
-                <TwPressable
+                <Chip
                   key={format}
+                  label={t(translationKey)}
+                  selected={selectedFormat === format}
+                  // The format also scopes the theme row below it, so a new format
+                  // starts from the unfiltered list rather than a stale theme.
                   onPress={() => {
                     setSelectedFormat(format);
                     setSelectedTheme('all');
                   }}
-                  className={`px-4 py-1.5 rounded-lg border ${
-                    isSelected
-                      ? 'bg-text border-text'
-                      : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-                  } active:opacity-75`}
                   testID={`type-chip-${format}`}
                   accessibilityLabel={t(translationKey)}
-                >
-                  <ThemedText
-                    themeColor={isSelected ? 'background' : 'text'}
-                    className="text-xs font-bold capitalize"
-                  >
-                    {t(translationKey)}
-                  </ThemedText>
-                </TwPressable>
+                  labelClassName="capitalize"
+                />
               );
             })}
           </TwView>
@@ -274,24 +265,15 @@ function ExperiencesContent({
             {themeOptions.map((theme) => {
               const isSelected = selectedTheme === theme.key;
               return (
-                <TwPressable
+                <Chip
                   key={theme.key}
                   onPress={() => setSelectedTheme(theme.key)}
-                  className={`px-4 py-2 rounded-full border ${
-                    isSelected
-                      ? 'bg-text border-text'
-                      : 'bg-zinc-200/10 dark:bg-zinc-800/10 border-zinc-300/40 dark:border-zinc-700/40'
-                  } active:opacity-75`}
+                  label={t(theme.labelKey)}
+                  selected={isSelected}
+                  shape="pill"
                   accessibilityLabel={t(theme.labelKey)}
                   testID={`category-chip-${theme.key}`}
-                >
-                  <ThemedText
-                    themeColor={isSelected ? 'background' : 'text'}
-                    className="text-xs font-semibold"
-                  >
-                    {t(theme.labelKey)}
-                  </ThemedText>
-                </TwPressable>
+                />
               );
             })}
           </TwScrollView>
