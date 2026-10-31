@@ -53,7 +53,6 @@ export const es = {
     // El mundo Deriva del inicio: los puntos de las experiencias sobre el mapa.
     world: {
       mapLabel: 'Mundo Deriva',
-      filterLabel: 'Filtrar experiencias por formato',
       filterAll: 'Todo',
       filterTrip: 'Derivas',
       filterTrack: 'Relatos',
@@ -87,6 +86,7 @@ export const es = {
       archiveInvalid: 'El mapa descargado está dañado',
       styleUnavailable: 'No pudimos cargar el estilo del mapa',
       styleTimeout: 'El estilo del mapa tardó demasiado',
+      mapUnavailable: 'No pudimos dibujar el mapa',
     },
   },
   tabs: {

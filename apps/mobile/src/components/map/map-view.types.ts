@@ -71,6 +71,16 @@ export interface MapReferencePress {
 /** How long the camera takes to reach a point the caller asked it to focus. */
 export const FOCUS_DURATION_MS = 700;
 
+/**
+ * How long a caller waits for the camera's landing before it reveals anyway.
+ *
+ * The reveal belongs to the camera, never to a clock, but a renderer that never
+ * reports would swallow the tap: this is the bound that turns that silence into a
+ * card. Derived from the flight so the two cannot disagree, and three times it so
+ * it can never race a flight the walker is still watching.
+ */
+export const FOCUS_SETTLE_FALLBACK_MS = FOCUS_DURATION_MS * 3;
+
 /** The closest the focus flight goes: a point has to land as a place, not as a pixel. */
 export const FOCUS_MIN_ZOOM = 15;
 
@@ -110,6 +120,15 @@ export interface ExperienceMapProps {
    * moved.
    */
   focus?: { latitude: number; longitude: number } | null;
+  /**
+   * Reports that a flight the caller asked for finished moving the camera, so the
+   * caller can sequence UI on the camera instead of on a clock.
+   *
+   * Never called for a pan the walker performs, and never twice for one flight: a
+   * caller that reveals something on it is answering the move it requested, not
+   * every move the map makes.
+   */
+  onFocusSettled?: () => void;
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;
@@ -123,4 +142,27 @@ export function documentKeyOfLayer(layerId: string): string | null {
   if (!layerId.startsWith('refs:')) return null;
   const separator = layerId.lastIndexOf(':');
   return separator > 5 ? layerId.slice(5, separator) : null;
+}
+
+/**
+ * Every stable failure code a map can report, from either of its waits or from the
+ * renderer itself. Shared by both renderers, so a failure reads the same on both
+ * platforms and no request-layer prose ever reaches the screen.
+ */
+export type MapLoadErrorCode =
+  'archiveMissing' | 'archiveDownloadFailed' | 'styleRequestFailed' | 'styleInvalid' | 'mapFailed';
+
+/** Which wait a failure belongs to, so a retry restarts that one and not the others. */
+export type MapLoadStage = 'archive' | 'style' | 'map';
+
+export function stageOfFailure(code: MapLoadErrorCode): MapLoadStage {
+  switch (code) {
+    case 'archiveMissing':
+    case 'archiveDownloadFailed':
+      return 'archive';
+    case 'mapFailed':
+      return 'map';
+    default:
+      return 'style';
+  }
 }
