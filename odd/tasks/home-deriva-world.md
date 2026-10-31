@@ -94,6 +94,19 @@ The region is 0.17° × 0.16° and the seeded points sit inside ~0.02° of it, s
 
 **L12** — `lint` failed on the first pass of `use-world-experiences`: a `setState` written synchronously in the effect body to mark the new attempt as loading. The attempt id already answers that question, so the write was removed and the render derives loading from "this run has not settled".
 
+**L13** — the review, end to end: two lineages, four findings, both criticals real.
+
+Lineage `review-25af80b61f5fe026` (3 lenses + refuter) found `R3-001`/`R4-001`: the web flight called `map.flyTo(center, options)`, a signature MapLibre GL JS does not have — it takes one options object — and the test double had been written to match the invented shape, so the suite passed while the camera would never have moved. Fixed in `ca4a538`; the double now takes exactly what the library takes.
+
+Lineage `review-2374faa9e21698fd` found `R3-001`: variant B showed the preview card in the same render that started the flight, so the sheet covered the camera move the variant exists to show. The correction plan was declared **before** editing (60 lines, accepted), the fix separates the flight from the card and opens it when the flight is due to land, and the test the review asked for reproduces RED against the pre-fix file. Fixed in `72406c1`; validated by a targeted validator (`original_criteria: passed`, `correction_regression: passed`, no regressions, full suite 122/1071); acknowledged, authority burned.
+
+Follow-ups worth their own issues, none of them regressions:
+
+- Web only: a flight is skipped while the map is not ready (`use-map-focus-flight.ts:46-48`) but the reveal timer starts at the tap anyway, so on a still-loading web map the card can open before any travel. Variant B's guarantee is weaker on the web renderer than the shared constant suggests.
+- The reveal is time-based, not camera-settled: panning or pinching during the 700 ms still opens the card at the timer. Deliberate (`world-map.tsx:137-149`), recorded so nobody re-derives it.
+- `traveller` is no longer gated on `centerOnSelect`; latent only, since the prop is static per mount.
+- Platform defect, not this feature: correction-scoped bindings (`correction_lines` after the candidate moves, `provider_targeted_validator` always) are rejected by the facade as "missing or stale for current STATUS" because they pin the correction identity while the validator compares the lineage one. Worked around by declaring the plan before editing and by running the validator host-side through `--materialize` + `--input`.
+
 ## Slices
 
 Five commits on `feat/home-deriva-world`, each one reviewable alone:
