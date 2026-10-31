@@ -37,14 +37,12 @@ export type MapCellularPolicy = z.infer<typeof MapCellularPolicySchema>;
  * payload that still carries a legacy field has nowhere to put it, and accepting
  * it silently would mean the client trusts a shape the server no longer serves.
  */
-export const MapRegionPayloadSchema = z
-  .object({
-    bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
-    label: z.string().min(1),
-    archiveUrl: z.string().min(1),
-    archiveBytes: z.number().int().nonnegative(),
-  })
-  .strict();
+export const MapRegionPayloadSchema = z.strictObject({
+  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  label: z.string().min(1),
+  archiveUrl: z.string().min(1),
+  archiveBytes: z.number().int().nonnegative(),
+});
 
 export type MapRegionPayload = z.infer<typeof MapRegionPayloadSchema>;
 
@@ -54,17 +52,15 @@ export type MapRegionPayload = z.infer<typeof MapRegionPayloadSchema>;
  * Every value is a config value (S4): the silent ceiling, the cache budget and
  * the cellular policy are adjustable without a release.
  */
-export const MapDownloadPolicySchema = z
-  .object({
-    /** Regions the app prefetches at startup, named by the server, never guessed. */
-    preload: z.array(z.string().min(1)),
-    /** Ceiling for a silent download, WiFi included. */
-    autoMaxBytes: z.number().positive(),
-    /** Budget the downloaded archives may occupy on the device. */
-    cacheMaxBytes: z.number().positive(),
-    cellular: MapCellularPolicySchema,
-  })
-  .strict();
+export const MapDownloadPolicySchema = z.strictObject({
+  /** Regions the app prefetches at startup, named by the server, never guessed. */
+  preload: z.array(z.string().min(1)),
+  /** Ceiling for a silent download, WiFi included. */
+  autoMaxBytes: z.number().positive(),
+  /** Budget the downloaded archives may occupy on the device. */
+  cacheMaxBytes: z.number().positive(),
+  cellular: MapCellularPolicySchema,
+});
 
 export type MapDownloadPolicy = z.infer<typeof MapDownloadPolicySchema>;
 
@@ -118,17 +114,15 @@ export const MapLayerSelectionSchema = z.object({
  * `layers` is deliberately absent from the wire until the installed base carries
  * this schema, and `apps/api/src/routes/config.ts` strips it for that reason.
  */
-export const MapConfigSchema = z
-  .object({
-    renderer: MapRendererSchema,
-    styleUrl: z.string(),
-    regions: z.record(z.string(), MapRegionPayloadSchema),
-    download: MapDownloadPolicySchema,
-    // `.prefault` is the v4 form of what `.default` did in v3: apply the value and
-    // then parse it, so an omitted `layers` still materializes its own defaults.
-    layers: MapLayerSelectionSchema.prefault({}),
-  })
-  .passthrough();
+export const MapConfigSchema = z.looseObject({
+  renderer: MapRendererSchema,
+  styleUrl: z.string(),
+  regions: z.record(z.string(), MapRegionPayloadSchema),
+  download: MapDownloadPolicySchema,
+  // `.prefault` is the v4 form of what `.default` did in v3: apply the value and
+  // then parse it, so an omitted `layers` still materializes its own defaults.
+  layers: MapLayerSelectionSchema.prefault({}),
+});
 
 export type MapConfig = z.infer<typeof MapConfigSchema>;
 
