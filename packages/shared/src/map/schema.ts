@@ -58,11 +58,10 @@ const httpsUrlSchema = z
  * locale, which is the failure the key-based path already refuses at write time.
  */
 function mapReferenceTextSchema(max: number) {
-  return z
-    .record(z.enum(SUPPORTED_LANGUAGES), z.string().min(1).max(max))
-    .refine((value) => SUPPORTED_LANGUAGES.every((lang) => value[lang] !== undefined), {
-      message: `every supported language must carry a value: ${SUPPORTED_LANGUAGES.join(', ')}`,
-    });
+  // A record keyed by the language enum is exhaustive on its own in zod 4: it iterates
+  // every key and reports the missing one by path (`properties.label.en`), so the
+  // completeness refinement this needed on zod 3 would be unreachable here.
+  return z.record(z.enum(SUPPORTED_LANGUAGES), z.string().min(1).max(max));
 }
 
 const propertiesSchema = z

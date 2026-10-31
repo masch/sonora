@@ -18,12 +18,17 @@ export type { ProblemDetails };
  * @param c The active Hono execution Context.
  * @returns An RFC 7807 JSON Response with status 422 on validation failure, or void on success.
  */
-export function validationHook<T>(
+export function validationHook(
+  // Not generic: the hook never reads `data`, and a generic parameter here made the
+  // schema type fail to flow through `zValidator`, so `c.req.valid()` collapsed to
+  // `unknown` in the routes that destructure it.
   result:
-    | { success: true; data: T }
+    | { success: true; data: unknown }
     | {
         success: false;
-        error: { issues: Array<{ path: (string | number)[]; message: string }> };
+        // `PropertyKey` is what zod 4 reports: an issue path may carry a symbol, and a
+        // narrower type here makes the hook unassignable to `@hono/zod-validator`'s.
+        error: { issues: ReadonlyArray<{ path: PropertyKey[]; message: string }> };
       },
   c: Context,
 ): Response | void {
@@ -44,12 +49,12 @@ export function validationHook<T>(
  * Validates incoming JSON request body against a Zod schema using the canonical
  * problem details validation hook. Inferred types flow automatically to `c.req.valid('json')`.
  */
-export const validateJson = <T extends z.ZodSchema>(schema: T) =>
+export const validateJson = <T extends z.ZodType>(schema: T) =>
   zValidator('json', schema, validationHook);
 
 /**
  * Validates incoming query parameters against a Zod schema using the canonical
  * problem details validation hook. Inferred types flow automatically to `c.req.valid('query')`.
  */
-export const validateQuery = <T extends z.ZodSchema>(schema: T) =>
+export const validateQuery = <T extends z.ZodType>(schema: T) =>
   zValidator('query', schema, validationHook);

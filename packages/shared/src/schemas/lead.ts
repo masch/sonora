@@ -1,8 +1,10 @@
 import { z } from 'zod';
+
+import { required } from './required-message';
 import { LEAD_SOURCES } from '../enums';
 
 export const LeadEmailSchema = z
-  .string({ required_error: 'email is required' })
+  .string(required('email is required'))
   .trim()
   .min(1, 'email is required')
   .max(255, 'email must not exceed 255 characters')
