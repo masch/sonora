@@ -72,8 +72,11 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
-  if (typeof properties.label === 'string') reference.label = properties.label;
+  if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
+  if (typeof properties.descriptionText === 'string') {
+    reference.descriptionText = properties.descriptionText;
+  }
   if (typeof properties.descriptionKey === 'string') {
     reference.descriptionKey = properties.descriptionKey;
   }
@@ -107,7 +110,7 @@ export default function ExperienceMap({
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   /**
    * The experience belongs to no published region: there is no archive to draw, and
    * that is a fact about the place, not a failure to report. `null` is the resolved
@@ -127,6 +130,8 @@ export default function ExperienceMap({
   /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
   const showLabelsRef = useRef(showLabels);
   const translateRef = useRef(t);
+  /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
+  const languageRef = useRef(language);
   const onFeaturePressRef = useRef(onFeaturePress);
 
   const [ready, setReady] = useState(false);
@@ -145,6 +150,10 @@ export default function ExperienceMap({
   useEffect(() => {
     translateRef.current = t;
   }, [t]);
+
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     onFeaturePressRef.current = onFeaturePress;
@@ -172,9 +181,14 @@ export default function ExperienceMap({
 
   /** Draws the current documents. Safe to call on every content or locale change. */
   const applyOverlays = useCallback((map: MapHandle) => {
-    // MapLibre cannot call the translation layer, so keys become text here.
+    // MapLibre cannot call the translation layer, so keys become text here. A
+    // document that carries its own text is read in the active language.
     const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(overlay, (key, options) => translateRef.current(key as never, options)),
+      withResolvedLabels(
+        overlay,
+        (key, options) => translateRef.current(key as never, options),
+        languageRef.current,
+      ),
     );
 
     try {
@@ -315,7 +329,10 @@ export default function ExperienceMap({
     const map = mapRef.current;
     if (!ready || !map) return;
     applyOverlays(map);
-  }, [overlays, ready, showLabels, applyOverlays]);
+    // `language` is an input even though `applyOverlays` reads it through a ref: without
+    // it here, switching the app language leaves every reference in the old one, because
+    // the callback is stable and nothing else in the deps changes.
+  }, [overlays, ready, showLabels, applyOverlays, language]);
 
   /**
    * Applies the selection once the map is drawn, and again whenever it changes.

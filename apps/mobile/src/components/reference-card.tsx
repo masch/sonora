@@ -20,14 +20,15 @@ export interface ReferenceCardProps {
 }
 
 /**
- * Title for the card: the label the map already resolved, otherwise the
- * translation of the key that label came from. A missing translation renders the
- * key itself, so a keyed reference never loses its title.
+ * Title for the card: the text the map already resolved, otherwise the translation
+ * of the key that text came from. A missing translation renders the key itself, so a
+ * keyed reference never loses its title.
  */
 function referenceTitle(reference: MapReferencePress | null, t: AppTFunction): string | undefined {
   if (!reference) return undefined;
   return (
-    reference.label ?? (reference.labelKey ? t(reference.labelKey as TranslationKeys) : undefined)
+    reference.labelText ??
+    (reference.labelKey ? t(reference.labelKey as TranslationKeys) : undefined)
   );
 }
 
@@ -45,9 +46,11 @@ export default function ReferenceCard({ reference, onDismiss }: ReferenceCardPro
   const { t } = useAppTranslation();
 
   const title = referenceTitle(reference, t);
-  const description = reference?.descriptionKey
-    ? t(reference.descriptionKey as TranslationKeys)
-    : undefined;
+  // A self-contained reference carries no key: its description was resolved from the
+  // document, and it is card content just like a keyed one.
+  const description =
+    reference?.descriptionText ??
+    (reference?.descriptionKey ? t(reference.descriptionKey as TranslationKeys) : undefined);
   const linkUrl = reference?.linkUrl;
   const canOpenLink = Boolean(linkUrl && isAllowedHttpsUrl(linkUrl, MAP_LINK_ALLOWED_HOSTS));
 
@@ -55,7 +58,7 @@ export default function ReferenceCard({ reference, onDismiss }: ReferenceCardPro
   // label and nothing else (D8), so a label alone must not open an empty card.
   // An unopenable link cannot fill that card, so `canOpenLink` — not the raw
   // `linkUrl` — is what counts as link content.
-  const hasCardContent = Boolean(reference?.descriptionKey || reference?.imageUrl || canOpenLink);
+  const hasCardContent = Boolean(description || reference?.imageUrl || canOpenLink);
 
   /**
    * Sends the walker to the reference's external page.

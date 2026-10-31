@@ -33,7 +33,7 @@ jest.mock('@/components/ui/bottom-modal', () => {
 
 const reference: MapReferencePress = {
   documentKey: 'referencias',
-  label: 'Centro Umepay',
+  labelText: 'Centro Umepay',
   labelKey: 'map.centroUmepay.title',
   descriptionKey: 'map.centroUmepay.description',
   imageUrl: 'https://api.sonora.example/media/public/reference-images/a.png',
@@ -89,7 +89,7 @@ describe('ReferenceCard', () => {
       <ReferenceCard
         reference={{
           documentKey: 'referencias',
-          label: 'Taller',
+          labelText: 'Taller',
           linkUrl: 'https://evil.example.com/x',
         }}
         onDismiss={jest.fn()}
@@ -109,7 +109,7 @@ describe('ReferenceCard', () => {
       <ReferenceCard
         reference={{
           documentKey: 'referencias',
-          label: 'Taller',
+          labelText: 'Taller',
           linkUrl: 'https://www.instagram.com/sonora.derivapoetica',
         }}
         onDismiss={jest.fn()}
@@ -123,7 +123,7 @@ describe('ReferenceCard', () => {
 
   it('translates the label key when the drawn label is missing', async () => {
     const { getByTestId } = await render(
-      <ReferenceCard reference={{ ...reference, label: undefined }} onDismiss={jest.fn()} />,
+      <ReferenceCard reference={{ ...reference, labelText: undefined }} onDismiss={jest.fn()} />,
     );
 
     expect(getByTestId('modal-title').props.children).toBe('map.centroUmepay.title');
@@ -142,7 +142,7 @@ describe('ReferenceCard', () => {
       <ReferenceCard
         reference={{
           documentKey: 'referencias',
-          label: 'Pt 1',
+          labelText: 'Pt 1',
           labelKey: 'map.point',
         }}
         onDismiss={jest.fn()}

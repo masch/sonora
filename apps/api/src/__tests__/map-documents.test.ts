@@ -123,6 +123,30 @@ describe('POST /map-documents', () => {
     expect(body.errors?.[0].message).toContain('map.references.taller');
   });
 
+  it('publishes a self-contained document without asking for any translation', async () => {
+    // Nothing in the translations table: the document carries its own text.
+    const mockDb = createMockDb({ experiences: [validBody.experienceIds[0]] });
+    setDbClient(mockDb);
+
+    const res = await postDocument({
+      ...validBody,
+      collection: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
+            properties: {
+              label: { es: 'Salón', en: 'Hall' },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(res.status).toBe(201);
+  });
+
   it('stores the document with its bbox and bindings when both locales carry the key', async () => {
     const mockDb = createMockDb({
       translations: ['es:map.references.taller', 'en:map.references.taller'],

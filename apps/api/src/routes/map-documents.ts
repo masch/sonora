@@ -32,8 +32,11 @@ const REQUIRED_TRANSLATION_LANGS = SUPPORTED_LANGUAGES;
 function translationKeysOf(document: MapDocument): string[] {
   const keys = new Set<string>();
   for (const feature of document.collection.features) {
-    keys.add(feature.properties.labelKey);
-    if (feature.properties.descriptionKey) keys.add(feature.properties.descriptionKey);
+    // A self-contained reference carries its own text in every language, so it needs
+    // no row here; a key-based one still must exist in both locales before publishing.
+    const { labelKey, descriptionKey } = feature.properties;
+    if (labelKey !== undefined) keys.add(labelKey);
+    if (descriptionKey !== undefined) keys.add(descriptionKey);
   }
   return [...keys];
 }

@@ -80,7 +80,7 @@ export function buildReferenceStyleLayers(
       source: sourceId,
       filter: forGeometry('Point'),
       layout: {
-        'text-field': ['get', 'label'],
+        'text-field': ['get', 'labelText'],
         'text-font': LABEL_FONT,
         'text-size': 12,
         'text-anchor': anchor,
