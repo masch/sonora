@@ -1,6 +1,7 @@
 import type {
   CameraBoundsStop,
   CameraCenterStop,
+  CameraRef,
   LngLat,
   MapRef,
   PixelPointBounds,
@@ -45,6 +46,7 @@ import { logger } from '@/utils/logger';
 
 import {
   documentKeyOfLayer,
+  FOCUS_DURATION_MS,
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
@@ -519,6 +521,7 @@ export default function ExperienceMap({
   zoom = 14,
   showLabels = true,
   layerSelection,
+  focus,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
@@ -537,6 +540,25 @@ export default function ExperienceMap({
   const archive = useMapArchiveFile(source, archiveAttempt);
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
+  const cameraRef = useRef<CameraRef>(null);
+
+  /**
+   * Travels to the place the caller asked for, and does nothing else.
+   *
+   * The camera stays declarative for its opening frame (`bounds` or `center`), and
+   * this is the one imperative move: a point that was tapped is a destination the
+   * walker chose, so the map follows it instead of being rebuilt around it.
+   */
+  const focusLongitude = focus?.longitude;
+  const focusLatitude = focus?.latitude;
+  useEffect(() => {
+    if (focusLongitude === undefined || focusLatitude === undefined) return;
+    cameraRef.current?.flyTo({
+      center: [focusLongitude, focusLatitude],
+      duration: FOCUS_DURATION_MS,
+      easing: 'fly',
+    });
+  }, [focusLongitude, focusLatitude]);
 
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
@@ -735,7 +757,7 @@ export default function ExperienceMap({
         accessibilityLabel={t('map.mapLabel')}
         testID={`${testID}-map`}
       >
-        <Camera {...camera} />
+        <Camera ref={cameraRef} {...camera} />
       </MapLibreMap>
       {/* One honest line over the reference plane: the map is not broken, this place
           is outside the regions the app publishes. */}

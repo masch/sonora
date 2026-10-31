@@ -83,3 +83,18 @@ Chosen in L7: `Sin "Comprada" en v1` — the payload does not carry ownership, a
 - `MapReferenceGeometry` has no `MultiPoint`, so the world's points are N `Point` features in one document.
 - A tap reports `MapReferencePress`, which carries `documentKey` and texts only; navigation is client-side because `linkUrl` is an external, allowlisted URL by policy.
 - The preview needs a sibling of `ReferenceCard`: that card's only action is an external link and it knows nothing about price or format.
+
+**L9** — the opening frame is the experiences, not the region box (decision taken while building `T2`).
+
+The region is 0.17° × 0.16° and the seeded points sit inside ~0.02° of it, so fitting the region on a 288 px card would put three points on the same pixels. `worldCameraBounds` therefore covers everything drawn — each origin and each trip's stops — widened per axis to `WORLD_MIN_SPAN_DEGREES` (~1.7 km), and falls back to the region box only when there is nothing to draw. "Todo Umepay" is what panning reaches; one frame cannot hold it at a legible scale. The spec's wording is unchanged; this is how it was made honest on a small surface.
+
+**L10** — two defects the commissioned suites caught, both mine, both fixed before the slice closed: the preview card imported `TRACK_IMAGES`/`DEFAULT_TRACK_IMAGE` from `@/data/experiences` (they live in `@/constants/images`), which threw on every render with a selection; and `world-map.tsx` indexed the region catalog with `source.regionKey` after a `=== null` guard that left `undefined` reachable (`tsc` TS2538).
+
+**L11** — the variant switch is a build-time env value, not a remote field: nothing about a rollout depends on which preview shape a build draws, so it grants nothing at runtime and reaches no server. When the shape is decided on a device, the losing branch and its test are deleted.
+
+**L12** — `lint` failed on the first pass of `use-world-experiences`: a `setState` written synchronously in the effect body to mark the new attempt as loading. The attempt id already answers that question, so the write was removed and the render derives loading from "this run has not settled".
+
+## Slices
+
+- `8594633` — shared derivation, press contract, i18n, tests (617 authored lines: `T1`–`T2` plus this document).
+- slice 2 — mobile world map, preview card, camera focus, home slot, five suites (`T3`–`T5`).

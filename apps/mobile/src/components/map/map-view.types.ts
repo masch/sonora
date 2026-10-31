@@ -68,6 +68,12 @@ export interface MapReferencePress {
   linkUrl?: string;
 }
 
+/** How long the camera takes to reach a point the caller asked it to focus. */
+export const FOCUS_DURATION_MS = 700;
+
+/** The closest the focus flight goes: a point has to land as a place, not as a pixel. */
+export const FOCUS_MIN_ZOOM = 15;
+
 export interface ExperienceMapProps {
   source: MapSourceConfig;
   /** Reference documents, already delivered by the experiences payload. */
@@ -95,6 +101,15 @@ export interface ExperienceMapProps {
    * it authored.
    */
   layerSelection?: readonly MapLayerSelection[];
+  /**
+   * A place the caller asked the camera to move to.
+   *
+   * Deliberately not `center`: on both renderers `center` is an input of the map's
+   * creation, so changing it rebuilds the map — a new style, new tiles, a visible
+   * flash — while this only asks the camera to travel. Absent or null means nothing
+   * moved.
+   */
+  focus?: { latitude: number; longitude: number } | null;
   onFeaturePress?: (reference: MapReferencePress) => void;
   testID?: string;
   className?: string;

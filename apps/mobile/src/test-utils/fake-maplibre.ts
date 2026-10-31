@@ -19,6 +19,8 @@ export interface FakeMapInstance {
    * shows up here as `visibility: none` on each layer it owns.
    */
   layoutProperties: { layerId: string; name: string; value: string }[];
+  /** Every camera flight the renderer asked for, in call order. */
+  flights: { center: [number, number]; options?: Record<string, unknown> }[];
   emit(event: string, payload?: unknown): void;
   emitTap(features: { layer: { id: string }; properties: Record<string, unknown> }[]): void;
 }
@@ -32,6 +34,7 @@ export class FakeMap implements FakeMapInstance {
   options: Record<string, unknown>;
   features: { layer: { id: string }; properties: Record<string, unknown> }[] = [];
   layoutProperties: { layerId: string; name: string; value: string }[] = [];
+  flights: { center: [number, number]; options?: Record<string, unknown> }[] = [];
 
   constructor(options: Record<string, unknown>) {
     this.options = options;
@@ -79,6 +82,14 @@ export class FakeMap implements FakeMapInstance {
   }
 
   fitBounds() {}
+
+  flyTo(center: [number, number], options?: Record<string, unknown>) {
+    this.flights.push({ center, options });
+  }
+
+  getZoom() {
+    return 13;
+  }
 
   queryRenderedFeatures() {
     return this.features;
