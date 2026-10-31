@@ -172,6 +172,7 @@ sonora/
 - **[Payment Flow Architecture](docs/payment_flow_architecture.md)** — Detailed sequence flows, Web vs Native redirection logic, SSOT app scheme resolution (`app-identifiers.json`), and Mercado Pago webhook synchronization.
 - **[API Logging Redaction](docs/api_logging_redaction.md)** — How the API sanitizes request/response logging: shared redaction helper, allowlists, and the `ENABLE_API_LOGGING` toggle.
 - **[Map Assets Pipeline](docs/map-assets-pipeline.md)** — How the base-map style reaches a device: the serve-time rewrite, and the `map-assets-fetch` / `api-upload-map-assets-*` / `map-assets-verify` steps that keep the self-hosted glyphs and sprite in the bucket, with when to re-run them and what breaks if one is skipped.
+- **[Map Tiles](docs/map-tiles.md)** — What the published tiles actually carry (measured, per layer), why the map cannot show what OpenStreetMap shows, the three paths to change that with their real cost, and the reproducible planetiler spike that measures the middle one. The fork of the upstream profile that closes the gap, and why it is carried as patches, lives in **[scripts/map-tiles](scripts/map-tiles/README.md)**.
 
 ## API — Feedback Database
 

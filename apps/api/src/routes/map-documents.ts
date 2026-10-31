@@ -2,9 +2,6 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import {
   boundsOfDocuments,
-  DEFAULT_REMOTE_CONFIG,
-  isAllowedHttpsUrl,
-  MAP_LINK_ALLOWED_HOSTS,
   mapDocumentSchema,
   MapDocumentWritePayloadSchema,
   SUPPORTED_LANGUAGES,
@@ -20,6 +17,7 @@ import {
 } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
+import { imageRejectionReason, linkRejectionReason } from '../map-documents/policy';
 import { dbGuard } from '../middleware/db-guard';
 import { ERRORS, created, problem, success } from '../middleware/problem-details';
 import { validateJson } from '../middleware/validation-error';
@@ -32,58 +30,13 @@ const REQUIRED_TRANSLATION_LANGS = SUPPORTED_LANGUAGES;
 function translationKeysOf(document: MapDocument): string[] {
   const keys = new Set<string>();
   for (const feature of document.collection.features) {
-    keys.add(feature.properties.labelKey);
-    if (feature.properties.descriptionKey) keys.add(feature.properties.descriptionKey);
+    // A self-contained reference carries its own text in every language, so it needs
+    // no row here; a key-based one still must exist in both locales before publishing.
+    const { labelKey, descriptionKey } = feature.properties;
+    if (labelKey !== undefined) keys.add(labelKey);
+    if (descriptionKey !== undefined) keys.add(descriptionKey);
   }
   return [...keys];
-}
-
-/** Returns a human-readable reason when a card link may not be published. */
-function linkRejectionReason(document: MapDocument): string | null {
-  const handle = DEFAULT_REMOTE_CONFIG.social?.instagramHandle;
-
-  for (const feature of document.collection.features) {
-    const { linkUrl } = feature.properties;
-    if (!linkUrl) continue;
-
-    if (!isAllowedHttpsUrl(linkUrl, MAP_LINK_ALLOWED_HOSTS)) {
-      return `link host is not allowlisted: ${linkUrl}`;
-    }
-
-    const parsed = new URL(linkUrl);
-    if (
-      handle &&
-      (parsed.hostname === 'instagram.com' || parsed.hostname.endsWith('.instagram.com'))
-    ) {
-      const expected = `/${handle}`;
-      if (parsed.pathname.replace(/\/$/, '') !== expected) {
-        return `instagram links must point to ${expected}`;
-      }
-    }
-  }
-
-  return null;
-}
-
-/** Returns a reason when a card image did not come from our upload endpoint. */
-function imageRejectionReason(document: MapDocument, requestOrigin: string): string | null {
-  for (const feature of document.collection.features) {
-    const { imageUrl } = feature.properties;
-    if (!imageUrl) continue;
-
-    let parsed: URL;
-    try {
-      parsed = new URL(imageUrl);
-    } catch {
-      return `invalid image url: ${imageUrl}`;
-    }
-
-    if (parsed.origin !== requestOrigin || !parsed.pathname.startsWith('/media/public/')) {
-      return `image urls must come from the upload endpoint on this origin: ${imageUrl}`;
-    }
-  }
-
-  return null;
 }
 
 /** GET /map-documents — every stored document with its bindings, for admin. */

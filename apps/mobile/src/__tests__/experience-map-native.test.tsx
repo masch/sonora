@@ -416,7 +416,7 @@ describe('ExperienceMap (native)', () => {
       'refs:umepay:label',
     ]);
     // Labels are resolved before drawing: MapLibre cannot call the translation layer.
-    expect(drawnFeatures('umepay')[0].properties?.label).toBe('map.references.taller');
+    expect(drawnFeatures('umepay')[0].properties?.labelText).toBe('map.references.taller');
   });
 
   it('hands the map the group the view turned off, and nothing else', async () => {
@@ -474,7 +474,7 @@ describe('ExperienceMap (native)', () => {
       'refs:umepay:label',
     ]);
     // Labels are resolved before drawing: MapLibre cannot call the translation layer.
-    expect(drawnFeatures('umepay')[0].properties?.label).toBe('map.references.taller');
+    expect(drawnFeatures('umepay')[0].properties?.labelText).toBe('map.references.taller');
   });
 
   it('draws the base layers as the document wrote them when no group is configured', async () => {
@@ -1170,7 +1170,7 @@ describe('ExperienceMap (native)', () => {
       descriptionKey: 'map.references.taller.description',
       imageUrl: 'https://api.example/media/public/reference-images/taller.jpg',
       linkUrl: 'https://www.instagram.com/sonora.derivapoetica',
-      label: 'map.references.taller',
+      labelText: 'map.references.taller',
     });
 
     await render(
@@ -1188,7 +1188,7 @@ describe('ExperienceMap (native)', () => {
     expect(mockQueryRenderedFeatures).toHaveBeenCalled();
     expect(onFeaturePress).toHaveBeenCalledWith({
       documentKey: 'umepay',
-      label: 'map.references.taller',
+      labelText: 'map.references.taller',
       labelKey: 'map.references.taller',
       descriptionKey: 'map.references.taller.description',
       imageUrl: 'https://api.example/media/public/reference-images/taller.jpg',

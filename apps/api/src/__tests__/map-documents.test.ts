@@ -49,7 +49,7 @@ interface MockOptions {
   bindings?: string[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial drizzle double, as in the sibling suites
+// Partial drizzle double, as in the sibling suites.
 function createMockDb(options: MockOptions = {}): any {
   const inserts: { values: unknown }[] = [];
   const documentRow = {
@@ -121,6 +121,30 @@ describe('POST /map-documents', () => {
     expect(body.code).toBe('VALIDATION_ERROR');
     expect(body.errors?.[0].message).toContain('missing translations');
     expect(body.errors?.[0].message).toContain('map.references.taller');
+  });
+
+  it('publishes a self-contained document without asking for any translation', async () => {
+    // Nothing in the translations table: the document carries its own text.
+    const mockDb = createMockDb({ experiences: [validBody.experienceIds[0]] });
+    setDbClient(mockDb);
+
+    const res = await postDocument({
+      ...validBody,
+      collection: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [-64.738, -32.212] },
+            properties: {
+              label: { es: 'Salón', en: 'Hall' },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(res.status).toBe(201);
   });
 
   it('stores the document with its bbox and bindings when both locales carry the key', async () => {

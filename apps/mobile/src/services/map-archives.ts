@@ -33,6 +33,17 @@ export interface DiskEntry {
   modificationTime?: number;
 }
 
+/** What the payload says one archive should be. */
+export interface ExpectedArchive {
+  /** The file name the payload's identity resolves to. */
+  name: string;
+  /**
+   * The bytes the payload advertises for the region. Absent, or zero, means the
+   * payload priced nothing — the name is then the only evidence there is.
+   */
+  bytes?: number;
+}
+
 /** Extension every archive file carries; the transport scheme belongs to MapLibre. */
 const ARCHIVE_EXTENSION = '.pmtiles';
 
@@ -117,6 +128,34 @@ export function listArchives(entries: readonly DiskEntry[]): StoredArchive[] {
     });
   }
   return archives;
+}
+
+/**
+ * Whether the archive on the device is still the one the payload publishes.
+ *
+ * The file's identity is its name — region, version and origin — and the version is
+ * already in that name, so the name says which artifact this is but nothing about
+ * whether it is still the artifact the server holds now. Staging replaces a published
+ * archive in place: `<region>-<version>-<origin>.pmtiles` keeps its name while the
+ * bytes underneath change, and a check that trusted the name alone left the walker
+ * drawing the artifact the payload had already replaced. The size the payload
+ * advertises is the one signal the device can compare on every mount without reading
+ * the archive, so a file of another size is treated as another archive and fetched
+ * again.
+ *
+ * A payload that names no size — a region the server priced at zero, or a shape this
+ * build does not understand — leaves the name as the whole answer, which is the check
+ * this was before sizes were compared: an archive named right is never downloaded
+ * again for no reason. An absent archive is never current, whatever the payload says.
+ */
+export function isArchiveCurrent(
+  archive: StoredArchive | null | undefined,
+  expected: ExpectedArchive,
+): boolean {
+  if (!archive || archive.name !== expected.name) return false;
+  // Zero bytes is a price nobody gave, not an archive of no content.
+  if (!expected.bytes) return true;
+  return archive.bytes === expected.bytes;
 }
 
 /**

@@ -272,6 +272,7 @@ install: ## Install all workspace dependencies and configure git hooks
 .PHONY: lint
 lint: ## Run linters across workspaces
 	bun --filter @sonora/mobile lint
+	bun --filter @sonora/shared lint
 	bun --filter @sonora/admin lint
 	bun --filter @sonora/api lint
 
@@ -546,10 +547,69 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/$(KEY) --file=$(FILE) --remote
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
+# ── Self-built map tiles: one region in, one archive out ────────
+# The published archive is built here, not downloaded from a third party. One command,
+# one region: the script reads the pinned upstream commit (scripts/map-tiles/upstream.json),
+# checks out that commit (or reuses the checkout already on it), applies
+# scripts/map-tiles/patches/*.patch in filename order, builds the profile jar and runs the
+# tiler over the region's bbox from MAP_REGIONS. Every step goes through one executor, so the
+# first failure ends the run naming the step: a patch that no longer applies never reaches
+# the compiler, and no `set -euo pipefail` has to be pasted by hand.
+#
+# CACHE is where the expensive things live: the checkout in <cache>/basemaps, the region's
+# extract and the ~2.9 GB of auxiliary sources the tiler downloads in
+# <cache>/planetiler/data/sources, and the archive the run writes to
+# <cache>/out/<region>.pmtiles, which the api-upload-map-tiles-* targets below upload. Every
+# download is resumed when interrupted, stopped when it stops delivering, and opened before the
+# tiler reads it. The default is <repo>/.tools/cache — one git-ignored folder, nothing of the
+# build's own living outside the checkout — so the only thing to decide is whether the
+# repository's filesystem has room for ~4 GB:
+#
+#   make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles   # another disk
+#
+# With that directory warm a region builds in ~4 min instead of ~18 min cold, because the next
+# run reuses the checkout and the sources under it.
+
+MAXZOOM ?= 16
+# Empty means the script's default: <repo>/.tools/cache, the one folder .gitignore holds.
+# Set CACHE=<dir> only to keep the ~4 GB of sources somewhere else for a while.
+CACHE ?=
+# The pinned JDK 21 + Maven that `make map-tiles-toolchain` installs, in the same ignored
+# folder. The repository carries the versions and digests; the binaries never enter git.
+TOOLCHAIN ?= $(CURDIR)/.tools/toolchain
+# Empty when the pinned toolchain is absent: the build then runs with whatever the shell
+# already exported, so an inherited JAVA_HOME pointing at a JDK 21 is not overwritten by an
+# empty one. When it is present, both its bin directories go ahead of PATH.
+TOOLCHAIN_ENV = $(if $(wildcard $(TOOLCHAIN)/jdk/bin/java),JAVA_HOME="$(TOOLCHAIN)/jdk" PATH="$(TOOLCHAIN)/jdk/bin:$(TOOLCHAIN)/maven/bin:$$PATH",)
+
+.PHONY: map-tiles-toolchain
+map-tiles-toolchain: ## Install the pinned JDK 21 + Maven outside the repo (Adoptium + Apache, digest-checked). Usage: make map-tiles-toolchain [TOOLCHAIN=<dir>]
+	bun scripts/map-tiles/toolchain.ts $(if $(TOOLCHAIN),--root="$(TOOLCHAIN)",)
+
+.PHONY: map-tiles-render-check
+map-tiles-render-check: ## Render a built archive with the repo style in headless Chromium and report the labels it draws. Usage: make map-tiles-render-check ARCHIVE=<cache>/out/<region>.pmtiles [EXPECT="Bosque Umepay"]
+	bun scripts/map-tiles/render-check.ts --archive="$(ARCHIVE)" $(if $(EXPECT),--expect="$(EXPECT)",)
+
+# Pre-seeds every source the tiler reads — resumed, size-checked and verified — so a build that
+# follows finds them on disk and planetiler downloads nothing of its own.
+.PHONY: map-tiles-fetch-sources
+map-tiles-fetch-sources: ## Pre-seed every tiler source (resumed + verified) so a build downloads nothing. Usage: make map-tiles-fetch-sources [REGION=calamuchita] [CACHE=dir]
+	bun scripts/map-tiles/fetch-sources.ts $(if $(REGION),--region="$(REGION)",) $(if $(CACHE),--cache="$(CACHE)",)
+
+.PHONY: map-tiles-build
+map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
+	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
 # client never revalidates. --remote is required: without it wrangler writes to its
 # local Miniflare simulation and the deployed Worker keeps seeing an empty bucket.
+
+# The upload targets run wrangler from apps/api, so a repository-relative path is resolved there
+# and fails *after* the archive is already in the bucket. Both paths are resolved once, against
+# the repository root, and the target refuses to start when either file is missing.
+MAP_ARCHIVE_PATH = $(if $(filter /%,$(ARCHIVE)),$(ARCHIVE),$(CURDIR)/$(ARCHIVE))
+MAP_STYLE_PATH = $(if $(filter /%,$(STYLE)),$(STYLE),$(CURDIR)/$(STYLE))
 
 .PHONY: api-upload-map-tiles-staging
 api-upload-map-tiles-staging: ## Upload a map region archive + style to the staging public bucket. Usage: make api-upload-map-tiles-staging REGION="calamuchita" VERSION="v1" ARCHIVE="path/region-v1.pmtiles" STYLE="path/style-v1.json"
@@ -558,8 +618,11 @@ api-upload-map-tiles-staging: ## Upload a map region archive + style to the stag
 		echo "  make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
 		exit 1; \
 	fi
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote
+	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
+		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
+	done
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the staging public bucket"
 
 .PHONY: api-upload-map-tiles-production
@@ -569,8 +632,11 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 		echo "  make api-upload-map-tiles-production REGION=calamuchita VERSION=v1 ARCHIVE=path/region-v1.pmtiles STYLE=path/style-v1.json"; \
 		exit 1; \
 	fi
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file=$(ARCHIVE) --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
-	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file=$(STYLE) --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
+	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
+		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
+	done
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
+	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
 
 # ── Self-hosted map assets: glyphs + sprite (public bucket) ────
@@ -620,7 +686,7 @@ api-upload-map-assets-staging: ## Upload self-hosted map glyphs + sprite to the 
 			*.json) TYPE=application/json ;; \
 			*.png) TYPE=image/png ;; \
 		esac; \
-		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-staging-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=31536000, immutable" --config wrangler.staging.toml --remote); \
+		(cd $(API_DIR) && bunx wrangler r2 object put "sonora-staging-public-audio/$$FILE" --file="$$ASSETS/$$FILE" --content-type="$$TYPE" --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote); \
 	done; \
 	echo "Uploaded the glyphs and the sprite to the staging public bucket"
 
@@ -678,6 +744,15 @@ ORIGIN ?=
 .PHONY: map-assets-fetch
 map-assets-fetch: ## Download the glyphs + sprite the style names into $(MAP_ASSETS_DIR) (uploads nothing). [STYLE_URL=url|path] [MAP_ASSETS_DIR=path] [FORCE=1]
 	bun run scripts/map-assets.ts fetch --style="$(STYLE_URL)" --out="$(MAP_ASSETS_DIR)" $(if $(FORCE),--force,)
+
+# The upstream sheet has no lodging glyph, so the sprite we publish is the fetched one plus
+# this repository's own two icons. It is a separate step on purpose: `fetch` stays a mirror
+# of the pinned revision, and what we add to it is ours and testable on its own. Run it
+# after `fetch`, before uploading, and `--check` (`ICONS_CHECK=1`) to confirm what is on disk.
+
+.PHONY: map-assets-icons
+map-assets-icons: ## Append this repository's own sprite icons to the fetched sheet, 1x and 2x. Usage: make map-assets-icons [MAP_ASSETS_DIR=./map-assets] [ICONS_CHECK=1]
+	bun scripts/map-sprites/extend.ts --dir="$(MAP_ASSETS_DIR)/sprites" $(if $(ICONS_CHECK),--check,)
 
 .PHONY: map-assets-verify
 map-assets-verify: ## Probe the public glyphs + sprite urls the style requests; names what is missing. [STYLE_URL=url|path] [ORIGIN=url]

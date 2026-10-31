@@ -1,0 +1,26 @@
+diff -ruN a/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java b/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java	2026-10-30 14:20:14.964559103 -0300
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Pois.java	2026-10-30 14:20:14.965798389 -0300
+@@ -70,12 +70,17 @@
+     return rounded >= Integer.MIN_VALUE && rounded <= Integer.MAX_VALUE ? (int) rounded : null;
+   }
+ 
+-  // Small amenities a walker expects to see even when they are mapped as an unnamed area. Upstream
+-  // drops every POI that is neither a point nor a named polygon, which loses `amenity=toilets`
+-  // drawn as a small building — common in parks and campings. Only kinds the sprite can draw:
+-  // `toilets`, `drinking_water` and `bench` have icons, `shelter` and `picnic_site` do not.
++  // Places a walker expects to see even when they are mapped as an unnamed area. Upstream drops
++  // every POI that is neither a point nor a named polygon, which loses `amenity=toilets` drawn as
++  // a small building and, worse for a map of places to sleep, a `tourism=guest_house` drawn as the
++  // cabin it is: seven of them sit next to the Salón in Calamuchita, unnamed, and reached no tile.
++  // Only kinds the sprite can draw: `toilets`, `drinking_water`, `bench`, and the lodging kinds the
++  // style maps onto this repository's own `lodging` and `camping` icons. `shelter` and
++  // `picnic_site` have no icon and stay out.
+   private static final java.util.Set<String> AREA_POI_KINDS = java.util.Set.of(
+-    "toilets", "drinking_water", "bench"
++    "toilets", "drinking_water", "bench",
++    "guest_house", "hotel", "hostel", "chalet", "apartment", "motel", "bed_and_breakfast",
++    "camp_site", "caravan_site", "alpine_hut", "wilderness_hut"
+   );
+ 
+   private static final Expression WITH_OPERATOR_USFS = with("operator", "United States Forest Service",

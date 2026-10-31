@@ -93,6 +93,7 @@ describe('ExperienceMap (web)', () => {
   it('points MapLibre at the worker published by the build', async () => {
     // The metro web build does not emit MapLibre's worker; without this URL the map
     // dies on load with "Worker failed to load" (L37).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- a jest.mock factory cannot read an import
     const { mockSetWorkerUrl } = require('@/test-utils/fake-maplibre') as {
       mockSetWorkerUrl: jest.Mock;
     };
