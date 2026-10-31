@@ -150,11 +150,7 @@ export function documentKeyOfLayer(layerId: string): string | null {
  * platforms and no request-layer prose ever reaches the screen.
  */
 export type MapLoadErrorCode =
-  | 'archiveMissing'
-  | 'archiveDownloadFailed'
-  | 'styleRequestFailed'
-  | 'styleInvalid'
-  | 'mapFailed';
+  'archiveMissing' | 'archiveDownloadFailed' | 'styleRequestFailed' | 'styleInvalid' | 'mapFailed';
 
 /** Which wait a failure belongs to, so a retry restarts that one and not the others. */
 export type MapLoadStage = 'archive' | 'style' | 'map';

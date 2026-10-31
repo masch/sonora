@@ -32,11 +32,7 @@ import {
   type MapReferencePress,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
-import {
-  useWebMapInstance,
-  type MapHandle,
-  type RenderedFeature,
-} from './use-web-map-instance';
+import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
 /** No selection at all: no group is declared, so the style draws what it authored. */
 const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
