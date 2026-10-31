@@ -19,15 +19,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  boundsOfDocuments,
-  imageRejectionReason,
-  linkRejectionReason,
-  logger,
-  type MapDocument,
-} from '@sonora/shared';
+import { boundsOfDocuments, logger, type MapDocument } from '@sonora/shared';
 import { eq } from 'drizzle-orm';
 
+import { imageRejectionReason, linkRejectionReason } from '../map-documents/policy';
 import { deriveDocument, type DocumentMetadata } from '../scripts/publish-map-document';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 

@@ -2,8 +2,6 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import {
   boundsOfDocuments,
-  imageRejectionReason,
-  linkRejectionReason,
   mapDocumentSchema,
   MapDocumentWritePayloadSchema,
   SUPPORTED_LANGUAGES,
@@ -19,6 +17,7 @@ import {
 } from '../db/schema';
 import type { Env, Variables } from '../index';
 import { adminAuthGuard } from '../middleware/admin-auth-guard';
+import { imageRejectionReason, linkRejectionReason } from '../map-documents/policy';
 import { dbGuard } from '../middleware/db-guard';
 import { ERRORS, created, problem, success } from '../middleware/problem-details';
 import { validateJson } from '../middleware/validation-error';

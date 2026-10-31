@@ -1,15 +1,22 @@
-import { DEFAULT_REMOTE_CONFIG } from '../schemas/config';
-
-import type { MapDocument } from './document';
-import { isAllowedHttpsUrl, MAP_LINK_ALLOWED_HOSTS } from './links';
+import {
+  DEFAULT_REMOTE_CONFIG,
+  isAllowedHttpsUrl,
+  MAP_LINK_ALLOWED_HOSTS,
+  type MapDocument,
+} from '@sonora/shared';
 
 /**
  * The rules a reference document must pass before it is stored.
  *
- * They live here, not in the write route, because there are two write paths: the admin
- * endpoint and the staging seed. A rule that only one of them applies is a rule with a
- * hole — a document the API rejects would be seeded happily, and the two paths would
- * disagree about what a publishable reference is.
+ * They live here, not inside the write route, because there are two write paths: the
+ * admin endpoint and the staging seed. A rule that only one of them applies is a rule
+ * with a hole — a document the API rejects would be seeded happily, and the two paths
+ * would disagree about what a publishable reference is.
+ *
+ * Deliberately not in `@sonora/shared`: nothing outside this app calls these. The shared
+ * package keeps the rule's *data* (`MAP_LINK_ALLOWED_HOSTS`, `isAllowedHttpsUrl`), which
+ * the client needs to decide whether to render a card button; the write-side verdict is
+ * the server's alone.
  */
 
 /**

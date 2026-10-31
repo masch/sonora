@@ -6,7 +6,6 @@ export * from './labels';
 export * from './layer-groups';
 export * from './itinerary';
 export * from './links';
-export * from './policy';
 export * from './regions';
 export * from './artifacts';
 export * from './map-like';

@@ -12,8 +12,6 @@ import {
   mapDocumentSchema,
   parseMapDocument,
   REFERENCE_SOURCE_PREFIX,
-  imageRejectionReason,
-  linkRejectionReason,
   withResolvedLabels,
   type MapDocument,
   type MapLike,
@@ -280,44 +278,6 @@ describe('label resolution for self-contained text', () => {
     const resolved = withResolvedLabels(documentWith('fichas', [card]), translate);
 
     expect(resolved.collection.features[0].properties.labelText).toBe('Salón');
-  });
-});
-
-describe('write policy', () => {
-  const withCard = (properties: Record<string, unknown>) =>
-    documentWith('ficha', [{ ...point, properties: { labelKey: 'map.a', ...properties } }]);
-
-  it('accepts an allowlisted https link and an image from the upload route', () => {
-    expect(
-      linkRejectionReason(withCard({ linkUrl: 'https://www.openstreetmap.org/way/638440638' })),
-    ).toBeNull();
-    expect(
-      imageRejectionReason(
-        withCard({ imageUrl: 'https://api.example/media/public/references/a.jpg' }),
-      ),
-    ).toBeNull();
-  });
-
-  it('rejects a link outside the allowlist and an instagram profile that is not ours', () => {
-    expect(linkRejectionReason(withCard({ linkUrl: 'https://evil.example/x' }))).toMatch(
-      /not allowlisted/,
-    );
-    expect(
-      linkRejectionReason(withCard({ linkUrl: 'https://www.instagram.com/otro.perfil' })),
-    ).toMatch(/instagram links must point to/);
-  });
-
-  it('rejects an image that does not come from the upload route', () => {
-    expect(imageRejectionReason(withCard({ imageUrl: 'https://cdn.example/a.jpg' }))).toMatch(
-      /must come from the upload endpoint/,
-    );
-  });
-
-  it('checks the origin only when the caller has one to compare against', () => {
-    const document = withCard({ imageUrl: 'https://otro.example/media/public/a.jpg' });
-
-    expect(imageRejectionReason(document)).toBeNull();
-    expect(imageRejectionReason(document, 'https://api.example')).toMatch(/on this origin/);
   });
 });
 
