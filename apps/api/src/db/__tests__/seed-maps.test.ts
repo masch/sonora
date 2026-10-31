@@ -51,6 +51,25 @@ describe('loadSeedDocuments', () => {
     expect(() => loadSeedDocuments(dir)).toThrow(/name translation keys/);
   });
 
+  it('refuses a document whose card link the write route would reject', () => {
+    const dir = directoryWith({
+      'enlace-ajeno.geojson': {
+        type: 'FeatureCollection',
+        sonora: { key: 'enlace-ajeno', scope: 'global' },
+        features: [
+          point({
+            label: { es: 'Ajeno', en: 'Foreign' },
+            linkUrl: 'https://evil.example/x',
+          }),
+        ],
+      },
+    });
+
+    expect(() => loadSeedDocuments(dir)).toThrow(
+      /enlace-ajeno\.geojson: link host is not allowlisted/,
+    );
+  });
+
   it('names the file that has no sonora block', () => {
     const dir = directoryWith({
       'sin-meta.geojson': { type: 'FeatureCollection', features: [point({ label: 'Salón' })] },

@@ -19,7 +19,13 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { boundsOfDocuments, logger, type MapDocument } from '@sonora/shared';
+import {
+  boundsOfDocuments,
+  imageRejectionReason,
+  linkRejectionReason,
+  logger,
+  type MapDocument,
+} from '@sonora/shared';
 import { eq } from 'drizzle-orm';
 
 import { deriveDocument, type DocumentMetadata } from '../scripts/publish-map-document';
@@ -64,6 +70,14 @@ export function loadSeedDocuments(dir: string = STAGING_MAPS_DIRECTORY): SeedMap
         `${file}: ${keyBased} reference(s) name translation keys; a seeded map must carry ` +
           'its own text (label/description per language) so it needs no translations table',
       );
+    }
+
+    // The same two rules the write route applies before storing a document. A seeded
+    // map that the endpoint would reject is not publishable content, and the seed is a
+    // second write path, not an exemption from the first one's policy.
+    const rejection = linkRejectionReason(document) ?? imageRejectionReason(document);
+    if (rejection !== null) {
+      throw new Error(`${file}: ${rejection}`);
     }
 
     return {
