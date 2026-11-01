@@ -114,7 +114,7 @@ const stagingTrips: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
-    published: true,
+    published: false,
   },
   {
     id: stagingTripTest2Id,
@@ -134,7 +134,7 @@ const stagingTrips: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'entityRadius',
     radiusMeters: 10,
-    published: true,
+    published: false,
   },
 ];
 
