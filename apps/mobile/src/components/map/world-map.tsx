@@ -6,7 +6,6 @@ import {
   worldCameraBounds,
   worldDocuments,
   type GeoBounds,
-  type TranslateKey,
   type UserExperienceFormat,
 } from '@sonora/shared';
 
@@ -59,7 +58,7 @@ export interface WorldMapProps {
  * the lists already read, so there is no second copy to drift.
  */
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
-  const { t, language } = useAppTranslation();
+  const { t, language, translateKey } = useAppTranslation();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
   /**
@@ -74,17 +73,14 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const [openedSlug, setOpenedSlug] = useState<string | null>(null);
   const requestId = useRef(0);
 
-  /** MapLibre cannot call the translation layer, so labels are resolved before drawing. */
-  const translate = useMemo<TranslateKey>(
-    () => (key, options) => t(key as never, options),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` comes from the newest render; the language is the input
-    [language],
-  );
-
   const visible = useMemo(() => filterWorldExperiences(experiences, format), [experiences, format]);
+  /**
+   * MapLibre cannot call the translation layer, so labels are resolved before drawing.
+   * The adapter is the hook's, which keeps it stable per language.
+   */
   const documents = useMemo(
-    () => worldDocuments(visible, { language, translate }),
-    [visible, language, translate],
+    () => worldDocuments(visible, { language, translate: translateKey }),
+    [visible, language, translateKey],
   );
 
   /**

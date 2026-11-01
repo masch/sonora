@@ -36,13 +36,11 @@ export default function ExperiencePreviewCard({
   experience,
   onDismiss,
 }: ExperiencePreviewCardProps) {
-  const { t } = useAppTranslation();
+  const { t, translateKey } = useAppTranslation();
   const router = useRouter();
 
-  const translate = (key: string, options?: Record<string, unknown>) =>
-    t(key as TranslationKeys, options);
-  const duration = experience ? worldDurationLabel(experience.durationSeconds, translate) : '';
-  const price = experience ? worldPriceLabel(experience, translate) : '';
+  const duration = experience ? worldDurationLabel(experience.durationSeconds, translateKey) : '';
+  const price = experience ? worldPriceLabel(experience, translateKey) : '';
 
   function openExperience() {
     if (!experience) return;

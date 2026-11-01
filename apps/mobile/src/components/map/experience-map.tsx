@@ -22,12 +22,12 @@ import {
   resolveLayerSelection,
   labelAnchorForDocument,
   referenceSourceId,
+  type TranslateKey,
   withResolvedLabels,
   type MapDocument,
   type MapLayerSelection,
   type MapStyleLayer,
   type SupportedLanguage,
-  type TranslateKey,
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
@@ -529,7 +529,7 @@ export default function ExperienceMap({
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
-  const { t, language } = useAppTranslation();
+  const { t, language, translateKey } = useAppTranslation();
   /**
    * The experience belongs to no published region: there is no archive to draw, and
    * that is a fact about the place, not a failure to report. `null` is the resolved
@@ -598,17 +598,9 @@ export default function ExperienceMap({
   const attribution = source.attribution;
 
   /**
-   * The translation layer as the shared style builder takes it. `t` is read from
-   * this render and deliberately left out of the deps: a re-render hands over a
-   * new wrapper, while the language is what changes the text. The identity is
-   * therefore stable until the language changes, and the style with it.
+   * The translation layer as the shared style builder takes it: the hook's adapter,
+   * whose identity is stable until the language changes, and the style with it.
    */
-  const translate = useMemo<TranslateKey>(
-    () => (key, options) => t(key as never, options),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` is taken from the newest render; the language is the input
-    [language],
-  );
-
   const style = useMemo<StyleSpecification | null>(() => {
     // Without a region the reference plane is the whole map: an archive nobody
     // downloaded is not a style to draw, so neither the remote style nor the inline
@@ -618,7 +610,7 @@ export default function ExperienceMap({
         documents: overlays,
         selection: effectiveSelection,
         showLabels,
-        translate,
+        translate: translateKey,
         language,
       });
     }
@@ -628,7 +620,7 @@ export default function ExperienceMap({
       documents: overlays,
       selection: effectiveSelection,
       showLabels,
-      translate,
+      translate: translateKey,
       language,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents and the selection are inputs by content (`documentsKey`, `selectionKey`), not by array identity
@@ -638,7 +630,7 @@ export default function ExperienceMap({
     styleDocument,
     attribution,
     showLabels,
-    translate,
+    translateKey,
     language,
     documentsKey,
     selectionKey,

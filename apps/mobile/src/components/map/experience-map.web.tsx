@@ -87,7 +87,7 @@ export default function ExperienceMap({
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
-  const { t, language } = useAppTranslation();
+  const { t, language, translateKey } = useAppTranslation();
   /**
    * The experience belongs to no published region: there is no archive to draw, and
    * that is a fact about the place, not a failure to report. `null` is the resolved
@@ -112,7 +112,7 @@ export default function ExperienceMap({
   const glyphsAvailableRef = useRef(false);
   /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
   const showLabelsRef = useRef(showLabels);
-  const translateRef = useRef(t);
+  const translateRef = useRef(translateKey);
   /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
   const languageRef = useRef(language);
   const onFeaturePressRef = useRef(onFeaturePress);
@@ -122,8 +122,8 @@ export default function ExperienceMap({
   }, [overlays]);
 
   useEffect(() => {
-    translateRef.current = t;
-  }, [t]);
+    translateRef.current = translateKey;
+  }, [translateKey]);
 
   useEffect(() => {
     languageRef.current = language;
@@ -158,11 +158,7 @@ export default function ExperienceMap({
     // MapLibre cannot call the translation layer, so keys become text here. A
     // document that carries its own text is read in the active language.
     const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(
-        overlay,
-        (key, options) => translateRef.current(key as never, options),
-        languageRef.current,
-      ),
+      withResolvedLabels(overlay, translateRef.current, languageRef.current),
     );
 
     try {
