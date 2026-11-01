@@ -216,6 +216,9 @@ describe('worldCameraBounds', () => {
     expect(bounds.north).toBeGreaterThan(trip.latitude);
     expect(bounds.south).toBeLessThan(far.latitude);
     expect(far.latitude - bounds.south).toBeGreaterThan(bounds.north - trip.latitude);
+    // Sideways the frame reserves more than a dot: a movable label sits beside its point,
+    // and its width — unlike its height — is not bounded by anything the fit can know.
+    expect(far.longitude - bounds.west).toBeGreaterThan(bounds.north - trip.latitude);
   });
 
   it('covers every point that is spread wider than the minimum, axis by axis', () => {

@@ -93,6 +93,9 @@ export function buildReferenceStyleLayers(
           // one below it are not.
           'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
           'text-radial-offset': 0.8,
+          // A title's width is the one extent the fit cannot know, so the label wraps at a
+          // fixed width instead of extending sideways for as long as its words are.
+          'text-max-width': 8,
           // A crowd is a size problem before it is a placement problem: at the wide frame
           // the world opens on, a smaller label fits where a full one would have to move.
           'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 15, 12],

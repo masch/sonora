@@ -360,6 +360,9 @@ describe('reference style layers', () => {
 
     expect(movable?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
     expect(movable?.layout?.['text-radial-offset']).toBe(0.8);
+    // A label that moves to the side sticks out sideways, and its width comes from the
+    // title. Capping it is what keeps the horizontal extent something the fit can size.
+    expect(movable?.layout?.['text-max-width']).toBe(8);
     // Smaller at the wide frame the world opens on, full size once the walker zooms:
     // a crowd of labels is a size problem before it is a placement problem.
     expect(movable?.layout?.['text-size']).toEqual([

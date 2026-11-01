@@ -66,6 +66,18 @@ export const WORLD_MIN_SPAN_DEGREES = 0.015;
 const WORLD_POINT_MARGIN_RATIO = 0.06;
 
 /**
+ * The side margins, which are wider than the top one on purpose.
+ *
+ * A movable label can be placed *beside* its point, and its width comes from the title, so
+ * it is the one thing in the frame whose extent the fit cannot derive. Reserving only the
+ * dot's own margin would let an edge point put a long label past the card's edge, where the
+ * card's clipping cuts it. The label is capped at 8 em by the movable layer's
+ * `text-max-width` and the sides get twice the point margin, which bounds the common case
+ * instead of promising a containment that an unbounded title can always break.
+ */
+const WORLD_SIDE_MARGIN_RATIO = 0.12;
+
+/**
  * The extra room the south edge needs, on top of the point margin.
  *
  * Labels are anchored `top`, which in a map style means the text hangs below its point:
@@ -276,7 +288,7 @@ export function worldCameraBounds(
   // and the camera's own aspect fit already decides what the box becomes on screen.
   const contentWidth = Math.max(east - west, WORLD_MIN_SPAN_DEGREES);
   const contentHeight = Math.max(north - south, WORLD_MIN_SPAN_DEGREES);
-  const sideMargin = contentWidth * WORLD_POINT_MARGIN_RATIO;
+  const sideMargin = contentWidth * WORLD_SIDE_MARGIN_RATIO;
   const northMargin = contentHeight * WORLD_POINT_MARGIN_RATIO;
   const southMargin = contentHeight * (WORLD_POINT_MARGIN_RATIO + WORLD_LABEL_MARGIN_RATIO);
 
