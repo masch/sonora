@@ -31,6 +31,16 @@ export interface ReferenceLayerOptions {
    * corrupted word when both anchor the same way, so they are given opposite sides.
    */
   labelAnchor?: 'top' | 'bottom';
+  /**
+   * Whether a label may try all four sides of its point instead of the one side above.
+   *
+   * A crowded document — three places inside a hamlet — gives its labels one shared
+   * position and MapLibre drops every label it cannot place. A movable label is offered
+   * `top`, `bottom`, `left` and `right` in turn and keeps the first side that is free, so
+   * it moves instead of disappearing. It is not permission to overlap: a label with no
+   * free side is still culled, which is what stops two of them reading as one word.
+   */
+  movableLabels?: boolean;
 }
 
 export function buildReferenceStyleLayers(
@@ -74,6 +84,30 @@ export function buildReferenceStyleLayers(
 
   if (options.includeLabels !== false) {
     const anchor = options.labelAnchor ?? 'top';
+    const movable = options.movableLabels === true;
+    const placement = movable
+      ? {
+          // Four candidate sides, tried in this order. The sides come first because the
+          // world's crowds are vertical — the places of one hamlet sit along the same
+          // road — and a label beside its point is unambiguous where one above it and
+          // one below it are not.
+          'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+          'text-radial-offset': 0.8,
+          // A title's width is the one extent the fit cannot know, so the label wraps at a
+          // fixed width instead of extending sideways for as long as its words are.
+          'text-max-width': 8,
+          // A crowd is a size problem before it is a placement problem: at the wide frame
+          // the world opens on, a smaller label fits where a full one would have to move.
+          'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 15, 12],
+          // Whatever the walker came for is placed first, so it keeps its label when the
+          // last free side is taken.
+          'symbol-sort-key': ['coalesce', ['get', 'sortKey'], 0],
+        }
+      : {
+          'text-anchor': anchor,
+          'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
+          'text-size': 12,
+        };
     layers.push({
       id: `${sourceId}:label`,
       type: 'symbol',
@@ -82,9 +116,7 @@ export function buildReferenceStyleLayers(
       layout: {
         'text-field': ['get', 'labelText'],
         'text-font': LABEL_FONT,
-        'text-size': 12,
-        'text-anchor': anchor,
-        'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
+        ...placement,
         // Culling is the point, not a limitation: with overlap allowed, two labels
         // that land on the same pixel draw on top of each other and read as a
         // corrupted word. A crowded map is expected to drop the loser.

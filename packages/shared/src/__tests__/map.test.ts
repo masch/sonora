@@ -350,6 +350,40 @@ describe('reference style layers', () => {
     expect(labelAnchorForDocument('referencias')).toBe('top');
   });
 
+  it('lets a movable label try all four sides of its point', () => {
+    // Crowded worlds — three experiences a couple of hundred metres apart — lose all
+    // but one label when the only position is "below the point". A movable label
+    // moves around it instead of disappearing.
+    const movable = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, {
+      movableLabels: true,
+    }).find((layer) => layer.id.endsWith(':label'));
+
+    expect(movable?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
+    expect(movable?.layout?.['text-radial-offset']).toBe(0.8);
+    // A label that moves to the side sticks out sideways, and its width comes from the
+    // title. Capping it is what keeps the horizontal extent something the fit can size.
+    expect(movable?.layout?.['text-max-width']).toBe(8);
+    // Smaller at the wide frame the world opens on, full size once the walker zooms:
+    // a crowd of labels is a size problem before it is a placement problem.
+    expect(movable?.layout?.['text-size']).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      13,
+      10,
+      15,
+      12,
+    ]);
+    // The trip is placed first, so the label of the paid experience survives a crowd.
+    expect(movable?.layout?.['symbol-sort-key']).toEqual(['coalesce', ['get', 'sortKey'], 0]);
+    // A fixed anchor and a variable one are mutually exclusive.
+    expect(movable?.layout?.['text-anchor']).toBeUndefined();
+    expect(movable?.layout?.['text-offset']).toBeUndefined();
+    // Still culled when all four sides are taken: that is what keeps two labels from
+    // drawing on top of each other and reading as one corrupted word.
+    expect(movable?.layout?.['text-allow-overlap']).toBe(false);
+  });
+
   it('omits the label layer when the style has no glyphs source', () => {
     const layers = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, {
       includeLabels: false,

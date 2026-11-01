@@ -32,6 +32,18 @@ export const WORLD_POINT_COLORS: Record<UserExperienceFormat, string> = {
 };
 
 /**
+ * Which point's label is placed first when a crowded frame cannot place them all.
+ *
+ * The world opens on a frame wide enough to hold a whole paraje, and places inside one
+ * hamlet land a few dozen pixels apart. A trip is the experience a walker plans a day
+ * around and pays for; a track is one piece they listen to on the way. The trip wins.
+ */
+const WORLD_POINT_SORT_KEYS: Record<UserExperienceFormat, number> = {
+  trip: 0,
+  track: 1,
+};
+
+/**
  * The smallest span the camera opens on, in degrees (~1.7 km of latitude).
  *
  * Published experiences sit a few hundred metres apart, so fitting their own box
@@ -40,6 +52,39 @@ export const WORLD_POINT_COLORS: Record<UserExperienceFormat, string> = {
  * reaches, not what one frame can hold at a legible scale.
  */
 export const WORLD_MIN_SPAN_DEGREES = 0.015;
+
+/**
+ * Room the opening frame leaves around the points it draws, as a fraction of
+ * {@link WORLD_MIN_SPAN_DEGREES}.
+ *
+ * A point is not a pixel: the dot has a radius, and the label hangs *under* the anchor.
+ * A frame fitted to the anchors alone therefore puts the first and the last point of the
+ * world exactly on the edges, where the dot is clipped in half and the southern label —
+ * the one every trip carries — falls outside the card. The margins are ratios of the
+ * span, not pixels, so they hold at any zoom and in either renderer.
+ */
+const WORLD_POINT_MARGIN_RATIO = 0.06;
+
+/**
+ * The side margins, which are wider than the top one on purpose.
+ *
+ * A movable label can be placed *beside* its point, and its width comes from the title, so
+ * it is the one thing in the frame whose extent the fit cannot derive. Reserving only the
+ * dot's own margin would let an edge point put a long label past the card's edge, where the
+ * card's clipping cuts it. The label is capped at 8 em by the movable layer's
+ * `text-max-width` and the sides get twice the point margin, which bounds the common case
+ * instead of promising a containment that an unbounded title can always break.
+ */
+const WORLD_SIDE_MARGIN_RATIO = 0.12;
+
+/**
+ * The extra room the south edge needs, on top of the point margin.
+ *
+ * Labels are anchored `top`, which in a map style means the text hangs below its point:
+ * the southernmost label is the only thing in the frame that grows outwards, and it grows
+ * south. Slightly more than a two-line label at the label's own size.
+ */
+const WORLD_LABEL_MARGIN_RATIO = 0.12;
 
 /** The fields of a published experience the world draws, and nothing else. */
 export interface WorldExperience {
@@ -181,6 +226,7 @@ export function worldDocuments(
         color: colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format],
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
+        sortKey: WORLD_POINT_SORT_KEYS[experience.format],
       },
     };
   });
@@ -240,15 +286,31 @@ export function worldCameraBounds(
   // Each axis takes its own minimum: a box widened to the larger span would throw
   // away the frame's width on a world whose points are far apart north to south,
   // and the camera's own aspect fit already decides what the box becomes on screen.
-  const halfWidth = Math.max(east - west, WORLD_MIN_SPAN_DEGREES) / 2;
-  const halfHeight = Math.max(north - south, WORLD_MIN_SPAN_DEGREES) / 2;
+  const contentWidth = Math.max(east - west, WORLD_MIN_SPAN_DEGREES);
+  const contentHeight = Math.max(north - south, WORLD_MIN_SPAN_DEGREES);
+  const sideMargin = contentWidth * WORLD_SIDE_MARGIN_RATIO;
+  const northMargin = contentHeight * WORLD_POINT_MARGIN_RATIO;
+  const southMargin = contentHeight * (WORLD_POINT_MARGIN_RATIO + WORLD_LABEL_MARGIN_RATIO);
 
   return {
-    west: centerLongitude - halfWidth,
-    east: centerLongitude + halfWidth,
-    south: centerLatitude - halfHeight,
-    north: centerLatitude + halfHeight,
+    west: centerLongitude - contentWidth / 2 - sideMargin,
+    east: centerLongitude + contentWidth / 2 + sideMargin,
+    south: centerLatitude - contentHeight / 2 - southMargin,
+    north: centerLatitude + contentHeight / 2 + northMargin,
   };
+}
+
+/**
+ * Whether this document's labels may move around their point instead of vanishing.
+ *
+ * Only the world's own points ask for it, and they need it: the frame that holds every
+ * published experience also puts the experiences of one hamlet a few dozen pixels apart,
+ * where a fixed "below the point" anchor leaves one label standing and culls the rest.
+ * Every other document keeps its fixed side on purpose — the itinerary anchors opposite a
+ * reference that describes the same place, and a label free to move would meet it again.
+ */
+export function movableLabelsForDocument(documentKey: string): boolean {
+  return documentKey === WORLD_POINTS_DOCUMENT_KEY;
 }
 
 /**

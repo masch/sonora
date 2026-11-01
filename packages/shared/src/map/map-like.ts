@@ -1,5 +1,6 @@
 import type { MapDocument } from './document';
 import { labelAnchorForDocument } from './itinerary';
+import { movableLabelsForDocument } from './world';
 import {
   buildReferenceStyleLayers,
   REFERENCE_SOURCE_PREFIX,
@@ -72,6 +73,7 @@ export function applyMapDocuments(
     for (const layer of buildReferenceStyleLayers(sourceId, {
       ...options,
       labelAnchor: labelAnchorForDocument(document.key),
+      movableLabels: movableLabelsForDocument(document.key),
     })) {
       if (!existingLayers.includes(layer.id)) map.addLayer(layer);
     }
