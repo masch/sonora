@@ -241,16 +241,27 @@ function discardTemporary(temporary: File): void {
  * error, a body that is not a whole archive, a move that cannot land — releases the
  * temporary. An archive of another version is never deleted: it is what the map
  * keeps drawing when the new one cannot be fetched.
+ *
+ * `onProgress` speaks only for a transfer that really happens: a cache hit reports
+ * nothing, because nothing is being waited for, and the first report arrives before
+ * the first byte so a caller can name the wait it is about to pay for.
  */
 export async function ensureArchiveOnDisk({
   archiveUrl,
   identity,
   cacheMaxBytes,
+  onProgress,
 }: {
   archiveUrl: string;
   identity: ArchiveIdentity;
   /** Budget the archives may occupy; absent means the caller does not police it. */
   cacheMaxBytes?: number;
+  /**
+   * Reports a first-time transfer: `null` once it is real and its length is not known,
+   * then the fraction written. A request with no `Content-Length` never reports one, so
+   * the caller's sentence keeps the transfer without a number rather than a lie.
+   */
+  onProgress?: (progress: number | null) => void;
 }): Promise<string> {
   const url = remoteUrl(archiveUrl);
   const directory = new Directory(Paths.document, ARCHIVE_DIRECTORY);
@@ -264,8 +275,35 @@ export async function ensureArchiveOnDisk({
   if (cacheMaxBytes !== undefined) enforceBudget(directory, cacheMaxBytes, archive.name);
 
   const temporary = new File(directory, temporaryName(archive.name));
+  // The transfer starts here, and it is the long wait a walker deserves to see named:
+  // the caller is told before the first byte, not after the first chunk.
+  onProgress?.(null);
+  /**
+   * The transfer options, built only when somebody is watching.
+   *
+   * On the platform, a progress callback is what turns the transfer into a tracked
+   * one: the startup prefetch downloads a region no screen is showing and has nothing
+   * to watch, so it keeps the untracked path it always had instead of paying for
+   * reports nobody reads.
+   */
+  const transferOptions = onProgress
+    ? {
+        onProgress: ({
+          bytesWritten,
+          totalBytes,
+        }: {
+          bytesWritten: number;
+          totalBytes: number;
+        }) => {
+          // A server that declares no length cannot be turned into a percentage: the
+          // transfer still reports, and the number it would show would be invented.
+          if (totalBytes <= 0) return;
+          onProgress(Math.min(1, bytesWritten / totalBytes));
+        },
+      }
+    : undefined;
   try {
-    await File.downloadFileAsync(url, temporary);
+    await File.downloadFileAsync(url, temporary, transferOptions);
     await assertArchive(temporary);
   } catch (error) {
     discardTemporary(temporary);

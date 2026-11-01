@@ -15,6 +15,14 @@ type MapArchiveFileStatus = 'loading' | 'ready' | 'error';
 
 export interface MapArchiveFileState {
   status: MapArchiveFileStatus;
+  /**
+   * The first-time transfer this run is running, while it is running one.
+   *
+   * Absent while the device is only being asked whether it already holds the archive,
+   * which is a check and not a transfer: a view that names this wait would be
+   * announcing a download that may never happen.
+   */
+  download?: { progress: number | null };
   /** `pmtiles://file://…` of the complete archive on disk. */
   uri?: string;
   /** Why the archive could not be resolved, as the code the caller translates. */
@@ -49,6 +57,15 @@ export function useMapArchiveFile(
     attempt: number;
     value: MapArchiveFileState;
   } | null>(null);
+  /**
+   * The transfer this run is paying for, keyed like `settled` so a report from an
+   * abandoned run can never describe the one that replaced it.
+   */
+  const [transfer, setTransfer] = useState<{
+    key: string;
+    attempt: number;
+    progress: number | null;
+  } | null>(null);
   // Memoised because the identity is an object: a fresh one on every render would
   // restart the run the effect just started.
   const identity = useMemo(() => archiveIdentity(archiveUrl, regionKey), [archiveUrl, regionKey]);
@@ -71,7 +88,15 @@ export function useMapArchiveFile(
       setSettled({ key, attempt, value });
     };
 
-    ensureArchiveOnDisk({ archiveUrl, identity, cacheMaxBytes })
+    ensureArchiveOnDisk({
+      archiveUrl,
+      identity,
+      cacheMaxBytes,
+      onProgress: (progress) => {
+        if (cancelled) return;
+        setTransfer({ key, attempt, progress });
+      },
+    })
       .then((uri) => settle({ status: 'ready', uri }))
       .catch((error: unknown) =>
         settle({
@@ -91,5 +116,8 @@ export function useMapArchiveFile(
   // A settled result for another archive — or for another attempt of this one —
   // says nothing about this run.
   if (settled?.key === key && settled.attempt === attempt) return settled.value;
+  if (transfer?.key === key && transfer.attempt === attempt) {
+    return { status: 'loading', download: { progress: transfer.progress } };
+  }
   return { status: 'loading' };
 }
