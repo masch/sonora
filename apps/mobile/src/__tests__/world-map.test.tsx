@@ -295,6 +295,9 @@ describe('WorldMap', () => {
 
     expect(screen.getByTestId('world-map-loading')).toBeTruthy();
     expect(mockMapProps).toHaveLength(0);
+    // The card's surface (`bg-backgroundElement`, the one the map's own pending overlay
+    // paints) is not observable here: `TwView` resolves `className` into a style the
+    // test renderer does not keep. The parity it buys is checked on a device.
     // Nothing to filter yet: the row does not exist, visually or for a screen reader.
     expect(screen.queryByTestId('world-map-filters')).toBeNull();
     expect(screen.queryByLabelText('map.world.filterAll')).toBeNull();

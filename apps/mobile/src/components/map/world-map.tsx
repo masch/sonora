@@ -256,11 +256,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
 
   // The payload has not arrived, so there is no map to draw and nothing to filter: the
   // card waits alone, in the same box the map will take, and it owns the whole message.
+  // The surface is the one the map's own pending overlay paints, so the wait does not
+  // change color halfway through: the walker is watching one card, not two.
   if (status === 'loading') {
     return (
       <TwView
         testID={`${testID}-loading`}
-        className="h-[400px] w-full items-center justify-center rounded-2xl"
+        className="h-[400px] w-full items-center justify-center rounded-2xl bg-backgroundElement"
       >
         <LoadingView message={waitMessage(null, t)} />
       </TwView>

@@ -286,6 +286,7 @@ export async function ensureArchiveOnDisk({
    * to watch, so it keeps the untracked path it always had instead of paying for
    * reports nobody reads.
    */
+  let lastPercent = -1;
   const transferOptions = onProgress
     ? {
         onProgress: ({
@@ -298,7 +299,14 @@ export async function ensureArchiveOnDisk({
           // A server that declares no length cannot be turned into a percentage: the
           // transfer still reports, and the number it would show would be invented.
           if (totalBytes <= 0) return;
-          onProgress(Math.min(1, bytesWritten / totalBytes));
+          const fraction = Math.min(1, bytesWritten / totalBytes);
+          // The card shows a whole percentage and nothing finer, so a report that would
+          // print the same number is a render bought with nothing: one archive emits
+          // hundreds of these and the tree behind it holds a map.
+          const percent = Math.round(fraction * 100);
+          if (percent === lastPercent) return;
+          lastPercent = percent;
+          onProgress(fraction);
         },
       }
     : undefined;
