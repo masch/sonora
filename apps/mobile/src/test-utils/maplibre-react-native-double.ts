@@ -9,15 +9,18 @@
  * the component handed over, so a suite can assert the style, the camera and the
  * press handling without a renderer.
  *
- * Kept narrow on purpose: only the two components and the one ref method this
- * repository actually uses (`MapRef.queryRenderedFeatures`) exist here. Adding a
- * member is a signal that the component started depending on something new.
+ * Kept narrow on purpose: only the two components and the two ref methods this
+ * repository actually uses (`MapRef.queryRenderedFeatures`, `MapRef.getZoom`) plus
+ * the one the camera exposes (`CameraRef.flyTo`) exist here. Adding a member is a
+ * signal that the component started depending on something new.
  *
  * The components live in the sibling `.tsx` module; the types, the recorders and
  * the reset helper live here so that module exports components only.
  */
 
+import type { ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
 import type { ReactNode } from 'react';
+import type { NativeSyntheticEvent } from 'react-native';
 
 /** The slice of a MapLibre style this double inspects. */
 export interface StyleDouble {
@@ -32,6 +35,12 @@ export interface MapDoubleProps {
   accessibilityLabel?: string;
   /** The component's press handler, driven by the test the way the device would. */
   onPress?: (event: { nativeEvent: { point: [number, number]; lngLat: [number, number] } }) => void;
+  /**
+   * The camera's own report that a region change ended: the test fires it the way
+   * the device does, both for a flight the component started and for a pan the
+   * walker made, because the component has to tell the two apart.
+   */
+  onRegionDidChange?: (event: NativeSyntheticEvent<ViewStateChangeEvent>) => void;
   children?: ReactNode;
 }
 
@@ -40,6 +49,28 @@ export interface MapDoubleRef {
     pointOrBounds: unknown,
     options?: { layers?: string[] },
   ) => Promise<{ properties?: Record<string, unknown> | null }[]>;
+  /** The camera's current zoom, as the real map answers it: a promise. */
+  getZoom: () => Promise<number>;
+}
+
+/** The slice of `CameraRef` the component uses. */
+export interface CameraDoubleRef {
+  flyTo: (options: { center: [number, number]; duration?: number; zoom?: number }) => void;
+}
+
+/**
+ * The zoom `getZoom()` answers with.
+ *
+ * A value and not a jest mock, because the component asks for the camera's zoom
+ * *before* it decides where to fly: a suite that wants to prove the floor is applied
+ * has to be able to say "the map is at 12 right now" and then read what was asked
+ * for.
+ */
+export let mockMapZoom = 12;
+
+/** Sets the zoom the next `getZoom()` answers with. */
+export function setMockMapZoom(zoom: number): void {
+  mockMapZoom = zoom;
 }
 
 /**
@@ -51,6 +82,16 @@ export const mockMapProps: MapDoubleProps[] = [];
 
 /** The last `Camera` the component rendered, for the same reason. */
 export const mockCameraProps: Record<string, unknown>[] = [];
+
+/**
+ * Every imperative camera flight, in call order.
+ *
+ * `flyTo` is the one camera move the component makes imperatively, and the options
+ * it receives are the whole decision: a suite asserts `zoom` here to prove the
+ * minimum close-up is applied, which a declarative camera cannot show.
+ */
+export const mockCameraFlights: { center: [number, number]; duration?: number; zoom?: number }[] =
+  [];
 
 /**
  * Every `mapStyle` the map was handed, one per render, oldest first: the recorder
@@ -75,7 +116,9 @@ export const mockQueryRenderedFeatures = jest.fn<
 export function resetMapDouble(): void {
   mockMapProps.length = 0;
   mockCameraProps.length = 0;
+  mockCameraFlights.length = 0;
   mockMapStyles.length = 0;
+  mockMapZoom = 12;
   mockQueryRenderedFeatures.mockReset();
   // Default: nothing drawn is under the press.
   mockQueryRenderedFeatures.mockImplementation(async () => []);

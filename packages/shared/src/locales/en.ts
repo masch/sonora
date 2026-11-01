@@ -49,6 +49,18 @@ export const en = {
       visible: 'Layer visible: {{name}}',
       hidden: 'Layer hidden: {{name}}',
     },
+    // The home's Deriva world: the experiences' points over the map.
+    world: {
+      mapLabel: 'Deriva world',
+      filterAll: 'All',
+      labelDuration: '{{minutes}} min',
+      labelSeconds: '{{seconds}} s',
+      free: 'Free',
+      open: 'Open experience',
+      empty: 'No experiences are published on the map yet',
+      // The map is not empty: the filter is. A sentence about the world would be a lie here.
+      filteredEmpty: 'No experiences of this format are published on the map yet',
+    },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',
     // Not a failure: the place is real, it is simply outside every region we publish.
@@ -73,12 +85,12 @@ export const en = {
       archiveInvalid: 'The downloaded map is damaged',
       styleUnavailable: "We couldn't load the map style",
       styleTimeout: 'The map style took too long to load',
+      mapUnavailable: "We couldn't draw the map",
     },
   },
   tabs: {
     index: 'Home',
     experiences: 'Derivas',
-    poetics: 'Short Stories',
     explore: 'Explore',
     settings: 'Settings',
     messages: 'Messages',
@@ -124,7 +136,7 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Short Stories',
+      track: 'Sonora pause',
       trip: 'Derivas',
     },
     errors: {
@@ -158,9 +170,7 @@ export const en = {
     continueListening: 'Continue listening',
     remainingTime: '{{time}} remaining',
     riverPath: 'River path',
-    exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
-    exploreTracks: 'Sonora pause',
     exploreTracksSub: 'Short stories',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',

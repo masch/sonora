@@ -35,7 +35,7 @@ const stagingTracks: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
-    published: true,
+    published: false,
   },
   {
     id: 'd4a1e6b2-0001-5a7e-9b0c-1d2e3f4a5b6c',
@@ -53,7 +53,7 @@ const stagingTracks: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
-    published: true,
+    published: false,
   },
   {
     id: 'd4a1e6b2-0002-5a7e-9b0c-1d2e3f4a5b6c',
@@ -71,7 +71,7 @@ const stagingTracks: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'entityRadius',
     radiusMeters: 70,
-    published: true,
+    published: false,
   },
   {
     id: 'd4a1e6b2-0003-5a7e-9b0c-1d2e3f4a5b6c',
@@ -89,7 +89,7 @@ const stagingTracks: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'unrestricted',
     radiusMeters: null,
-    published: true,
+    published: false,
   },
 ];
 
@@ -114,7 +114,7 @@ const stagingTrips: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
-    published: true,
+    published: false,
   },
   {
     id: stagingTripTest2Id,
@@ -134,7 +134,7 @@ const stagingTrips: readonly NewExperience[] = [
     geofenceBypassable: false,
     geoMode: 'entityRadius',
     radiusMeters: 10,
-    published: true,
+    published: false,
   },
 ];
 

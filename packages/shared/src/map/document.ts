@@ -44,10 +44,30 @@ export interface MapReferenceProperties {
   linkUrl?: string;
   /** `#rrggbb` override for the reference colour. */
   color?: string;
+  /**
+   * `#rrggbb` for this reference's label, when the colour it is drawn in cannot carry
+   * text.
+   *
+   * A format colour is a *surface*: it is chosen to fill an area or a dot, and the
+   * light ones — the pastel that marks a type on a card — disappear as text over a
+   * pale basemap. The label therefore has its own colour, and it falls back to the
+   * reference's when a caller does not need the distinction.
+   */
+  labelColor?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
+  /**
+   * The experience this reference stands for, when it draws one.
+   *
+   * The world's points are derived from the experiences payload, so the tap has to
+   * name the experience it landed on. It cannot come from the label — the label is
+   * prose the walker reads — and it must not come from the document key, because
+   * every point shares one document. Absent for a reference that is not a place an
+   * experience happens at.
+   */
+  experienceSlug?: string;
   /** Injected at runtime from `label` or `labelKey`, in the active language. */
   labelText?: string;
   /** Injected at runtime from `description` or `descriptionKey`, in that language. */

@@ -1,7 +1,5 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import * as maplibregl from 'maplibre-gl';
-import type { StyleSpecification, VectorSourceSpecification } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -9,15 +7,15 @@ import {
   applyMapDocuments,
   layerSelectionSignature,
   resolveLayerSelection,
-  toLngLatBounds,
   withResolvedLabels,
   type MapDocument,
   type MapLayerSelection,
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
+import MapErrorView from './map-error-view';
 import { ThemedText } from '@/components/themed-text';
-import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+import { useMapSource } from '@/hooks/use-map-source';
 import { applyLayerSelection } from './web-layer-visibility';
 
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -26,41 +24,15 @@ import { logger } from '@/utils/logger';
 
 import {
   documentKeyOfLayer,
+  FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
+  stageOfFailure,
   type ExperienceMapProps,
+  type MapLoadErrorCode,
   type MapReferencePress,
 } from './map-view.types';
-
-// MapLibre runs in a Web Worker that the metro web build does not emit, so the app
-// gets a request for a chunk that is not deployed and the map dies with "Worker
-// failed to load". `scripts/copy-maplibre-worker.mjs` publishes that worker into
-// `public/` at build time and this points MapLibre at it. It runs once per page load.
-maplibregl.setWorkerUrl('/maplibre-gl-worker.js');
-
-interface RenderedFeature {
-  layer: { id: string };
-  properties: Record<string, unknown>;
-}
-
-/** The slice of the MapLibre map this component drives. */
-interface MapHandle {
-  on(event: string, handler: (payload: never) => void): void;
-  remove(): void;
-  getStyle(): { layers?: { id: string }[]; sources?: Record<string, unknown> };
-  getSource(id: string): { setData?: (data: unknown) => void } | undefined;
-  addSource(id: string, value: unknown): void;
-  removeSource(id: string): void;
-  addLayer(layer: unknown): void;
-  removeLayer(id: string): void;
-  /**
-   * Writes one layout property onto one layer that is already drawn.
-   *
-   * This is the whole of how the selector reaches the map: the alternative is a new
-   * style, which re-fetches every tile the archive is already serving.
-   */
-  setLayoutProperty(layerId: string, name: string, value: string): void;
-  fitBounds(bounds: [[number, number], [number, number]], options?: unknown): void;
-  queryRenderedFeatures(point: unknown): RenderedFeature[];
-}
+import { useMapFocusFlight } from './use-map-focus-flight';
+import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
 /** No selection at all: no group is declared, so the style draws what it authored. */
 const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
@@ -73,6 +45,9 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
+  if (typeof properties.experienceSlug === 'string') {
+    reference.experienceSlug = properties.experienceSlug;
+  }
   if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
   if (typeof properties.descriptionText === 'string') {
@@ -94,10 +69,9 @@ function toPressReference(
  * The style comes from the remote config or from the archive; when neither is
  * configured the map draws the reference documents over an empty canvas.
  *
- * The map instance is created once per source and camera. Everything that can
- * change on every render — callbacks, translation, documents — is read through
- * refs, so a re-render never tears the map down: a rebuilt map would re-fetch
- * its style and tiles and fire `load` again, which loops.
+ * The map instance itself lives in `useWebMapInstance`, which creates it once per
+ * source and camera; everything that can change without one — the documents, the
+ * layer selection, the camera's flights — is applied to that instance here.
  */
 export default function ExperienceMap({
   source,
@@ -107,50 +81,49 @@ export default function ExperienceMap({
   zoom = 14,
   showLabels = true,
   layerSelection,
+  focus,
+  onFocusSettled,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
-  const { t, language } = useAppTranslation();
+  const { t, language, translateKey } = useAppTranslation();
   /**
    * The experience belongs to no published region: there is no archive to draw, and
    * that is a fact about the place, not a failure to report. `null` is the resolved
    * answer; an absent key means the caller never resolved one.
    */
   const noRegion = source.regionKey === null;
+  // One counter per wait, so the retry never restarts a wait that did not fail. The hook
+  // takes one run number because the two waits are one load: a restart reuses whatever
+  // the other wait already settled — the archive from the page registry, the style from
+  // the same registry — so the wait that did not fail is not paid for twice.
+  const [archiveAttempt, setArchiveAttempt] = useState(0);
+  const [styleAttempt, setStyleAttempt] = useState(0);
+  /** The map's own build: a failure there is not a wait, so it has a counter of its own. */
+  const [mapAttempt, setMapAttempt] = useState(0);
   // The archive is downloaded whole and its tiles are read from memory: the route
   // that serves the bucket supports no byte ranges.
-  const archive = useMapSource(source.archiveUrl, source.styleUrl);
+  const archive = useMapSource(source.archiveUrl, source.styleUrl, archiveAttempt + styleAttempt);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<MapHandle | null>(null);
-  const cancelledRef = useRef(false);
 
   const overlaysRef = useRef(overlays);
   /** Labels need a glyphs source; a style without one must not get a label layer. */
   const glyphsAvailableRef = useRef(false);
   /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
   const showLabelsRef = useRef(showLabels);
-  const translateRef = useRef(t);
+  const translateRef = useRef(translateKey);
   /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
   const languageRef = useRef(language);
   const onFeaturePressRef = useRef(onFeaturePress);
-
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [centerLng, centerLat] = center;
-  const boundsWest = bounds?.west;
-  const boundsSouth = bounds?.south;
-  const boundsEast = bounds?.east;
-  const boundsNorth = bounds?.north;
 
   useEffect(() => {
     overlaysRef.current = overlays;
   }, [overlays]);
 
   useEffect(() => {
-    translateRef.current = t;
-  }, [t]);
+    translateRef.current = translateKey;
+  }, [translateKey]);
 
   useEffect(() => {
     languageRef.current = language;
@@ -185,11 +158,7 @@ export default function ExperienceMap({
     // MapLibre cannot call the translation layer, so keys become text here. A
     // document that carries its own text is read in the active language.
     const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(
-        overlay,
-        (key, options) => translateRef.current(key as never, options),
-        languageRef.current,
-      ),
+      withResolvedLabels(overlay, translateRef.current, languageRef.current),
     );
 
     try {
@@ -209,122 +178,28 @@ export default function ExperienceMap({
     if (reference) handler(reference);
   }, []);
 
-  useEffect(() => {
-    cancelledRef.current = false;
-
-    function init() {
-      try {
-        if (cancelledRef.current || !containerRef.current) return;
-        if (!noRegion && (archive.status !== 'ready' || !archive.sourceUrl)) return;
-
-        ensureLocalProtocol(maplibregl);
-
-        // With no region the reference plane is the whole map: no basemap is drawn at
-        // all instead of one whose tiles nobody downloaded.
-        let style: StyleSpecification;
-        if (noRegion) {
-          style = { version: 8, sources: {}, layers: [] };
-        } else {
-          const inlineStyle: StyleSpecification = {
-            version: 8,
-            sources: {
-              basemap: {
-                type: 'vector',
-                url: archive.sourceUrl,
-                ...(source.attribution ? { attribution: source.attribution } : {}),
-              },
-            },
-            layers: [],
-          };
-
-          const baseStyle = source.style ?? archive.style ?? inlineStyle;
-
-          // The archive is already in memory: the style points at the local protocol.
-          style = {
-            ...baseStyle,
-            sources: {
-              ...baseStyle.sources,
-              basemap: {
-                ...(baseStyle.sources.basemap as VectorSourceSpecification),
-                type: 'vector',
-                url: archive.sourceUrl,
-              },
-            },
-          };
-        }
-        glyphsAvailableRef.current = Boolean(style.glyphs);
-
-        const map = new maplibregl.Map({
-          container: containerRef.current,
-          style,
-          center: [centerLng, centerLat],
-          zoom,
-          attributionControl: { compact: true },
-        }) as unknown as MapHandle;
-
-        mapRef.current = map;
-
-        map.on('error', ((event: { error?: Error }) => {
-          logger.error('ExperienceMap error:', event.error);
-          setError(event.error?.message ?? 'map error');
-        }) as never);
-
-        map.on('load', (() => {
-          if (cancelledRef.current) return;
-          setReady(true);
-          applyOverlays(map);
-          if (boundsWest !== undefined) {
-            map.fitBounds(
-              toLngLatBounds({
-                west: boundsWest,
-                south: boundsSouth ?? boundsWest,
-                east: boundsEast ?? boundsWest,
-                north: boundsNorth ?? boundsWest,
-              }),
-              { padding: 24 },
-            );
-          }
-        }) as never);
-
-        map.on('click', ((event: { point: unknown }) => {
-          const hit = map
-            .queryRenderedFeatures(event.point)
-            .find((feature) => documentKeyOfLayer(feature.layer.id));
-          if (hit) openReference(hit);
-        }) as never);
-      } catch (err) {
-        logger.error('ExperienceMap init failed:', err);
-        if (!cancelledRef.current) setError(err instanceof Error ? err.message : 'map init failed');
-      }
-    }
-
-    init();
-
-    return () => {
-      cancelledRef.current = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-      // `ready` is not reset: the new map reports its own load, and the overlay
-      // effect already ignores the case where no map exists.
-    };
-  }, [
-    archive.status,
-    archive.sourceUrl,
-    archive.style,
+  const { mapRef, ready, mapErrorCode, setMapErrorCode } = useWebMapInstance({
+    containerRef,
+    source,
+    archive,
     noRegion,
-    source.style,
-    source.styleUrl,
-    source.attribution,
-    centerLng,
-    centerLat,
+    center,
     zoom,
-    boundsWest,
-    boundsSouth,
-    boundsEast,
-    boundsNorth,
+    bounds,
+    attempt: mapAttempt,
+    glyphsAvailableRef,
     applyOverlays,
     openReference,
-  ]);
+  });
+
+  /**
+   * A tapped destination moves the camera, and never rebuilds the map: `center` above
+   * is an input of the map's creation, so a flight is the only honest way to travel.
+   * The landing is reported back through the hook, which is the only place that
+   * knows a flight actually started — a map that is not ready yet travels nowhere
+   * and so has nothing to report.
+   */
+  useMapFocusFlight(mapRef, ready, focus, FOCUS_DURATION_MS, FOCUS_MIN_ZOOM, onFocusSettled);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -333,7 +208,7 @@ export default function ExperienceMap({
     // `language` is an input even though `applyOverlays` reads it through a ref: without
     // it here, switching the app language leaves every reference in the old one, because
     // the callback is stable and nothing else in the deps changes.
-  }, [overlays, ready, showLabels, applyOverlays, language]);
+  }, [overlays, ready, showLabels, applyOverlays, language, mapRef]);
 
   /**
    * Applies the selection once the map is drawn, and again whenever it changes.
@@ -352,24 +227,52 @@ export default function ExperienceMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, selectionKey, applyLayerSelection]);
 
-  if (error || (!noRegion && archive.status === 'error')) {
-    return (
-      <TwView
-        testID={`${testID}-error`}
-        className={`${className} items-center justify-center gap-2 bg-backgroundElement px-4`}
-      >
-        <ThemedText>{t('map.offlineTitle')}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" className="text-center">
-          {archive.error ?? t('map.offlineDescription')}
-        </ThemedText>
-      </TwView>
-    );
+  /**
+   * The failure this renderer would report, if any.
+   *
+   * A point outside every region draws no basemap on purpose, so neither an archive it
+   * never needed nor a style it never draws is a failure there.
+   */
+  const failure: MapLoadErrorCode | undefined =
+    mapErrorCode ??
+    (!noRegion && archive.status === 'error'
+      ? (archive.error ?? 'archiveDownloadFailed')
+      : undefined);
+
+  /** Restarts the wait that failed, and only that one. */
+  const retry = useCallback(() => {
+    if (!failure) return;
+    switch (stageOfFailure(failure)) {
+      case 'archive':
+        setArchiveAttempt((previous) => previous + 1);
+        break;
+      case 'style':
+        setStyleAttempt((previous) => previous + 1);
+        break;
+      case 'map':
+        // Nothing to restart but the map itself: the failure is withdrawn and the build
+        // below runs again.
+        setMapErrorCode(null);
+        setMapAttempt((previous) => previous + 1);
+        break;
+    }
+  }, [failure, setMapErrorCode]);
+
+  if (failure) {
+    return <MapErrorView code={failure} onRetry={retry} testID={testID} className={className} />;
   }
 
   return (
     <TwView testID={testID} className={`${className} relative overflow-hidden`}>
       {!noRegion && archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
-      <div ref={containerRef} className="h-full w-full z-0" />
+      {/* The surface the walker taps: it carries the name a screen reader announces and
+          the hook a test reaches the map through, exactly as the native map does. */}
+      <div
+        ref={containerRef}
+        className="h-full w-full z-0"
+        aria-label={t('map.mapLabel')}
+        data-testid={`${testID}-map`}
+      />
       {/* The same one honest line the native renderer draws over its reference plane. */}
       {noRegion && (
         <ThemedText

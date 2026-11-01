@@ -1,6 +1,7 @@
 import type {
   CameraBoundsStop,
   CameraCenterStop,
+  CameraRef,
   LngLat,
   MapRef,
   PixelPointBounds,
@@ -21,12 +22,12 @@ import {
   resolveLayerSelection,
   labelAnchorForDocument,
   referenceSourceId,
+  type TranslateKey,
   withResolvedLabels,
   type MapDocument,
   type MapLayerSelection,
   type MapStyleLayer,
   type SupportedLanguage,
-  type TranslateKey,
 } from '@sonora/shared';
 
 import LoadingView from '@/components/loading-view';
@@ -45,9 +46,12 @@ import { logger } from '@/utils/logger';
 
 import {
   documentKeyOfLayer,
+  FOCUS_DURATION_MS,
+  FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
 } from './map-view.types';
+import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
@@ -418,6 +422,9 @@ function toPressReference(
   if (!documentKey) return null;
 
   const reference: MapReferencePress = { documentKey };
+  if (typeof properties.experienceSlug === 'string') {
+    reference.experienceSlug = properties.experienceSlug;
+  }
   if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
   if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
   if (typeof properties.descriptionText === 'string') {
@@ -516,11 +523,13 @@ export default function ExperienceMap({
   zoom = 14,
   showLabels = true,
   layerSelection,
+  focus,
+  onFocusSettled,
   onFeaturePress,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
-  const { t, language } = useAppTranslation();
+  const { t, language, translateKey } = useAppTranslation();
   /**
    * The experience belongs to no published region: there is no archive to draw, and
    * that is a fact about the place, not a failure to report. `null` is the resolved
@@ -534,6 +543,22 @@ export default function ExperienceMap({
   const archive = useMapArchiveFile(source, archiveAttempt);
   const remote = useRemoteStyle(source.styleUrl, styleAttempt);
   const mapRef = useRef<MapRef>(null);
+  const cameraRef = useRef<CameraRef>(null);
+  /**
+   * The one imperative camera move, and the landing it reports.
+   *
+   * Both live in `use-native-focus-flight.ts`: the same decision the web renderer
+   * makes, kept in one place per platform rather than inline in a component that is
+   * already the longest in this directory.
+   */
+  const reportLanding = useNativeFocusFlight({
+    focus,
+    mapRef,
+    cameraRef,
+    onSettled: onFocusSettled,
+    durationMs: FOCUS_DURATION_MS,
+    minZoom: FOCUS_MIN_ZOOM,
+  });
 
   const retry = useCallback(() => {
     if (archive.status === 'error') setArchiveAttempt((previous) => previous + 1);
@@ -573,17 +598,9 @@ export default function ExperienceMap({
   const attribution = source.attribution;
 
   /**
-   * The translation layer as the shared style builder takes it. `t` is read from
-   * this render and deliberately left out of the deps: a re-render hands over a
-   * new wrapper, while the language is what changes the text. The identity is
-   * therefore stable until the language changes, and the style with it.
+   * The translation layer as the shared style builder takes it: the hook's adapter,
+   * whose identity is stable until the language changes, and the style with it.
    */
-  const translate = useMemo<TranslateKey>(
-    () => (key, options) => t(key as never, options),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` is taken from the newest render; the language is the input
-    [language],
-  );
-
   const style = useMemo<StyleSpecification | null>(() => {
     // Without a region the reference plane is the whole map: an archive nobody
     // downloaded is not a style to draw, so neither the remote style nor the inline
@@ -593,7 +610,7 @@ export default function ExperienceMap({
         documents: overlays,
         selection: effectiveSelection,
         showLabels,
-        translate,
+        translate: translateKey,
         language,
       });
     }
@@ -603,7 +620,7 @@ export default function ExperienceMap({
       documents: overlays,
       selection: effectiveSelection,
       showLabels,
-      translate,
+      translate: translateKey,
       language,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the documents and the selection are inputs by content (`documentsKey`, `selectionKey`), not by array identity
@@ -613,7 +630,7 @@ export default function ExperienceMap({
     styleDocument,
     attribution,
     showLabels,
-    translate,
+    translateKey,
     language,
     documentsKey,
     selectionKey,
@@ -681,7 +698,7 @@ export default function ExperienceMap({
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {/* Both waits report a code; the sentence is ours and it is translated here,
               so no English text from a request or from the filesystem reaches the screen. */}
-          {failure ? t(ERROR_MESSAGE_KEYS[failure]) : t('map.offlineDescription')}
+          {t(ERROR_MESSAGE_KEYS[failure])}
         </ThemedText>
         {/* Each wait starts over on its own, so the other one is never thrown away. */}
         <Button
@@ -727,12 +744,14 @@ export default function ExperienceMap({
         ref={mapRef}
         mapStyle={style}
         onPress={reportPress}
+        // The only report of a camera landing: the flight's, never the walker's.
+        onRegionDidChange={reportLanding}
         // The label describes the map itself: the loading key would be announced by
         // a screen reader over a map that has already drawn.
         accessibilityLabel={t('map.mapLabel')}
         testID={`${testID}-map`}
       >
-        <Camera {...camera} />
+        <Camera ref={cameraRef} {...camera} />
       </MapLibreMap>
       {/* One honest line over the reference plane: the map is not broken, this place
           is outside the regions the app publishes. */}

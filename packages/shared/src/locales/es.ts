@@ -50,6 +50,18 @@ export const es = {
       visible: 'Capa visible: {{name}}',
       hidden: 'Capa oculta: {{name}}',
     },
+    // El mundo Deriva del inicio: los puntos de las experiencias sobre el mapa.
+    world: {
+      mapLabel: 'Mundo Deriva',
+      filterAll: 'Todo',
+      labelDuration: '{{minutes}} min',
+      labelSeconds: '{{seconds}} s',
+      free: 'Gratis',
+      open: 'Abrir experiencia',
+      empty: 'Todavía no hay experiencias publicadas en el mapa',
+      // El mapa no está vacío: lo está el filtro. Una frase sobre el mundo mentiría acá.
+      filteredEmpty: 'Todavía no hay experiencias de este formato publicadas en el mapa',
+    },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
     // Not a failure: the place is real, it is simply outside every region we publish.
@@ -74,12 +86,12 @@ export const es = {
       archiveInvalid: 'El mapa descargado está dañado',
       styleUnavailable: 'No pudimos cargar el estilo del mapa',
       styleTimeout: 'El estilo del mapa tardó demasiado',
+      mapUnavailable: 'No pudimos dibujar el mapa',
     },
   },
   tabs: {
     index: 'Inicio',
     experiences: 'Derivas',
-    poetics: 'Relatos breves',
     explore: 'Explorar',
     settings: 'Ajustes',
     messages: 'Mensajes',
@@ -125,7 +137,7 @@ export const es = {
       onboarding: 'Introducción',
     },
     types: {
-      track: 'Relatos breves',
+      track: 'Pausa sonora',
       trip: 'Derivas',
     },
     errors: {
@@ -159,9 +171,7 @@ export const es = {
     continueListening: 'Seguir escuchando',
     remainingTime: 'quedan {{time}}',
     riverPath: 'Camino del río',
-    exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Senderos y estaciones',
-    exploreTracks: 'Pausa sonora',
     exploreTracksSub: 'Relatos breves',
     localMessages: 'Mensajes del lugar',
     localMessagesSub: 'Voces de la comunidad',

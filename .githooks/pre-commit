@@ -2,8 +2,6 @@
 
 set -e
 
-_RUN_TS=$(date +%Y-%m-%d_%H-%M-%S)
-
 # 0. Restore expo-env.d.ts if expo-cli trampled it
 _f="apps/mobile/expo-env.d.ts"
 if ! git diff --quiet "$_f" 2>/dev/null; then
@@ -28,12 +26,38 @@ fi
 
 # 2. Run all validation steps (fail-fast on first error)
 
+# One directory per run, created by `mktemp`.
+#
+# The old scheme wrote `/tmp/sonora-precommit-<timestamp>-<name>.log`: predictable, so
+# another local user could pre-create the path as a symlink and the redirection would
+# truncate a file this developer owns. `mktemp -d` creates the directory itself under a
+# name nobody can guess, so nothing can be planted at it — and keeping the step logs
+# inside it is what `make precommit-logs` reads, so grouping a run stays one lookup.
+_RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/sonora-precommit-XXXXXXXX")
+
+# The log a step writes to, inside this run's directory.
+new_log() {
+  printf '%s/%s.log\n' "$_RUN_DIR" "$1"
+}
+
+# The one way a step fails: say why, name the log, and show it.
+#
+# The log path is part of the message and the file is kept, because a failure a developer
+# can only read once, in a terminal they are about to lose, is a failure they cannot work
+# from. Every failing step goes through here, so no step can refuse a commit in silence.
+fail_step() {
+  printf 'FAILED (%s)\n' "$1"
+  printf '  log: %s\n' "$2"
+  cat "$2"
+  exit 1
+}
+
 run_step() {
   NAME=$1
   CMD=$2
   ALLOWED_EXIT=${3:-}
   printf "  ✓ %s... " "$NAME"
-  TMPFILE="/tmp/sonora-precommit-${_RUN_TS}-${NAME}.log"
+  TMPFILE=$(new_log "$NAME")
   if eval "$CMD" > "$TMPFILE" 2>&1; then
     printf "ok\n"
     rm -f "$TMPFILE"
@@ -44,9 +68,7 @@ run_step() {
       cat "$TMPFILE"
       rm -f "$TMPFILE"
     else
-      printf "FAILED (exit %d)\n" "$EXIT_CODE"
-      cat "$TMPFILE"
-      exit 1
+      fail_step "exit $EXIT_CODE" "$TMPFILE"
     fi
   fi
 }
@@ -58,17 +80,48 @@ run_step "doctor-ci" "make doctor-ci"
 
 # expo-doctor is non-blocking (known bun false positives)
 printf "  ✓ expo-doctor... "
-TMPFILE="/tmp/sonora-precommit-${_RUN_TS}-expo-doctor.log"
+TMPFILE=$(new_log expo-doctor)
 if make expo-doctor > "$TMPFILE" 2>&1; then
   printf "ok\n"
-  rm -f "$TMPFILE"
 else
   RESULT=$(grep -oP '\d+/\d+ checks passed' "$TMPFILE" || echo "checks failed")
   printf "%s — non-blocking\n" "$RESULT"
 fi
+rm -f "$TMPFILE"
 
-# gga: 0 = passed/no files, 1 = violations found (blocks commit)
-run_step "gga" "make gga"
+# gga: 0 = passed/no files, 1 = violations found (blocks commit).
+#
+# Its exit code cannot be trusted alone: with STRICT_MODE off, a provider that is
+# unreachable, out of funds or naming a model that no longer exists exits **0** after
+# printing the failure — the gate then reports "ok" having reviewed nothing, which is
+# how several commits passed a review that never ran. Strict mode catches that but
+# also rejects a verdict the model words differently, and this repo's only usable
+# models are the free tiers, which do word it differently. So the failure is detected
+# here instead: a run that says its provider failed is a failed step, whatever it
+# exits with.
+#
+# The status is captured the way `run_step` captures it — an `if`, not a bare command
+# followed by `$?` — because the hook runs under `set -e`: a failing `make gga` aborted
+# the script on the spot, so the provider-failure check below, and the message that tells
+# a developer why their commit was refused, never ran.
+printf "  ✓ %s... " "gga"
+TMPFILE=$(new_log gga)
+if make gga > "$TMPFILE" 2>&1; then
+  GGA_EXIT=0
+else
+  GGA_EXIT=$?
+fi
+if grep -qE 'Provider execution failed|Model unavailable|Insufficient account funds|STRICT MODE: Failing' "$TMPFILE"; then
+  fail_step "provider did not review" "$TMPFILE"
+fi
+if [ "$GGA_EXIT" -ne 0 ]; then
+  fail_step "exit $GGA_EXIT" "$TMPFILE"
+fi
+printf "ok\n"
+rm -f "$TMPFILE"
+
+# The run directory holds only logs kept for a failure; an empty one is noise.
+rmdir "$_RUN_DIR" 2>/dev/null || true
 
 echo "  ✓ All checks passed"
 exit 0

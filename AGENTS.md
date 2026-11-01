@@ -6,19 +6,22 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v56.0.0/> befor
 
 ## 1. Component Patterns
 
-| Pattern               | Description                                                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `ScreenWrapper`       | Outer container for every screen. Renders SafeAreaView + bottom tab inset.                                                           |
-| `ScrollScreenWrapper` | Scrollable variant of ScreenWrapper for content that overflows.                                                                      |
-| `ThemedText`          | Theme-aware `<Text>` replacement. Use `type` prop for variants (`small`, `code`, `link`, etc.) and `themeColor` for semantic colors. |
-| `Icon`                | All icons — wraps `SymbolView` from `expo-symbols`. Never use raw vector-icons directly.                                             |
-| `HintRow`             | Label + value row for hint/helper text below inputs.                                                                                 |
-| `Collapsible`         | Expandable/collapsible section.                                                                                                      |
-| `app-tabs`            | Tab navigator component used by the layout.                                                                                          |
-| `BottomModal`         | Standard bottom-sheet modal. Encapsulates backdrop, keyboard avoidance, and platform-safe insets.                                    |
-| `Button`              | Design system button (`@/components/ui/button`). Supports variants (`primary`, `secondary`, `outline`, `ghost`), sizes, and loading. |
+| Pattern               | Description                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ScreenWrapper`       | Outer container for every screen. Renders SafeAreaView + bottom tab inset.                                                                                                      |
+| `ScrollScreenWrapper` | Scrollable variant of ScreenWrapper for content that overflows.                                                                                                                 |
+| `ThemedText`          | Theme-aware `<Text>` replacement. Use `type` prop for variants (`small`, `code`, `link`, etc.) and `themeColor` for semantic colors.                                            |
+| `Icon`                | All icons — wraps `SymbolView` from `expo-symbols`. Never use raw vector-icons directly.                                                                                        |
+| `HintRow`             | Label + value row for hint/helper text below inputs.                                                                                                                            |
+| `Collapsible`         | Expandable/collapsible section.                                                                                                                                                 |
+| `app-tabs`            | Tab navigator component used by the layout.                                                                                                                                     |
+| `BottomModal`         | Standard bottom-sheet modal. Encapsulates backdrop, keyboard avoidance, and platform-safe insets.                                                                               |
+| `Button`              | Design system button (`@/components/ui/button`). Supports variants (`primary`, `secondary`, `outline`, `ghost`), sizes, and loading.                                            |
+| `Chip`                | Design system chip (`@/components/ui/chip`). A single-select filter toggle: `shape` (`square` for format rows, `pill` for theme rows), `selected`, and its own accessible name. |
 
 - **Button Architecture**: All standalone buttons, triggers, and actions (CTA, submit, cancel, retry, ghost links) MUST use `<Button>` from `@/components/ui/button`. Never build ad-hoc buttons with styled `<TwPressable>`. Reserve `<TwPressable>` strictly for compound interactive surfaces (cards, list items, backdrops).
+- **Chip Architecture**: A single-select filter toggle is a `<Chip>` from `@/components/ui/chip`, never a styled `<TwPressable>`: `Button` fixes its own radius, typography and `accessibilityState`, so a chip cannot be expressed through it without fighting all three. A chip is not a button that leaked: it is the design system's toggle, and its surface lives in that one file.
+- **Primitive boundary**: the modules under `@/components/ui` are the only place allowed to build a single-press surface from `TwPressable` — `Button`, `Chip`, `IconButton` and `BottomModal` already do. Application code outside `ui/` composes the primitives and never reproduces their surface.
 - **Modal Architecture**: Never import `<Modal>` from `react-native`. Use `BottomModal` for all sheet dialogs, prompts, and feedback (handles safe-area insets and keyboard avoidance automatically). Use `<ModalPrimitive>` ONLY for fullscreen or centered dialogs.
 - **Self-Contained Trigger & Modal Encapsulation**: When implementing a standalone action consisting purely of a dedicated trigger button and its modal (such as `<LeadCaptureButton />`), agents MUST encapsulate both into a single self-contained action component. The action component must own its local `visible` state and render its modal. Parent views must not declare redundant `useState(false)` flags or duplicate modal JSX blocks for these standalone actions. Modals driven by multi-source lifecycles (such as automated playback completion hooks, async queue status, or imperative method guard checks) are exempt and remain coordinated by the parent view.
 
