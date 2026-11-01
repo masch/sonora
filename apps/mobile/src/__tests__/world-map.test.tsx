@@ -279,6 +279,17 @@ describe('WorldMap', () => {
     expect(screen.getByLabelText('experiences.types.trip')).toBeTruthy();
     expect(screen.getByLabelText('experiences.types.track')).toBeTruthy();
 
+    // The reading order of the row: everything, then the guided walks, then the short
+    // pieces — a filter row is a reading order, not the format catalogue's order.
+    expect(screen.getAllByRole('button').map((chip) => String(chip.props.testID))).toEqual(
+      expect.arrayContaining(['world-filter-all', 'world-filter-trip', 'world-filter-track']),
+    );
+    const chipOrder = screen
+      .getAllByRole('button')
+      .map((chip) => String(chip.props.testID))
+      .filter((id) => id.startsWith('world-filter-'));
+    expect(chipOrder).toEqual(['world-filter-all', 'world-filter-trip', 'world-filter-track']);
+
     fireEvent.press(screen.getByTestId('world-filter-track'));
 
     await waitFor(() => expect(drawnSlugs()).toEqual([track.slug]));

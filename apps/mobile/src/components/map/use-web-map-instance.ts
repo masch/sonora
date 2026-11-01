@@ -219,7 +219,7 @@ export function useWebMapInstance({
 
         mapRef.current = map;
 
-        collapseAttribution(containerRef.current);
+        foldAttribution(map, containerRef.current);
 
         map.on('error', ((event: { error?: Error }) => {
           logger.error('ExperienceMap error:', event.error);
@@ -294,28 +294,65 @@ export function useWebMapInstance({
 }
 
 /**
- * Folds MapLibre's compact attribution away, the way a drag would.
+ * Keeps MapLibre's compact attribution folded until the walker opens it.
  *
- * MapLibre opens the control when it is added and folds it only on the map's `drag`
- * event — a card-sized map is never dragged, so the credit stays open over the place
- * the walker is reading, and over a point's label. This performs the same two steps
- * that event does (drop the expanded class, mark the element open), so the ⓘ keeps
- * working: pressing it expands the credit again, and a drag still folds it.
+ * MapLibre does not open it when the control is added — it opens it when the **first
+ * attribution arrives**: `_updateAttributions()` adds `compact` and `compact-show` the
+ * moment a source publishes its credit, and folds the control again only on the map's
+ * `drag` event. A card-sized map is never dragged, so the credit stays open over the
+ * place the walker is reading and over a point's label.
  *
- * Tolerant on purpose: the node is a real DOM element in a browser and a bare host
- * node under test, and a map that cannot find the control has nothing to collapse.
+ * Folding it once at creation is too early — the control does not exist yet — so this
+ * folds it wherever the attribution can appear (`styledata`, `sourcedata`) and stops
+ * asking as soon as the walker opens it by hand. That is the same pair of steps the
+ * library's own minimize performs, which is why the ⓘ keeps working.
+ *
+ * Tolerant on purpose: the container is a real DOM element in a browser and a bare host
+ * node under test.
  */
+export function foldAttribution(
+  map: {
+    on: (event: string, handler: () => void) => void;
+  },
+  container: unknown,
+): void {
+  let openedByWalker = false;
+
+  const fold = (): void => {
+    if (!openedByWalker) collapseAttribution(container);
+  };
+
+  // The ⓘ is a `<summary>`: a click on it is the walker asking for the credit, and from
+  // then on the control is theirs.
+  const summary = queryAttribution(container)?.querySelector?.('summary');
+  summary?.addEventListener?.('click', () => {
+    openedByWalker = true;
+  });
+
+  map.on('styledata', fold);
+  map.on('sourcedata', fold);
+  fold();
+}
+
+/** Folds the control, the way the library's own minimize does. */
 export function collapseAttribution(container: unknown): void {
+  queryAttribution(container)?.classList?.remove('maplibregl-compact-show');
+  queryAttribution(container)?.setAttribute?.('open', '');
+}
+
+/** The compact attribution element inside a map container, or `null`. */
+function queryAttribution(container: unknown): {
+  classList?: { remove: (name: string) => void };
+  setAttribute?: (name: string, value: string) => void;
+  querySelector?: (selector: string) => {
+    addEventListener?: (event: string, handler: () => void) => void;
+  } | null;
+} | null {
   const query = (container as { querySelector?: unknown } | null)?.querySelector;
-  if (typeof query !== 'function') return;
+  if (typeof query !== 'function') return null;
 
-  const attribution = (
-    query as (selector: string) => {
-      classList?: { remove: (name: string) => void };
-      setAttribute?: (name: string, value: string) => void;
-    } | null
-  ).call(container, '.maplibregl-ctrl-attrib.maplibregl-compact');
-
-  attribution?.classList?.remove('maplibregl-compact-show');
-  attribution?.setAttribute?.('open', '');
+  return (query as (selector: string) => ReturnType<typeof queryAttribution>).call(
+    container,
+    '.maplibregl-ctrl-attrib.maplibregl-compact',
+  );
 }

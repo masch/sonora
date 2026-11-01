@@ -21,7 +21,7 @@ jest.mock('pmtiles', () => ({
 
 import ExperienceMap from '@/components/map/experience-map.web';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
-import { collapseAttribution } from '@/components/map/use-web-map-instance';
+import { foldAttribution } from '@/components/map/use-web-map-instance';
 import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
@@ -796,29 +796,73 @@ describe('documentKeyOfLayer', () => {
   });
 });
 
-describe('collapseAttribution', () => {
-  it('folds the compact control the way a drag would, and keeps the toggle working', () => {
-    // MapLibre opens the credit when it is added and folds it only on `drag`; a
-    // card-sized map is never dragged, so it stays over the place being read.
-    const control = {
+describe('foldAttribution', () => {
+  /** A container that hands back one control, and that control its summary. */
+  function containerWith(control: {
+    classList: { remove: jest.Mock };
+    setAttribute: jest.Mock;
+    summary?: { addEventListener: (event: string, handler: () => void) => void };
+  }) {
+    return {
+      querySelector: jest.fn((selector: string) =>
+        selector === '.maplibregl-ctrl-attrib.maplibregl-compact'
+          ? {
+              ...control,
+              querySelector: (inner: string) => (inner === 'summary' ? control.summary : null),
+            }
+          : null,
+      ),
+    };
+  }
+
+  it('folds the credit wherever the attribution can appear, not only at creation', () => {
+    // MapLibre opens the control when the first attribution arrives, not when it is
+    // added: a fold at creation is too early and the credit ends up over the map.
+    const element = { classList: { remove: jest.fn() }, setAttribute: jest.fn() };
+    const handlers: Record<string, () => void> = {};
+    const map = {
+      on: jest.fn((event: string, handler: () => void) => (handlers[event] = handler)),
+    };
+    const container = containerWith(element);
+
+    foldAttribution(map, container);
+
+    expect(Object.keys(handlers).sort()).toEqual(['sourcedata', 'styledata']);
+    expect(element.classList.remove).toHaveBeenCalledWith('maplibregl-compact-show');
+
+    element.classList.remove.mockClear();
+    handlers.styledata?.();
+    handlers.sourcedata?.();
+    expect(element.classList.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the credit alone once the walker opens it', () => {
+    const element = {
       classList: { remove: jest.fn() },
       setAttribute: jest.fn(),
+      summary: {
+        addEventListener: (_event: string, handler: () => void) => {
+          openByWalker = handler;
+        },
+      },
     };
-    const container = { querySelector: jest.fn(() => control) };
+    let openByWalker: (() => void) | undefined;
+    const container = containerWith(element);
+    const handlers: Record<string, () => void> = {};
+    const map = { on: (event: string, handler: () => void) => (handlers[event] = handler) };
 
-    collapseAttribution(container);
+    foldAttribution(map, container);
+    openByWalker?.();
+    element.classList.remove.mockClear();
 
-    expect(container.querySelector).toHaveBeenCalledWith(
-      '.maplibregl-ctrl-attrib.maplibregl-compact',
-    );
-    // Dropping the expanded class collapses it; `open` is the same marker MapLibre
-    // sets, and pressing the ⓘ re-expands.
-    expect(control.classList.remove).toHaveBeenCalledWith('maplibregl-compact-show');
-    expect(control.setAttribute).toHaveBeenCalledWith('open', '');
+    handlers.sourcedata?.();
+    // The credit is the walker's from the moment they ask for it.
+    expect(element.classList.remove).not.toHaveBeenCalled();
   });
 
   it('does nothing when the node cannot be queried, as under test', () => {
-    expect(() => collapseAttribution({})).not.toThrow();
-    expect(() => collapseAttribution(null)).not.toThrow();
+    const map = { on: jest.fn() };
+    expect(() => foldAttribution(map, {})).not.toThrow();
+    expect(() => foldAttribution(map, null)).not.toThrow();
   });
 });

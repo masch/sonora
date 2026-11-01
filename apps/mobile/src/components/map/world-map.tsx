@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  USER_EXPERIENCE_FORMATS,
   filterWorldExperiences,
   worldCameraBounds,
   worldDocuments,
@@ -39,6 +38,21 @@ const FILTER_LABEL_KEYS: Record<string, TranslationKeys> = {
   trip: 'experiences.types.trip',
   track: 'experiences.types.track',
 };
+
+/**
+ * The row, in the order it is read: everything, then the guided walks, then the short
+ * pieces.
+ *
+ * Written here and not taken from `USER_EXPERIENCE_FORMATS` on purpose — that list is
+ * the format catalogue's own order, used where the order is the catalogue's business.
+ * A filter row is a reading order, and the walker should meet the long experiences
+ * first; the two must be free to disagree.
+ */
+const FILTER_OPTIONS = [
+  null,
+  'trip',
+  'track',
+] as const satisfies readonly (UserExperienceFormat | null)[];
 
 export interface WorldMapProps {
   /**
@@ -247,7 +261,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
       {/* The row is a layout, not a control: labelling it would need `accessible`, which
           would in turn swallow the chips' own names. Each chip announces itself. */}
       <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
-        {([null, ...USER_EXPERIENCE_FORMATS] as const).map((option) => {
+        {FILTER_OPTIONS.map((option) => {
           const filter = option ?? 'all';
           return (
             <Chip
