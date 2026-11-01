@@ -358,8 +358,21 @@ describe('reference style layers', () => {
       movableLabels: true,
     }).find((layer) => layer.id.endsWith(':label'));
 
-    expect(movable?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
+    expect(movable?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
     expect(movable?.layout?.['text-radial-offset']).toBe(0.8);
+    // Smaller at the wide frame the world opens on, full size once the walker zooms:
+    // a crowd of labels is a size problem before it is a placement problem.
+    expect(movable?.layout?.['text-size']).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      13,
+      10,
+      15,
+      12,
+    ]);
+    // The trip is placed first, so the label of the paid experience survives a crowd.
+    expect(movable?.layout?.['symbol-sort-key']).toEqual(['coalesce', ['get', 'sortKey'], 0]);
     // A fixed anchor and a variable one are mutually exclusive.
     expect(movable?.layout?.['text-anchor']).toBeUndefined();
     expect(movable?.layout?.['text-offset']).toBeUndefined();

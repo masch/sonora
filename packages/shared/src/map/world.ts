@@ -32,6 +32,18 @@ export const WORLD_POINT_COLORS: Record<UserExperienceFormat, string> = {
 };
 
 /**
+ * Which point's label is placed first when a crowded frame cannot place them all.
+ *
+ * The world opens on a frame wide enough to hold a whole paraje, and places inside one
+ * hamlet land a few dozen pixels apart. A trip is the experience a walker plans a day
+ * around and pays for; a track is one piece they listen to on the way. The trip wins.
+ */
+const WORLD_POINT_SORT_KEYS: Record<UserExperienceFormat, number> = {
+  trip: 0,
+  track: 1,
+};
+
+/**
  * The smallest span the camera opens on, in degrees (~1.7 km of latitude).
  *
  * Published experiences sit a few hundred metres apart, so fitting their own box
@@ -202,6 +214,7 @@ export function worldDocuments(
         color: colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format],
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
+        sortKey: WORLD_POINT_SORT_KEYS[experience.format],
       },
     };
   });

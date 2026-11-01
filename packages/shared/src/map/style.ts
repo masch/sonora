@@ -87,11 +87,24 @@ export function buildReferenceStyleLayers(
     const movable = options.movableLabels === true;
     const placement = movable
       ? {
-          // Four candidate sides, tried in this order, instead of one fixed anchor.
-          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+          // Four candidate sides, tried in this order. The sides come first because the
+          // world's crowds are vertical — the places of one hamlet sit along the same
+          // road — and a label beside its point is unambiguous where one above it and
+          // one below it are not.
+          'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
           'text-radial-offset': 0.8,
+          // A crowd is a size problem before it is a placement problem: at the wide frame
+          // the world opens on, a smaller label fits where a full one would have to move.
+          'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 15, 12],
+          // Whatever the walker came for is placed first, so it keeps its label when the
+          // last free side is taken.
+          'symbol-sort-key': ['coalesce', ['get', 'sortKey'], 0],
         }
-      : { 'text-anchor': anchor, 'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8] };
+      : {
+          'text-anchor': anchor,
+          'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
+          'text-size': 12,
+        };
     layers.push({
       id: `${sourceId}:label`,
       type: 'symbol',
@@ -100,7 +113,6 @@ export function buildReferenceStyleLayers(
       layout: {
         'text-field': ['get', 'labelText'],
         'text-font': LABEL_FONT,
-        'text-size': 12,
         ...placement,
         // Culling is the point, not a limitation: with overlap allowed, two labels
         // that land on the same pixel draw on top of each other and read as a

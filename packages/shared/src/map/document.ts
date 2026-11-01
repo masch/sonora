@@ -72,6 +72,14 @@ export interface MapReferenceProperties {
   labelText?: string;
   /** Injected at runtime from `description` or `descriptionKey`, in that language. */
   descriptionText?: string;
+  /**
+   * Which reference wins when two labels cannot both be placed at a zoom.
+   *
+   * The lowest value is placed first, and a symbol with no free side afterwards is the one
+   * culled. Ordered by what a walker came for, so the label of the experience a place is
+   * about survives a crowded frame instead of the one that happened to be drawn first.
+   */
+  sortKey?: number;
 }
 
 export interface MapReferenceFeature {

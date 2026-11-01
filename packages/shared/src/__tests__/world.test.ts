@@ -161,6 +161,20 @@ describe('worldDocuments', () => {
     expect(keys).toEqual([WORLD_POINTS_DOCUMENT_KEY]);
   });
 
+  it('gives a trip the label priority, so a crowded frame keeps it', () => {
+    // A frame wide enough to hold a whole paraje cannot place every label at every
+    // zoom. What a walker came for wins: the trip, then the track.
+    const points = worldDocuments([track, trip], { language: 'es', translate })[0];
+    const sortKeys = new Map(
+      points?.collection.features.map((feature) => [
+        feature.properties.experienceSlug,
+        feature.properties.sortKey,
+      ]),
+    );
+    expect(sortKeys.get(trip.slug)).toBe(0);
+    expect(sortKeys.get(track.slug)).toBe(1);
+  });
+
   it('drops a point whose coordinates are not finite', () => {
     const points = worldDocuments([{ ...track, latitude: Number.NaN }, trip], {
       language: 'es',
