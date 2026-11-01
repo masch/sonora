@@ -181,6 +181,10 @@ export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
   ...stagingTripTest2HugoPathWaypoints,
 ];
 
+/** Shared placeholder description: every artwork row says the same thing about itself. */
+const STAGING_ARTWORK_DESCRIPTION =
+  'Pieza de staging: título del mapa de la obra, audio y portada provisorios, posición aproximada.';
+
 /**
  * The four pieces the artwork `apps/mobile/assets/images/sonora/home-map.jpg` names and
  * the two published base experiences do not cover yet: LAVANDAS, INCENDIO, NINA and
@@ -203,9 +207,6 @@ export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
  * covers mean this seed adds no binary and no R2 upload. `published: true` because staging is
  * where these four are meant to appear next to the two live experiences.
  */
-const STAGING_ARTWORK_DESCRIPTION =
-  'Pieza de staging: título del mapa de la obra, audio y portada provisorios, posición aproximada.';
-
 export const stagingArtworkTracks: readonly NewExperience[] = [
   {
     id: 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f',
