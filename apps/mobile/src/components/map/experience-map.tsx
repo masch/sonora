@@ -51,6 +51,7 @@ import {
   FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
+  type MapWaitState,
 } from './map-view.types';
 import { useNativeFocusFlight } from './use-native-focus-flight';
 
@@ -528,6 +529,9 @@ export default function ExperienceMap({
   focus,
   onFocusSettled,
   onFeaturePress,
+  toolbar,
+  renderPending,
+  overlay,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
@@ -690,6 +694,32 @@ export default function ExperienceMap({
 
   const failure = failureCode({ noRegion, archive, remote });
 
+  /**
+   * What is still pending: the stage, and the transfer the walker is really paying for.
+   *
+   * It is an input of this card and of nothing else — no caller mirrors it into state,
+   * so the surface below is the wait itself rather than a report of one.
+   */
+  const pending = pendingWait({
+    noRegion,
+    hasArchive: Boolean(archiveUri),
+    remote,
+    hasStyle: Boolean(style),
+  });
+  /** A transfer this run is really paying for, as opposed to a cache check. */
+  const download = archive.status === 'loading' ? archive.download : undefined;
+  const wait = useMemo<MapWaitState | null>(
+    () =>
+      pending
+        ? {
+            stage: pending,
+            downloading: download !== undefined,
+            progress: download?.progress ?? null,
+          }
+        : null,
+    [pending, download],
+  );
+
   if (failure) {
     return (
       <TwView
@@ -717,14 +747,19 @@ export default function ExperienceMap({
 
   // `style` is only absent while the archive is not ready, which the same guard
   // covers: nothing can be drawn over an archive that does not exist yet. A point
-  // with no region waits for no archive, so only the style can still be pending.
-  const pending = pendingWait({
-    noRegion,
-    hasArchive: Boolean(archiveUri),
-    remote,
-    hasStyle: Boolean(style),
-  });
-  if (pending) {
+  // with no region waits for no archive, so only the style can still be pending. The
+  // wait is that same stage spelled out, narrowed here so the surface below is handed
+  // a wait instead of a possibility.
+  if (pending && wait) {
+    // A caller that took the wait over draws the card itself, and the stage line here
+    // would be the second message on it. Retry keeps the height so nothing jumps.
+    if (renderPending) {
+      return (
+        <TwView testID={testID} className={className}>
+          {renderPending(wait)}
+        </TwView>
+      );
+    }
     return (
       <TwView testID={testID} className={className}>
         <LoadingView message={t(pendingStageKey(pending === 'archive'))} />
@@ -741,32 +776,38 @@ export default function ExperienceMap({
     : { center: [centerLng, centerLat] as LngLat, zoom };
 
   return (
-    <TwView testID={testID} className={className}>
-      <MapLibreMap
-        ref={mapRef}
-        mapStyle={style}
-        onPress={reportPress}
-        // The only report of a camera landing: the flight's, never the walker's.
-        onRegionDidChange={reportLanding}
-        // The label describes the map itself: the loading key would be announced by
-        // a screen reader over a map that has already drawn.
-        accessibilityLabel={t('map.mapLabel')}
-        testID={`${testID}-map`}
-      >
-        <Camera ref={cameraRef} {...camera} />
-      </MapLibreMap>
-      {/* One honest line over the reference plane: the map is not broken, this place
-          is outside the regions the app publishes. */}
-      {noRegion && (
-        <ThemedText
-          type="small"
-          themeColor="textSecondary"
-          className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
-          testID={`${testID}-no-region`}
+    <>
+      {/* The caller's controls, above the card and only now that it draws: a row over
+          a card with no pixels is the flicker this seam exists to prevent. */}
+      {toolbar}
+      <TwView testID={testID} className={className}>
+        <MapLibreMap
+          ref={mapRef}
+          mapStyle={style}
+          onPress={reportPress}
+          // The only report of a camera landing: the flight's, never the walker's.
+          onRegionDidChange={reportLanding}
+          // The label describes the map itself: the loading key would be announced by
+          // a screen reader over a map that has already drawn.
+          accessibilityLabel={t('map.mapLabel')}
+          testID={`${testID}-map`}
         >
-          {t('map.noRegion')}
-        </ThemedText>
-      )}
-    </TwView>
+          <Camera ref={cameraRef} {...camera} />
+        </MapLibreMap>
+        {/* One honest line over the reference plane: the map is not broken, this place
+            is outside the regions the app publishes. */}
+        {noRegion && (
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
+            testID={`${testID}-no-region`}
+          >
+            {t('map.noRegion')}
+          </ThemedText>
+        )}
+        {overlay}
+      </TwView>
+    </>
   );
 }

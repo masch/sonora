@@ -7,6 +7,8 @@ import { en, es, type MapDocument } from '@sonora/shared';
 
 import ExperienceMap from '@/components/map/experience-map';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import { ThemedText } from '@/components/themed-text';
+import type { MapWaitState } from '@/components/map/map-view.types';
 import { useNativeFocusFlight } from '@/components/map/use-native-focus-flight';
 import type { TripExperience } from '@/data/experiences';
 import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
@@ -756,6 +758,82 @@ describe('ExperienceMap (native)', () => {
     expect(view.queryByText('map.loadingArchive')).toBeTruthy();
     // Nothing can be drawn over an archive that does not exist yet.
     expect(mockMapProps).toHaveLength(0);
+  });
+
+  it('draws the wait a caller hands it, and keeps its own message out of the card', async () => {
+    // A first-time transfer, held open: the stage and the fraction are both real.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'loading', download: { progress: 0.5 } });
+    const waits: MapWaitState[] = [];
+
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
+        overlays={[]}
+        renderPending={(wait) => {
+          waits.push(wait);
+          return (
+            <ThemedText type="small" testID="caller-wait">
+              {`caller:${wait.stage}:${wait.progress}`}
+            </ThemedText>
+          );
+        }}
+      />,
+    );
+
+    // The caller is handed the real wait, not a guess at it: the stage and the fraction
+    // are the renderer's own.
+    await waitFor(() =>
+      expect(waits[waits.length - 1]).toEqual({
+        stage: 'archive',
+        downloading: true,
+        progress: 0.5,
+      }),
+    );
+    expect(view.queryByTestId('caller-wait')).toBeTruthy();
+    expect(view.queryByText('caller:archive:0.5')).toBeTruthy();
+    // The caller's card is the only thing speaking: a stage line here would be the
+    // second message of the two the home used to show.
+    expect(view.queryByText('map.loadingArchive')).toBeNull();
+    expect(view.queryByText('map.loadingStyle')).toBeNull();
+    expect(view.queryByText('map.loadingMap')).toBeNull();
+    expect(loadingMessages).toEqual([]);
+    // Nothing can be drawn over an archive that does not exist yet.
+    expect(mockMapProps).toHaveLength(0);
+  });
+
+  it('draws the toolbar and the overlay only once it can draw', async () => {
+    // Held on the archive: the map has no pixels yet, so neither slot can exist.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'loading' });
+    const source = { archiveUrl: ARCHIVE_URL, style: styleWith(true) };
+    const slots = {
+      toolbar: <ThemedText testID="caller-toolbar">toolbar</ThemedText>,
+      overlay: <ThemedText testID="caller-overlay">overlay</ThemedText>,
+      renderPending: (wait: MapWaitState) => (
+        <ThemedText testID="caller-wait">{`caller:${wait.stage}`}</ThemedText>
+      ),
+    };
+
+    const view = await render(<ExperienceMap source={source} overlays={[]} {...slots} />);
+
+    // A control over a card that drew nothing is exactly what this change removes.
+    expect(view.queryByTestId('caller-wait')).toBeTruthy();
+    expect(view.queryByTestId('caller-toolbar')).toBeNull();
+    expect(view.queryByTestId('caller-overlay')).toBeNull();
+    expect(mockMapProps).toHaveLength(0);
+
+    // The archive lands, so the map can finally draw.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'ready', uri: ARCHIVE_URI });
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[]} {...slots} />);
+    });
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+    // Drawn: the caller's slots are there, the wait is gone, and the map was handed the
+    // style it draws.
+    expect(view.queryByTestId('caller-wait')).toBeNull();
+    expect(view.queryByTestId('caller-toolbar')).toBeTruthy();
+    expect(view.queryByTestId('caller-overlay')).toBeTruthy();
+    expect(mockMapProps[0].mapStyle).toBeTruthy();
   });
 
   it('shows the error state when the archive fails', async () => {

@@ -1,4 +1,13 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  type RenderResult,
+} from '@testing-library/react-native';
+import type { ReactNode } from 'react';
 
 import {
   WORLD_PATH_PREFIX,
@@ -10,7 +19,11 @@ import {
 
 import WorldMap from '@/components/map/world-map';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { FOCUS_SETTLE_FALLBACK_MS, type MapReferencePress } from '@/components/map/map-view.types';
+import {
+  FOCUS_SETTLE_FALLBACK_MS,
+  type MapReferencePress,
+  type MapWaitState,
+} from '@/components/map/map-view.types';
 import { fetchExperiences } from '@/data/experiences';
 import type { Experience, TrackExperience, TripExperience } from '@/data/experiences';
 
@@ -23,9 +36,18 @@ import type { Experience, TrackExperience, TripExperience } from '@/data/experie
  */
 const mockSpecialKeys: Record<string, string> = {
   'components.mediaControls.timeSeparator': ' / ',
+  // The one sentence with a number in it, spelled the way the locale spells it, so a
+  // test can ask what the walker actually reads while a transfer runs.
+  'map.loadingArchiveProgress': 'Downloading the map… {{progress}}%',
 };
-let mockT: (key: string, options?: Record<string, unknown>) => string = (key) =>
-  mockSpecialKeys[key] ?? key;
+let mockT: (key: string, options?: Record<string, unknown>) => string = (key, options) => {
+  const text = mockSpecialKeys[key] ?? key;
+  if (!options) return text;
+  return Object.entries(options).reduce(
+    (sentence, [name, value]) => sentence.split(`{{${name}}}`).join(String(value)),
+    text,
+  );
+};
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
@@ -46,16 +68,43 @@ interface RecordedMapProps {
   onFeaturePress?: (reference: MapReferencePress) => void;
   /** What the renderer calls when the flight it ran comes to rest. */
   onFocusSettled?: () => void;
+  /** Drawn above the map, only once the map can draw. */
+  toolbar?: ReactNode;
+  /** The caller's own surface while the map cannot draw. */
+  renderPending?: (wait: MapWaitState) => ReactNode;
+  /** Drawn inside the map's own card, only once the map can draw. */
+  overlay?: ReactNode;
+  testID?: string;
 }
 
+/**
+ * The wait the double is in, `null` being a map that can draw.
+ *
+ * A drawn map unless a test asks for a wait first: the real renderer draws its own
+ * wait or the caller's slots, and its slots belong to a map that can already draw.
+ * Setting this and re-rendering the world is how a test moves the card from one state
+ * to the other, which is the render transition the real map reports.
+ */
+let mockWait: MapWaitState | null = null;
+
 const mockMapProps: RecordedMapProps[] = [];
-jest.mock('@/components/map/experience-map', () => ({
-  __esModule: true,
-  default: (props: RecordedMapProps) => {
-    mockMapProps.push(props);
-    return null;
-  },
-}));
+jest.mock('@/components/map/experience-map', () => {
+  // The factory is hoisted above every import, so the runtime is required here: JSX
+  // would reference a binding that does not exist yet.
+  const { createElement, Fragment } = jest.requireActual<typeof import('react')>('react');
+  return {
+    __esModule: true,
+    default: (props: RecordedMapProps) => {
+      mockMapProps.push(props);
+      // Drawn: the map owns the slots. Waiting: the caller owns the surface, and the
+      // slots do not exist yet — the chips can never render before the map can draw.
+      if (mockWait !== null) {
+        return createElement(Fragment, null, props.renderPending?.(mockWait) ?? null);
+      }
+      return createElement(Fragment, null, props.toolbar ?? null, props.overlay ?? null);
+    },
+  };
+});
 
 /**
  * Leaflet is deprecated and this feature must never reach it (S3). The double is
@@ -187,6 +236,9 @@ async function renderWith(payload: Experience[]): Promise<void> {
   mockedFetch.mockResolvedValue(payload);
   await render(<WorldMap />);
   await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+  // The renderer has reported it can draw (the double does so on mount), and that
+  // report is what releases the chips.
+  await waitFor(() => expect(screen.getByTestId('world-map-filters')).toBeTruthy());
 }
 
 /** Draws the world in variant B, where a tap travels before the card opens. */
@@ -194,6 +246,20 @@ async function renderVariantB(): Promise<void> {
   mockedFetch.mockResolvedValue(PAYLOAD);
   await render(<WorldMap centerOnSelect />);
   await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+  await waitFor(() => expect(screen.getByTestId('world-map-filters')).toBeTruthy());
+}
+
+/**
+ * Moves the renderer from the wait it is in to `wait`, as the real map does.
+ *
+ * The wait is an input of the renderer's card, not a report the parent mirrors, so the
+ * card follows it on a render and never on a state write of its own.
+ */
+async function reportWait(view: RenderResult, wait: MapWaitState | null): Promise<void> {
+  mockWait = wait;
+  await act(async () => {
+    view.rerender(<WorldMap />);
+  });
 }
 
 /** Fires the tap a point makes, as the renderer reports it. */
@@ -217,6 +283,7 @@ describe('WorldMap', () => {
   beforeEach(() => {
     mockMapProps.length = 0;
     mockLeaflet.loaded = 0;
+    mockWait = null;
     mockedFetch.mockReset();
   });
 
@@ -228,6 +295,71 @@ describe('WorldMap', () => {
 
     expect(screen.getByTestId('world-map-loading')).toBeTruthy();
     expect(mockMapProps).toHaveLength(0);
+    // The card's surface (`bg-backgroundElement`, the one the map's own pending overlay
+    // paints) is not observable here: `TwView` resolves `className` into a style the
+    // test renderer does not keep. The parity it buys is checked on a device.
+    // Nothing to filter yet: the row does not exist, visually or for a screen reader.
+    expect(screen.queryByTestId('world-map-filters')).toBeNull();
+    expect(screen.queryByLabelText('map.world.filterAll')).toBeNull();
+  });
+
+  it('keeps the chips out of the card until the map can draw', async () => {
+    mockWait = { stage: 'style', downloading: false, progress: null };
+    mockedFetch.mockResolvedValue(PAYLOAD);
+
+    const view = await render(<WorldMap />);
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+
+    // One wait in the card, and no filter row over a card that drew nothing.
+    expect(screen.getByTestId('world-map-loading')).toBeTruthy();
+    expect(screen.getByText('map.loadingMap')).toBeTruthy();
+    expect(screen.queryByTestId('world-map-filters')).toBeNull();
+    expect(screen.queryByLabelText('map.world.filterAll')).toBeNull();
+    // The stage's own words are the diagnostic's, never the happy path's.
+    expect(screen.queryByText('map.loadingStyle')).toBeNull();
+    expect(screen.queryByText('map.loadingArchive')).toBeNull();
+
+    await reportWait(view, null);
+
+    // Chips and canvas land together, and the wait is gone.
+    expect(screen.queryByTestId('world-map-loading')).toBeNull();
+    expect(screen.getByTestId('world-map-filters')).toBeTruthy();
+    expect(latestMap().testID).toBe('world-map-canvas');
+  });
+
+  it('names a first-time transfer and the progress the platform reports', async () => {
+    mockWait = { stage: 'archive', downloading: true, progress: null };
+    mockedFetch.mockResolvedValue(PAYLOAD);
+
+    const view = await render(<WorldMap />);
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+
+    // A real transfer with no length yet: the sentence names it and invents no number.
+    expect(screen.getByText('map.loadingArchive')).toBeTruthy();
+    expect(screen.queryByText('map.loadingMap')).toBeNull();
+
+    await reportWait(view, { stage: 'archive', downloading: true, progress: 0.42 });
+
+    expect(screen.getByText('Downloading the map… 42%')).toBeTruthy();
+    expect(screen.queryByTestId('world-map-filters')).toBeNull();
+  });
+
+  it('shows one wait and one sentence from the payload to the first drawn tile', async () => {
+    // The cache check is pending, which is also the archive stage: same wait, same words.
+    mockWait = { stage: 'archive', downloading: false, progress: null };
+    mockedFetch.mockResolvedValue(PAYLOAD);
+
+    const view = await render(<WorldMap />);
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+
+    // Exactly one message on screen, and it is the walker's, not a stage's.
+    const messages = screen.getAllByText(/map\.loading/);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].props.children).toBe('map.loadingMap');
+
+    await reportWait(view, null);
+
+    expect(screen.queryByText(/map\.loading/)).toBeNull();
   });
 
   it('says the world could not load and fetches again on retry', async () => {
@@ -296,7 +428,9 @@ describe('WorldMap', () => {
   it('draws only through the MapLibre map component and never loads Leaflet', async () => {
     await renderWith(PAYLOAD);
 
-    expect(mockMapProps).toHaveLength(1);
+    // The record counts renders, and the wait flipping to drawn is one of them: what
+    // this asks is that the run drew through MapLibre and never reached Leaflet.
+    expect(mockMapProps.length).toBeGreaterThan(0);
     expect(mockLeaflet.loaded).toBe(0);
   });
 

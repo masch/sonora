@@ -26,6 +26,7 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 import ExperienceMap from '@/components/map/experience-map.web';
+import { ThemedText } from '@/components/themed-text';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
 import { logger } from '@/utils/logger';
 import { foldAttribution } from '@/components/map/use-web-map-instance';
@@ -33,6 +34,7 @@ import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
   FOCUS_MIN_ZOOM,
+  type MapWaitState,
 } from '@/components/map/map-view.types';
 const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 const STYLE_URL = 'https://api.example/media/public/styles/v1.json';
@@ -44,6 +46,8 @@ const STYLE_FAILING = 'https://api.example/media/public/styles/failing.json';
 /** The retry case downloads the same archive twice, so it needs one nobody else used. */
 const ARCHIVE_RETRYING = 'https://api.example/media/public/tiles/retrying/v1.pmtiles';
 const STYLE_RETRYING = 'https://api.example/media/public/styles/retrying.json';
+/** A transfer this suite holds open, so the wait it starts can be observed. */
+const ARCHIVE_HELD = 'https://api.example/media/public/tiles/held/v1.pmtiles';
 
 /** The logger, as jest sees it: a drawn map's error is reported and nothing more. */
 const mockedLogger = logger as unknown as { error: jest.Mock };
@@ -516,6 +520,77 @@ describe('ExperienceMap (web)', () => {
     });
 
     expect(mockMapInstances).toHaveLength(1);
+  });
+
+  it('draws the wait a caller hands it, and keeps the toolbar out until the map loads', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const body = {
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(2048),
+      json: async () => styleWith(true),
+    };
+    globalThis.fetch = jest.fn((url: string) =>
+      url === ARCHIVE_HELD ? gate.then(() => body) : Promise.resolve(body),
+    ) as unknown as typeof fetch;
+
+    const waits: MapWaitState[] = [];
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_HELD, style: styleWith(true) }}
+        overlays={[document]}
+        renderPending={(wait) => {
+          waits.push(wait);
+          return (
+            <ThemedText type="small" testID="caller-wait">
+              {`caller:${wait.stage}`}
+            </ThemedText>
+          );
+        }}
+        toolbar={<ThemedText testID="caller-toolbar">toolbar</ThemedText>}
+        overlay={<ThemedText testID="caller-overlay">overlay</ThemedText>}
+      />,
+    );
+
+    // The archive is still arriving: the caller's node is what speaks, and the
+    // renderer's own line is not drawn next to it.
+    await waitFor(() =>
+      expect(waits[waits.length - 1]).toEqual({
+        stage: 'archive',
+        downloading: false,
+        progress: null,
+      }),
+    );
+    expect(view.queryByTestId('caller-wait')).toBeTruthy();
+    expect(view.queryByText('caller:archive')).toBeTruthy();
+    expect(view.queryByText('map.loadingMap')).toBeNull();
+    // A toolbar over a card that has not drawn a pixel is the flicker this change is
+    // about, and the overlay belongs to the drawn map for the same reason.
+    expect(view.queryByTestId('caller-toolbar')).toBeNull();
+    expect(view.queryByTestId('caller-overlay')).toBeNull();
+    expect(mockMapInstances).toHaveLength(0);
+
+    await act(async () => {
+      release();
+      await gate;
+    });
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+
+    // Built but not yet drawn: the map's own load is the last thing the wait waits for.
+    expect(waits[waits.length - 1]).toEqual({ stage: 'map', downloading: false, progress: null });
+    expect(view.queryByText('caller:map')).toBeTruthy();
+    expect(view.queryByTestId('caller-toolbar')).toBeNull();
+
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    // Drawn: the slots land with the map, and the caller's pending node is gone.
+    await waitFor(() => expect(view.queryByTestId('caller-toolbar')).toBeTruthy());
+    expect(view.queryByTestId('caller-wait')).toBeNull();
+    expect(view.queryByTestId('caller-overlay')).toBeTruthy();
   });
 
   it('travels to a focused point once, without rebuilding the map when the world filters', async () => {

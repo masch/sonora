@@ -25,6 +25,8 @@ const mockDownloadUrls: string[] = [];
 let mockDownloadFailure: Error | null = null;
 let mockDownloadGate: Promise<void> | null = null;
 let mockDownloadBytes: Uint8Array | null = null;
+/** What the platform reports while it writes, in order, for the next transfer. */
+let mockDownloadProgress: { bytesWritten: number; totalBytes: number }[] = [];
 let mockMoveFailure: Error | null = null;
 let mockListFailure: Error | null = null;
 let mockDeleteFailure: Error | null = null;
@@ -158,21 +160,30 @@ jest.mock('expo-file-system', () => {
       this.uri = destination.uri;
     }
 
-    static downloadFileAsync = jest.fn(async (url: string, destination: MockFile) => {
-      mockDownloadUrls.push(url);
-      // The transfer creates its destination when it starts and then streams into
-      // that inode: if another run deletes or replaces the file meanwhile, the
-      // bytes arrive nowhere instead of resurrecting a name this run lost.
-      const inode: MockInode = { bytes: new Uint8Array(0) };
-      mockDisk.set(destination.uri, inode);
-      if (mockDownloadGate) await mockDownloadGate;
-      if (mockDownloadFailure) {
-        inode.bytes = mockArchiveBody().slice(0, 512);
-        throw mockDownloadFailure;
-      }
-      inode.bytes = mockDownloadBytes ?? mockArchiveBody();
-      return destination;
-    });
+    static downloadFileAsync = jest.fn(
+      async (
+        url: string,
+        destination: MockFile,
+        options?: { onProgress?: (data: { bytesWritten: number; totalBytes: number }) => void },
+      ) => {
+        mockDownloadUrls.push(url);
+        // The transfer creates its destination when it starts and then streams into
+        // that inode: if another run deletes or replaces the file meanwhile, the
+        // bytes arrive nowhere instead of resurrecting a name this run lost.
+        const inode: MockInode = { bytes: new Uint8Array(0) };
+        mockDisk.set(destination.uri, inode);
+        // What the platform reports as it writes arrives before the transfer settles,
+        // which is the whole point of the report: a gate can hold the bytes afterwards.
+        for (const step of mockDownloadProgress) options?.onProgress?.(step);
+        if (mockDownloadGate) await mockDownloadGate;
+        if (mockDownloadFailure) {
+          inode.bytes = mockArchiveBody().slice(0, 512);
+          throw mockDownloadFailure;
+        }
+        inode.bytes = mockDownloadBytes ?? mockArchiveBody();
+        return destination;
+      },
+    );
   }
 
   return {
@@ -268,6 +279,7 @@ describe('useMapArchiveFile', () => {
     mockDownloadFailure = null;
     mockDownloadGate = null;
     mockDownloadBytes = null;
+    mockDownloadProgress = [];
     mockMoveFailure = null;
     mockListFailure = null;
     mockDeleteFailure = null;
@@ -285,6 +297,59 @@ describe('useMapArchiveFile', () => {
     expect(mockDisk.has(fileOf(result.current.uri))).toBe(true);
     // Only the finished archive: no partial file is left behind.
     expect([...mockDisk.keys()]).toEqual([fileOf(result.current.uri)]);
+  });
+
+  it('names a first-time transfer and the fraction it has written', async () => {
+    mockDownloadProgress = [{ bytesWritten: 512, totalBytes: 2048 }];
+    // A transfer still under way: the report is what the card shows meanwhile.
+    mockDownloadGate = new Promise<void>(() => {});
+
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+
+    await waitFor(() => expect(result.current.download).toEqual({ progress: 0.25 }));
+    expect(result.current.status).toBe('loading');
+  });
+
+  it('reports a fraction only when the whole percentage it shows changes', async () => {
+    // Two reports inside the same displayed percent: the second one would print the same
+    // number on the card, so it must not cost a render of the tree holding the map.
+    mockDownloadProgress = [
+      { bytesWritten: 512, totalBytes: 2048 },
+      { bytesWritten: 520, totalBytes: 2048 },
+    ];
+    mockDownloadGate = new Promise<void>(() => {});
+
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+
+    await waitFor(() => expect(result.current.download).toEqual({ progress: 0.25 }));
+    await act(async () => {});
+    // 520/2048 is the suppressed report: without the throttle the state would hold it.
+    expect(result.current.download).toEqual({ progress: 0.25 });
+  });
+
+  it('reports a transfer that declares no length without inventing a number', async () => {
+    // A server with no `Content-Length`: the transfer is real and the fraction is not.
+    mockDownloadProgress = [{ bytesWritten: 1024, totalBytes: -1 }];
+    mockDownloadGate = new Promise<void>(() => {});
+
+    const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+
+    await waitFor(() => expect(mockDownloadUrls).toEqual([ARCHIVE_V1]));
+    await act(async () => {});
+    expect(result.current.download).toEqual({ progress: null });
+  });
+
+  it('says nothing about a download when the archive is already on the device', async () => {
+    const first = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+    await waitFor(() => expect(first.result.current.status).toBe('ready'));
+
+    mockDownloadProgress = [{ bytesWritten: 512, totalBytes: 2048 }];
+    const second = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+    await waitFor(() => expect(second.result.current.status).toBe('ready'));
+
+    // A cache hit is a check, not a transfer: nothing was asked of the network again.
+    expect(second.result.current.download).toBeUndefined();
+    expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
   });
 
   it('accepts an archive url that already carries the transport scheme', async () => {

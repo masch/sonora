@@ -18,6 +18,7 @@ export const en = {
     viewTrack: 'View poetic',
     loadingMap: 'Loading map…',
     loadingArchive: 'Downloading the map…',
+    loadingArchiveProgress: 'Downloading the map… {{progress}}%',
     loadingStyle: 'Loading the map style…',
     mapLabel: 'Map',
     distanceFromYou: '{{distance}} away',

@@ -19,6 +19,7 @@ export const es = {
     viewTrack: 'Ver audio',
     loadingMap: 'Cargando mapa…',
     loadingArchive: 'Descargando el mapa…',
+    loadingArchiveProgress: 'Descargando el mapa… {{progress}}%',
     loadingStyle: 'Cargando el estilo del mapa…',
     mapLabel: 'Mapa',
     distanceFromYou: 'A {{distance}} de vos',
