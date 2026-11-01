@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────
-# Makefile — sonora (Expo SDK 56)
+# Makefile — sonora (Expo SDK 57)
 # All targets delegate to `bun` (project package manager).
 # ──────────────────────────────────────────────
 
