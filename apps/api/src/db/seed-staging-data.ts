@@ -2,15 +2,22 @@ import { TRACK_IMAGE_KEYS } from '@sonora/shared';
 import type { NewExperience, NewWaypoint } from './schema';
 
 /**
- * Staging-only test data. Never imported by the base entry (`seed.ts`).
+ * Staging-only data. Never imported by the base entry (`seed.ts`).
  *
- * Contract (specs: db-seeding):
- * - Three explicit experiences written by hand (no combinatorial generation):
- *   one track, one trip, and one general-feedback.
- * - Stable hardcoded UUIDs + unique slugs (changed only via PR).
- * - `[PRUEBA]`-prefixed titles.
- * - Audio is served from R2; audio rows reuse the shared staging audio key.
- * - `imageKey` values are members of the valid `TRACK_IMAGE_KEYS`.
+ * Two sets, deliberately separate (see `stagingTestExperiences` and
+ * `stagingArtworkTracks`):
+ *
+ * Test rows — written by hand (no combinatorial generation): four tracks and two trips that
+ * exercise the geofence modes. Stable hardcoded UUIDs, unique slugs (changed only via PR),
+ * `[PRUEBA]`/`[Test` prefixed titles, `published: false`.
+ *
+ * Artwork rows — the four pieces the home map illustration names and the published base
+ * experiences do not cover. Their titles are the artwork's, they are published so staging shows
+ * them, and their coordinates are the pinned positions of that illustration (±300 m; the doc
+ * comment on `stagingArtworkTracks` states why).
+ *
+ * Both sets: stable hardcoded UUIDs + unique slugs, audio served from R2 reusing the shared
+ * staging audio key, and `imageKey` values that are members of `TRACK_IMAGE_KEYS`.
  */
 
 // Audio is served from R2. Staging audio rows reuse the existing object key
@@ -138,7 +145,7 @@ const stagingTrips: readonly NewExperience[] = [
   },
 ];
 
-export const stagingOnlyExperiences: readonly NewExperience[] = [...stagingTracks, ...stagingTrips];
+export const stagingTestExperiences: readonly NewExperience[] = [...stagingTracks, ...stagingTrips];
 
 export type WaypointInput = Omit<NewWaypoint, 'experienceId'>;
 
@@ -172,4 +179,110 @@ export const stagingTripTest2HugoPathWaypoints: readonly NewWaypoint[] =
 export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
   ...stagingTripTest1HugoPathWaypoints,
   ...stagingTripTest2HugoPathWaypoints,
+];
+
+/** Shared placeholder description: every artwork row says the same thing about itself. */
+const STAGING_ARTWORK_DESCRIPTION =
+  'Pieza de staging: título del mapa de la obra, audio y portada provisorios, posición aproximada.';
+
+/**
+ * The four pieces the artwork `apps/mobile/assets/images/sonora/home-map.jpg` names and
+ * the two published base experiences do not cover yet: LAVANDAS, INCENDIO, NINA and
+ * MANIFIESTO DE UN BROTE. They are staging rows, not production content: the title is the
+ * artwork's own, everything else is a placeholder.
+ *
+ * Where the coordinates come from
+ * -------------------------------
+ * The illustration's base map is a real render of Umepay — calibrated against the vector
+ * geometry of the local archive (`.tools/cache/out/calamuchita.pmtiles`) it lands within a
+ * few pixels of the real roads, river and landuse — but **its pins were placed by hand**: the
+ * real coordinates of `umepay-bosque` fall ~150 px (~300 m) from the pin drawn for it, and
+ * those of `texto-maga` ~376 px (~700 m) from theirs. So each latitude/longitude below is the
+ * position of the pin the artwork draws, resolved through that calibration, and inherits the
+ * same **±300 m** uncertainty. They are good enough to place the points on staging and to see
+ * them where the artwork shows them; they are not surveyed ground truth and must be replaced
+ * before anyone walks a geofence (the default trip/track radius is 100 m).
+ *
+ * Audio and covers are reused rather than invented: the shared staging audio key and existing
+ * covers mean this seed adds no binary and no R2 upload. `published: true` because staging is
+ * where these four are meant to appear next to the two live experiences.
+ */
+export const stagingArtworkTracks: readonly NewExperience[] = [
+  {
+    id: 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f',
+    slug: 'lavandas-somos-raices',
+    title: 'LAVANDAS -somos raíces',
+    description: STAGING_ARTWORK_DESCRIPTION,
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.189743,
+    longitude: -64.752577,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'f6c3a8d4-0001-5c9a-b2e1-4a5b6c7d8e9f',
+    slug: 'incendio',
+    title: 'INCENDIO',
+    description: STAGING_ARTWORK_DESCRIPTION,
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.192807,
+    longitude: -64.752621,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[2],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'f6c3a8d4-0002-5c9a-b2e1-4a5b6c7d8e9f',
+    slug: 'nina',
+    title: 'NINA',
+    description: STAGING_ARTWORK_DESCRIPTION,
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.194208,
+    longitude: -64.744619,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[0],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+  {
+    id: 'f6c3a8d4-0003-5c9a-b2e1-4a5b6c7d8e9f',
+    slug: 'manifiesto-de-un-brote',
+    title: 'MANIFIESTO DE UN BROTE',
+    description: STAGING_ARTWORK_DESCRIPTION,
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: STAGING_AUDIO_KEY,
+    durationSeconds: 180,
+    latitude: -32.207657,
+    longitude: -64.731576,
+    free: true,
+    imageKey: TRACK_IMAGE_KEYS[1],
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
+];
+
+export const stagingOnlyExperiences: readonly NewExperience[] = [
+  ...stagingTestExperiences,
+  ...stagingArtworkTracks,
 ];
