@@ -11,8 +11,10 @@ import {
 } from '../seed-data';
 import {
   STAGING_AUDIO_KEY,
+  stagingArtworkTracks,
   stagingOnlyExperiences,
   stagingOnlyWaypoints,
+  stagingTestExperiences,
 } from '../seed-staging-data';
 
 /**
@@ -61,40 +63,40 @@ describe('assertSeedEnv — environment guard', () => {
   });
 });
 
-describe('stagingOnlyExperiences — staging data contract', () => {
+describe('stagingTestExperiences — staging test-data contract', () => {
   it('contains exactly 6 explicit experiences and 4 waypoints', () => {
-    expect(stagingOnlyExperiences).toHaveLength(6);
+    expect(stagingTestExperiences).toHaveLength(6);
     expect(stagingOnlyWaypoints).toHaveLength(4);
   });
 
   it('is an explicit set: four tracks and two trips', () => {
-    const formats = stagingOnlyExperiences.map((e) => e.format).sort();
+    const formats = stagingTestExperiences.map((e) => e.format).sort();
     expect(formats).toEqual(['track', 'track', 'track', 'track', 'trip', 'trip']);
   });
 
   it('uses unique ids and unique slugs', () => {
-    const ids = stagingOnlyExperiences.map((e) => e.id);
-    const slugs = stagingOnlyExperiences.map((e) => e.slug);
+    const ids = stagingTestExperiences.map((e) => e.id);
+    const slugs = stagingTestExperiences.map((e) => e.slug);
     expect(new Set(ids).size).toBe(6);
     expect(new Set(slugs).size).toBe(6);
   });
 
   it('prefixes every title with [PRUEBA] or [Test and does not collide with base slugs', () => {
     const baseSlugs = new Set(baseExperiences.map((e) => e.slug));
-    for (const e of stagingOnlyExperiences) {
+    for (const e of stagingTestExperiences) {
       expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test')).toBe(true);
       expect(baseSlugs.has(e.slug)).toBe(false);
     }
   });
 
   it('uses a valid TRACK_IMAGE_KEYS value for every row', () => {
-    for (const e of stagingOnlyExperiences) {
+    for (const e of stagingTestExperiences) {
       expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
     }
   });
 
   it('uses integer minor-unit prices: paid trip 350000 ARS; free rows have no price', () => {
-    for (const e of stagingOnlyExperiences) {
+    for (const e of stagingTestExperiences) {
       if (e.free) {
         expect(e.price).toBeUndefined();
         continue;
@@ -105,7 +107,7 @@ describe('stagingOnlyExperiences — staging data contract', () => {
   });
 
   it('uses the shared chiricotes R2 audio key for audio rows and null for no-audio rows', () => {
-    for (const e of stagingOnlyExperiences) {
+    for (const e of stagingTestExperiences) {
       if (e.audioUrl == null) {
         expect(e.free).toBe(true);
         continue;
@@ -115,7 +117,7 @@ describe('stagingOnlyExperiences — staging data contract', () => {
   });
 
   it('provides exactly 2 waypoints for each of the trip ids', () => {
-    const trips = stagingOnlyExperiences.filter((e) => e.format === 'trip');
+    const trips = stagingTestExperiences.filter((e) => e.format === 'trip');
     expect(trips).toHaveLength(2);
     const tripIds = trips.map((e) => e.id!);
     const wpByTrip = new Map<string, number>();
@@ -126,6 +128,54 @@ describe('stagingOnlyExperiences — staging data contract', () => {
       expect(wpByTrip.get(id)).toBe(2);
     }
     expect(wpByTrip.size).toBe(2);
+  });
+});
+
+describe('stagingArtworkTracks — the four pieces the artwork names', () => {
+  it('carries the four titles of the map illustration, verbatim', () => {
+    expect(stagingArtworkTracks.map((e) => e.title)).toEqual([
+      'LAVANDAS -somos raíces',
+      'INCENDIO',
+      'NINA',
+      'MANIFIESTO DE UN BROTE',
+    ]);
+  });
+
+  it('is four free tracks staging shows, not test rows', () => {
+    expect(stagingArtworkTracks).toHaveLength(4);
+    for (const e of stagingArtworkTracks) {
+      expect(e.format).toBe('track');
+      expect(e.free).toBe(true);
+      expect(e.price).toBeUndefined();
+      expect(e.published).toBe(true);
+      // The artwork names real pieces, so the staging test-data prefix does not apply.
+      expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test')).toBe(false);
+    }
+  });
+
+  it('places every piece inside the territory the illustration draws', () => {
+    // These are the positions of the pins the artwork draws, ±300 m: the illustration's
+    // base map is a real render of Umepay, but its pins were placed by hand.
+    for (const e of stagingArtworkTracks) {
+      expect(e.latitude).toBeGreaterThan(-32.215);
+      expect(e.latitude).toBeLessThan(-32.185);
+      expect(e.longitude).toBeGreaterThan(-64.76);
+      expect(e.longitude).toBeLessThan(-64.725);
+    }
+  });
+
+  it('needs no new binary: staging audio and an existing cover per row', () => {
+    for (const e of stagingArtworkTracks) {
+      expect(e.audioUrl).toBe(STAGING_AUDIO_KEY);
+      expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
+    }
+  });
+
+  it('keeps ids and slugs unique across base and every staging row', () => {
+    const all = [...baseExperiences, ...stagingOnlyExperiences];
+    expect(all).toHaveLength(baseExperiences.length + 10);
+    expect(new Set(all.map((e) => e.id)).size).toBe(all.length);
+    expect(new Set(all.map((e) => e.slug)).size).toBe(all.length);
   });
 });
 
