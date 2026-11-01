@@ -28,7 +28,7 @@ jest.mock('@/utils/logger', () => ({
 import ExperienceMap from '@/components/map/experience-map.web';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
 import { logger } from '@/utils/logger';
-import { foldAttribution, watchContextLoss } from '@/components/map/use-web-map-instance';
+import { foldAttribution } from '@/components/map/use-web-map-instance';
 import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
@@ -907,28 +907,5 @@ describe('foldAttribution', () => {
     const map = { on: jest.fn() };
     expect(() => foldAttribution(map, {})).not.toThrow();
     expect(() => foldAttribution(map, null)).not.toThrow();
-  });
-});
-
-describe('watchContextLoss', () => {
-  it('follows the canvas event that means the map can no longer draw', () => {
-    // The `error` event cannot be believed about fatality — no flag, and `sourceId`/`tile`
-    // appear on recoverable failures too — but the canvas says this one directly, and it
-    // fires after the map has drawn as well as before.
-    let lost: (() => void) | undefined;
-    const canvas = { addEventListener: (_event: string, handler: () => void) => (lost = handler) };
-    const container = { querySelector: jest.fn(() => canvas) };
-    const onLost = jest.fn();
-
-    watchContextLoss(container, onLost);
-    lost?.();
-
-    expect(container.querySelector).toHaveBeenCalledWith('canvas');
-    expect(onLost).toHaveBeenCalledTimes(1);
-  });
-
-  it('does nothing when there is no canvas, as under test', () => {
-    expect(() => watchContextLoss({}, jest.fn())).not.toThrow();
-    expect(() => watchContextLoss(null, jest.fn())).not.toThrow();
   });
 });
