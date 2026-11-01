@@ -1399,7 +1399,7 @@ describe('ExperienceMap (native)', () => {
     expect(onFocusSettled).toHaveBeenCalledTimes(1);
   });
 
-  it('reports nothing for a pan, or a move that ended somewhere else', async () => {
+  it('reports the arrival at the requested centre, and nothing for a move that ended elsewhere', async () => {
     const onFocusSettled = jest.fn();
 
     await render(
@@ -1414,17 +1414,20 @@ describe('ExperienceMap (native)', () => {
     await waitFor(() => expect(mockCameraFlights).toHaveLength(1));
     const requested = mockCameraFlights[0].center;
 
-    // Both arrive through the same callback the landing does: a pan the walker made while
-    // the camera is on its way, and a move that ended somewhere else.
+    // A move that ended somewhere else arrives through the same callback the landing
+    // does, and it is not this arrival — nor a reason to disarm while the flight is
+    // still on its way.
     await act(async () => {
-      mockMapProps[0].onRegionDidChange?.(regionChange(requested, true));
       mockMapProps[0].onRegionDidChange?.(regionChange([-64.5, -31.9]));
     });
     expect(onFocusSettled).not.toHaveBeenCalled();
 
-    // Neither rejection disarmed the flight, so the arrival is still the one report.
+    // Where the camera came to rest is what decides, not who moved it: a landing at the
+    // requested centre reports even when the platform calls it a user interaction. That
+    // flag was the previous discriminator, and it is a question about MapLibre's native
+    // implementations rather than about this hook.
     await act(async () => {
-      mockMapProps[0].onRegionDidChange?.(regionChange(requested));
+      mockMapProps[0].onRegionDidChange?.(regionChange(requested, true));
     });
     expect(onFocusSettled).toHaveBeenCalledTimes(1);
   });

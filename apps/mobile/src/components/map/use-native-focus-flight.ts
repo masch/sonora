@@ -137,9 +137,16 @@ export function useNativeFocusFlight({
     if (!awaiting) return;
 
     const [longitude, latitude] = event.nativeEvent.center;
-    // A pan the walker made, or a move that ended somewhere else: not this arrival, and
-    // not a reason to disarm — the flight is still on its way.
-    if (event.nativeEvent.userInteraction) return;
+    // Where the camera came to rest is the test, not who moved it.
+    //
+    // `userInteraction` was the tempting discriminator and it is the wrong one: whether
+    // the platform reports a programmatic `flyTo` landing as an interaction is a
+    // question about MapLibre's native implementations, not about this hook, and it
+    // cannot be answered from here. Position can: a move that ends anywhere else is not
+    // this flight's arrival — a walker's pan, or the delayed change of a flight a second
+    // tap replaced — and it is not a reason to disarm, because the flight is still on
+    // its way. A move that ends at the requested centre is an arrival whoever drove it,
+    // and reporting it then is right: the camera really is there.
     if (Math.abs(longitude - awaiting.center[0]) > ARRIVAL_EPSILON_DEGREES) return;
     if (Math.abs(latitude - awaiting.center[1]) > ARRIVAL_EPSILON_DEGREES) return;
 
