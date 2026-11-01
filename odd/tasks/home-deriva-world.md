@@ -134,6 +134,16 @@ Follow-ups worth their own issues, none of them regressions:
 - `traveller` is no longer gated on `centerOnSelect`; latent only, since the prop is static per mount.
 - Platform defect, not this feature: correction-scoped bindings (`correction_lines` after the candidate moves, `provider_targeted_validator` always) are rejected by the facade as "missing or stale for current STATUS" because they pin the correction identity while the validator compares the lineage one. Worked around by declaring the plan before editing and by running the validator host-side through `--materialize` + `--input`.
 
+**L16** — the six findings the CR review of PR #599 left, all fixed, each with a test that fails against the code it replaces.
+
+- **`.githooks/pre-commit`, three defects in one step.** Every step wrote its log to a predictable `/tmp/sonora-precommit-<timestamp>-<name>.log`, so another local user could pre-create that path as a symlink and the redirection would truncate a file the developer owns — reproduced: the base hook overwrote a 29-byte file with its own 45-byte log. Logs now come from `mktemp`, and a failing step names the log and keeps it. The hook also runs under `set -e`: a `make gga` that exited non-zero aborted the script before `GGA_EXIT=$?`, so a commit was refused with no message, no log, and a `[ "$GGA_EXIT" -ne 0 ]` branch that could never run. The status is captured the way `run_step` captures it (an `if`), and every failure now leaves through one `fail_step`. Verified in both directions: a bogus provider prints `FAILED (provider did not review)` + log path and exits 1, a `gga` exit of 1 prints `FAILED (exit 1)` + log path (the base printed nothing and died), and a real run is byte-identical to the base.
+- **`use-native-focus-flight.ts`** — `getZoom()` is a promise to a native view and a promise can reject; a rejection escaped as an unhandled rejection and the tap flew nowhere. Unavailable and rejected now read the same, and the flight still happens at `minZoom`.
+- **`world-map.tsx`** — a filtered-empty map said `map.world.empty` ("no experiences are published on the map yet") over a world that had just drawn places. It owns `map.world.filteredEmpty` in both locales, a sentence about the filter.
+- **`use-web-map-instance.ts`** — every MapLibre `error` replaced the map with `MapErrorView`, including the recoverable ones (a missing sprite, a layer whose source never arrived) that arrive on a map that is drawing. The distinction this code can own is order: an error before the instance ever reported `load` is a failure to draw, an error after it is logged and the map stays. No inference from `sourceId`/`tile` — the event has no fatal flag.
+- **`use-translation.ts`** — `translateKey` was memoized on `[language]`, so `addResources` + `changeLanguage` (new resources, same language) left the adapter serving the `t` it was built on. It follows `t` now, and the comment says why that still does not churn the identity: i18next returns one stable `t` per language and namespace.
+
+Checks at close: mobile Jest 122 suites / 1103 tests, `tsc --noEmit` clean, `expo lint --max-warnings 0` clean, `react-doctor --scope changed --blocking warning` 100/100, `bash -n .githooks/pre-commit` clean.
+
 ## Slices
 
 Five commits on `feat/home-deriva-world`, each one reviewable alone:

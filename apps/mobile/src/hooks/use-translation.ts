@@ -17,7 +17,7 @@ export type { TranslationKeys };
  * shared map layer takes. That layer cannot know this app's key union — a key arrives
  * as a `string` from a document, a seed or the remote config — so the two signatures
  * only meet through one widening cast. Owning it here means it is written once instead
- * of re-derived at every call site, and that its identity is stable per language, which
+ * of re-derived at every call site, and that its identity is stable per text, which
  * is what the map's memoized derivations need: a new adapter per render would rebuild
  * the style on every render.
  */
@@ -27,10 +27,14 @@ export function useAppTranslation() {
 
   const translateKey = useCallback<TranslateKey>(
     (key, options) => t(key as TranslationKeys, options),
-    // `t` is taken from the newest render on purpose: the language is the input, and a
-    // re-render hands over a new wrapper with the same text.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [language],
+    // `t` is the input, and the language is not the only thing that produces it:
+    // `addResources` + `changeLanguage` replaces the resources without the language
+    // moving, and i18next then hands over a new `t`. Memoized on the language alone, the
+    // adapter keeps translating with the `t` it was built on and serves stale text, so it
+    // follows the text instead. That does not churn it on every render: i18next returns
+    // one stable `t` per language and namespace, so the identity moves when the words do
+    // and stays put when they do not.
+    [t],
   );
 
   return {

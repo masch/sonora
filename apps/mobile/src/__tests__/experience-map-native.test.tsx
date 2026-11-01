@@ -1369,6 +1369,37 @@ describe('ExperienceMap (native)', () => {
     expect(mockCameraFlights[0]?.zoom).toBe(closer);
   });
 
+  it('still flies at the floor when the camera refuses to say its zoom', async () => {
+    // `getZoom()` is a promise to the native map, and a promise can reject: a camera not
+    // attached yet, or one that answers an error. The zoom is a refinement of the flight,
+    // never its condition — a tap that does nothing because a query failed is worse than
+    // a flight that chooses the close-up, which is what the hook's own contract says.
+    // Driven on the hook, because the double's `getZoom()` always answers.
+    const onSettled = jest.fn();
+    const flyTo = jest.fn();
+    const mapRef = { current: { getZoom: () => Promise.reject(new Error('camera not ready')) } };
+    const cameraRef = { current: { flyTo } };
+
+    await renderHook(() =>
+      useNativeFocusFlight({
+        focus: { latitude: -32.212, longitude: -64.738 },
+        mapRef,
+        cameraRef,
+        onSettled,
+        durationMs: FOCUS_DURATION_MS,
+        minZoom: FOCUS_MIN_ZOOM,
+      }),
+    );
+
+    await waitFor(() => expect(flyTo).toHaveBeenCalledTimes(1));
+    expect(flyTo.mock.calls[0]?.[0]).toEqual({
+      center: [-64.738, -32.212],
+      duration: FOCUS_DURATION_MS,
+      zoom: FOCUS_MIN_ZOOM,
+      easing: 'fly',
+    });
+  });
+
   it('reports the landing of the flight it started', async () => {
     // The map reports every camera move; the caller opens its card on the one it
     // asked for, so the flight has to be reported once and only when it ends.

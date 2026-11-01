@@ -58,6 +58,8 @@ export const en = {
       free: 'Free',
       open: 'Open experience',
       empty: 'No experiences are published on the map yet',
+      // The map is not empty: the filter is. A sentence about the world would be a lie here.
+      filteredEmpty: 'No experiences of this format are published on the map yet',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

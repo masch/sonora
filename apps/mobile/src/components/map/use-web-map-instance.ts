@@ -101,8 +101,10 @@ export interface WebMapInstance {
   /**
    * The map's own failure, as the code the screen translates.
    *
-   * A map that could not be created and a map that reported an error both end here: what
-   * a renderer or a request said is logged and never drawn.
+   * Only a failure to draw ends here: a map that could not be created, and one that
+   * reported an error before ever reporting `load`. MapLibre also emits `error` for
+   * recoverable failures — a sprite that 404s, one layer whose source never arrived —
+   * and those arrive on a map that is drawing, so they are logged and the map stays.
    */
   mapErrorCode: MapLoadErrorCode | null;
   /** The failure is a state of this hook, and a retry has to withdraw it from here. */
@@ -221,13 +223,23 @@ export function useWebMapInstance({
 
         foldAttribution(map, containerRef.current);
 
+        // Whether this instance ever drew. An error before it did is a failure to draw
+        // and the screen has to say so; an error after it is one of the recoverable
+        // failures MapLibre reports on a map that is working — a missing sprite, a layer
+        // whose source never arrived — and it is not the event's business to be believed
+        // about that: the event carries no fatal flag, and `sourceId`/`tile` appear on
+        // both kinds. What this code can own is the order: drawn, or never drawn.
+        let drewOnce = false;
+
         map.on('error', ((event: { error?: Error }) => {
           logger.error('ExperienceMap error:', event.error);
+          if (drewOnce) return;
           setMapErrorCode('mapFailed');
         }) as never);
 
         map.on('load', (() => {
           if (cancelledRef.current) return;
+          drewOnce = true;
           // The build this instance drew, not a bare flag: the next build starts unloaded.
           setLoadedAttempt(attempt);
           applyOverlays(map);

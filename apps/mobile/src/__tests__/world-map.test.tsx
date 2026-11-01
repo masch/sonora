@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native';
 
 import {
   WORLD_PATH_PREFIX,
@@ -9,9 +9,28 @@ import {
 } from '@sonora/shared';
 
 import WorldMap from '@/components/map/world-map';
+import { useAppTranslation } from '@/hooks/use-translation';
 import { FOCUS_SETTLE_FALLBACK_MS, type MapReferencePress } from '@/components/map/map-view.types';
 import { fetchExperiences } from '@/data/experiences';
 import type { Experience, TrackExperience, TripExperience } from '@/data/experiences';
+
+/**
+ * The translation adapter is the map's one input that can change without a language
+ * change: `react-i18next` hands over a new `t` when resources are added and the language
+ * is set again (`addResources` does exactly that). The double is the repository's own
+ * manual mock — keys echoed, one language — with the one difference that the test can
+ * replace `t`, because the adapter's identity is the thing being asked about.
+ */
+const mockSpecialKeys: Record<string, string> = {
+  'components.mediaControls.timeSeparator': ' / ',
+};
+let mockT: (key: string, options?: Record<string, unknown>) => string = (key) =>
+  mockSpecialKeys[key] ?? key;
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: mockT, i18n: { language: 'en' } }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
+}));
 
 /**
  * The world draws through the MapLibre renderer and nothing else: the seam is
@@ -236,6 +255,21 @@ describe('WorldMap', () => {
     expect(mockMapProps).toHaveLength(0);
   });
 
+  it('says the world has nothing of this format instead of nothing at all', async () => {
+    // The payload has places; it is the *filter* that has nothing. Telling the walker
+    // "no experiences are published on the map yet" over a world that drew places a
+    // moment ago is a sentence about the wrong thing, so the bare map owns a line of
+    // its own.
+    await renderWith([track]);
+
+    fireEvent.press(screen.getByTestId('world-filter-trip'));
+
+    await waitFor(() => expect(screen.getByTestId('world-map-filtered-empty')).toBeTruthy());
+    expect(screen.getByText('map.world.filteredEmpty')).toBeTruthy();
+    // Not the world-empty line: that one is the state of a place with nothing published.
+    expect(screen.queryByText('map.world.empty')).toBeNull();
+  });
+
   it('draws one point per openable experience and a path for each trip', async () => {
     await renderWith(PAYLOAD);
 
@@ -454,5 +488,46 @@ describe('WorldMap', () => {
     });
 
     expect(latestMap().focus).toBeNull();
+  });
+});
+
+describe('useAppTranslation', () => {
+  const emptyKey = 'map.world.empty';
+
+  beforeEach(() => {
+    mockT = (key) => mockSpecialKeys[key] ?? key;
+  });
+
+  it('follows the text when react-i18next hands over a new t', async () => {
+    // The adapter is memoized on what produced the text, and the language is not the
+    // only thing that produces it: `addResources` + `changeLanguage` replaces the
+    // resources without the language moving, and i18next hands over a new `t`. An
+    // adapter memoized on the language alone keeps translating with the `t` it was
+    // built on — stale text on a map that was rebuilt for nothing.
+    mockT = (key) => `first:${key}`;
+    // A render counter as the prop: it changes nothing the adapter reads, so a new
+    // identity can only come from the text, and each `rerender` really is a render.
+    const view = await renderHook(({ tick }: { tick: number }) => useAppTranslation(), {
+      initialProps: { tick: 1 },
+    });
+
+    const before = view.result.current.translateKey;
+    expect(before(emptyKey)).toBe(`first:${emptyKey}`);
+
+    // Same language, new resources: the text really did change.
+    mockT = (key) => `second:${key}`;
+    await view.rerender({ tick: 2 });
+
+    expect(view.result.current.translateKey(emptyKey)).toBe(`second:${emptyKey}`);
+    // A new adapter, which is what the map's memoized derivations read to know the
+    // labels changed.
+    expect(view.result.current.translateKey).not.toBe(before);
+
+    // And it does not churn on every render: i18next returns one stable `t` per language
+    // and namespace, so a re-render that changed nothing keeps one identity — a new one
+    // per render would rebuild the map's style on every render.
+    const stable = view.result.current.translateKey;
+    await view.rerender({ tick: 3 });
+    expect(view.result.current.translateKey).toBe(stable);
   });
 });

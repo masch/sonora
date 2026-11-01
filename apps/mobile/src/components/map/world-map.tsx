@@ -292,7 +292,9 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         />
 
         {/* Nothing of that format is published: the map stays, and one honest line
-            says why it is bare, instead of an empty canvas nobody can read. */}
+            says why it is bare, instead of an empty canvas nobody can read. The line is
+            about the filter — the place has places — so it is not the world-empty
+            sentence, which would describe a map with nothing published at all. */}
         {visible.length === 0 && (
           <ThemedText
             type="small"
@@ -300,7 +302,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
             className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
             testID={`${testID}-filtered-empty`}
           >
-            {t('map.world.empty')}
+            {t('map.world.filteredEmpty')}
           </ThemedText>
         )}
       </TwView>

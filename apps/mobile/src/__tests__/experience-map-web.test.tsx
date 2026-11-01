@@ -19,8 +19,15 @@ jest.mock('pmtiles', () => ({
   },
 }));
 
+// The failure of a drawn map is a log line: what a suite can see of an error the map
+// survives is that it was reported to the log and that the map is still there.
+jest.mock('@/utils/logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
 import ExperienceMap from '@/components/map/experience-map.web';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
+import { logger } from '@/utils/logger';
 import { foldAttribution } from '@/components/map/use-web-map-instance';
 import {
   documentKeyOfLayer,
@@ -37,6 +44,9 @@ const STYLE_FAILING = 'https://api.example/media/public/styles/failing.json';
 /** The retry case downloads the same archive twice, so it needs one nobody else used. */
 const ARCHIVE_RETRYING = 'https://api.example/media/public/tiles/retrying/v1.pmtiles';
 const STYLE_RETRYING = 'https://api.example/media/public/styles/retrying.json';
+
+/** The logger, as jest sees it: a drawn map's error is reported and nothing more. */
+const mockedLogger = logger as unknown as { error: jest.Mock };
 
 const document: MapDocument = {
   key: 'umepay',
@@ -85,6 +95,7 @@ describe('ExperienceMap (web)', () => {
   beforeEach(() => {
     mockMapInstances.length = 0;
     mockAddProtocol.mockClear();
+    mockedLogger.error.mockClear();
     mockGetHeader.mockReset().mockResolvedValue({
       minZoom: 0,
       maxZoom: 15,
@@ -397,10 +408,45 @@ describe('ExperienceMap (web)', () => {
     await waitFor(() => expect(mockMapInstances).toHaveLength(2));
   });
 
+  it('keeps drawing when an error arrives after the map has drawn', async () => {
+    // MapLibre emits `error` for recoverable failures too: a sprite that 404s, a layer
+    // whose source never arrived. The map is still drawing, so replacing it with the
+    // error surface throws away a map that works. Only an error that arrives before the
+    // map has ever reported `load` is a failure to draw — the distinction this code can
+    // own, since the event carries no fatal flag.
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWith(true) }}
+        overlays={[document]}
+      />,
+    );
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+
+    await act(async () => {
+      map.emit('load');
+    });
+
+    const recoverable = new Error('sprite not found');
+    await act(async () => {
+      map.emit('error', { error: recoverable });
+    });
+
+    // The map stays exactly where it is: no error surface, no second instance, and the
+    // documents it drew are still drawn.
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+    expect(mockMapInstances).toHaveLength(1);
+    expect(map.layers.length).toBeGreaterThan(0);
+    // What the walker cannot see is still reported, with the library's own error.
+    expect(mockedLogger.error).toHaveBeenCalledWith('ExperienceMap error:', recoverable);
+  });
+
   it('hands a rebuilt map the layer selection and the pending flight', async () => {
     // The rebuilt instance takes a false→true transition in `ready`, because the effects
     // that apply what does not belong to the map's creation — the layer selection and the
     // flight the caller asked for — only run while it passes through "not loaded yet".
+    // The failure is raised before the map draws: an error after `load` is a map that is
+    // still drawing, and it no longer rebuilds anything.
     const source = { archiveUrl: ARCHIVE, style: styleWithBasemapLayers() };
     const focus = { latitude: -32.212, longitude: -64.738 };
     const hidden: MapLayerSelection[] = [{ id: 'water', visible: false, declared: true }];
@@ -409,9 +455,6 @@ describe('ExperienceMap (web)', () => {
       <ExperienceMap source={source} overlays={[document]} focus={focus} layerSelection={hidden} />,
     );
     await waitFor(() => expect(mockMapInstances).toHaveLength(1));
-    await act(async () => {
-      mockMapInstances[0].emit('load');
-    });
 
     await act(async () => {
       mockMapInstances[0].emit('error', { error: new Error('WebGL context lost') });

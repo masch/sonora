@@ -47,9 +47,10 @@ export interface NativeFocusFlightOptions {
  * flight without `zoom` cannot do — it keeps what the map had, and a point tapped
  * from the opening frame would stay a pixel among crowded labels. `getZoom()` is
  * asynchronous, so the move is guarded: a focus replaced while the answer is in
- * flight must not fly to a place the walker stopped asking for. An unavailable zoom
- * still flies, at the floor, because a tap that does nothing is worse than a flight
- * that chooses the close-up.
+ * flight must not fly to a place the walker stopped asking for. An unavailable zoom —
+ * one the camera will not answer, or one it answers with a rejection — still flies, at
+ * the floor, because a tap that does nothing is worse than a flight that chooses the
+ * close-up, and a failed query is not a reason to swallow the tap.
  *
  * Returns the region-change handler the map must be given. Native maps report every
  * region change, the walker's own pan included, so the returned handler reports only
@@ -109,7 +110,7 @@ export function useNativeFocusFlight({
     flightsRef.current = flight;
     let cancelled = false;
     void (async () => {
-      const currentZoom = await mapRef.current?.getZoom();
+      const currentZoom = await readZoom(mapRef.current);
       if (cancelled) return;
       const camera = cameraRef.current;
       if (!camera) return;
@@ -153,4 +154,21 @@ export function useNativeFocusFlight({
     awaitingRef.current = null;
     onSettledRef.current?.();
   }, []);
+}
+
+/**
+ * The camera's zoom, or `undefined` when it cannot be had.
+ *
+ * `getZoom()` is a promise to a native view, and a promise to a view can reject: a
+ * camera that is not attached yet, or one whose answer crosses a teardown. The zoom is
+ * a refinement of the flight, never its condition, so both ways of not having it — an
+ * absent map and a rejection — read the same to the caller.
+ */
+async function readZoom(map: NativeFlightMap | null): Promise<number | undefined> {
+  if (!map) return undefined;
+  try {
+    return await map.getZoom();
+  } catch {
+    return undefined;
+  }
 }
