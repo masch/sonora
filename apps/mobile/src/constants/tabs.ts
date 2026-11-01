@@ -28,13 +28,13 @@ export const TABS = [
   },
   {
     name: ROUTES.DERIVAS,
-    labelKey: 'tabs.experiences',
+    labelKey: 'experiences.types.trip',
     symbolViewName: getExperienceIcon('trip'),
     hidden: false,
   },
   {
     name: ROUTES.POETICS,
-    labelKey: 'tabs.poetics',
+    labelKey: 'experiences.types.track',
     symbolViewName: getExperienceIcon('track'),
     hidden: false,
   },

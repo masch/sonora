@@ -219,6 +219,8 @@ export function useWebMapInstance({
 
         mapRef.current = map;
 
+        collapseAttribution(containerRef.current);
+
         map.on('error', ((event: { error?: Error }) => {
           logger.error('ExperienceMap error:', event.error);
           setMapErrorCode('mapFailed');
@@ -289,4 +291,31 @@ export function useWebMapInstance({
   ]);
 
   return { mapRef, ready, mapErrorCode, setMapErrorCode };
+}
+
+/**
+ * Folds MapLibre's compact attribution away, the way a drag would.
+ *
+ * MapLibre opens the control when it is added and folds it only on the map's `drag`
+ * event — a card-sized map is never dragged, so the credit stays open over the place
+ * the walker is reading, and over a point's label. This performs the same two steps
+ * that event does (drop the expanded class, mark the element open), so the ⓘ keeps
+ * working: pressing it expands the credit again, and a drag still folds it.
+ *
+ * Tolerant on purpose: the node is a real DOM element in a browser and a bare host
+ * node under test, and a map that cannot find the control has nothing to collapse.
+ */
+export function collapseAttribution(container: unknown): void {
+  const query = (container as { querySelector?: unknown } | null)?.querySelector;
+  if (typeof query !== 'function') return;
+
+  const attribution = (
+    query as (selector: string) => {
+      classList?: { remove: (name: string) => void };
+      setAttribute?: (name: string, value: string) => void;
+    } | null
+  ).call(container, '.maplibregl-ctrl-attrib.maplibregl-compact');
+
+  attribution?.classList?.remove('maplibregl-compact-show');
+  attribution?.setAttribute?.('open', '');
 }

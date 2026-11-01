@@ -21,6 +21,7 @@ jest.mock('pmtiles', () => ({
 
 import ExperienceMap from '@/components/map/experience-map.web';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
+import { collapseAttribution } from '@/components/map/use-web-map-instance';
 import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
@@ -792,5 +793,32 @@ describe('documentKeyOfLayer', () => {
     expect(documentKeyOfLayer('refs:umepay:circle')).toBe('umepay');
     expect(documentKeyOfLayer('water')).toBeNull();
     expect(documentKeyOfLayer('buildings')).toBeNull();
+  });
+});
+
+describe('collapseAttribution', () => {
+  it('folds the compact control the way a drag would, and keeps the toggle working', () => {
+    // MapLibre opens the credit when it is added and folds it only on `drag`; a
+    // card-sized map is never dragged, so it stays over the place being read.
+    const control = {
+      classList: { remove: jest.fn() },
+      setAttribute: jest.fn(),
+    };
+    const container = { querySelector: jest.fn(() => control) };
+
+    collapseAttribution(container);
+
+    expect(container.querySelector).toHaveBeenCalledWith(
+      '.maplibregl-ctrl-attrib.maplibregl-compact',
+    );
+    // Dropping the expanded class collapses it; `open` is the same marker MapLibre
+    // sets, and pressing the ⓘ re-expands.
+    expect(control.classList.remove).toHaveBeenCalledWith('maplibregl-compact-show');
+    expect(control.setAttribute).toHaveBeenCalledWith('open', '');
+  });
+
+  it('does nothing when the node cannot be queried, as under test', () => {
+    expect(() => collapseAttribution({})).not.toThrow();
+    expect(() => collapseAttribution(null)).not.toThrow();
   });
 });

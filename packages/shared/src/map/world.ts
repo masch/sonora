@@ -59,7 +59,6 @@ export interface WorldExperience {
 export interface WorldDocumentsOptions {
   /** The language the labels are authored in — the one the app is showing. */
   language: SupportedLanguage;
-  translate: TranslateKey;
   /**
    * The colour each format is drawn in, when the caller has a palette of its own.
    *
@@ -107,21 +106,16 @@ export function worldPriceLabel(experience: WorldExperience, translate: Translat
 }
 
 /**
- * The whole label of one point, on one line: `{title} · {duration} · {price}`.
+ * The whole label of one point: the experience's title, and nothing else.
  *
- * One line because the map drops a label it cannot place without overlapping
- * another one (`text-allow-overlap: false` in the shared style builder), so a
- * second line would only make more of them lose. Parts that have no value are
- * left out instead of leaving an empty segment.
+ * The map is a place, not a list: a title is what a walker needs to recognise the
+ * point under their thumb, while the duration and the price are a decision they make
+ * once the preview is open — where there is room to show both properly. Dropping them
+ * also keeps the label short enough to survive the map's own collision rule
+ * (`text-allow-overlap: false` drops a label it cannot place).
  */
-export function worldPointLabel(experience: WorldExperience, translate: TranslateKey): string {
-  return [
-    experience.title.trim(),
-    worldDurationLabel(experience.durationSeconds, translate),
-    worldPriceLabel(experience, translate),
-  ]
-    .filter((part) => part.length > 0)
-    .join(' · ');
+export function worldPointLabel(experience: WorldExperience): string {
+  return experience.title.trim();
 }
 
 /** The path one trip draws, or `null` when it has no stops to join. */
@@ -173,12 +167,12 @@ function worldPathDocument(experience: WorldExperience): MapDocument | null {
  */
 export function worldDocuments(
   experiences: readonly WorldExperience[],
-  { language, translate, colors, labelColor }: WorldDocumentsOptions,
+  { language, colors, labelColor }: WorldDocumentsOptions,
 ): MapDocument[] {
   const drawable = experiences.filter(isFinitePoint);
 
   const points = drawable.map((experience): MapReferenceFeature => {
-    const label: MapReferenceText = { [language]: worldPointLabel(experience, translate) };
+    const label: MapReferenceText = { [language]: worldPointLabel(experience) };
     return {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },

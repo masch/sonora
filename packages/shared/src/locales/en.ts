@@ -89,7 +89,6 @@ export const en = {
   tabs: {
     index: 'Home',
     experiences: 'Derivas',
-    poetics: 'Short Stories',
     explore: 'Explore',
     settings: 'Settings',
     messages: 'Messages',
@@ -135,7 +134,7 @@ export const en = {
       onboarding: 'Onboarding',
     },
     types: {
-      track: 'Short Stories',
+      track: 'Sonora pause',
       trip: 'Derivas',
     },
     errors: {
@@ -169,9 +168,7 @@ export const en = {
     continueListening: 'Continue listening',
     remainingTime: '{{time}} remaining',
     riverPath: 'River path',
-    exploreRoutes: 'Derivas',
     exploreRoutesSub: 'Paths and stations',
-    exploreTracks: 'Sonora pause',
     exploreTracksSub: 'Short stories',
     localMessages: 'Local messages',
     localMessagesSub: 'Community voices',

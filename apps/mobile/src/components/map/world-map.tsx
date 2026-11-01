@@ -67,7 +67,7 @@ export interface WorldMapProps {
  * the lists already read, so there is no second copy to drift.
  */
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
-  const { t, language, translateKey } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
@@ -98,14 +98,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     () =>
       worldDocuments(visible, {
         language,
-        translate: translateKey,
         colors: {
           trip: colors[CARD_BG_COLOR_KEYS.trip],
           track: colors[CARD_BG_COLOR_KEYS.track],
         },
         labelColor: colors.homeCardText,
       }),
-    [visible, language, translateKey, colors],
+    [visible, language, colors],
   );
 
   /**

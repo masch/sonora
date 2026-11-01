@@ -99,8 +99,8 @@ describe('Home screen (Redesigned)', () => {
 
     expect(getByText('home.title')).toBeTruthy();
     expect(getByText('home.poetic')).toBeTruthy();
-    expect(getByText('home.exploreRoutes')).toBeTruthy();
-    expect(getByText('home.exploreTracks')).toBeTruthy();
+    expect(getByText('experiences.types.trip')).toBeTruthy();
+    expect(getByText('experiences.types.track')).toBeTruthy();
 
     expect(queryByTestId('home-audio-player')).toBeNull();
     expect(getByTestId('explore-routes-menu')).toBeTruthy();

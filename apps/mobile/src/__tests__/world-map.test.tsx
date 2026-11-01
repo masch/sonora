@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import {
-  formatPrice,
   WORLD_PATH_PREFIX,
   WORLD_POINTS_DOCUMENT_KEY,
   type GeoBounds,
@@ -255,9 +254,9 @@ describe('WorldMap', () => {
       [trip.longitude, trip.latitude],
       [track.longitude, track.latitude],
     ]);
-    expect(points[0].properties.label?.en).toBe(
-      [trip.title, 'map.world.labelDuration', formatPrice(1500000, 'ARS')].join(' · '),
-    );
+    // The point names the experience and nothing else: duration and price belong to the
+    // preview, where there is room for them.
+    expect(points[0].properties.label?.en).toBe(trip.title);
   });
 
   it('draws only through the MapLibre map component and never loads Leaflet', async () => {

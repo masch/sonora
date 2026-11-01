@@ -86,25 +86,16 @@ describe('worldPriceLabel', () => {
 });
 
 describe('worldPointLabel', () => {
-  it('joins title, duration and price on one line', () => {
-    expect(worldPointLabel(trip, translate)).toBe(
-      `DERIVA DEL BOSQUE AL RÍO · 42 min · ${formatPrice(2200000, 'ARS')}`,
-    );
-  });
-
-  it('keeps the shape for a free track', () => {
-    expect(worldPointLabel(track, translate)).toBe('En Nogales, una vez · 3 min · Gratis');
-  });
-
-  it('leaves out a part that has no value instead of an empty segment', () => {
-    expect(worldPointLabel({ ...trip, price: null }, translate)).toBe(
-      'DERIVA DEL BOSQUE AL RÍO · 42 min',
-    );
+  it('is the title and nothing else', () => {
+    // The map is a place, not a list: duration and price are the preview's job, where
+    // there is room for them and they survive the map's own collision rule.
+    expect(worldPointLabel(trip)).toBe('DERIVA DEL BOSQUE AL RÍO');
+    expect(worldPointLabel(track)).toBe('En Nogales, una vez');
   });
 });
 
 describe('worldDocuments', () => {
-  const documents = worldDocuments([trip, track], { language: 'es', translate });
+  const documents = worldDocuments([trip, track], { language: 'es' });
 
   it('draws one points document, one point per experience', () => {
     const points = documents[0];
@@ -118,9 +109,7 @@ describe('worldDocuments', () => {
 
   it('carries the label in the active language and the slug the tap resolves', () => {
     const feature = documents[0]?.collection.features[1];
-    expect(feature?.properties.label).toEqual({
-      es: 'En Nogales, una vez · 3 min · Gratis',
-    });
+    expect(feature?.properties.label).toEqual({ es: 'En Nogales, una vez' });
     expect(feature?.properties.experienceSlug).toBe('texto-maga');
     expect(feature?.properties.color).toBe(WORLD_POINT_COLORS.track);
   });
@@ -131,7 +120,6 @@ describe('worldDocuments', () => {
     // disagreeing about the colour of a Deriva.
     const palette = worldDocuments([trip, track], {
       language: 'es',
-      translate,
       colors: { trip: '#7BE5C4', track: '#A1C4FD' },
       labelColor: '#18181b',
     });
@@ -142,7 +130,7 @@ describe('worldDocuments', () => {
   });
 
   it('keeps the built-in colours when the caller brings no palette', () => {
-    const plain = worldDocuments([track], { language: 'es', translate });
+    const plain = worldDocuments([track], { language: 'es' });
     const feature = plain[0]?.collection.features[0];
     expect(feature?.properties.color).toBe(WORLD_POINT_COLORS.track);
     expect(feature?.properties.labelColor).toBeUndefined();

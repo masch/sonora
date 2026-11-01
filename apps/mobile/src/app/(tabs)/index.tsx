@@ -54,7 +54,7 @@ export default function HomeScreen() {
           {/* Explore trips */}
           <TwPressable
             onPress={() => router.push(ROUTES.PATH.DERIVAS)}
-            accessibilityLabel={t('home.exploreRoutes')}
+            accessibilityLabel={t('experiences.types.trip')}
             testID="explore-routes-menu"
             className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
             style={{ backgroundColor: colors.homeExploreRoutesBg }}
@@ -69,7 +69,7 @@ export default function HomeScreen() {
               />
               <TwView className="flex-1">
                 <ThemedText className="text-lg font-bold" style={{ color: colors.homeCardText }}>
-                  {t('home.exploreRoutes')}
+                  {t('experiences.types.trip')}
                 </ThemedText>
                 <ThemedText className="text-sm mt-0.5" style={{ color: colors.homeCardSubtext }}>
                   {t('home.exploreRoutesSub')}
@@ -88,7 +88,7 @@ export default function HomeScreen() {
           {/* Explore Tracks */}
           <TwPressable
             onPress={() => router.push(ROUTES.PATH.POETICS)}
-            accessibilityLabel={t('home.exploreTracks')}
+            accessibilityLabel={t('experiences.types.track')}
             testID="explore-tracks-menu"
             className="flex-row items-center justify-between px-6 py-5 rounded-[24px] active:opacity-75"
             style={{ backgroundColor: colors.homeExploreTracksBg }}
@@ -103,7 +103,7 @@ export default function HomeScreen() {
               />
               <TwView className="flex-1">
                 <ThemedText className="text-lg font-bold" style={{ color: colors.homeCardText }}>
-                  {t('home.exploreTracks')}
+                  {t('experiences.types.track')}
                 </ThemedText>
                 <ThemedText className="text-sm mt-0.5" style={{ color: colors.homeCardSubtext }}>
                   {t('home.exploreTracksSub')}
