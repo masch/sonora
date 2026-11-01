@@ -91,7 +91,9 @@ export function buildReferenceStyleLayers(
         'text-allow-overlap': false,
       },
       paint: {
-        'text-color': color,
+        // A reference drawn in a surface colour can still name itself legibly: the label
+        // asks for its own colour first, then the reference's, then the default.
+        'text-color': ['coalesce', ['get', 'labelColor'], color],
         'text-halo-color': '#ffffff',
         'text-halo-width': 1.4,
       },

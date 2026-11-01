@@ -125,6 +125,29 @@ describe('worldDocuments', () => {
     expect(feature?.properties.color).toBe(WORLD_POINT_COLORS.track);
   });
 
+  it('draws a point in the palette the caller passes, and labels it in the given ink', () => {
+    // The app decides what a format looks like; the world asks for that table instead of
+    // keeping its own opinion, because a second opinion is how a card and a point end up
+    // disagreeing about the colour of a Deriva.
+    const palette = worldDocuments([trip, track], {
+      language: 'es',
+      translate,
+      colors: { trip: '#7BE5C4', track: '#A1C4FD' },
+      labelColor: '#18181b',
+    });
+    const [tripFeature, trackFeature] = palette[0]?.collection.features ?? [];
+    expect(tripFeature?.properties.color).toBe('#7BE5C4');
+    expect(trackFeature?.properties.color).toBe('#A1C4FD');
+    expect(tripFeature?.properties.labelColor).toBe('#18181b');
+  });
+
+  it('keeps the built-in colours when the caller brings no palette', () => {
+    const plain = worldDocuments([track], { language: 'es', translate });
+    const feature = plain[0]?.collection.features[0];
+    expect(feature?.properties.color).toBe(WORLD_POINT_COLORS.track);
+    expect(feature?.properties.labelColor).toBeUndefined();
+  });
+
   it('draws one path per trip, starting at its origin and under the points', () => {
     const paths = documents.filter((document) => document.key.startsWith(WORLD_PATH_PREFIX));
     expect(paths).toHaveLength(1);

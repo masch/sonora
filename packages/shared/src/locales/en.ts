@@ -53,8 +53,6 @@ export const en = {
     world: {
       mapLabel: 'Deriva world',
       filterAll: 'All',
-      filterTrip: 'Derivas',
-      filterTrack: 'Short pieces',
       labelDuration: '{{minutes}} min',
       labelSeconds: '{{seconds}} s',
       free: 'Free',

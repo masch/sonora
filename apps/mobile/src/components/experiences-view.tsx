@@ -12,6 +12,7 @@ import {
   TRACK_IMAGES,
 } from '@/constants/images';
 import { ROUTES } from '@/constants/routes';
+import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import type { Experience, ExperienceFormat, Theme } from '@/data/experiences';
 import { fetchExperiences, fetchThemes, USER_EXPERIENCE_FORMATS } from '@/data/experiences';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -22,15 +23,6 @@ import { TwImage } from '@/tw/image';
 import { logger } from '@/utils/logger';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-
-const CARD_BG_COLOR_KEYS: Record<
-  ExperienceFormat,
-  'homeExploreRoutesBg' | 'homeExploreTracksBg' | 'homeLocalMessagesBg'
-> = {
-  trip: 'homeExploreRoutesBg',
-  track: 'homeExploreTracksBg',
-  'general-feedback': 'homeLocalMessagesBg',
-};
 
 async function fetchDynamicData() {
   const [fetchedThemes, fetchedExps] = await Promise.all([fetchThemes(), fetchExperiences()]);

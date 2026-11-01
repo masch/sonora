@@ -54,8 +54,6 @@ export const es = {
     world: {
       mapLabel: 'Mundo Deriva',
       filterAll: 'Todo',
-      filterTrip: 'Derivas',
-      filterTrack: 'Relatos',
       labelDuration: '{{minutes}} min',
       labelSeconds: '{{seconds}} s',
       free: 'Gratis',

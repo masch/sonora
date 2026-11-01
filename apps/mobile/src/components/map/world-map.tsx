@@ -13,10 +13,12 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import LoadingView from '@/components/loading-view';
+import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useWorldExperiences } from '@/hooks/use-world-experiences';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
@@ -25,10 +27,17 @@ import ExperiencePreviewCard from './experience-preview-card';
 import type { MapReferencePress } from './map-view.types';
 
 /** The chips' label for each filter, `null` being "everything". */
+/**
+ * What each chip says.
+ *
+ * A format is named once, by `experiences.types.*` — the same words the list screens
+ * use — and only the "everything" chip is the world's own: it is the row's extra
+ * option, not a type.
+ */
 const FILTER_LABEL_KEYS: Record<string, TranslationKeys> = {
   all: 'map.world.filterAll',
-  trip: 'map.world.filterTrip',
-  track: 'map.world.filterTrack',
+  trip: 'experiences.types.trip',
+  track: 'experiences.types.track',
 };
 
 export interface WorldMapProps {
@@ -59,6 +68,7 @@ export interface WorldMapProps {
  */
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
   const { t, language, translateKey } = useAppTranslation();
+  const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
   /**
@@ -78,9 +88,24 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * MapLibre cannot call the translation layer, so labels are resolved before drawing.
    * The adapter is the hook's, which keeps it stable per language.
    */
+  /**
+   * The points are drawn in the colour the app already gives each format — the same
+   * `RuntimeColors` entry the home's cards and the list rows use — so a Deriva is the
+   * same green everywhere. The label is drawn in the ink those cards put on that
+   * surface, because a pastel that fills a card cannot carry text over a pale basemap.
+   */
   const documents = useMemo(
-    () => worldDocuments(visible, { language, translate: translateKey }),
-    [visible, language, translateKey],
+    () =>
+      worldDocuments(visible, {
+        language,
+        translate: translateKey,
+        colors: {
+          trip: colors[CARD_BG_COLOR_KEYS.trip],
+          track: colors[CARD_BG_COLOR_KEYS.track],
+        },
+        labelColor: colors.homeCardText,
+      }),
+    [visible, language, translateKey, colors],
   );
 
   /**

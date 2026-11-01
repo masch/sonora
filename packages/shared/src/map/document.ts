@@ -44,6 +44,16 @@ export interface MapReferenceProperties {
   linkUrl?: string;
   /** `#rrggbb` override for the reference colour. */
   color?: string;
+  /**
+   * `#rrggbb` for this reference's label, when the colour it is drawn in cannot carry
+   * text.
+   *
+   * A format colour is a *surface*: it is chosen to fill an area or a dot, and the
+   * light ones — the pastel that marks a type on a card — disappear as text over a
+   * pale basemap. The label therefore has its own colour, and it falls back to the
+   * reference's when a caller does not need the distinction.
+   */
+  labelColor?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */

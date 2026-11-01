@@ -60,6 +60,23 @@ export interface WorldDocumentsOptions {
   /** The language the labels are authored in — the one the app is showing. */
   language: SupportedLanguage;
   translate: TranslateKey;
+  /**
+   * The colour each format is drawn in, when the caller has a palette of its own.
+   *
+   * The app already decides what a type looks like: a format has a name and a colour,
+   * and the home's cards and the list rows are drawn with it. The world asks for that
+   * same table instead of keeping a second opinion, and falls back to
+   * {@link WORLD_POINT_COLORS} so a caller without a theme still gets a legible map.
+   */
+  colors?: Partial<Record<UserExperienceFormat, string>>;
+  /**
+   * The colour of the labels, when the format colour cannot carry text.
+   *
+   * A format colour is a surface: the pastel that fills a card disappears as text over
+   * a pale basemap, so the label is drawn in the ink the same design uses for text on
+   * that surface.
+   */
+  labelColor?: string;
 }
 
 function isFinitePoint(experience: WorldExperience): boolean {
@@ -156,7 +173,7 @@ function worldPathDocument(experience: WorldExperience): MapDocument | null {
  */
 export function worldDocuments(
   experiences: readonly WorldExperience[],
-  { language, translate }: WorldDocumentsOptions,
+  { language, translate, colors, labelColor }: WorldDocumentsOptions,
 ): MapDocument[] {
   const drawable = experiences.filter(isFinitePoint);
 
@@ -167,7 +184,8 @@ export function worldDocuments(
       geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
       properties: {
         label,
-        color: WORLD_POINT_COLORS[experience.format],
+        color: colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format],
+        ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
       },
     };

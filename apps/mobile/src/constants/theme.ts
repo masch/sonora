@@ -57,6 +57,20 @@ export const RuntimeColors = {
   },
 } as const;
 
+/**
+ * Which palette entry each experience format is drawn with.
+ *
+ * The one place the app decides "what colour is a Deriva": the home's cards, the list
+ * rows and — through the same table — the points on the Deriva world. Kept beside
+ * `RuntimeColors` because the answer is a key of it, and a second opinion about a
+ * format's colour is exactly how the map and the cards drift apart.
+ */
+export const CARD_BG_COLOR_KEYS = {
+  trip: 'homeExploreRoutesBg',
+  track: 'homeExploreTracksBg',
+  'general-feedback': 'homeLocalMessagesBg',
+} as const;
+
 export const SPLASH_COLORS = {
   production: '#208AEF',
   staging: '#F59E0B',

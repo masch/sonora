@@ -275,8 +275,10 @@ describe('WorldMap', () => {
 
     // The three chips, in the words the app uses for them.
     expect(screen.getByLabelText('map.world.filterAll')).toBeTruthy();
-    expect(screen.getByLabelText('map.world.filterTrip')).toBeTruthy();
-    expect(screen.getByLabelText('map.world.filterTrack')).toBeTruthy();
+    // A format is named once, by the keys the list screens use; the world only owns
+    // the words of its own "everything" chip.
+    expect(screen.getByLabelText('experiences.types.trip')).toBeTruthy();
+    expect(screen.getByLabelText('experiences.types.track')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('world-filter-track'));
 
