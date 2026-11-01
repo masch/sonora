@@ -21,6 +21,7 @@ import {
   MAPLIBRE_LAYER_CAPABILITIES,
   resolveLayerSelection,
   labelAnchorForDocument,
+  movableLabelsForDocument,
   referenceSourceId,
   type TranslateKey,
   withResolvedLabels,
@@ -492,6 +493,7 @@ function buildMapStyle(
       ...buildReferenceStyleLayers(sourceId, {
         includeLabels,
         labelAnchor: labelAnchorForDocument(document.key),
+        movableLabels: movableLabelsForDocument(document.key),
       }),
     );
   }

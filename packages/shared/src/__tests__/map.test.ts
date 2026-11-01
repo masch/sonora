@@ -350,6 +350,24 @@ describe('reference style layers', () => {
     expect(labelAnchorForDocument('referencias')).toBe('top');
   });
 
+  it('lets a movable label try all four sides of its point', () => {
+    // Crowded worlds — three experiences a couple of hundred metres apart — lose all
+    // but one label when the only position is "below the point". A movable label
+    // moves around it instead of disappearing.
+    const movable = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, {
+      movableLabels: true,
+    }).find((layer) => layer.id.endsWith(':label'));
+
+    expect(movable?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
+    expect(movable?.layout?.['text-radial-offset']).toBe(0.8);
+    // A fixed anchor and a variable one are mutually exclusive.
+    expect(movable?.layout?.['text-anchor']).toBeUndefined();
+    expect(movable?.layout?.['text-offset']).toBeUndefined();
+    // Still culled when all four sides are taken: that is what keeps two labels from
+    // drawing on top of each other and reading as one corrupted word.
+    expect(movable?.layout?.['text-allow-overlap']).toBe(false);
+  });
+
   it('omits the label layer when the style has no glyphs source', () => {
     const layers = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, {
       includeLabels: false,

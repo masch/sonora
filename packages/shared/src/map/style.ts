@@ -31,6 +31,16 @@ export interface ReferenceLayerOptions {
    * corrupted word when both anchor the same way, so they are given opposite sides.
    */
   labelAnchor?: 'top' | 'bottom';
+  /**
+   * Whether a label may try all four sides of its point instead of the one side above.
+   *
+   * A crowded document — three places inside a hamlet — gives its labels one shared
+   * position and MapLibre drops every label it cannot place. A movable label is offered
+   * `top`, `bottom`, `left` and `right` in turn and keeps the first side that is free, so
+   * it moves instead of disappearing. It is not permission to overlap: a label with no
+   * free side is still culled, which is what stops two of them reading as one word.
+   */
+  movableLabels?: boolean;
 }
 
 export function buildReferenceStyleLayers(
@@ -74,6 +84,14 @@ export function buildReferenceStyleLayers(
 
   if (options.includeLabels !== false) {
     const anchor = options.labelAnchor ?? 'top';
+    const movable = options.movableLabels === true;
+    const placement = movable
+      ? {
+          // Four candidate sides, tried in this order, instead of one fixed anchor.
+          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+          'text-radial-offset': 0.8,
+        }
+      : { 'text-anchor': anchor, 'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8] };
     layers.push({
       id: `${sourceId}:label`,
       type: 'symbol',
@@ -83,8 +101,7 @@ export function buildReferenceStyleLayers(
         'text-field': ['get', 'labelText'],
         'text-font': LABEL_FONT,
         'text-size': 12,
-        'text-anchor': anchor,
-        'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
+        ...placement,
         // Culling is the point, not a limitation: with overlap allowed, two labels
         // that land on the same pixel draw on top of each other and read as a
         // corrupted word. A crowded map is expected to drop the loser.

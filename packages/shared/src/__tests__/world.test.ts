@@ -6,6 +6,7 @@ import {
   WORLD_POINTS_DOCUMENT_KEY,
   WORLD_POINT_COLORS,
   filterWorldExperiences,
+  movableLabelsForDocument,
   worldCameraBounds,
   worldDocuments,
   worldDurationLabel,
@@ -13,6 +14,7 @@ import {
   worldPriceLabel,
   type WorldExperience,
 } from '../map/world';
+import { ITINERARY_DOCUMENT_KEY } from '../map/itinerary';
 import { formatPrice } from '../utils/format-price';
 
 /**
@@ -177,30 +179,45 @@ describe('worldCameraBounds', () => {
     expect(worldCameraBounds([], null)).toBeNull();
   });
 
-  it('widens a single point to the smallest readable span', () => {
+  it('widens a single point to the smallest readable span, grown by what it draws', () => {
     const bounds = worldCameraBounds([track], null);
     expect(bounds).not.toBeNull();
     if (!bounds) return;
-    expect(bounds.east - bounds.west).toBeCloseTo(WORLD_MIN_SPAN_DEGREES, 10);
-    expect(bounds.north - bounds.south).toBeCloseTo(WORLD_MIN_SPAN_DEGREES, 10);
+    // The minimum span is the floor, not the answer: the dot and the label beneath it
+    // are drawn outside the anchor, so the box has to hold them too.
+    expect(bounds.east - bounds.west).toBeGreaterThan(WORLD_MIN_SPAN_DEGREES);
+    expect(bounds.north - bounds.south).toBeGreaterThan(WORLD_MIN_SPAN_DEGREES);
     expect((bounds.west + bounds.east) / 2).toBeCloseTo(track.longitude, 10);
-    expect((bounds.south + bounds.north) / 2).toBeCloseTo(track.latitude, 10);
+  });
+
+  it('grows the box past every point, with the most room under the southern one', () => {
+    // The label sits *under* its point, so the south edge is where the frame loses
+    // content: the last point of the world needs more room below it than above.
+    const far: WorldExperience = { ...track, slug: 'far', latitude: -32.28, longitude: -64.8 };
+    const bounds = worldCameraBounds([trip, far], null);
+    expect(bounds).not.toBeNull();
+    if (!bounds) return;
+    expect(bounds.west).toBeLessThan(far.longitude);
+    expect(bounds.east).toBeGreaterThan(-64.736273);
+    expect(bounds.north).toBeGreaterThan(trip.latitude);
+    expect(bounds.south).toBeLessThan(far.latitude);
+    expect(far.latitude - bounds.south).toBeGreaterThan(bounds.north - trip.latitude);
   });
 
   it('covers every point that is spread wider than the minimum, axis by axis', () => {
-    // Wide on both axes: the box is exactly what the points need.
+    // Wide on both axes: the box holds the points, plus the margins each axis needs.
     const far: WorldExperience = { ...track, slug: 'far', latitude: -32.28, longitude: -64.8 };
     const wide = worldCameraBounds([trip, far], null);
     expect(wide).not.toBeNull();
     if (!wide) return;
-    expect(wide.west).toBeCloseTo(far.longitude, 10);
-    expect(wide.south).toBeCloseTo(far.latitude, 10);
+    expect(wide.west).toBeLessThan(far.longitude);
+    expect(wide.south).toBeLessThan(far.latitude);
     // The trip's stops are drawn, so the box reaches their longitude, not the origin's.
-    expect(wide.east).toBeCloseTo(-64.736273, 10);
-    expect(wide.north).toBeCloseTo(trip.latitude, 10);
+    expect(wide.east).toBeGreaterThan(-64.736273);
+    expect(wide.north).toBeGreaterThan(trip.latitude);
 
-    // Wide on the longitude only: that axis is exactly the points' own, the other
-    // one keeps the minimum span around them.
+    // Wide on the longitude only: that axis is the points' own, the other one keeps
+    // the minimum span around them.
     const sameLatitude: WorldExperience = {
       ...track,
       slug: 'far-east',
@@ -210,13 +227,25 @@ describe('worldCameraBounds', () => {
     const flat = worldCameraBounds([trip, sameLatitude], null);
     expect(flat).not.toBeNull();
     if (!flat) return;
-    expect(flat.west).toBeCloseTo(-64.8, 10);
-    expect(flat.east).toBeCloseTo(-64.736273, 10);
-    expect(flat.north - flat.south).toBeCloseTo(WORLD_MIN_SPAN_DEGREES, 10);
-    // Centred on everything drawn — the origin and the stops — not on the origin.
+    expect(flat.west).toBeLessThan(-64.8);
+    expect(flat.east).toBeGreaterThan(-64.736273);
+    expect(flat.north - flat.south).toBeGreaterThan(WORLD_MIN_SPAN_DEGREES);
+    // Centred on everything drawn — the origin and the stops — sideways, where the
+    // margins are symmetric, and offset south only by the room the labels need.
+    expect((flat.west + flat.east) / 2).toBeCloseTo((-64.8 + -64.736273) / 2, 10);
     const drawnLatitudes = [trip.latitude, ...(trip.waypoints ?? []).map((w) => w.latitude)];
     const centerLatitude = (Math.min(...drawnLatitudes) + Math.max(...drawnLatitudes)) / 2;
-    expect((flat.south + flat.north) / 2).toBeCloseTo(centerLatitude, 10);
+    expect((flat.south + flat.north) / 2).toBeLessThan(centerLatitude);
+    expect(centerLatitude - (flat.south + flat.north) / 2).toBeLessThan(WORLD_MIN_SPAN_DEGREES / 2);
+  });
+
+  it('carries the movable labels of the world and of nothing else', () => {
+    // Only the world's own points get labels that may move around their point: the
+    // itinerary anchors opposite a reference on purpose, so moving them would put
+    // the two back in the same pixels.
+    expect(movableLabelsForDocument(WORLD_POINTS_DOCUMENT_KEY)).toBe(true);
+    expect(movableLabelsForDocument(ITINERARY_DOCUMENT_KEY)).toBe(false);
+    expect(movableLabelsForDocument('referencias')).toBe(false);
   });
 
   it("covers a trip's stops, not only its origin", () => {
