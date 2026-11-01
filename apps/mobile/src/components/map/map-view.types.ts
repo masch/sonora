@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { StyleSpecification } from 'maplibre-gl';
 import type {
   GeoBounds,
@@ -130,6 +131,29 @@ export interface ExperienceMapProps {
    */
   onFocusSettled?: () => void;
   onFeaturePress?: (reference: MapReferencePress) => void;
+  /**
+   * Drawn directly above the map, and only while the map can draw.
+   *
+   * The caller's controls live here instead of next to the map so a control over an
+   * empty card is impossible to write: it appears with the first drawn pixel, never
+   * before it — which is what the chips of the world map needed.
+   */
+  toolbar?: ReactNode;
+  /**
+   * The caller's own surface for the wait, substituted for the renderer's stage line.
+   *
+   * Handed the wait itself, so one card can name a transfer and its progress while the
+   * renderer keeps owning the diagnosis. Absent means the renderer draws its own
+   * per-stage line, which is what the detail screens want.
+   */
+  renderPending?: (wait: MapWaitState) => ReactNode;
+  /**
+   * Drawn inside the map's own card, and only while the map can draw.
+   *
+   * For a line or a control that belongs to the drawn map itself — the world's bare-card
+   * sentence — so it inherits the card's clipping and can never appear over a wait.
+   */
+  overlay?: ReactNode;
   testID?: string;
   className?: string;
 }
@@ -154,6 +178,25 @@ export type MapLoadErrorCode =
 
 /** Which wait a failure belongs to, so a retry restarts that one and not the others. */
 export type MapLoadStage = 'archive' | 'style' | 'map';
+
+/**
+ * What a renderer is still waiting for, or `null` when it can draw.
+ *
+ * Reported so a view can show one wait of its own for the whole card while the stage
+ * a wait belongs to stays available to whoever has to diagnose a screenshot.
+ */
+export interface MapWaitState {
+  /** Which wait is pending, in the same vocabulary failures use. */
+  stage: MapLoadStage;
+  /**
+   * True only while a first-time archive is really being transferred, never while the
+   * device is being asked whether it already has one: one is a long wait worth naming,
+   * the other is a check that ends inside a frame.
+   */
+  downloading: boolean;
+  /** Fraction of the transfer already written, `null` while it runs with no length. */
+  progress: number | null;
+}
 
 export function stageOfFailure(code: MapLoadErrorCode): MapLoadStage {
   switch (code) {

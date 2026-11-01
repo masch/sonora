@@ -1,6 +1,6 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   MAPLIBRE_LAYER_CAPABILITIES,
@@ -30,6 +30,7 @@ import {
   type ExperienceMapProps,
   type MapLoadErrorCode,
   type MapReferencePress,
+  type MapWaitState,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
@@ -84,6 +85,9 @@ export default function ExperienceMap({
   focus,
   onFocusSettled,
   onFeaturePress,
+  toolbar,
+  renderPending,
+  overlay,
   testID = 'experience-map',
   className = 'h-80 w-full',
 }: ExperienceMapProps) {
@@ -258,32 +262,64 @@ export default function ExperienceMap({
     }
   }, [failure, setMapErrorCode]);
 
+  const archiveStatus = archive.status;
+  /**
+   * The wait this renderer is in, and `null` exactly when it can draw.
+   *
+   * The archive arrives whole and the percentage lives in the browser's transfer, so
+   * this renderer names the stage and never a number it cannot read.
+   */
+  const wait = useMemo<MapWaitState | null>(() => {
+    // A failure is not a wait: it has a surface of its own, with words of its own.
+    if (failure) return null;
+    if (archiveStatus === 'loading') {
+      return { stage: 'archive', downloading: false, progress: null };
+    }
+    return ready ? null : { stage: 'map', downloading: false, progress: null };
+  }, [failure, archiveStatus, ready]);
+
   if (failure) {
     return <MapErrorView code={failure} onRetry={retry} testID={testID} className={className} />;
   }
 
+  /** Drawn is the wait being over: the caller's slots belong to the drawn card alone. */
+  const drawn = wait === null;
+
   return (
-    <TwView testID={testID} className={`${className} relative overflow-hidden`}>
-      {!noRegion && archive.status === 'loading' && <LoadingView message={t('map.loadingMap')} />}
-      {/* The surface the walker taps: it carries the name a screen reader announces and
-          the hook a test reaches the map through, exactly as the native map does. */}
-      <div
-        ref={containerRef}
-        className="h-full w-full z-0"
-        aria-label={t('map.mapLabel')}
-        data-testid={`${testID}-map`}
-      />
-      {/* The same one honest line the native renderer draws over its reference plane. */}
-      {noRegion && (
-        <ThemedText
-          type="small"
-          themeColor="textSecondary"
-          className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
-          testID={`${testID}-no-region`}
-        >
-          {t('map.noRegion')}
-        </ThemedText>
-      )}
-    </TwView>
+    <>
+      {/* The caller's controls, above the card and only now that it draws: a row over
+          a card with no pixels is the flicker this seam exists to prevent. */}
+      {drawn && toolbar}
+      <TwView testID={testID} className={`${className} relative overflow-hidden`}>
+        {/* A caller that took the wait over draws it: one message, not two chained ones. */}
+        {renderPending
+          ? wait
+            ? renderPending(wait)
+            : null
+          : !noRegion &&
+            archiveStatus === 'loading' && <LoadingView message={t('map.loadingMap')} />}
+        {/* The surface the walker taps: it carries the name a screen reader announces and
+            the hook a test reaches the map through, exactly as the native map does. */}
+        <div
+          ref={containerRef}
+          className="h-full w-full z-0"
+          aria-label={t('map.mapLabel')}
+          data-testid={`${testID}-map`}
+        />
+        {/* The same one honest line the native renderer draws over its reference plane. */}
+        {noRegion && (
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
+            testID={`${testID}-no-region`}
+          >
+            {t('map.noRegion')}
+          </ThemedText>
+        )}
+        {/* The caller's own line for the drawn map, inside the card it belongs to. */}
+        {drawn && overlay}
+      </TwView>
+    </>
   );
 }

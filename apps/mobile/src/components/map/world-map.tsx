@@ -23,7 +23,7 @@ import { TwView } from '@/tw';
 import ExperienceMap from './experience-map';
 import { FOCUS_SETTLE_FALLBACK_MS } from './map-view.types';
 import ExperiencePreviewCard from './experience-preview-card';
-import type { MapReferencePress } from './map-view.types';
+import type { MapReferencePress, MapWaitState } from './map-view.types';
 
 /** The chips' label for each filter, `null` being "everything". */
 /**
@@ -64,6 +64,24 @@ export interface WorldMapProps {
    */
   centerOnSelect?: boolean;
   testID?: string;
+}
+
+/**
+ * The one sentence the card says while it cannot draw yet.
+ *
+ * A first-time transfer is a long, honest wait and it says so with whatever numbers
+ * the platform gave: naming it "loading" would hide work the walker is paying for,
+ * and a percentage nobody reported would be invented. Every other wait — the payload,
+ * the device cache being checked, the style document — is the same short one, and one
+ * sentence for it is the point of this card.
+ */
+function waitMessage(
+  wait: MapWaitState | null,
+  t: (key: TranslationKeys, options?: Record<string, unknown>) => string,
+): string {
+  if (!wait?.downloading) return t('map.loadingMap');
+  if (wait.progress === null) return t('map.loadingArchive');
+  return t('map.loadingArchiveProgress', { progress: Math.round(wait.progress * 100) });
 }
 
 /**
@@ -217,14 +235,6 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     [centerOnSelect],
   );
 
-  if (status === 'loading') {
-    return (
-      <TwView testID={`${testID}-loading`} className="h-[400px] w-full items-center justify-center">
-        <LoadingView message={t('map.loadingMap')} />
-      </TwView>
-    );
-  }
-
   if (status === 'error') {
     return (
       <TwView
@@ -244,6 +254,19 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     );
   }
 
+  // The payload has not arrived, so there is no map to draw and nothing to filter: the
+  // card waits alone, in the same box the map will take, and it owns the whole message.
+  if (status === 'loading') {
+    return (
+      <TwView
+        testID={`${testID}-loading`}
+        className="h-[400px] w-full items-center justify-center rounded-2xl"
+      >
+        <LoadingView message={waitMessage(null, t)} />
+      </TwView>
+    );
+  }
+
   // A place with nothing published is not a failure: it is a world with no points
   // yet, and it says so instead of drawing an empty canvas.
   if (experiences.length === 0) {
@@ -259,61 +282,79 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     );
   }
 
+  /**
+   * The filter row, handed to the map as its toolbar.
+   *
+   * A slot and not a sibling here on purpose: the row belongs to a map that can draw, so
+   * letting the renderer place it is what makes a control over an empty card impossible
+   * to write — which is what made the home read as two chained loads.
+   */
+  const filtersRow = (
+    // The row is a layout, not a control: labelling it would need `accessible`, which
+    // would in turn swallow the chips' own names. Each chip announces itself.
+    <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
+      {FILTER_OPTIONS.map((option) => {
+        const filter = option ?? 'all';
+        return (
+          <Chip
+            key={filter}
+            label={t(FILTER_LABEL_KEYS[filter])}
+            selected={format === option}
+            onPress={() => setFormat(option)}
+            testID={`world-filter-${filter}`}
+            accessibilityLabel={t(FILTER_LABEL_KEYS[filter])}
+          />
+        );
+      })}
+    </TwView>
+  );
+
   return (
     <TwView testID={testID} className="gap-3">
-      {/* The row is a layout, not a control: labelling it would need `accessible`, which
-          would in turn swallow the chips' own names. Each chip announces itself. */}
-      <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
-        {FILTER_OPTIONS.map((option) => {
-          const filter = option ?? 'all';
-          return (
-            <Chip
-              key={filter}
-              label={t(FILTER_LABEL_KEYS[filter])}
-              selected={format === option}
-              onPress={() => setFormat(option)}
-              testID={`world-filter-${filter}`}
-              accessibilityLabel={t(FILTER_LABEL_KEYS[filter])}
-            />
-          );
-        })}
-      </TwView>
-
       {/* Height is the axis this map is fitted on: the world's box is taller than it is
           wide, so a short card fits it to the card's height and leaves the sides empty.
           400 dp stops wasting that width without pushing the page's own content out of
           reach; past ~550 dp on a 340 dp-wide card the fit turns horizontal and the extra
-          height is empty sky. The loading and empty states share it, so nothing jumps. */}
-      <TwView className="relative h-[400px] w-full overflow-hidden rounded-2xl">
-        <ExperienceMap
-          testID={`${testID}-canvas`}
-          className="h-full w-full"
-          source={source}
-          overlays={documents}
-          bounds={cameraBounds}
-          center={worldCenter ? [worldCenter.longitude, worldCenter.latitude] : undefined}
-          focus={
-            traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null
-          }
-          onFocusSettled={landFlight}
-          onFeaturePress={handleFeaturePress}
-        />
-
-        {/* Nothing of that format is published: the map stays, and one honest line
-            says why it is bare, instead of an empty canvas nobody can read. The line is
-            about the filter — the place has places — so it is not the world-empty
-            sentence, which would describe a map with nothing published at all. */}
-        {visible.length === 0 && (
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
-            testID={`${testID}-filtered-empty`}
+          height is empty sky. The card is the renderer's own, so the wait, the draws and
+          the caller's line all share one box and nothing jumps. */}
+      <ExperienceMap
+        testID={`${testID}-canvas`}
+        className="relative h-[400px] w-full overflow-hidden rounded-2xl"
+        source={source}
+        overlays={documents}
+        bounds={cameraBounds}
+        center={worldCenter ? [worldCenter.longitude, worldCenter.latitude] : undefined}
+        focus={traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null}
+        onFocusSettled={landFlight}
+        onFeaturePress={handleFeaturePress}
+        toolbar={filtersRow}
+        // One wait, in the card, and the same card: the renderer says which stage it is
+        // in, and only a transfer it is really paying for gets its own sentence.
+        renderPending={(wait) => (
+          <TwView
+            testID={`${testID}-loading`}
+            className="absolute inset-0 z-10 items-center justify-center bg-backgroundElement"
           >
-            {t('map.world.filteredEmpty')}
-          </ThemedText>
+            <LoadingView message={waitMessage(wait, t)} />
+          </TwView>
         )}
-      </TwView>
+        // Nothing of that format is published: the map stays, and one honest line says
+        // why it is bare, instead of an empty canvas nobody can read. The line is about
+        // the filter — the place has places — so it is not the world-empty sentence,
+        // which would describe a map with nothing published at all.
+        overlay={
+          visible.length === 0 ? (
+            <ThemedText
+              type="small"
+              themeColor="textSecondary"
+              className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
+              testID={`${testID}-filtered-empty`}
+            >
+              {t('map.world.filteredEmpty')}
+            </ThemedText>
+          ) : null
+        }
+      />
 
       <ExperiencePreviewCard
         experience={opened}
