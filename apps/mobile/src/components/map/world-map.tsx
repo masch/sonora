@@ -219,7 +219,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
 
   if (status === 'loading') {
     return (
-      <TwView testID={`${testID}-loading`} className="h-72 w-full items-center justify-center">
+      <TwView testID={`${testID}-loading`} className="h-[400px] w-full items-center justify-center">
         <LoadingView message={t('map.loadingMap')} />
       </TwView>
     );
@@ -229,7 +229,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     return (
       <TwView
         testID={`${testID}-error`}
-        className="h-72 w-full items-center justify-center gap-2 px-4"
+        className="h-[400px] w-full items-center justify-center gap-2 px-4"
       >
         <ThemedText>{t('map.offlineTitle')}</ThemedText>
         <Button
@@ -248,7 +248,10 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   // yet, and it says so instead of drawing an empty canvas.
   if (experiences.length === 0) {
     return (
-      <TwView testID={`${testID}-empty`} className="h-72 w-full items-center justify-center px-6">
+      <TwView
+        testID={`${testID}-empty`}
+        className="h-[400px] w-full items-center justify-center px-6"
+      >
         <ThemedText type="small" themeColor="textSecondary" className="text-center">
           {t('map.world.empty')}
         </ThemedText>
@@ -276,7 +279,12 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         })}
       </TwView>
 
-      <TwView className="relative h-72 w-full overflow-hidden rounded-2xl">
+      {/* Height is the axis this map is fitted on: the world's box is taller than it is
+          wide, so a short card fits it to the card's height and leaves the sides empty.
+          400 dp stops wasting that width without pushing the page's own content out of
+          reach; past ~550 dp on a 340 dp-wide card the fit turns horizontal and the extra
+          height is empty sky. The loading and empty states share it, so nothing jumps. */}
+      <TwView className="relative h-[400px] w-full overflow-hidden rounded-2xl">
         <ExperienceMap
           testID={`${testID}-canvas`}
           className="h-full w-full"
