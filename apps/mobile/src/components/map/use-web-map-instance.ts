@@ -237,6 +237,18 @@ export function useWebMapInstance({
           setMapErrorCode('mapFailed');
         }) as never);
 
+        /**
+         * The one post-load failure that is still fatal, and the signal that says so.
+         *
+         * A drawn map can lose the context it draws with — a GPU reset, a driver that
+         * drops the tab — and after that every later frame is blank. The `error` event
+         * cannot be believed about this (no fatal flag, and `sourceId`/`tile` appear on
+         * recoverable failures too), but the canvas has an event for exactly this
+         * state, so the screen follows the one signal that means "this map cannot draw
+         * any more" instead of guessing from a message.
+         */
+        watchContextLoss(containerRef.current, () => setMapErrorCode('mapFailed'));
+
         map.on('load', (() => {
           if (cancelledRef.current) return;
           drewOnce = true;
@@ -367,4 +379,22 @@ function queryAttribution(container: unknown): {
     container,
     '.maplibregl-ctrl-attrib.maplibregl-compact',
   );
+}
+
+/**
+ * Calls `onLost` when the map's canvas loses its WebGL context.
+ *
+ * The DOM event exists for this one state, and it fires after the map has drawn as well
+ * as before, which is the case an error event cannot distinguish. Tolerant like the rest
+ * of this module: the container is a real element in a browser and a bare host node under
+ * test, and a map that is already gone has nothing to watch.
+ */
+export function watchContextLoss(container: unknown, onLost: () => void): void {
+  const canvas = (
+    container as { querySelector?: (selector: string) => unknown } | null
+  )?.querySelector?.('canvas') as {
+    addEventListener?: (event: string, handler: () => void) => void;
+  } | null;
+
+  canvas?.addEventListener?.('webglcontextlost', onLost);
 }
