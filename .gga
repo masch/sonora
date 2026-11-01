@@ -21,9 +21,13 @@
 # contributor without the plan cannot commit until they install it or ask a maintainer
 # for an alternative. The `opencode-go/*` namespace is the subscription; the bare
 # `opencode/*` one is pay-per-use and answers "Insufficient account funds" without
-# credit. Run `opencode models` to see what the installed plan actually offers, and
-# pass it on the command line for a one-off:
-#   PROVIDER="opencode:opencode-go/glm-5.3-flash" make gga
+# credit. Run `opencode models` to see what the installed plan actually offers.
+#
+# `PROVIDER` below is the default: this file is loaded after the environment, so setting
+# PROVIDER on the command line changes nothing. The override is `GGA_PROVIDER`, and it
+# works for a one-off run or for a single commit:
+#   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" make gga
+#   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" git commit
 PROVIDER="opencode:opencode-go/deepseek-v4.1-flash"
 
 # File patterns to include in review (comma-separated)

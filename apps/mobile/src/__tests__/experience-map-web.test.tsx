@@ -903,6 +903,36 @@ describe('foldAttribution', () => {
     expect(element.classList.remove).not.toHaveBeenCalled();
   });
 
+  it("binds the walker's click on the first fold that finds the control", () => {
+    // The control arrives with the first attribution, not with the map: a listener bound
+    // at creation never attaches, so the walker opens the credit and the next data event
+    // folds it back.
+    let summary: { addEventListener: (event: string, handler: () => void) => void } | null = null;
+    let openByWalker: (() => void) | undefined;
+    const element = {
+      classList: { remove: jest.fn() },
+      setAttribute: jest.fn(),
+      querySelector: () => summary,
+    };
+    const container = { querySelector: () => element };
+    const handlers: Record<string, () => void> = {};
+    const map = { on: (event: string, handler: () => void) => (handlers[event] = handler) };
+
+    foldAttribution(map, container);
+    // Nothing to bind yet: the map has drawn no attribution.
+    expect(element.classList.remove).toHaveBeenCalledTimes(1);
+
+    summary = { addEventListener: (_event, handler) => (openByWalker = handler) };
+    handlers.sourcedata?.();
+    openByWalker?.();
+    element.classList.remove.mockClear();
+
+    handlers.styledata?.();
+    handlers.sourcedata?.();
+    // The credit is the walker's from the moment they ask for it.
+    expect(element.classList.remove).not.toHaveBeenCalled();
+  });
+
   it('does nothing when the node cannot be queried, as under test', () => {
     const map = { on: jest.fn() };
     expect(() => foldAttribution(map, {})).not.toThrow();

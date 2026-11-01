@@ -26,14 +26,18 @@ fi
 
 # 2. Run all validation steps (fail-fast on first error)
 
-# A log file nobody else can point somewhere else.
+# One directory per run, created by `mktemp`.
 #
-# The old name was `/tmp/sonora-precommit-<timestamp>-<name>.log`: predictable, so another
-# local user could pre-create the path as a symlink and the redirection would truncate a
-# file this developer owns. `mktemp` creates the file itself, under a name nobody can
-# guess, and fails rather than reusing a path someone else already made.
+# The old scheme wrote `/tmp/sonora-precommit-<timestamp>-<name>.log`: predictable, so
+# another local user could pre-create the path as a symlink and the redirection would
+# truncate a file this developer owns. `mktemp -d` creates the directory itself under a
+# name nobody can guess, so nothing can be planted at it — and keeping the step logs
+# inside it is what `make precommit-logs` reads, so grouping a run stays one lookup.
+_RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/sonora-precommit-XXXXXXXX")
+
+# The log a step writes to, inside this run's directory.
 new_log() {
-  mktemp "${TMPDIR:-/tmp}/sonora-precommit-XXXXXXXX"
+  printf '%s/%s.log\n' "$_RUN_DIR" "$1"
 }
 
 # The one way a step fails: say why, name the log, and show it.
@@ -53,7 +57,7 @@ run_step() {
   CMD=$2
   ALLOWED_EXIT=${3:-}
   printf "  ✓ %s... " "$NAME"
-  TMPFILE=$(new_log)
+  TMPFILE=$(new_log "$NAME")
   if eval "$CMD" > "$TMPFILE" 2>&1; then
     printf "ok\n"
     rm -f "$TMPFILE"
@@ -76,7 +80,7 @@ run_step "doctor-ci" "make doctor-ci"
 
 # expo-doctor is non-blocking (known bun false positives)
 printf "  ✓ expo-doctor... "
-TMPFILE=$(new_log)
+TMPFILE=$(new_log expo-doctor)
 if make expo-doctor > "$TMPFILE" 2>&1; then
   printf "ok\n"
 else
@@ -101,7 +105,7 @@ rm -f "$TMPFILE"
 # the script on the spot, so the provider-failure check below, and the message that tells
 # a developer why their commit was refused, never ran.
 printf "  ✓ %s... " "gga"
-TMPFILE=$(new_log)
+TMPFILE=$(new_log gga)
 if make gga > "$TMPFILE" 2>&1; then
   GGA_EXIT=0
 else
@@ -115,6 +119,9 @@ if [ "$GGA_EXIT" -ne 0 ]; then
 fi
 printf "ok\n"
 rm -f "$TMPFILE"
+
+# The run directory holds only logs kept for a failure; an empty one is noise.
+rmdir "$_RUN_DIR" 2>/dev/null || true
 
 echo "  ✓ All checks passed"
 exit 0

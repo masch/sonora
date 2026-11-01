@@ -1264,11 +1264,11 @@ doctor-ci: ## Run React Doctor audit (diff scan, for pre-commit, blocking on war
 
 .PHONY: precommit-logs
 precommit-logs: ## Show temp files from last pre-commit run
-	@LAST=$$(ls -t /tmp/sonora-precommit-*.log 2>/dev/null | head -1 | sed -E 's/.*sonora-precommit-(.+)-[^-]+\.log/\1/'); \
+	@LAST=$$(ls -dt "$${TMPDIR:-/tmp}"/sonora-precommit-*/ 2>/dev/null | head -1); \
 	if [ -z "$$LAST" ]; then \
 	  echo "No pre-commit logs found"; \
 	else \
-	  for f in /tmp/sonora-precommit-$${LAST}-*.log; do \
+	  for f in "$$LAST"*.log; do \
 	    echo "=== $$(basename $$f) ==="; \
 	    cat "$$f"; \
 	    echo ""; \
@@ -1277,11 +1277,11 @@ precommit-logs: ## Show temp files from last pre-commit run
 
 .PHONY: precommit-logs-watch
 precommit-logs-watch: ## Follow logs from last pre-commit run in real-time
-	@LAST=$$(ls -t /tmp/sonora-precommit-*.log 2>/dev/null | head -1 | sed -E 's/.*sonora-precommit-(.+)-[^-]+\.log/\1/'); \
+	@LAST=$$(ls -dt "$${TMPDIR:-/tmp}"/sonora-precommit-*/ 2>/dev/null | head -1); \
 	if [ -z "$$LAST" ]; then \
 	  echo "No pre-commit logs found"; \
 	else \
-	  tail -f -n +1 /tmp/sonora-precommit-$${LAST}-*.log; \
+	  tail -f -n +1 "$$LAST"*.log; \
 	fi
 
 # ── CI ────────────────────────────────────────

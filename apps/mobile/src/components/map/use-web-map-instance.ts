@@ -341,17 +341,31 @@ export function foldAttribution(
   container: unknown,
 ): void {
   let openedByWalker = false;
+  /** The credit's own listener is bound once, on the first fold that finds it. */
+  let listeningToWalker = false;
 
-  const fold = (): void => {
-    if (!openedByWalker) collapseAttribution(container);
+  /**
+   * Binds the ⓘ the first time a fold can see it.
+   *
+   * The control does not exist when the map is built — MapLibre adds it when the first
+   * attribution arrives, which is the same reason folding runs on the data events — so a
+   * listener bound at creation would never attach, the walker's click would flip nothing,
+   * and every later data event would fold the credit back over the map.
+   */
+  const listenToWalker = (): void => {
+    if (listeningToWalker) return;
+    const summary = queryAttribution(container)?.querySelector?.('summary');
+    if (typeof summary?.addEventListener !== 'function') return;
+    summary.addEventListener('click', () => {
+      openedByWalker = true;
+    });
+    listeningToWalker = true;
   };
 
-  // The ⓘ is a `<summary>`: a click on it is the walker asking for the credit, and from
-  // then on the control is theirs.
-  const summary = queryAttribution(container)?.querySelector?.('summary');
-  summary?.addEventListener?.('click', () => {
-    openedByWalker = true;
-  });
+  const fold = (): void => {
+    listenToWalker();
+    if (!openedByWalker) collapseAttribution(container);
+  };
 
   map.on('styledata', fold);
   map.on('sourcedata', fold);
