@@ -83,6 +83,7 @@
   },
   "scripts": {
     "start": "expo start -c",
+    "export:web": "expo export --clear --platform web",
     "android": "expo run:android",
     "android-dev": "expo start --android",
     "ios": "expo run:ios",

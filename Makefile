@@ -1397,7 +1397,7 @@ eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-
 
 .PHONY: eas-build-web-production
 eas-build-web-production: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting production
-	cd apps/mobile && export APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" && bunx expo export --clear --platform web
+	cd apps/mobile && export APP_ENV=production APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" && bun run export:web
 	@test -f apps/mobile/dist/maplibre-gl-worker.js || { \
 		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
 		exit 1; \
@@ -1406,7 +1406,7 @@ eas-build-web-production: eas-whoami web-worker-asset ## Export web app and depl
 
 .PHONY: eas-build-web-staging
 eas-build-web-staging: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting staging (alias: staging)
-	cd apps/mobile && export APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" && bunx expo export --clear --platform web
+	cd apps/mobile && export APP_ENV=staging APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" && bun run export:web
 	@test -f apps/mobile/dist/maplibre-gl-worker.js || { \
 		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
 		exit 1; \
@@ -1415,11 +1415,11 @@ eas-build-web-staging: eas-whoami web-worker-asset ## Export web app and deploy 
 
 .PHONY: eas-build-admin-production
 eas-build-admin-production: eas-whoami ## Export admin web app and deploy to EAS Hosting production
-	cd apps/admin && APP_ENV=production EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	cd apps/admin && APP_ENV=production EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-admin-staging
 eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Hosting staging
-	cd apps/admin && APP_ENV=staging EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bunx expo export --clear --platform web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+	cd apps/admin && APP_ENV=staging EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 # ── Firebase App Distribution ────────────
 
