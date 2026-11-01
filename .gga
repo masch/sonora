@@ -15,6 +15,15 @@
 #   PROVIDER="lmstudio:qwen2.5-coder-7b-instruct"
 #   PROVIDER="github:gpt-4o"
 #   PROVIDER="github:deepseek-r1"
+# This provider needs an **OpenCode Go subscription**. Without one, every commit's
+# review fails with "Model unavailable" / "Insufficient account funds" and the
+# pre-commit hook refuses the commit — `AGENTS.md` forbids `--no-verify`, so a
+# contributor without the plan cannot commit until they install it or ask a maintainer
+# for an alternative. The `opencode-go/*` namespace is the subscription; the bare
+# `opencode/*` one is pay-per-use and answers "Insufficient account funds" without
+# credit. Run `opencode models` to see what the installed plan actually offers, and
+# pass it on the command line for a one-off:
+#   PROVIDER="opencode:opencode-go/glm-5.3-flash" make gga
 PROVIDER="opencode:opencode-go/deepseek-v4.1-flash"
 
 # File patterns to include in review (comma-separated)
