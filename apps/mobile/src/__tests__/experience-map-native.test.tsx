@@ -7,6 +7,7 @@ import { en, es, type MapDocument } from '@sonora/shared';
 
 import ExperienceMap from '@/components/map/experience-map';
 import ExperienceMapSwitch from '@/components/map/experience-map-switch';
+import { MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 import { ThemedText } from '@/components/themed-text';
 import type { MapWaitState } from '@/components/map/map-view.types';
 import { useNativeFocusFlight } from '@/components/map/use-native-focus-flight';
@@ -875,6 +876,63 @@ describe('ExperienceMap (native)', () => {
     );
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
     expect(drawnLayerIds()).toContain('refs:umepay:label');
+  });
+
+  it('declares every gesture the card map answers', async () => {
+    // Not decoration: on Android the native view only asks its parent not to
+    // intercept the touch when pan is declared, and without it the vertical page
+    // scroll takes the pinch away mid-gesture (the map never receives its release).
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => styleWith(true) }) as never;
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: STYLE_URL }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    expect(mockMapProps[0]).toMatchObject({
+      dragPan: true,
+      touchZoom: true,
+      doubleTapZoom: true,
+      doubleTapHoldZoom: true,
+      touchRotate: true,
+      touchPitch: true,
+    });
+  });
+
+  it('freezes the page scroll while a finger is on the card', async () => {
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => styleWith(true) }) as never;
+
+    const view = await render(
+      <MapScrollScreenWrapper>
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE_URL, styleUrl: STYLE_URL }}
+          overlays={[document]}
+        />
+      </MapScrollScreenWrapper>,
+    );
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // The container the card draws inside, as the platform receives it.
+    const [pageScroll] = view.container.queryAll((node) => node.type === 'RCTScrollView');
+    if (!pageScroll) throw new Error('the card rendered outside a scroll view');
+    const card = view.getByTestId('experience-map');
+
+    expect(pageScroll.props.scrollEnabled).toBe(true);
+
+    await fireEvent(card, 'touchStart');
+    expect(pageScroll.props.scrollEnabled).toBe(false);
+
+    await fireEvent(card, 'touchEnd');
+    expect(pageScroll.props.scrollEnabled).toBe(true);
   });
 
   it('shows the error state when the style cannot be fetched', async () => {

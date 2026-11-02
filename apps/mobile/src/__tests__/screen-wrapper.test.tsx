@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, type RenderResult } from '@testing-library/react-native';
 import { Platform, Text } from 'react-native';
 
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
@@ -22,6 +22,13 @@ let mockPlayerState = {
 jest.mock('@/store/audio-player-store', () => ({
   useAudioPlayerStore: jest.fn((selector) => selector(mockPlayerState)),
 }));
+
+/** The scroll view the wrapper rendered, as the platform receives it. */
+function pageScroll(view: RenderResult) {
+  const [scroll] = view.container.queryAll((node) => node.type === 'RCTScrollView');
+  if (!scroll) throw new Error('the wrapper rendered no scroll view');
+  return scroll;
+}
 
 describe('ScrollScreenWrapper', () => {
   beforeEach(() => {
@@ -152,6 +159,28 @@ describe('ScrollScreenWrapper', () => {
     } finally {
       Platform.OS = originalOS;
     }
+  });
+
+  it('passes scrollEnabled through to the scroll view', async () => {
+    // The prop a screen hosting a gesture surface uses to pause the page scroll.
+    const view = await render(
+      <ScrollScreenWrapper scrollEnabled={false}>
+        <Text>Frozen Content</Text>
+      </ScrollScreenWrapper>,
+    );
+
+    expect(pageScroll(view).props.scrollEnabled).toBe(false);
+  });
+
+  it('keeps the page scrollable when no scrollEnabled is given', async () => {
+    // The eight screens that never pass it must keep scrolling exactly as before.
+    const view = await render(
+      <ScrollScreenWrapper>
+        <Text>Scrollable Content</Text>
+      </ScrollScreenWrapper>,
+    );
+
+    expect(pageScroll(view).props.scrollEnabled).toBe(true);
   });
 
   it('uses full width without max-w-[800px] on native platforms', async () => {

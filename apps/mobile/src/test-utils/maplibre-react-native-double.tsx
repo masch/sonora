@@ -25,7 +25,21 @@ import {
 } from './maplibre-react-native-double';
 
 export function Map(props: MapDoubleProps & { ref?: Ref<MapDoubleRef> }) {
-  const { ref, mapStyle, onPress, onRegionDidChange, testID, accessibilityLabel, children } = props;
+  const {
+    ref,
+    mapStyle,
+    onPress,
+    onRegionDidChange,
+    testID,
+    accessibilityLabel,
+    dragPan,
+    touchZoom,
+    doubleTapZoom,
+    doubleTapHoldZoom,
+    touchRotate,
+    touchPitch,
+    children,
+  } = props;
 
   useImperativeHandle(
     ref,
@@ -42,8 +56,32 @@ export function Map(props: MapDoubleProps & { ref?: Ref<MapDoubleRef> }) {
   // module value during render, and `render()` flushes effects before a test asserts.
   useEffect(() => {
     mockMapProps.length = 0;
-    mockMapProps.push({ mapStyle, onPress, onRegionDidChange, testID, accessibilityLabel });
-  }, [mapStyle, onPress, onRegionDidChange, testID, accessibilityLabel]);
+    mockMapProps.push({
+      mapStyle,
+      onPress,
+      onRegionDidChange,
+      testID,
+      accessibilityLabel,
+      dragPan,
+      touchZoom,
+      doubleTapZoom,
+      doubleTapHoldZoom,
+      touchRotate,
+      touchPitch,
+    });
+  }, [
+    mapStyle,
+    onPress,
+    onRegionDidChange,
+    testID,
+    accessibilityLabel,
+    dragPan,
+    touchZoom,
+    doubleTapZoom,
+    doubleTapHoldZoom,
+    touchRotate,
+    touchPitch,
+  ]);
 
   // Recorded after every render, not only when the style changes: the question a
   // suite asks is what the map was handed by this render.

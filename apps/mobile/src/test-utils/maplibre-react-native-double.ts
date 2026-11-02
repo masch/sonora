@@ -41,6 +41,20 @@ export interface MapDoubleProps {
    * walker made, because the component has to tell the two apart.
    */
   onRegionDidChange?: (event: NativeSyntheticEvent<ViewStateChangeEvent>) => void;
+  /**
+   * The gesture props the component hands the map.
+   *
+   * Recorded because one of them is load-bearing on Android rather than cosmetic:
+   * the native view only asks its parent not to intercept the touch when pan is
+   * declared (`dragPan`, see `MLRNMapView.onTouchEvent`), and without that the page
+   * scroll steals the gesture that was meant for the map.
+   */
+  dragPan?: boolean;
+  touchZoom?: boolean;
+  doubleTapZoom?: boolean;
+  doubleTapHoldZoom?: boolean;
+  touchRotate?: boolean;
+  touchPitch?: boolean;
   children?: ReactNode;
 }
 
