@@ -20,7 +20,7 @@
     "react-native": "0.86.3",
     "react-native-css": "3.0.7",
     "react-native-safe-area-context": "5.7.0",
-    "react-native-web": "0.21.2",
+    "react-native-web": "0.21.4",
     "tailwindcss": "4.3.3",
     "zustand": "5.0.14"
   },
