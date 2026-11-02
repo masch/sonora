@@ -129,6 +129,25 @@ export JAVA_HOME=/tmp/tile-spike/jdk-21*
 
 ## 6. Running the pipeline
 
+### The one command: today's OSM on staging
+
+```bash
+make map-tiles-publish-staging                    # calamuchita v1, fresh extract from Geofabrik
+make map-tiles-publish-staging FRESH=0            # reuse the cached extract (patches or style only)
+make map-tiles-publish-staging VERSION=v2 CHECK=1 # a new key, render-checked before the upload
+```
+
+One run does what used to be five remembered steps, in this order, stopping at the first failure:
+
+1. installs the pinned JDK 21 + Maven if they are not stamped yet (free from the second run on);
+2. reads the byte count `/config` advertises for the region, before anything is built;
+3. **discards the cached Geofabrik extract** and builds (`map-tiles-build` with `--refresh-extract`);
+4. with `CHECK=1`, renders the built archive with the repository style;
+5. publishes the archive and the style to the staging bucket in place (`api-upload-map-tiles-staging`);
+6. verifies against **what clients read**: the `/config` url, the bytes the media route serves, and the size devices compare.
+
+Why the extract matters is the whole point of the target. A cached extract is a cache hit forever (`--refresh-extract` is the only thing that changes that), so a rebuild after an OSM edit otherwise produces the same bytes from the same weeks-old file. The flags it takes are `REGION` (default `calamuchita`), `VERSION` (default `v1`), `FRESH=1`, `CHECK=0`, `PUBLISH_STYLE` (default `assets/map/styles/v1.json`), `CACHE`, `MAXZOOM` and `TOOLCHAIN` — the same variables the targets it wraps take. It refuses to start when wrangler is not authenticated or the style file is missing, so a five-minute build is never spent on an upload that cannot happen.
+
 ### Once per machine
 
 ```bash
@@ -146,17 +165,17 @@ make map-tiles-build REGION=calamuchita CACHE=/var/tmp/sonora-map-tiles   # anot
 
 What a run does, in order, stopping at the first failure and naming it:
 
-| Step               | What it guarantees                                                                                                                                              |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sync-upstream`    | the pinned commit is checked out, or the existing checkout is moved to it                                                                                       |
-| `reset-checkout`   | the tree is **exactly** the pin, so patches always meet a clean tree (a failed reset ends the run)                                                              |
-| `apply-patch`      | the three edits apply; a patch that no longer applies stops the build **before** the jar is compiled                                                            |
-| `build-jar`        | the profile builds (`mvn -B -q clean package -DskipTests`)                                                                                                      |
-| `fetch-osm`        | the region's Geofabrik extract, resumed, size-checked and verified as an OSM PBF                                                                                |
-| `fetch-shapes`     | the two ~950 MB `osmdata` archives (water and land polygons), resumed and verified as zips — planetiler's own downloader does not resume, so these two are ours |
-| `download-sources` | planetiler's own sources, under a stall guard (120 s without growth ⇒ kill and retry, 3 attempts)                                                               |
-| `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest)                                                         |
-| `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                                                                          |
+| Step               | What it guarantees                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sync-upstream`    | the pinned commit is checked out, or the existing checkout is moved to it                                                                                                   |
+| `reset-checkout`   | the tree is **exactly** the pin, so patches always meet a clean tree (a failed reset ends the run)                                                                          |
+| `apply-patch`      | the three edits apply; a patch that no longer applies stops the build **before** the jar is compiled                                                                        |
+| `build-jar`        | the profile builds (`mvn -B -q clean package -DskipTests`)                                                                                                                  |
+| `fetch-osm`        | the region's Geofabrik extract, resumed, size-checked and verified as an OSM PBF; a cached extract is reused byte for byte unless `REFRESH_EXTRACT=1` asks for today's file |
+| `fetch-shapes`     | the two ~950 MB `osmdata` archives (water and land polygons), resumed and verified as zips — planetiler's own downloader does not resume, so these two are ours             |
+| `download-sources` | planetiler's own sources, under a stall guard (120 s without growth ⇒ kill and retry, 3 attempts)                                                                           |
+| `verify-sources`   | every file in the sources directory opens (zip central directory, PBF header, gzip magic, JAR manifest)                                                                     |
+| `run-tiler`        | the archive, from a jar whose `META-INF/MANIFEST.MF` was checked first                                                                                                      |
 
 Budget, measured: **~3.9 GB** in the cache (2.9 GB sources + 100 MB checkout/jar + temporaries), ~4.8 GB peak RAM with `-Xmx8g`. First run on a cold cache downloads ~3.9 GB; a warm run is **~5 minutes** (4 m 38 s for `calamuchita` at z16, of which 3 m 57 s is tiling). The three sources `download-sources` owns are the fragile ones — planetiler neither resumes nor verifies them — so `make map-tiles-fetch-sources` pre-seeds all of them, plus the extract and the two shape archives, with the same resume-and-verify rules, and a build that follows downloads nothing.
 
@@ -210,6 +229,8 @@ B=https://sonora-api-staging.sonora-api.workers.dev/media/public
 curl -s "$B/tiles/calamuchita/v1.pmtiles" | sha256sum     # must equal the built file
 curl -s "$B/styles/v1.json" | head -c 200                # glyphs/sprite rewritten to the serving origin
 ```
+
+`make map-tiles-publish-staging` runs that proof for you — `bun scripts/map-tiles/verify-published.ts` — and it answers the three failures a successful upload can still hide: a `/config` that points clients at another version, a media route that serves other bytes than the ones built, and an archive of exactly the size devices already hold (which is a device's only freshness signal, so it keeps the old one).
 
 ### Proving the style draws what the archive carries
 

@@ -2,8 +2,10 @@
  * scripts/map-tiles/build.ts — one entry point: a region in, a published-shaped archive out.
  *
  * `make map-tiles-build REGION=calamuchita` calls this script with `--region`, an optional
- * `--maxzoom` (default 16, the deepest zoom the forked profile emits) and an optional
- * `--cache` directory. Everything else is decided here, in three layers:
+ * `--maxzoom` (default 16, the deepest zoom the forked profile emits), an optional `--cache`
+ * directory and an optional `--refresh-extract`, which throws the cached Geofabrik extract away
+ * so the build takes today's file instead of the one a previous run left. Everything else is
+ * decided here, in three layers:
  *
  * 1. `planBuild` — pure apart from the injected readers and the extract table, so the pin, the
  *    patch list and the region's source are arguments instead of surprises. It returns the
@@ -33,7 +35,7 @@
  * when upstream touched a file the patches modify — and the reset step is what moves it.
  *
  * Usage:
- *   bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>]
+ *   bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>] [--refresh-extract]
  *
  * The cache directory holds the checkout and the ~1.4 GB of auxiliary sources the tiler
  * downloads, so it is printed at the start of a run: it is the thing worth keeping.
@@ -48,6 +50,7 @@ import {
   readFileSync,
   readSync,
   statSync,
+  unlinkSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -143,12 +146,14 @@ export const MAP_TILE_EXTRACTS: Record<MapRegionKey, string> = {
 
 const USAGE = [
   'Usage:',
-  '  bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>]',
+  '  bun scripts/map-tiles/build.ts --region=calamuchita [--maxzoom=16] [--cache=<dir>] [--refresh-extract]',
   '',
   'Options:',
   `  --region   one of: ${Object.keys(MAP_REGIONS).join(', ')} (required)`,
   `  --maxzoom  deepest zoom to emit, ${PROFILE_MIN_ZOOM}-${PROFILE_MAX_ZOOM} (default ${DEFAULT_MAXZOOM})`,
   '  --cache    directory that survives between runs (default: a directory under the OS temp)',
+  "  --refresh-extract  discard the cached extract, so today's Geofabrik file is downloaded.",
+  '             Without it a cached extract is reused byte for byte, even after OSM moved.',
 ].join('\n');
 
 /** Everything a run needs to know, and nothing it could discover later without a surprise. */
@@ -163,6 +168,15 @@ export interface BuildOptions {
   workDir: string;
   /** Repository root, absolute from `main`; patch paths are derived from it, never from cwd. */
   repoRoot: string;
+  /**
+   * Throw the cached extract away before fetching it again.
+   *
+   * A cached extract is kept rather than refreshed by design: Geofabrik publishes a new
+   * `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be
+   * reproducible. This is the operator saying "I mean the newer one", and the only thing that
+   * makes a rebuild after an OSM change produce anything but the same bytes.
+   */
+  refreshExtract?: boolean;
 }
 
 /** A process to run. `cwd` is always absolute, and the run never changes its own cwd. */
@@ -202,6 +216,8 @@ export type BuildStep =
       url: string;
       /** Where the extract belongs once it is complete and verified. */
       destination: string;
+      /** Discard whatever is there first, so a newer `-latest` replaces it. */
+      refresh?: boolean;
     }
   | {
       kind: 'fetch-shapes';
@@ -474,6 +490,8 @@ export function planBuild(options: BuildOptions, deps: Partial<PlanDeps> = {}): 
       label: `download the ${extract} extract`,
       url: extractUrl,
       destination: osmPath,
+      // Omitted rather than `false`, so a plan that did not ask for it never carries the key.
+      ...(options.refreshExtract === true ? { refresh: true } : {}),
     },
     {
       // The two ~950 MB osmdata archives are ours: our downloader resumes them across attempts and
@@ -986,6 +1004,12 @@ export function createExecutor(deps: ExecutorDeps = {}): StepExecutor {
       }
 
       case 'fetch-osm': {
+        // A cached extract is a cache hit forever, which is what keeps a build reproducible and
+        // also what makes "I updated OSM and the map did not change" the default outcome.
+        if (step.refresh === true && existsSync(step.destination)) {
+          unlinkSync(step.destination);
+          log(`  discarding ${step.destination}: --refresh-extract takes a newer one`);
+        }
         log(`downloading ${step.url}`);
         const result = await download({
           url: step.url,
@@ -1247,6 +1271,7 @@ export function parseArgs(argv: string[]): BuildOptions {
     cacheDir,
     workDir: join(cacheDir, CHECKOUT_DIR_NAME),
     repoRoot: repoRootFromModule(),
+    refreshExtract: argv.includes('--refresh-extract'),
   };
 }
 
