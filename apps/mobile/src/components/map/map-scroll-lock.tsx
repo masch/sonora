@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ComponentProps } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ComponentProps } from 'react';
 
 import { ScrollScreenWrapper } from '@/components/screen-wrapper';
 import { TwView } from '@/tw';
@@ -45,15 +45,39 @@ export function useLockMapScroll(): MapScrollLock {
  */
 export function MapGestureSurface({ children, ...rest }: ComponentProps<typeof TwView>) {
   const lockPageScroll = useLockMapScroll();
+  /**
+   * Fingers currently on the surface.
+   *
+   * A pinch ends one finger at a time, and `onTouchEnd` fires for each: a boolean
+   * would hand the page back on the first lift, with the second finger still
+   * delivering the gesture this lock exists to protect. The count is the gesture.
+   */
+  const fingersDown = useRef(0);
 
-  useEffect(() => () => lockPageScroll(false), [lockPageScroll]);
+  useEffect(
+    () => () => {
+      fingersDown.current = 0;
+      lockPageScroll(false);
+    },
+    [lockPageScroll],
+  );
 
   return (
     <TwView
       {...rest}
-      onTouchStart={() => lockPageScroll(true)}
-      onTouchEnd={() => lockPageScroll(false)}
-      onTouchCancel={() => lockPageScroll(false)}
+      onTouchStart={() => {
+        fingersDown.current += 1;
+        lockPageScroll(true);
+      }}
+      onTouchEnd={() => {
+        fingersDown.current = Math.max(0, fingersDown.current - 1);
+        lockPageScroll(fingersDown.current > 0);
+      }}
+      onTouchCancel={() => {
+        // A cancelled gesture is over for every finger the surface was tracking.
+        fingersDown.current = 0;
+        lockPageScroll(false);
+      }}
     >
       {children}
     </TwView>

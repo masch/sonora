@@ -1,27 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { View } from 'react-native';
 
-import { MapScrollScreenWrapper, useLockMapScroll } from '@/components/map/map-scroll-lock';
+import { MapGestureSurface, MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 
 /**
- * A gesture surface that asks for the lock the way the map card does.
+ * The real gesture surface, which is what these assertions are about.
  *
- * The map itself is not what this suite is about: `ExperienceMap` owns the wiring
- * onto these three events, and its own suite proves it fires them. What is under
- * test here is the other half — that a surface which asks for the lock really takes
- * the page scroll away, and gives it back on every exit.
+ * Deliberately not a stand-in that calls the lock itself: a stub would reimplement
+ * the very touch accounting under test, and would keep passing while the component
+ * it stands for regressed.
  */
 function GestureSurface() {
-  const lockPageScroll = useLockMapScroll();
-
-  return (
-    <View
-      testID="gesture-surface"
-      onTouchStart={() => lockPageScroll(true)}
-      onTouchEnd={() => lockPageScroll(false)}
-      onTouchCancel={() => lockPageScroll(false)}
-    />
-  );
+  return <MapGestureSurface testID="gesture-surface" />;
 }
 
 /** The one scroll container the wrapper renders. */
@@ -73,6 +62,28 @@ describe('MapScrollScreenWrapper', () => {
     await fireEvent(screen.getByTestId('gesture-surface'), 'touchEnd');
 
     expect(pageScroll().props.scrollEnabled).toBe(false);
+  });
+
+  it('stays locked while any finger of a pinch is still down', async () => {
+    // A two-finger pinch ends one finger at a time: lifting the first must not hand
+    // the page back while the second is still on the surface, which is the gesture
+    // this whole change exists to protect.
+    await render(
+      <MapScrollScreenWrapper>
+        <GestureSurface />
+      </MapScrollScreenWrapper>,
+    );
+
+    const surface = screen.getByTestId('gesture-surface');
+    await fireEvent(surface, 'touchStart');
+    await fireEvent(surface, 'touchStart');
+    expect(pageScroll().props.scrollEnabled).toBe(false);
+
+    await fireEvent(surface, 'touchEnd');
+    expect(pageScroll().props.scrollEnabled).toBe(false);
+
+    await fireEvent(surface, 'touchEnd');
+    expect(pageScroll().props.scrollEnabled).toBe(true);
   });
 
   it('accepts a surface with no wrapper above it', async () => {
