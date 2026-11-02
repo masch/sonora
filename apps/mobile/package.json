@@ -94,7 +94,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --watchAll",
     "doctor": "react-doctor",
-    "firebase-cli": "./node_modules/.bin/firebase"
+    "firebase-cli": "firebase"
   },
   "jest": {
     "preset": "jest-expo",
