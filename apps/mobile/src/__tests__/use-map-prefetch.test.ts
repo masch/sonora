@@ -113,6 +113,9 @@ describe('useMapPrefetch', () => {
     expect(mockedEnsureOnDisk).toHaveBeenCalledWith({
       archiveUrl: CALAMUCHITA_URL,
       identity: archiveIdentity(CALAMUCHITA_URL, 'calamuchita'),
+      // The same size the prefetch compared is handed to the transfer, so the two
+      // entry points that resolve one archive answer the freshness question once.
+      expectedBytes: CALAMUCHITA_BYTES,
       cacheMaxBytes: 42_000_000,
     });
   });

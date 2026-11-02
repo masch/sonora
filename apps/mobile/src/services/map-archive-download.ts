@@ -2,6 +2,7 @@ import { Directory, File, FileMode, Paths } from 'expo-file-system';
 
 import {
   archiveFileName,
+  isArchiveCurrent,
   listArchives,
   planEviction,
   type ArchiveIdentity,
@@ -233,13 +234,23 @@ function discardTemporary(temporary: File): void {
  * Downloads the archive for `archiveUrl` to its versioned path, or reuses the file
  * already there.
  *
+ * A file of the right name is not enough. Staging republishes an archive in place, so
+ * `<region>-<version>-<origin>.pmtiles` keeps its name while the bytes underneath change,
+ * and a check that trusted the name alone left the walker drawing the artifact the
+ * payload had already replaced — the failure the prefetch's own size comparison was
+ * written for, on the one path that runs every time the map is opened. The size the
+ * payload advertises is the signal a device can compare without reading the archive, so
+ * the file is reused only when it is `isArchiveCurrent`, and fetched again onto its own
+ * path when it is not. A payload that prices the region at zero has no size to compare,
+ * and the name is then the whole answer.
+ *
  * The transfer lands on a temporary file unique to this run, is checked to be a
  * PMTiles v3 archive that holds every byte it promises, and only then replaces the
  * archive in one move: on Android the response streams straight into the
  * destination, so a failed download can leave a partial file, and a truncated
  * archive would break every read that follows. Every way of failing — a transfer
  * error, a body that is not a whole archive, a move that cannot land — releases the
- * temporary. An archive of another version is never deleted: it is what the map
+ * temporary. An archive of another name is never deleted: it is what the map
  * keeps drawing when the new one cannot be fetched.
  *
  * `onProgress` speaks only for a transfer that really happens: a cache hit reports
@@ -249,11 +260,17 @@ function discardTemporary(temporary: File): void {
 export async function ensureArchiveOnDisk({
   archiveUrl,
   identity,
+  expectedBytes,
   cacheMaxBytes,
   onProgress,
 }: {
   archiveUrl: string;
   identity: ArchiveIdentity;
+  /**
+   * The bytes the payload advertises for this region, when it advertises any: the only
+   * evidence that the file on the device is still the artifact the server publishes.
+   */
+  expectedBytes?: number;
   /** Budget the archives may occupy; absent means the caller does not police it. */
   cacheMaxBytes?: number;
   /**
@@ -268,8 +285,20 @@ export async function ensureArchiveOnDisk({
   directory.create({ idempotent: true, intermediates: true });
 
   const archive = new File(directory, archiveFileName(identity));
-  if (archive.exists) return `pmtiles://${archive.uri}`;
-
+  if (archive.exists) {
+    const held: StoredArchive = { ...identity, name: archive.name, bytes: archive.size };
+    if (isArchiveCurrent(held, { name: archive.name, bytes: expectedBytes })) {
+      return `pmtiles://${archive.uri}`;
+    }
+    // The name matches and the bytes do not: the archive was republished under the same
+    // key. It is left in place until the transfer below replaces it in one move, so a
+    // download that fails still leaves the walker a map to draw.
+    logger.info('map archive on the device is another size than the payload advertises', {
+      name: archive.name,
+      held: held.bytes,
+      advertised: expectedBytes,
+    });
+  }
   // Before this run adds a temporary of its own, release the ones dead runs left.
   await sweepStaleTemporaries(directory);
   if (cacheMaxBytes !== undefined) enforceBudget(directory, cacheMaxBytes, archive.name);

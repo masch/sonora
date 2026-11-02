@@ -147,6 +147,10 @@ export function listArchives(entries: readonly DiskEntry[]): StoredArchive[] {
  * build does not understand — leaves the name as the whole answer, which is the check
  * this was before sizes were compared: an archive named right is never downloaded
  * again for no reason. An absent archive is never current, whatever the payload says.
+ *
+ * Both entry points that resolve an archive ask this question — the startup prefetch
+ * (`use-map-prefetch`) and the map's own path (`ensureArchiveOnDisk`) — because the one
+ * that runs on every mount is the one a stale file would otherwise survive.
  */
 export function isArchiveCurrent(
   archive: StoredArchive | null | undefined,

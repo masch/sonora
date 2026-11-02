@@ -153,6 +153,7 @@ export function useMapPrefetch(): MapPrefetchState {
               await ensureArchiveOnDisk({
                 archiveUrl: region.archiveUrl,
                 identity,
+                expectedBytes: region.bytes,
                 cacheMaxBytes: policy.cacheMaxBytes,
               });
             } catch (error) {
