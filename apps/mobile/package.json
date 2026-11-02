@@ -43,7 +43,7 @@
     "maplibre-gl": "6.14.0",
     "nativewind": "5.0.0-rc.0",
     "pmtiles": "4.5.0",
-    "postcss": "8.5.25",
+    "postcss": "8.5.32",
     "promise": "8.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
