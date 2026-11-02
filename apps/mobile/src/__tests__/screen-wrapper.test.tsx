@@ -23,11 +23,9 @@ jest.mock('@/store/audio-player-store', () => ({
   useAudioPlayerStore: jest.fn((selector) => selector(mockPlayerState)),
 }));
 
-/** The scroll view the wrapper rendered, as the platform receives it. */
+/** The scroll view the wrapper rendered. */
 function pageScroll(view: RenderResult) {
-  const [scroll] = view.container.queryAll((node) => node.type === 'RCTScrollView');
-  if (!scroll) throw new Error('the wrapper rendered no scroll view');
-  return scroll;
+  return view.getByTestId('screen-scroll');
 }
 
 describe('ScrollScreenWrapper', () => {

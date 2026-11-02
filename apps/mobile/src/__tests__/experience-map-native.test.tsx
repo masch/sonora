@@ -921,9 +921,8 @@ describe('ExperienceMap (native)', () => {
 
     await waitFor(() => expect(mockMapProps).toHaveLength(1));
 
-    // The container the card draws inside, as the platform receives it.
-    const [pageScroll] = view.container.queryAll((node) => node.type === 'RCTScrollView');
-    if (!pageScroll) throw new Error('the card rendered outside a scroll view');
+    // The container the card draws inside.
+    const pageScroll = view.getByTestId('screen-scroll');
     const card = view.getByTestId('experience-map');
 
     expect(pageScroll.props.scrollEnabled).toBe(true);

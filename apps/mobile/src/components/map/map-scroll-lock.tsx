@@ -69,12 +69,17 @@ export function MapGestureSurface({ children, ...rest }: ComponentProps<typeof T
  * surface that starts it is the surface that ends it, and the state dies with this
  * wrapper instead of outliving the map that asked for it.
  */
-export function MapScrollScreenWrapper(props: ComponentProps<typeof ScrollScreenWrapper>) {
+export function MapScrollScreenWrapper({
+  scrollEnabled = true,
+  ...rest
+}: ComponentProps<typeof ScrollScreenWrapper>) {
   const [locked, setLocked] = useState(false);
 
+  // A caller that asked for a page it cannot scroll keeps that: the lock takes the
+  // scroll away for a gesture, and never hands it back against an explicit no.
   return (
     <MapScrollLockContext.Provider value={setLocked}>
-      <ScrollScreenWrapper {...props} scrollEnabled={!locked} />
+      <ScrollScreenWrapper {...rest} scrollEnabled={scrollEnabled && !locked} />
     </MapScrollLockContext.Provider>
   );
 }

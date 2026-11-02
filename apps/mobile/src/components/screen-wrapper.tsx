@@ -116,6 +116,7 @@ export function ScrollScreenWrapper({
       <SafeAreaView style={{ flex: 1 }} edges={edges}>
         <TwScrollView
           className={finalClassName}
+          testID="screen-scroll"
           scrollEnabled={scrollEnabled}
           contentInset={contentInset}
           contentContainerStyle={[paddingStyle, contentContainerStyle]}

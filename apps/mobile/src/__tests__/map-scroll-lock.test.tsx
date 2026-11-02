@@ -24,16 +24,9 @@ function GestureSurface() {
   );
 }
 
-/**
- * The one scroll container the wrapper renders, as the platform receives it.
- *
- * Queried by host type rather than by a test id this component has no reason to
- * carry: what the assertion is about is the native prop the scroll view was given.
- */
+/** The one scroll container the wrapper renders. */
 function pageScroll() {
-  const [scroll] = screen.container.queryAll((node) => node.type === 'RCTScrollView');
-  if (!scroll) throw new Error('the wrapper rendered no scroll view');
-  return scroll;
+  return screen.getByTestId('screen-scroll');
 }
 
 describe('MapScrollScreenWrapper', () => {
@@ -65,6 +58,21 @@ describe('MapScrollScreenWrapper', () => {
 
     await fireEvent(screen.getByTestId('gesture-surface'), 'touchCancel');
     expect(pageScroll().props.scrollEnabled).toBe(true);
+  });
+
+  it('keeps a page the caller already froze, even with no finger on it', async () => {
+    // `scrollEnabled` is the container's own option and this wrapper passes it
+    // through: the lock only ever takes the scroll away, never gives it back
+    // against a caller who said no.
+    await render(
+      <MapScrollScreenWrapper scrollEnabled={false}>
+        <GestureSurface />
+      </MapScrollScreenWrapper>,
+    );
+
+    await fireEvent(screen.getByTestId('gesture-surface'), 'touchEnd');
+
+    expect(pageScroll().props.scrollEnabled).toBe(false);
   });
 
   it('accepts a surface with no wrapper above it', async () => {
