@@ -5,7 +5,7 @@
   "private": true,
   "dependencies": {
     "@sonora/shared": "workspace:*",
-    "@tailwindcss/postcss": "4.3.0",
+    "@tailwindcss/postcss": "4.3.3",
     "expo": "57.0.31",
     "expo-constants": "57.0.22",
     "expo-linking": "57.0.13",
@@ -21,7 +21,7 @@
     "react-native-css": "3.0.7",
     "react-native-safe-area-context": "5.7.0",
     "react-native-web": "0.21.2",
-    "tailwindcss": "4.3.0",
+    "tailwindcss": "4.3.3",
     "zustand": "5.0.14"
   },
   "devDependencies": {
