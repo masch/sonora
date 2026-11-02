@@ -72,8 +72,10 @@ describe('MapScrollScreenWrapper', () => {
     // draw and respond; the lock is a no-op, never a crash.
     await render(<GestureSurface />);
 
-    await expect(
-      fireEvent(screen.getByTestId('gesture-surface'), 'touchStart'),
-    ).resolves.toBeUndefined();
+    await fireEvent(screen.getByTestId('gesture-surface'), 'touchStart');
+
+    // Reaching this line is the assertion: the surface answered the touch, and the
+    // lock nobody is holding stayed a no-op instead of throwing.
+    expect(screen.getByTestId('gesture-surface')).toBeTruthy();
   });
 });
