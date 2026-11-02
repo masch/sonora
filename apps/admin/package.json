@@ -22,7 +22,7 @@
     "react-native-safe-area-context": "5.7.0",
     "react-native-web": "0.21.4",
     "tailwindcss": "4.3.3",
-    "zustand": "5.0.14"
+    "zustand": "5.0.16"
   },
   "devDependencies": {
     "@babel/runtime": "7.29.10",
