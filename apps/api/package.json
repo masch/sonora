@@ -27,7 +27,7 @@
     "qrcode": "1.5.4"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20260624.1",
+    "@cloudflare/workers-types": "4.20260702.1",
     "@types/node": "26.0.1",
     "@types/pg": "8.23.1",
     "@types/qrcode": "1.5.6",
