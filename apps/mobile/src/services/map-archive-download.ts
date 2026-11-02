@@ -285,17 +285,24 @@ export async function ensureArchiveOnDisk({
   directory.create({ idempotent: true, intermediates: true });
 
   const archive = new File(directory, archiveFileName(identity));
+  /**
+   * The archive an earlier run published, when there is one: the map a failed
+   * replacement falls back to. It is not the artifact the payload names any more, but
+   * it is a whole archive this app wrote, and drawing it beats drawing nothing.
+   */
+  let held: string | null = null;
   if (archive.exists) {
-    const held: StoredArchive = { ...identity, name: archive.name, bytes: archive.size };
-    if (isArchiveCurrent(held, { name: archive.name, bytes: expectedBytes })) {
+    const stored: StoredArchive = { ...identity, name: archive.name, bytes: archive.size };
+    if (isArchiveCurrent(stored, { name: archive.name, bytes: expectedBytes })) {
       return `pmtiles://${archive.uri}`;
     }
+    held = `pmtiles://${archive.uri}`;
     // The name matches and the bytes do not: the archive was republished under the same
     // key. It is left in place until the transfer below replaces it in one move, so a
-    // download that fails still leaves the walker a map to draw.
+    // download that fails leaves the walker the map they already had.
     logger.info('map archive on the device is another size than the payload advertises', {
       name: archive.name,
-      held: held.bytes,
+      held: stored.bytes,
       advertised: expectedBytes,
     });
   }
@@ -344,6 +351,13 @@ export async function ensureArchiveOnDisk({
     await assertArchive(temporary);
   } catch (error) {
     discardTemporary(temporary);
+    // A refresh that fails is not a map that disappears: the archive an earlier run
+    // published is still whole on the device, so it is what the caller gets. Only the
+    // first download of a region has nothing to fall back to.
+    if (held !== null) {
+      logger.warn('map archive could not be refreshed; keeping the one on the device', error);
+      return held;
+    }
     if (error instanceof ArchiveFailure) throw error;
     // The platform's own message stays in the log: the view only ever shows a code.
     logger.warn('map archive could not be downloaded', error);
@@ -354,8 +368,13 @@ export async function ensureArchiveOnDisk({
     await temporary.move(archive, { overwrite: true });
   } catch (error) {
     // Out of space or out of permissions, discovered only when the file lands: the
-    // transfer itself was fine, so this is not reported as a download failure.
+    // transfer itself was fine, so this is not reported as a download failure. The
+    // previous archive is untouched, and is what the caller keeps drawing.
     discardTemporary(temporary);
+    if (held !== null) {
+      logger.warn('map archive could not be replaced; keeping the one on the device', error);
+      return held;
+    }
     logger.warn('map archive could not be published', error);
     throw new ArchiveFailure('archivePublishFailed');
   }

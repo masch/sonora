@@ -439,6 +439,25 @@ describe('useMapArchiveFile', () => {
     });
   });
 
+  it('keeps the map it had when the replacement download fails', async () => {
+    await withPayload(8192, async () => {
+      // The device holds the archive the previous publish left, and the refresh fails:
+      // an offline walker keeps a usable map instead of being handed an error screen.
+      const stale = pathOf(ARCHIVE_V1);
+      const held = seedFile(stale, mockArchiveBody(4096));
+      mockDownloadFailure = new Error('the connection dropped');
+
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      expect(fileOf(result.current.uri)).toBe(stale);
+      expect(mockDisk.get(stale)?.bytes).toBe(held);
+      expect(logger.warn).toHaveBeenCalled();
+      // The failed transfer released its temporary instead of leaving it behind.
+      expect([...mockDisk.keys()]).toEqual([stale]);
+    });
+  });
+
   it('keeps the archive when its size is the one the payload advertises', async () => {
     await withPayload(4096, async () => {
       const current = pathOf(ARCHIVE_V1);

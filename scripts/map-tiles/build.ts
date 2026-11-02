@@ -151,7 +151,7 @@ const USAGE = [
   'Options:',
   `  --region   one of: ${Object.keys(MAP_REGIONS).join(', ')} (required)`,
   `  --maxzoom  deepest zoom to emit, ${PROFILE_MIN_ZOOM}-${PROFILE_MAX_ZOOM} (default ${DEFAULT_MAXZOOM})`,
-  '  --cache    directory that survives between runs (default: a directory under the OS temp)',
+  `  --cache    directory that survives between runs (default: ${DEFAULT_CACHE_DIR})`,
   "  --refresh-extract  discard the cached extract, so today's Geofabrik file is downloaded.",
   '             Without it a cached extract is reused byte for byte, even after OSM moved.',
 ].join('\n');
