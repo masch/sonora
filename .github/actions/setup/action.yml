@@ -33,9 +33,16 @@ runs:
           node_modules
           apps/*/node_modules
           packages/*/node_modules
-        key: bun-${{ hashFiles('bun.lock') }}
-        restore-keys: |
-          bun-
+        # `bunfig.toml` is part of the key because the linker decides the layout:
+        # an isolated tree restored next to a hoisted lock is not the tree this
+        # lock describes.
+        key: bun-${{ hashFiles('bun.lock', 'bunfig.toml') }}
+        # No `restore-keys` prefix fallback on purpose. It restored a node_modules
+        # from a previous lock, `bun install --frozen-lockfile` leaves an existing
+        # tree that it considers satisfied alone, and a staging deploy then ran the
+        # SDK 56 CLI (`@expo/cli@56.1.23`) against an SDK 57 app and died with
+        # `c.resetServerContext is not a function`. An exact-key miss is a cold
+        # install, which bun does in seconds — always cheaper than a wrong tree.
 
     - name: Install dependencies
       if: inputs.skip-if-cache-hit != 'true' || steps.bun-cache.outputs.cache-hit != 'true'
@@ -52,4 +59,4 @@ runs:
           node_modules
           apps/*/node_modules
           packages/*/node_modules
-        key: bun-${{ hashFiles('bun.lock') }}
+        key: bun-${{ hashFiles('bun.lock', 'bunfig.toml') }}

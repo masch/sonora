@@ -1,0 +1,76 @@
+# Tasks: Expo SDK 56 → 57 Upgrade
+
+**Feature**: `expo-sdk-57`
+**Branch**: `chore/expo-sdk-57`
+**Delivery Strategy**: `ask-on-risk`
+
+## Specs
+
+- **S1** — Update the mobile app to Expo SDK 57. User's words: "Actulizcemos a expo 57".
+- **S2** — Treat the upgrade as a staged repair, not a single drop. User's words: "vamos hacer un cambio grande de base que tiene problemas, pero vamos a solucionar uno por uno" and "cuando lo hagamos van a saltar errores, vamos a ir viendolo para resolverlos". Every error that appears is diagnosed and fixed before moving to the next one.
+- **S3** — Baseline first: `make expo-doctor` ("Primero ejecutemos make expo-doctor para evaluar el esfuerzo") records the pre-upgrade failure set so post-upgrade failures are attributable.
+- **S4** — `bunfig.toml` `minimumReleaseAge = 345600` (4 days) is a hard policy: never commented out, bypassed, or reduced. If a required version is newer than 4 days, stop and ask.
+- **S5** — Repository git rules hold: no commits on `main`, work on `chore/expo-sdk-57`, no `--no-verify`, no `--amend` on shared branches.
+- **S6** — Target SDK 57 line is `expo@57.0.31` (RN 0.86.3), which is past the Hermes V1 regressions documented for SDK 56 and `expo < 57.0.17`.
+- **S7** — Gate for "done": `make expo-doctor` shows no new failure versus the S3 baseline, plus `bun run typecheck`, `bun run lint` and `bun test` (jest) green in `apps/mobile`.
+
+## Baseline (S3 evidence, SDK 56, before any change)
+
+`make expo-doctor` → **20/22 checks passed, 2 failed**:
+
+1. **Duplicate native module dependencies** — `@expo/ui`, `expo`, `expo-asset`, `expo-constants`, `expo-file-system`, `expo-font`, `expo-glass-effect`, `expo-linking`, `expo-symbols`, `@expo/dom-webview`, `@expo/log-box`. Bun workspace layout; the Makefile already documents this class as a known false positive (`EXPO_NO_DOCTOR` note, `check` target warns instead of failing).
+2. **Hermes V1 memory regression** — `expo@56.0.24` / RN 0.85.3 ships Hermes V1 `250829098.0.10`; the fix lands in `250829098.0.16`. Doctor's own advice: upgrade to SDK 57 with `expo@57.0.9+` and RN `0.86.2+`.
+
+Estimated effort surfaced by the baseline: the upgrade is the _fix_ for the only substantive failure, and Expo documents SDK 57 as a non-breaking RN 0.85 → 0.86 bump.
+
+## Version delta (target: `bundledNativeModules.json` of `expo@57.0.31`)
+
+| Package                                      | Now                | Target                     |
+| -------------------------------------------- | ------------------ | -------------------------- |
+| `expo`                                       | 56.0.24            | 57.0.31                    |
+| `react-native`                               | 0.85.3             | 0.86.3                     |
+| `react` / `react-dom`                        | 19.2.3             | 19.2.3 (unchanged)         |
+| `expo-router`                                | 56.2.22            | ~57.0.29                   |
+| `@expo/ui`                                   | 56.0.26            | ~57.0.26                   |
+| `react-native-reanimated`                    | 4.3.1              | 4.5.1                      |
+| `react-native-worklets`                      | 0.8.3              | 0.10.1                     |
+| `react-native-gesture-handler`               | 2.31.2             | ~2.32.0                    |
+| `react-native-screens` / `safe-area-context` | 4.26.0 / 5.7.0     | unchanged ranges           |
+| `jest-expo`                                  | 56.0.6             | ~57.0.6                    |
+| `eslint-config-expo`                         | 56.0.4             | ~57.0.2                    |
+| `@react-native/jest-preset`                  | 0.85.3             | 0.86.3                     |
+| all `expo-*` modules                         | 56.x               | 57.x per bundled modules   |
+| `@react-native-firebase/*`                   | 21.14.0            | unchanged unless it breaks |
+| `nativewind` / `react-native-css`            | 5.0.0-rc.0 / 3.0.7 | unchanged unless it breaks |
+
+## Tasks
+
+- [x] `T1` (S1, S6) — Repin `apps/mobile/package.json` to the SDK 57 line and install. Commit: `chore(mobile): upgrade Expo SDK 56 to 57`. 33 pins moved; `bun install` clean; `expo install --check` → "Dependencies are up to date".
+- [x] `T2` (S2) — Drive `make expo-doctor` to the baseline set and record each remaining failure with its cause. Now 20/21 with only the bun-workspace duplicate check left (baseline item 1); the Hermes V1 check passes.
+- [ ] `T3` (S2) — Resolve `bun run typecheck` errors introduced by the bump.
+- [ ] `T4` (S2) — Resolve `bun run lint` errors introduced by the bump.
+- [ ] `T5` (S2) — Resolve jest failures introduced by the bump.
+- [x] `T6` (S7) — Run the full gate (doctor + typecheck + lint + test) and record the result. `make typecheck` (mobile/api/admin) 0, `make lint` (4 workspaces) 0, `make test-front` 123 suites / 1118 tests green, `make verify-web` builds and executes the web bundle, `make format-check` clean except the gitignored generated `public/maplibre-gl-worker.js` that predates this branch.
+- [x] `T7` (S1) — Update `AGENTS.md` versioned-docs pointer from v56 to v57. Also `Makefile` header, `README.md` stack line and the `docs/payment_flow_architecture.md` diagram label; archived `openspec/changes/archive/**` left untouched as history.
+
+## Log
+
+- **L1** — User's original request, verbatim: "vamos hacer un cambio grande de base que tiene problemas, pero vamos a solucionar uno por uno. Actulizcemos a expo 57 y cuando lo hagamos van a saltar errores, vamos a ir viendolo para resolverlos. Primero ejecutemos make expo-doctor para evaluar el esfuerzo"
+- **L2** — Baseline `make expo-doctor` on SDK 56 captured (see Baseline section): 20/22, 2 failures, one of them the Hermes V1 regression that SDK 57 fixes.
+- **L3** — Branch `chore/expo-sdk-57` created from `main` at `e297771` before the first write (S5).
+- **L4** — Checked release age: `expo@57.0.31` published 2026-10-21 (11 days old) → satisfies `minimumReleaseAge` (S4). `expo@58` is newer but out of the requested scope (S1).
+- **L5** — Expo SDK 57 changelog (https://expo.dev/changelog/sdk-57): RN 0.85 → 0.86 intended non-breaking; RN 0.86.3 arrives with `expo@57.0.17`; `expo prebuild` now clears native dirs by default (irrelevant here, the project uses CNG without committed `ios/`/`android/`).
+- **L6** — Resolution rule for the repin: `expo@57.0.31`'s `bundledNativeModules.json` range, newest release inside that range that is at least 4 days old. Third-party pins already satisfying their SDK 57 range (`react`, `react-dom`, `react-native-web`, `react-native-screens`, `react-native-safe-area-context`, `@expo/vector-icons`, `@react-native-community/netinfo`) were left alone to keep the diff honest. `@react-native-firebase/*` (21.14.0), `nativewind` (5.0.0-rc.0), `react-native-css` (3.0.7) and `maplibre-react-native` (11.5.0) were not forced; their peer ranges still admit RN 0.86 and nothing in the JS gate objected.
+- **L7** — Post-bump `make expo-doctor`: 20/21, only the bun-workspace duplicate check remains (baseline item 1). The Hermes V1 check now passes, which was the substantive failure the baseline surfaced. `expo install --check` reports "Dependencies are up to date".
+- **L8** — Zero code errors appeared from the bump: typecheck, lint, jest and the executed web bundle all green on the first run. What remains unproven is native compilation (new native module versions + RNFirebase 21.14.0 against RN 0.86) — that needs an EAS/dev build.
+
+- **L9** — Local native proof is unavailable and was dropped on the user's decision ("no compiles local, lo pruebo en el CI"). Two independent reasons: `apps/mobile/google-services.json` is a CI-only secret, so `expo prebuild` aborts at `withAndroidDangerousBaseMod`; and a `gradlew :app:assembleDebug` attempt died with `java.io.IOException: No space left on device` (`/var/home` at 100%, ~1 MB free). Native compilation is proven by the `2-STG Mobile Android` workflow (`workflow_dispatch`), never on a PR.
+- **L10** — The remaining `expo-doctor` duplicate-module failure was traced to its real cause, not the documented bun false positive: `apps/admin` was still on SDK 56, so two Expo SDKs coexisted in one workspace. Under bun's isolated linker that only produced same-version copies at different realpaths; under the hoisted linker it produced version collisions (`expo-keep-awake` 57.0.2 vs 56.0.3) and broke the build (mobile typecheck lost `contentContainerClassName`, 50 jest suites failed).
+- **L11** — Decision (user, option A): move `apps/admin` to SDK 57 and adopt `linker = "hoisted"` in the same commit, since hoisting is only safe with a single SDK. Consequence paid for in the same commit: the root now resolves the pinned `prettier` 3.8.3 where `bunx` used to download 3.9.10 on demand, so the pin moved to 3.9.10 (22 days old) or `make format-check` would have failed on 38 files.
+- **L12** — `expo-doctor` now reports 21/21, no issues. Full gate on the new tree: typecheck mobile/api/admin, lint four workspaces, 123 mobile suites (1118), 4 admin suites (27), 25 shared files (370), `make verify-web` builds and executes the web bundle. PR #612 opened against `main` linking issue #220, label `type:chore`; the first CI run was green for every check except the human broccoli merge gate.
+- **L13** — The native review cannot ingest the admin half of this branch. Two candidates were rejected with `lens_context_budget_exceeded`, no authority created, nothing to abandon: the whole `3fb53a3..HEAD` range (7 paths), and the admin slice alone (`f511695`, 130 insertions / 598 deletions, one lens). Cause: `bun.lock` loses admin's entire SDK 56 tree, and a lock diff of that shape exceeds the reviewer's context budget. The engine projects the branch diff against the base, not one commit at a time, so reordering history does not shrink the candidate — the only arrangement that would is a separate PR for admin, whose candidate would be the same lock delta.
+- **L14** — Hand-verified substitute for that missing review, produced before the decision: of 1306 resolved lock entries, 38 versions disappear (the SDK 56 tree: `expo@56.0.16`, `expo-router@56.2.15`, `expo-modules-core@56.0.23`, `expo-keep-awake@56.0.3`, …), exactly 1 appears (`prettier@3.9.10` replacing 3.8.3), and no version floats without a reason. 1269 entries remain. Decision (user, "documentar el hueco y mergear con CI"): the admin slice merges on the JS gate plus this evidence, RDD stays on for future work, and the gap is recorded here instead of hidden.
+- **L15** — Slice order matters and is not cosmetic: admin's pins must land before the hoisted linker, because with two SDKs present hoisting puts `react-native` 0.85 at the root and the mobile build breaks (typecheck loses `ScrollViewProps.contentContainerClassName`, 50 jest suites fail). Slice 2 moves the lock by 2 lines — the collapse belongs to slice 1, not to the linker.
+- **L16** — Native proof, on `477dc5d` and `b1d41e8`: `2-STG Deploy All` (run 41374768923) finished **green** end to end — `build-android` compiled RN 0.86.3 with RNFirebase 21.14.0, MapLibre 11.5.0 and Reanimated 4.5.1, and `distribute-firebase` published the APK. `Deploy Admin`, `Deploy Web` and `Deploy API` also green. The Hermes regression this upgrade exists for is now behind a build that actually ships.
+- **L17** — The hoisted linker exposed three couplings to the isolated layout, all the same shape: code that treats `node_modules` as a filesystem path instead of asking the module graph. (1) `src/config/font.ts` declared `node_modules/@expo-google-fonts/…`, which is not a module id, so `expo-font`'s plugin fallback threw in prebuild — fixed to bare specifiers (`477dc5d`). (2) The EAS Hosting targets called `bunx expo`, which resolves whatever it finds — fixed to `bun run export:web` (`622cf66`). (3) The mobile `firebase-cli` script called `./node_modules/.bin/firebase`, which does not exist under hoisting — fixed to `firebase`, resolved through the workspace PATH (`b1d41e8`). Each was verified with the command its own CI step runs, not by inspection. `grep '"\./node_modules/'` across every package script is now empty.
+- **L18** — A separate CI defect surfaced with the same deploy: the dependency cache was keyed on `bun.lock` with `restore-keys: bun-`, so a miss restored a tree from a _previous_ lock, and `bun install --frozen-lockfile` left it alone; a staging deploy then ran `@expo/cli@56.1.23` against an SDK 57 app and died with `c.resetServerContext is not a function`. The key now includes `bunfig.toml` (the linker defines the layout) and the prefix fallback is gone — an exact-key miss is a cold install of seconds.

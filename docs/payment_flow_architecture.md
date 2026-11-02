@@ -13,7 +13,7 @@ flowchart TD
         Enums["PAYMENT_ROUTES & Enums"]
     end
 
-    subgraph Client["Sonora Client (Expo SDK 56)"]
+    subgraph Client["Sonora Client (Expo SDK 57)"]
         UI["UI Components (PaymentPrompt)"]
         Hook["usePurchase Hook"]
         ClientService["PaymentClient"]

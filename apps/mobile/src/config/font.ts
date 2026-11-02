@@ -22,32 +22,41 @@ export const fontConfig = {
   googleFontsUrl:
     'https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap',
 
-  /** Android font definitions — each weight under the same fontFamily */
+  /** Android font definitions — each weight under the same fontFamily.
+   *
+   * Paths are bare module specifiers, never `node_modules/...`: `expo-font`'s config
+   * plugin resolves them with `path.resolve(projectRoot, p)` first and falls back to
+   * `require.resolve(p)`, so a specifier works in any install layout while a
+   * `node_modules/...` prefix only works when the package physically sits inside the
+   * app's own `node_modules` — it does not under a hoisted workspace, which is how
+   * the Android prebuild broke. */
   androidFonts: [
     {
-      path: 'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
+      path: '@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
       weight: 400 as const,
     },
     {
-      path: 'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
+      path: '@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
       weight: 500 as const,
     },
     {
-      path: 'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
+      path: '@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
       weight: 600 as const,
     },
     {
-      path: 'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
+      path: '@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
       weight: 700 as const,
     },
   ],
 
-  /** Native font file paths (flat, for iOS / config plugin fallback) */
+  /** Native font file paths (flat, for iOS / config plugin fallback).
+   * Bare specifiers for the reason documented on `androidFonts` above — these are the
+   * ones `app.config.ts` hands to the `expo-font` plugin. */
   nativeFonts: [
-    'node_modules/@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
-    'node_modules/@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
-    'node_modules/@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
-    'node_modules/@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
+    '@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf',
+    '@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf',
+    '@expo-google-fonts/caveat/600SemiBold/Caveat_600SemiBold.ttf',
+    '@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf',
   ],
 
   /** Font map for `useFonts` / `loadAsync` in expo-font.

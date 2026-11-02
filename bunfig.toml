@@ -1,3 +1,12 @@
 [install]
 minimumReleaseAge = 345600 # 4 days in seconds — blocks recently-published malicious packages
 exact = true
+# Hoisted, not Bun's isolated default. The isolated layout materializes a separate
+# physical copy of each package per resolved peer set, so `expo`, `expo-router` and the
+# native modules they share exist twice with different realpaths under
+# `node_modules/.bun` — which `expo-doctor`'s duplicate-native-module check reports as a
+# broken install (https://expo.fyi/resolving-dependency-issues) even when every copy is
+# the same version. Hoisting resolves one copy per version, which is the layout React
+# Native tooling has always expected. It requires a single Expo SDK across the workspace,
+# which is why `apps/mobile` and `apps/admin` move to SDK 57 together.
+linker = "hoisted"
