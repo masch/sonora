@@ -43,7 +43,7 @@
     "maplibre-gl": "6.14.0",
     "nativewind": "5.0.0-rc.0",
     "pmtiles": "4.5.0",
-    "postcss": "8.5.25",
+    "postcss": "8.5.32",
     "promise": "8.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -54,12 +54,12 @@
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "4.26.0",
-    "react-native-web": "0.21.2",
+    "react-native-web": "0.21.4",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
     "sp-react-native-in-app-updates": "2.0.0",
     "tailwindcss": "4.3.3",
-    "zustand": "5.0.14"
+    "zustand": "5.0.16"
   },
   "devDependencies": {
     "@babel/runtime": "7.29.10",
