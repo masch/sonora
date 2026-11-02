@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import LoadingView from '@/components/loading-view';
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailView from '@/components/track-detail-view';
 import TripDetailView from '@/components/trip-detail-view';
@@ -175,7 +175,7 @@ export default function TrackDetailScreen() {
           headerTintColor: colors.text,
         }}
       />
-      <ScrollScreenWrapper
+      <MapScrollScreenWrapper
         withTabBar={false}
         disableBottomPadding
         backgroundImage={isTrip ? SONORA_TRIP_BG : SONORA_TRACKS_BG}
@@ -197,7 +197,7 @@ export default function TrackDetailScreen() {
             refreshingExperience={refreshingExperience}
           />
         )}
-      </ScrollScreenWrapper>
+      </MapScrollScreenWrapper>
     </>
   );
 }

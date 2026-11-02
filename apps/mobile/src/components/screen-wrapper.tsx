@@ -21,6 +21,15 @@ interface ScrollScreenWrapperProps extends ScreenWrapperProps {
   disableBottomPadding?: boolean;
   backgroundImage?: ImageSourcePropType;
   fullWidth?: boolean;
+  /**
+   * Whether the page itself may scroll.
+   *
+   * A screen that hosts a gesture surface (the map card) turns this off while a
+   * finger is on it, so the container never takes the gesture away from the surface
+   * that was meant to receive it. Every other screen leaves it alone and scrolls
+   * exactly as it always did.
+   */
+  scrollEnabled?: boolean;
 }
 
 function getGlobalPlayerPadding(status: string, currentUri: string | null): number {
@@ -83,6 +92,7 @@ export function ScrollScreenWrapper({
   disableBottomPadding = false,
   backgroundImage,
   fullWidth = false,
+  scrollEnabled = true,
 }: ScrollScreenWrapperProps) {
   const { contentInset, paddingStyle } = useScrollInsets(withTabBar, disableBottomPadding);
   const edges: Edge[] = withTabBar ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
@@ -106,6 +116,8 @@ export function ScrollScreenWrapper({
       <SafeAreaView style={{ flex: 1 }} edges={edges}>
         <TwScrollView
           className={finalClassName}
+          testID="screen-scroll"
+          scrollEnabled={scrollEnabled}
           contentInset={contentInset}
           contentContainerStyle={[paddingStyle, contentContainerStyle]}
           contentContainerClassName={finalContentClassName}

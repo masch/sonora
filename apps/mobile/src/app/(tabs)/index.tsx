@@ -1,6 +1,6 @@
 import { AppLogo } from '@/components/app-logo';
 import { Icon } from '@/components/icon';
-import { ScrollScreenWrapper } from '@/components/screen-wrapper';
+import { MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 import { ThemedText } from '@/components/themed-text';
 import { ROUTES } from '@/constants/routes';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -29,7 +29,7 @@ export default function HomeScreen() {
   const messageIcon = getExperienceIcon('general-feedback');
 
   return (
-    <ScrollScreenWrapper
+    <MapScrollScreenWrapper
       disableBottomPadding
       backgroundImage={SONORA_HOME_BG}
       contentContainerClassName="grow pb-8"
@@ -162,6 +162,6 @@ export default function HomeScreen() {
         {/* Spacer to match the padding between elements */}
         <TwView className="h-3" />
       </TwView>
-    </ScrollScreenWrapper>
+    </MapScrollScreenWrapper>
   );
 }

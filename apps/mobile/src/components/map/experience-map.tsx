@@ -53,10 +53,29 @@ import {
   type MapReferencePress,
   type MapWaitState,
 } from './map-view.types';
+import { MapGestureSurface } from './map-scroll-lock';
 import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
+
+/**
+ * Every gesture the card answers, declared rather than inherited from the defaults.
+ *
+ * Not documentation: on Android the native view only asks its parent not to intercept
+ * the touch when pan is declared (`dragPan` → `MLRNMapView.onTouchEvent`), and without
+ * that ask the vertical page scroll under the card steals the drag and aborts the pinch
+ * mid-gesture. The rest keep the behavior the defaults already had, so declaring them
+ * changes nothing beyond the parent letting go.
+ */
+const CARD_GESTURES = {
+  dragPan: true,
+  touchZoom: true,
+  doubleTapZoom: true,
+  doubleTapHoldZoom: true,
+  touchRotate: true,
+  touchPitch: true,
+} as const;
 
 /**
  * How long one run may wait for the style document before it reports the style as
@@ -780,13 +799,14 @@ export default function ExperienceMap({
       {/* The caller's controls, above the card and only now that it draws: a row over
           a card with no pixels is the flicker this seam exists to prevent. */}
       {toolbar}
-      <TwView testID={testID} className={className}>
+      <MapGestureSurface testID={testID} className={className}>
         <MapLibreMap
           ref={mapRef}
           mapStyle={style}
           onPress={reportPress}
           // The only report of a camera landing: the flight's, never the walker's.
           onRegionDidChange={reportLanding}
+          {...CARD_GESTURES}
           // The label describes the map itself: the loading key would be announced by
           // a screen reader over a map that has already drawn.
           accessibilityLabel={t('map.mapLabel')}
@@ -807,7 +827,7 @@ export default function ExperienceMap({
           </ThemedText>
         )}
         {overlay}
-      </TwView>
+      </MapGestureSurface>
     </>
   );
 }
