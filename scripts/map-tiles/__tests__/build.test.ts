@@ -921,6 +921,75 @@ describe('probeToolchain', () => {
   });
 });
 
+/**
+ * The extract is a cache hit forever, on purpose: Geofabrik publishes a new `-latest` every day and
+ * a build that silently moved to newer data would not be reproducible. `--refresh-extract` is how
+ * an operator says "I mean the newer one", and the trap it closes is that a rebuild after an OSM
+ * change otherwise produces the same bytes from the same weeks-old file.
+ */
+describe('--refresh-extract', () => {
+  it('asks the fetch step to discard the cached extract, and only when asked', () => {
+    expect(stepOf(plan(), 'fetch-osm').refresh).toBeUndefined();
+    expect(stepOf(plan({ refreshExtract: true }), 'fetch-osm').refresh).toBe(true);
+  });
+
+  it('reads as a flag with no value, off unless it is given', () => {
+    expect(parseArgs(['--region=calamuchita']).refreshExtract).toBe(false);
+    expect(parseArgs(['--region=calamuchita', '--refresh-extract']).refreshExtract).toBe(true);
+  });
+
+  it('deletes the cached extract before downloading, and keeps it otherwise', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'map-tiles-fresh-'));
+    try {
+      /** Whether the cached extract was still there when the download started, per run. */
+      const presentWhenDownloaded: boolean[] = [];
+      const cacheDir = join(root, 'cache');
+      const workDir = join(root, 'basemaps');
+      const extract = plan({ cacheDir, workDir }).osmPath;
+
+      // A real executor, so the deletion is the one the run performs: only the transfer, the
+      // processes and the stall guard are injected.
+      const executor = createExecutor({
+        log: () => {},
+        download: async (options: DownloadOptions) => {
+          if (options.destination.endsWith('.pbf')) {
+            presentWhenDownloaded.push(existsSync(options.destination));
+          }
+          mkdirSync(dirname(options.destination), { recursive: true });
+          writeFileSync(
+            options.destination,
+            options.destination.endsWith('.pbf') ? osmPbfHeader() : storedZip('shape.shp'),
+          );
+          return { ok: true, bytes: 1, resumedFrom: 0, attempts: 1, cached: false };
+        },
+        guard: async () => ({ exitCode: 0, stalled: false }),
+        run: async (command) => {
+          if (command.file === 'mvn') {
+            mkdirSync(join(workDir, 'tiles', 'target'), { recursive: true });
+            writeJar(join(workDir, 'tiles', 'target', 'x-with-deps.jar'));
+          }
+          return { exitCode: 0 };
+        },
+      });
+
+      // A run that stopped after its download leaves its extract behind, exactly like a cache.
+      mkdirSync(dirname(extract), { recursive: true });
+      writeFileSync(extract, osmPbfHeader());
+
+      const kept = await run({ cacheDir, workDir }, executor);
+      expect(kept.ok).toBe(true);
+      expect(presentWhenDownloaded).toEqual([true]);
+
+      writeFileSync(extract, osmPbfHeader());
+      const refreshed = await run({ cacheDir, workDir, refreshExtract: true }, executor);
+      expect(refreshed.ok).toBe(true);
+      expect(presentWhenDownloaded).toEqual([true, false]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('missingEnrichedLayers', () => {
   it('names the patch that should have added each missing layer', () => {
     expect(missingEnrichedLayers(['landcover', 'roads'], PATCH_NAMES)).toEqual([

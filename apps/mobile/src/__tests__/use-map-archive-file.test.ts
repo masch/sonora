@@ -200,6 +200,7 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 import { useMapArchiveFile, STALE_TEMPORARY_MS } from '@/hooks/use-map-archive-file';
+import { archiveFileName, archiveIdentity } from '@/services/map-archives';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { logger } from '@/utils/logger';
 
@@ -373,6 +374,117 @@ describe('useMapArchiveFile', () => {
 
     expect(second.result.current.uri).toBe(firstUri);
     expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
+  });
+
+  /**
+   * The payload that prices one region, with or without a byte count.
+   *
+   * Staging republishes an archive in place, so the url — and with it the file name —
+   * is the same before and after: the advertised size is the only thing a device can
+   * compare without reading the archive.
+   */
+  function configPricingCalamuchita(bytes: number) {
+    const configured = useRemoteConfigStore.getState().config;
+    return {
+      ...configured,
+      map: {
+        ...configured.map,
+        regions: {
+          ...configured.map.regions,
+          calamuchita: {
+            bbox: [-64.83, -32.28, -64.66, -32.12] as [number, number, number, number],
+            label: 'Valle de Calamuchita',
+            archiveUrl: ARCHIVE_V1,
+            archiveBytes: bytes,
+          },
+        },
+      },
+    };
+  }
+
+  /** Runs `body` under a payload that prices one region, restoring the store after. */
+  async function withPayload(bytes: number, body: () => Promise<void>): Promise<void> {
+    const configured = useRemoteConfigStore.getState().config;
+    useRemoteConfigStore.setState({ config: configPricingCalamuchita(bytes) });
+    try {
+      await body();
+    } finally {
+      useRemoteConfigStore.setState({ config: configured });
+    }
+  }
+
+  /** The path the hook resolves `archiveUrl` to, computed the way the service does. */
+  function pathOf(archiveUrl: string, regionKey = 'calamuchita'): string {
+    const identity = archiveIdentity(archiveUrl, regionKey);
+    if (!identity) throw new Error(`${archiveUrl} is not a versioned archive url`);
+    return `${ARCHIVE_DIR}/${archiveFileName(identity)}`;
+  }
+
+  it('replaces the archive on the device when it is no longer the size the payload advertises', async () => {
+    await withPayload(8192, async () => {
+      // The device holds what the previous publish left: the same url and file name,
+      // fewer bytes. Staging republishes in place, so the name cannot say this.
+      const stale = pathOf(ARCHIVE_V1);
+      seedFile(stale, mockArchiveBody(4096));
+      mockDownloadBytes = mockArchiveBody(8192);
+
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      // Same file, new bytes: it was fetched again and replaced, with no temporary left.
+      expect(fileOf(result.current.uri)).toBe(stale);
+      expect(mockDownloadUrls).toEqual([ARCHIVE_V1]);
+      expect(mockDisk.get(stale)?.bytes.length).toBe(8192);
+      expect([...mockDisk.keys()]).toEqual([stale]);
+    });
+  });
+
+  it('keeps the map it had when the replacement download fails', async () => {
+    await withPayload(8192, async () => {
+      // The device holds the archive the previous publish left, and the refresh fails:
+      // an offline walker keeps a usable map instead of being handed an error screen.
+      const stale = pathOf(ARCHIVE_V1);
+      const held = seedFile(stale, mockArchiveBody(4096));
+      mockDownloadFailure = new Error('the connection dropped');
+
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      expect(fileOf(result.current.uri)).toBe(stale);
+      expect(mockDisk.get(stale)?.bytes).toBe(held);
+      expect(logger.warn).toHaveBeenCalled();
+      // The failed transfer released its temporary instead of leaving it behind.
+      expect([...mockDisk.keys()]).toEqual([stale]);
+    });
+  });
+
+  it('keeps the archive when its size is the one the payload advertises', async () => {
+    await withPayload(4096, async () => {
+      const current = pathOf(ARCHIVE_V1);
+      const seeded = seedFile(current, mockArchiveBody(4096));
+
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      // A cache hit is a check, not a transfer.
+      expect(mockDownloadUrls).toEqual([]);
+      expect(mockDisk.get(current)?.bytes).toBe(seeded);
+    });
+  });
+
+  it('trusts the name alone when the payload prices the archive at zero', async () => {
+    await withPayload(0, async () => {
+      // A region priced at zero has no size to compare: a file of another size is still
+      // the archive the payload names, and is never downloaded again for no reason.
+      const current = pathOf(ARCHIVE_V1);
+      seedFile(current, mockArchiveBody(9999));
+
+      const { result } = await renderHook(() => useMapArchiveFile(source(ARCHIVE_V1)));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      expect(mockDownloadUrls).toEqual([]);
+      expect(mockDisk.get(current)?.bytes.length).toBe(9999);
+    });
   });
 
   it('downloads a different archive version to its own path', async () => {
