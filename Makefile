@@ -710,6 +710,9 @@ map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publis
 # what deploys the API and makes the version live. `map-tiles-publish-staging` runs it at
 # the end unless BUMP=0.
 #
+# It refuses a version whose archive or style is not published: a config PR that names a
+# missing object would make /config omit the region until somebody noticed.
+#
 #   make map-tiles-bump-pr VERSION=v2                      # staging
 #   make map-tiles-bump-pr VERSION=v2 ENVIRONMENT=production
 #   make map-tiles-bump-pr VERSION=v2 DRY=1                # print the PR, write nothing

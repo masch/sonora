@@ -38,6 +38,12 @@ export const CONFIG_PATHS = {
 
 export type BumpEnvironment = keyof typeof CONFIG_PATHS;
 
+/** Where each environment serves its artifacts: the check reads the route clients read. */
+export const API_BASES: Record<BumpEnvironment, string> = {
+  staging: 'https://sonora-api-staging.sonora-api.workers.dev',
+  production: 'https://sonora-api.sonora-api.workers.dev',
+};
+
 export interface CommandResult {
   exitCode: number;
   stdout: string;
@@ -61,12 +67,16 @@ export interface BumpInput {
   environment: BumpEnvironment;
   version: string;
   region: string;
+  /** Overrides the environment's origin, for a local or a renamed deployment. */
+  apiBase?: string;
   /** The archive this publish produced, when the caller has one: it feeds the PR body. */
   archivePath: string | null;
 }
 
 export interface BumpDeps {
   run?: RunCommand;
+  /** `HEAD <url>` answered with its status: how the run proves the version exists. */
+  fetchStatus?: (url: string) => Promise<number>;
   /** Read-only git, answered with stdout; the plumbing that writes goes through `run`. */
   git?: (args: string[]) => string;
   repoRoot?: string;
@@ -186,6 +196,11 @@ function publishedArchive(path: string | null): { bytes: number; sha256: string 
   return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 
+/** `HEAD` on the media route: no archive is downloaded to ask whether it exists. */
+async function defaultFetchStatus(url: string): Promise<number> {
+  return (await fetch(url, { method: 'HEAD' })).status;
+}
+
 /** The production seams: a real process runner, the repository's own git, and its root. */
 function defaultRun(): RunCommand {
   return async (command) => {
@@ -230,15 +245,31 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     });
 
   const path = CONFIG_PATHS[input.environment];
+  // A config PR naming a version nobody published is an outage waiting for a merge: `/config`
+  // builds the catalog with a HEAD on the object and omits a region whose object is missing.
+  const apiBase = input.apiBase ?? API_BASES[input.environment];
+  const missing: string[] = [];
+  for (const key of [
+    `tiles/${input.region}/${input.version}.pmtiles`,
+    `styles/${input.version}.json`,
+  ]) {
+    const status = await (deps.fetchStatus ?? defaultFetchStatus)(`${apiBase}/media/public/${key}`);
+    if (status !== 200) missing.push(`${key} (${status})`);
+  }
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      message: `nothing is published under ${input.version} in ${input.environment}: ${missing.join(', ')}. Publish it first: a config PR that names it would make /config omit the region until the objects exist.`,
+    };
+  }
+
   const branch = branchName(input.environment, input.version);
 
-  // A fetch that cannot run (no remote, no network) leaves the local ref in place; the run says so
-  // rather than silently basing the commit on whatever ref happened to be there.
-  const fetched = await run({
-    file: 'git',
-    args: ['fetch', 'origin', 'main', '--quiet'],
-    cwd: repoRoot,
-  });
+  // `--dry-run` means no write anywhere, and a fetch writes remote-tracking refs and FETCH_HEAD.
+  // The dry run therefore reads whatever `origin/main` the repository already has, and says so.
+  const fetched = dryRun
+    ? { exitCode: 0, stdout: '', stderr: '' }
+    : await run({ file: 'git', args: ['fetch', 'origin', 'main', '--quiet'], cwd: repoRoot });
 
   const parent = git(['rev-parse', 'origin/main']).trim();
   const current = git(['show', `${parent}:${path}`]);
@@ -263,7 +294,13 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
   const body = prBody(input, published);
 
   if (dryRun) {
-    return { ok: true, branch, body, message: 'dry run: nothing was written, pushed or opened' };
+    return {
+      ok: true,
+      branch,
+      body,
+      message:
+        'dry run: nothing was written, pushed or opened, and origin/main was read as it already is',
+    };
   }
 
   const indexDir = mkdtempSync(join(tmpdir(), 'map-tiles-bump-index-'));
@@ -404,6 +441,7 @@ async function main(argv: string[]): Promise<number> {
       version,
       region: flag(argv, 'region') ?? 'calamuchita',
       archivePath: flag(argv, 'archive') ?? null,
+      apiBase: flag(argv, 'api'),
     },
     {
       dryRun: argv.includes('--dry-run'),

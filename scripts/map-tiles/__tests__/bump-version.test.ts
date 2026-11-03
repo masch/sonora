@@ -130,8 +130,8 @@ function scratchRepo(): {
 }
 
 /** A runner whose `git push` fails, as a network drop or a rejected ref would. */
-function failingPush(): { run: RunCommand } {
-  const { run } = recorder();
+function failingPush(): { run: RunCommand; fetchStatus: (url: string) => Promise<number> } {
+  const { run, fetchStatus } = recorder();
   return {
     run: async (command) => {
       if (command.file === 'git' && command.args.includes('push')) {
@@ -139,6 +139,7 @@ function failingPush(): { run: RunCommand } {
       }
       return run(command);
     },
+    fetchStatus,
   };
 }
 
@@ -148,7 +149,11 @@ function failingPush(): { run: RunCommand } {
  * The git commands are not stubbed on purpose: the property under test is that the commit is
  * assembled through a private index, and a fake runner would prove a fake.
  */
-function recorder(): { calls: { file: string; args: string[] }[]; run: RunCommand } {
+function recorder(): {
+  calls: { file: string; args: string[] }[];
+  run: RunCommand;
+  fetchStatus: (url: string) => Promise<number>;
+} {
   const calls: { file: string; args: string[] }[] = [];
   const run: RunCommand = async (command: {
     file: string;
@@ -178,18 +183,19 @@ function recorder(): { calls: { file: string; args: string[] }[]; run: RunComman
       stderr: result.stderr ?? '',
     } as CommandResult;
   };
-  return { calls, run };
+  // Both objects of the version are published, which is what a real publish leaves behind.
+  return { calls, run, fetchStatus: async () => 200 };
 }
 
 describe('bumpVersion', () => {
   it('writes the version to a branch without touching the worktree or the current branch', async () => {
     const repo = scratchRepo();
     const before = repo.diskVersion();
-    const { calls, run } = recorder();
+    const { calls, run, fetchStatus } = recorder();
     try {
       const result = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
-        { run, repoRoot: repo.root, git: realGit(repo.root) },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root) },
       );
 
       expect(result.ok).toBe(true);
@@ -217,11 +223,11 @@ describe('bumpVersion', () => {
 
   it('does nothing once origin/main itself names that version', async () => {
     const repo = scratchRepo();
-    const { calls, run } = recorder();
+    const { calls, run, fetchStatus } = recorder();
     try {
       const first = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
-        { run, repoRoot: repo.root, git: realGit(repo.root) },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root) },
       );
       expect(first.ok).toBe(true);
 
@@ -230,7 +236,7 @@ describe('bumpVersion', () => {
 
       const second = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
-        { run, repoRoot: repo.root, git: realGit(repo.root) },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root) },
       );
       expect(second.ok).toBe(true);
       expect(second.alreadyCurrent).toBe(true);
@@ -248,7 +254,12 @@ describe('bumpVersion', () => {
       // must not be mistaken for a completed run.
       const failed = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
-        { run: failing.run, repoRoot: repo.root, git: realGit(repo.root) },
+        {
+          run: failing.run,
+          fetchStatus: failing.fetchStatus,
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
       );
       expect(failed.ok).toBe(false);
       expect(failed.message).toContain('push');
@@ -256,7 +267,12 @@ describe('bumpVersion', () => {
       const retry = recorder();
       const second = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
-        { run: retry.run, repoRoot: repo.root, git: realGit(repo.root) },
+        {
+          run: retry.run,
+          fetchStatus: retry.fetchStatus,
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
       );
       expect(second.ok).toBe(true);
       expect(second.prUrl).toBe('https://github.com/masch/sonora/pull/999');
@@ -268,13 +284,57 @@ describe('bumpVersion', () => {
     }
   });
 
+  it('refuses a version nobody published, so the config never names a missing object', async () => {
+    const repo = scratchRepo();
+    const { calls, run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v9', region: 'calamuchita', archivePath: null },
+        {
+          run,
+          // Neither object of v9 exists: a config PR for it would make `/config` omit the region.
+          fetchStatus: async (url) => (url.includes('/tiles/') ? 404 : 200),
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
+      );
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('v9');
+      expect(result.message).toContain('tiles/calamuchita/v9.pmtiles');
+      expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('reads and writes nothing at all in a dry run', async () => {
+    const repo = scratchRepo();
+    const { calls, run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root), dryRun: true },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.body).toContain('v2');
+      // A fetch writes remote-tracking refs and FETCH_HEAD, and the dry run promises it does not.
+      expect(calls.filter((call) => call.args.includes('fetch'))).toHaveLength(0);
+      expect(calls.filter((call) => call.args.includes('push'))).toHaveLength(0);
+      expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+      expect(calls.filter((call) => call.args.includes('branch'))).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
   it('refuses a dash in the version before it writes anything', async () => {
     const repo = scratchRepo();
-    const { calls, run } = recorder();
+    const { calls, run, fetchStatus } = recorder();
     try {
       const result = await bumpVersion(
         { environment: 'staging', version: '2026-11-03', region: 'calamuchita', archivePath: null },
-        { run, repoRoot: repo.root, git: realGit(repo.root) },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root) },
       );
       expect(result.ok).toBe(false);
       expect(result.message).toContain('dash');
