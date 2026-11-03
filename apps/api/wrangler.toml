@@ -31,6 +31,9 @@ AUDIO_LINK_EXPIRY_SECONDS = "900"
 # Published map artifacts served by this same Worker from the public bucket.
 # Production needs the API deployed with the /media route before these resolve.
 # The archive and style urls are derived from this version and the request origin.
+# Published once per version: bump this before publishing anything new. The upload
+# targets (and `make map-tiles-publish-staging`) refuse a version whose objects are
+# already in the bucket, so a republish is a new value here plus a deploy.
 MAP_ARTIFACT_VERSION = "v1"
 # Regions the app prefetches when it opens. A region the public bucket does not
 # hold is dropped from the payload instead of being handed to a client.

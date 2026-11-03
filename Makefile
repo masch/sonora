@@ -624,6 +624,7 @@ api-upload-map-tiles-staging: ## Upload a map region archive + style to the stag
 	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
 		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
 	done
+	@bun scripts/map-tiles/verify-published.ts --assert-free --region="$(REGION)" --version="$(VERSION)" --api="$(STAGING_API)"
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-staging-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=0, must-revalidate" --config wrangler.staging.toml --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the staging public bucket"
@@ -638,6 +639,7 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 	@for f in "$(MAP_ARCHIVE_PATH)" "$(MAP_STYLE_PATH)"; do \
 		if [ ! -f "$$f" ]; then echo "Error: $$f does not exist; nothing was uploaded."; exit 1; fi; \
 	done
+	@bun scripts/map-tiles/verify-published.ts --assert-free --region="$(REGION)" --version="$(VERSION)" --api="$(PRODUCTION_API)"
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
@@ -656,6 +658,7 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 # Budget: ~5 minutes warm (3m57s of it tiling) plus the extract, on top of whatever the cache is
 # missing. CHECK=1 adds headless Chromium. Nothing is uploaded when the build fails.
 STAGING_API ?= https://sonora-api-staging.sonora-api.workers.dev
+PRODUCTION_API ?= https://sonora-api.sonora-api.workers.dev
 # 1 discards the cached Geofabrik extract first, which is the whole point of the target.
 FRESH ?= 1
 # 1 runs `make map-tiles-render-check` between the build and the upload.
@@ -676,6 +679,8 @@ map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publis
 		echo "       Nothing was built or uploaded."; exit 1; \
 	fi; \
 	echo "==> staging: $$region $$version (style $(PUBLISH_STYLE))"; \
+	echo "==> a published version is written once: checking $$region $$version is free"; \
+	bun scripts/map-tiles/verify-published.ts --assert-free --region="$$region" --version="$$version" --api="$(STAGING_API)"; \
 	previous="$$(bun scripts/map-tiles/verify-published.ts --snapshot --region="$$region" --api="$(STAGING_API)")" || previous=; \
 	echo "==> /config advertises $${previous:-<nothing, this region is not published>} bytes for $$region"; \
 	echo "==> toolchain (free when it is already stamped)"; \

@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  assertFree,
   catalogEntry,
   runVerify,
   tileVersionOf,
@@ -78,6 +79,53 @@ describe('catalogEntry', () => {
     expect(tileVersionOf(`${API}/media/public/tiles/calamuchita/v1.pmtiles?x=1`)).toBe('v1');
     expect(tileVersionOf(`${API}/media/public/styles/v1.json`)).toBeNull();
     expect(tileVersionOf('not a url')).toBeNull();
+  });
+});
+
+describe('assertFree', () => {
+  /** A deps double whose two media urls answer with `archive` and `style` statuses. */
+  function statusDeps(archive: number, style: number): VerifyDeps {
+    return {
+      ...deps(),
+      fetchStatus: async (url) => (url.endsWith('.json') ? style : archive),
+    };
+  }
+
+  it('passes when neither the archive nor the style of that version exists', async () => {
+    const result = await assertFree(
+      { region: 'calamuchita', version: 'v2', apiBase: API },
+      statusDeps(404, 404),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.failures).toEqual([]);
+  });
+
+  it('fails when the version was already published, naming the key that took it', async () => {
+    const result = await assertFree(
+      { region: 'calamuchita', version: 'v1', apiBase: API },
+      statusDeps(200, 404),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.failures.join(' ')).toContain('tiles/calamuchita/v1.pmtiles');
+    expect(result.failures.join(' ')).toContain('MAP_ARTIFACT_VERSION');
+  });
+
+  it('fails when only the style of that version is taken, so a retry would mix two publishes', async () => {
+    const result = await assertFree(
+      { region: 'calamuchita', version: 'v1', apiBase: API },
+      statusDeps(404, 200),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.failures.join(' ')).toContain('styles/v1.json');
+  });
+
+  it('fails when the check itself could not be answered, instead of assuming the key is free', async () => {
+    const result = await assertFree(
+      { region: 'calamuchita', version: 'v2', apiBase: API },
+      { ...deps(), fetchStatus: async () => 500 },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.failures.join(' ')).toContain('500');
   });
 });
 
