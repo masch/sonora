@@ -663,6 +663,8 @@ PRODUCTION_API ?= https://sonora-api.sonora-api.workers.dev
 FRESH ?= 1
 # 1 runs `make map-tiles-render-check` between the build and the upload.
 CHECK ?= 0
+# 1 opens the config PR that makes the version live; 0 leaves it for `map-tiles-bump-pr`.
+BUMP ?= 1
 PUBLISH_STYLE ?= assets/map/styles/v1.json
 
 .PHONY: map-tiles-publish-staging
@@ -695,7 +697,30 @@ map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publis
 	$(MAKE) --no-print-directory api-upload-map-tiles-staging REGION="$$region" VERSION="$$version" ARCHIVE="$$archive" STYLE="$$style"; \
 	echo "==> verify what staging serves"; \
 	bun scripts/map-tiles/verify-published.ts --region="$$region" --version="$$version" --archive="$$archive" --api="$(STAGING_API)" $${previous:+--previous-bytes=$$previous}; \
-	echo "==> done: $$region $$version on staging"
+	if [ "$(BUMP)" != "0" ]; then \
+		echo "==> open the config PR that makes $$version live"; \
+		bun scripts/map-tiles/bump-version.ts --environment=staging --version="$$version" --region="$$region" --archive="$$archive"; \
+	fi; \
+	echo "==> done: $$region $$version published; merge the config PR to make it live"
+
+# ── The config PR that makes a published version live ──────────
+# Publishing and going live are two steps, and this is the second one: it moves
+# MAP_ARTIFACT_VERSION in the Worker config onto a branch of its own, pushes it and opens
+# the pull request. It never touches your worktree or your branch, and merging the PR is
+# what deploys the API and makes the version live. `map-tiles-publish-staging` runs it at
+# the end unless BUMP=0.
+#
+#   make map-tiles-bump-pr VERSION=v2                      # staging
+#   make map-tiles-bump-pr VERSION=v2 ENVIRONMENT=production
+#   make map-tiles-bump-pr VERSION=v2 DRY=1                # print the PR, write nothing
+.PHONY: map-tiles-bump-pr
+map-tiles-bump-pr: ## Open the config PR that moves MAP_ARTIFACT_VERSION to a published version. Usage: make map-tiles-bump-pr VERSION=v2 [ENVIRONMENT=staging|production] [ARCHIVE=path] [DRY=1]
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required."; \
+		echo "  make map-tiles-bump-pr VERSION=v2 [ENVIRONMENT=staging|production] [ARCHIVE=path] [DRY=1]"; \
+		exit 1; \
+	fi
+	@bun scripts/map-tiles/bump-version.ts --version="$(VERSION)" --environment="$(if $(ENVIRONMENT),$(ENVIRONMENT),staging)" --region="$(if $(REGION),$(REGION),calamuchita)" $(if $(ARCHIVE),--archive="$(ARCHIVE)",) $(if $(DRY),--dry-run,)
 
 # ── Self-hosted map assets: glyphs + sprite (public bucket) ────
 # The published style used to point `glyphs` and `sprite` at a third party
