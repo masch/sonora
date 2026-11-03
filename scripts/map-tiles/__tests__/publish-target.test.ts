@@ -66,6 +66,28 @@ describe('the publish target', () => {
     }
   });
 
+  it('opens the config PR that makes the version live, after the upload is proven', () => {
+    const recipe = recipeOf('map-tiles-publish-staging');
+    const verify = recipe.indexOf('verify-published.ts --region=');
+    const bump = recipe.indexOf('bump-version.ts');
+
+    // Publishing first and moving the config second is what keeps `/config` from naming an
+    // object that does not exist yet.
+    expect(bump).toBeGreaterThan(-1);
+    expect(bump).toBeGreaterThan(verify);
+    // And it is skippable, because a publish that is only meant to land the bytes has no reason
+    // to open a pull request.
+    expect(recipe).toContain('if [ "$(BUMP)" != "0" ]');
+  });
+
+  it('keeps the config PR available as its own target, for both environments', () => {
+    const recipe = recipeOf('map-tiles-bump-pr');
+
+    expect(recipe).toContain('bump-version.ts --version="$(VERSION)"');
+    expect(recipe).toContain('--environment="$(if $(ENVIRONMENT),$(ENVIRONMENT),staging)"');
+    expect(recipe).toContain('--dry-run');
+  });
+
   it('builds the region it publishes, from a fresh extract unless FRESH=0', () => {
     const recipe = recipeOf('map-tiles-publish-staging');
 

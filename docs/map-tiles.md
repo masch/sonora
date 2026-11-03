@@ -132,9 +132,10 @@ export JAVA_HOME=/tmp/tile-spike/jdk-21*
 ### The one command: today's OSM on staging
 
 ```bash
-make map-tiles-publish-staging                    # calamuchita v1, fresh extract from Geofabrik
+make map-tiles-publish-staging VERSION=v2         # calamuchita v2, fresh extract from Geofabrik
 make map-tiles-publish-staging FRESH=0            # reuse the cached extract (patches or style only)
-make map-tiles-publish-staging VERSION=v2 CHECK=1 # a new key, render-checked before the upload
+make map-tiles-publish-staging VERSION=v2 CHECK=1 # render-checked before the upload
+make map-tiles-publish-staging VERSION=v2 BUMP=0  # land the bytes only; open the config PR later
 ```
 
 One run does what used to be five remembered steps, in this order, stopping at the first failure:
@@ -144,9 +145,19 @@ One run does what used to be five remembered steps, in this order, stopping at t
 3. **discards the cached Geofabrik extract** and builds (`map-tiles-build` with `--refresh-extract`);
 4. with `CHECK=1`, renders the built archive with the repository style;
 5. publishes the archive and the style to the staging bucket in place (`api-upload-map-tiles-staging`);
-6. verifies against **what clients read**: the `/config` url, the bytes the media route serves, and the size devices compare.
+6. verifies against **what clients read**: the `/config` url, the bytes the media route serves, and the size devices compare;
+7. opens the **config PR** that moves `MAP_ARTIFACT_VERSION` to that version (`bump-version.ts`), on its own branch, without touching the worktree or your current branch.
 
-Why the extract matters is the whole point of the target. A cached extract is a cache hit forever (`--refresh-extract` is the only thing that changes that), so a rebuild after an OSM edit otherwise produces the same bytes from the same weeks-old file. The flags it takes are `REGION` (default `calamuchita`), `VERSION` (default `v1`), `FRESH=1`, `CHECK=0`, `PUBLISH_STYLE` (default `assets/map/styles/v1.json`), `CACHE`, `MAXZOOM` and `TOOLCHAIN` — the same variables the targets it wraps take. It refuses to start when wrangler is not authenticated or the style file is missing, so a five-minute build is never spent on an upload that cannot happen.
+Why the extract matters is the whole point of the target. A cached extract is a cache hit forever (`--refresh-extract` is the only thing that changes that), so a rebuild after an OSM edit otherwise produces the same bytes from the same weeks-old file. The flags it takes are `REGION` (default `calamuchita`), `VERSION` (default `v1`), `FRESH=1`, `CHECK=0`, `PUBLISH_STYLE` (default `assets/map/styles/v1.json`), `CACHE`, `MAXZOOM` and `TOOLCHAIN` — the same variables the targets it wraps take. It refuses to start when wrangler is not authenticated, the style file is missing, or the version is already published, so a five-minute build is never spent on an upload that cannot happen.
+
+**Publishing and going live are two steps, and the order is deliberate.** The artifacts land first and nobody reads them: `/config` builds the region catalog with a `HEAD` on the object of the version in play, and it omits a region whose object is missing — so moving the version first would point every client at nothing. After the publish, merging the config PR triggers the API deploy workflow, and _that_ merge is the go-live. To prove it once the deploy ran:
+
+```bash
+bun scripts/map-tiles/verify-published.ts --region=calamuchita --version=v2 \
+  --archive=.tools/cache/out/calamuchita.pmtiles --require-live
+```
+
+Without `--require-live` a `/config` naming the previous version is a `pending` note (the step that has not happened yet); with it, that is a failure. Rolling back is reverting the config PR and merging it again: the previous version's objects are still there, because a published version is never rewritten.
 
 ### Once per machine
 
@@ -220,7 +231,7 @@ make api-upload-map-tiles-staging REGION=calamuchita VERSION=v1 \
 
 - **Paths are resolved and checked first.** The target runs wrangler from `apps/api`, so a repository-relative path would be resolved there — which is how the first publish left the bucket half-updated. Both paths are now resolved against the repository root (absolute inputs untouched) and the target refuses to start when either file is missing (`T10`).
 - **One version for both objects.** The archive and the style are keyed by `MAP_ARTIFACT_VERSION`, and the media route serves `styles/<current version>.json` only — a style uploaded under another key is invisible.
-- **A version is published once.** The two objects of a version are create-only: every upload target, and `map-tiles-publish-staging` before it builds anything, ask `verify-published.ts --assert-free` whether `tiles/<region>/<version>.pmtiles` or `styles/<version>.json` already exists, and stop when it does. So a publish means a **new** `MAP_ARTIFACT_VERSION` — a plaintext `[vars]` entry in `apps/api/wrangler.{staging,}.toml`, committed with the rest of the Worker config, never a secret — bumped and deployed before the run. The cost is stated rather than hidden: a publish that fails after the archive landed has burned that version, and the next attempt is a bump, not a retry. The guard is a check before the write and not an atomic precondition, because `wrangler r2 object put` has no create-only mode; two simultaneous publishes of one version are still the operator's discipline.
+- **A version is published once.** The two objects of a version are create-only: every upload target, and `map-tiles-publish-staging` before it builds anything, ask `verify-published.ts --assert-free` whether `tiles/<region>/<version>.pmtiles` or `styles/<version>.json` already exists, and stop when it does. So a publish means a **new** `MAP_ARTIFACT_VERSION` — a plaintext `[vars]` entry in `apps/api/wrangler.{staging,}.toml`, committed with the rest of the Worker config, never a secret — moved by the config PR the run opens (`make map-tiles-bump-pr VERSION=v2 ENVIRONMENT=production` does it on its own, and refuses a version whose objects are not published). The cost is stated rather than hidden: a publish that fails after the archive landed has burned that version, and the next attempt is a bump, not a retry. The guard is a check before the write and not an atomic precondition, because `wrangler r2 object put` has no create-only mode; two simultaneous publishes of one version are still the operator's discipline.
 - Staging may be overwritten in place (`S2`): non-production is served `no-cache`, and the upload writes `must-revalidate` onto the object too, so a re-upload is picked up without a version bump. **This only protects objects uploaded after that policy existed**: a key cached while the target still wrote `immutable` stays fresh in a browser for a year, and only a new version key escapes it.
 - **A device compares sizes, not content.** A browser holds nothing — it streams the archive over HTTP, so `no-cache` is enough. Native keeps the file, named `<region>-<version>-<origin>.pmtiles`, and reuses it only while its length equals the `archiveBytes` the payload advertises (`isArchiveCurrent`, asked by both the startup prefetch and the map's own path). An in-place republish whose length changed reaches the phone on the next mount; one whose length came out **identical** reaches nobody holding the old file, and only a new `VERSION` gets it there — the same reason `verify-published.ts` prints that note.
 
