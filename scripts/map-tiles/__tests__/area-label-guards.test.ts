@@ -14,7 +14,13 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 const STYLE = JSON.parse(readFileSync(join(REPO, 'assets/map/styles/v1.json'), 'utf8')) as {
-  layers: Array<{ id: string; type: string; layout?: Record<string, unknown> }>;
+  layers: Array<{
+    id: string;
+    type: string;
+    minzoom?: number;
+    layout?: Record<string, unknown>;
+    paint?: Record<string, unknown>;
+  }>;
 };
 const PATCH = readFileSync(
   join(REPO, 'scripts/map-tiles/patches/0004-landuse-reaches-z16.patch'),
@@ -39,6 +45,41 @@ describe('the area label keeps its collision fix', () => {
   it('draws only polygons that have a name', () => {
     const label = layer('landuse_label') as unknown as { filter?: unknown[] };
     expect(JSON.stringify(label.filter)).toContain('"has","name"');
+  });
+});
+
+describe('the area label reaches the zooms the map opens at', () => {
+  it('offers a name from z11, the zoom the subplace labels already draw at', () => {
+    // The opening frame fits a box whose span floor is `WORLD_MIN_SPAN_DEGREES` (0.015°),
+    // which lands a 400 px card between z11 and z14 depending on how far apart the
+    // published experiences are. At z13 that frame sat exactly on the threshold: a payload
+    // any wider and the names were gone until the walker zoomed by hand. The data carries
+    // them at every zoom (patch 0006), so this number is the whole decision.
+    expect(layer('landuse_label').minzoom).toBe(11);
+  });
+
+  it('grows to 10 px by z14 and stops there, because 11 px loses a name', () => {
+    // Measured on the z14 tile against the published archive: at 10 px "Huerta Madre" and
+    // "Bosque Umepay" both place; at 11 px, literal or interpolated, the second is culled —
+    // 3 runs of each, the same answer every time. So the curve buys quiet at z11 with 9 px and
+    // never crosses the size that tile can hold. A constant 10 px was deaf to the zoom: the
+    // size a name was drawn at never answered how far the walker was from it.
+    expect(layer('landuse_label').layout?.['text-size']).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      11,
+      9,
+      14,
+      10,
+    ]);
+  });
+
+  it('draws the name dark enough to read on the green it sits on', () => {
+    // #8f8f8f over the park's #a0d9a0 is a 1.99:1 contrast, which is why the names read as
+    // texture instead of words; the places labels already use #5c5c5c, 4.12:1 on the same fill.
+    // Paint never widens the collision box, so this legibility is free of the size ceiling above.
+    expect(layer('landuse_label').paint?.['text-color']).toBe('#5c5c5c');
   });
 });
 

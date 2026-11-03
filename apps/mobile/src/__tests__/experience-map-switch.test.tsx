@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { act, fireEvent, render, type RenderResult } from '@testing-library/react-native';
+import type { ReactElement } from 'react';
 
 import type { MapDocument, MapLayerSelection } from '@sonora/shared';
 
@@ -14,11 +15,19 @@ import type { TrackExperience, TripExperience } from '@/data/experiences';
 // Recorders for the two renderers the switch can mount. The names start with
 // `mock` because the jest.mock factories are hoisted above the declarations.
 const mockExperienceMapProps: Record<string, unknown>[] = [];
+/**
+ * Whether the renderer double draws the caller's slots.
+ *
+ * The real renderer draws them only once the card has pixels, so a test that takes that
+ * away is a test of a card that is not drawing: whatever the switch handed over must not
+ * reach the screen.
+ */
+let mockRendersToolbar = true;
 jest.mock('@/components/map/experience-map', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockExperienceMapProps.push(props);
-    return null;
+    return mockRendersToolbar ? ((props.toolbar as ReactElement | null) ?? null) : null;
   },
 }));
 
@@ -192,6 +201,12 @@ const trip: TripExperience = {
   ],
 };
 
+// A drawn card is the default: one test removes the renderer's slots, and every test
+// after it must be handed them back.
+beforeEach(() => {
+  mockRendersToolbar = true;
+});
+
 describe('ExperienceMapSwitch', () => {
   beforeEach(() => {
     mockExperienceMapProps.length = 0;
@@ -322,6 +337,56 @@ describe('ExperienceMapSwitch', () => {
       />,
     );
     expect(withControl.queryByTestId('map-layers-control')).toBeTruthy();
+  });
+
+  // The sheet names the map it is describing, so it rides in the slot the renderer draws
+  // only once the card has pixels. Both cases below are about that placement: the control
+  // travels with the drawn map, and a card that draws nothing leaves no control behind.
+  it('draws the layer sheet through the renderer slot, over a drawn card', async () => {
+    const view = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={{
+          ...source,
+          layers: [{ id: 'water', defaultVisible: false }],
+          showLayersControl: true,
+          archiveVersion: 'v7',
+          archiveBytes: 908_000,
+        }}
+        experience={trip}
+      />,
+    );
+
+    // The control is the toolbar the renderer was handed, not a sibling of the map.
+    expect(mockExperienceMapProps[0].toolbar).toBeTruthy();
+
+    // It opens from there, and the line names the archive this map draws.
+    await fireEvent.press(view.getByTestId('map-layers-control'));
+    expect(view.getByTestId('map-layer-row-water')).toBeTruthy();
+    expect(view.getByTestId('map-layers-loaded-map')).toHaveTextContent(/^map\.layers\.loadedMap$/);
+  });
+
+  it('draws no layer control when the renderer draws no toolbar', async () => {
+    // The renderer withholds its slots while there is no card to draw them over, and the
+    // sheet follows them: nothing names an archive during a download or after an error.
+    mockRendersToolbar = false;
+
+    const view = await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={{
+          ...source,
+          layers: [{ id: 'water', defaultVisible: false }],
+          showLayersControl: true,
+          archiveVersion: 'v7',
+          archiveBytes: 908_000,
+        }}
+        experience={trip}
+      />,
+    );
+
+    expect(view.queryByTestId('map-layers-control')).toBeNull();
+    expect(view.queryByTestId('map-layers-loaded-map')).toBeNull();
   });
 
   it('draws no layer control on the frozen leaflet renderer, which can toggle no group', async () => {

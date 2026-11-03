@@ -49,6 +49,13 @@ export const en = {
       // What a screen reader announces: the group and whether it draws.
       visible: 'Layer visible: {{name}}',
       hidden: 'Layer hidden: {{name}}',
+      // What the sheet says the map it is drawing actually is: the map's own label, the
+      // archive's version and its size, and the shorter forms for a source that could
+      // answer only one of them — or neither.
+      loadedMap: 'Map: {{version}} · archive {{size}}',
+      loadedMapVersion: 'Map: {{version}}',
+      loadedMapSize: 'Map: archive {{size}}',
+      loadedMapOnly: 'Map',
     },
     // The home's Deriva world: the experiences' points over the map.
     world: {

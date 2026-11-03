@@ -93,7 +93,12 @@ function waypointsOf(experience: PlayableExperience) {
  * decided here too: the switch resolves the payload on every render, layers the
  * walker's own choices — held for the whole app run — on top, and hands the result
  * to the renderer, which applies it and resolves nothing. One place decides what the
- * map draws; the renderer only draws it.
+ * map draws; the renderer only draws it. The version and size of the archive ride
+ * along with the source it was handed, so the sheet can name the map it is describing
+ * without ever reading the config store itself. Both belong to the drawn map, so the
+ * control is handed over as the renderer's toolbar: the renderer draws that slot only
+ * once the card has pixels, which is what keeps a sheet from naming an archive during a
+ * download or after an archive or style error.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -175,14 +180,23 @@ export default function ExperienceMapSwitch({
             waypoints={waypoints}
             showLabels={showLabels}
             onFeaturePress={handleFeaturePress}
-          />
-          <MapLayersControl
-            selection={layerSelection}
-            onToggle={handleToggleLayer}
-            allowed={showLayerControl(
-              source.showLayersControl ?? false,
-              MAPLIBRE_LAYER_CAPABILITIES,
-            )}
+            // The sheet names the map it describes, so it rides in the slot the renderer
+            // draws only once the card has pixels: during a download, and after an archive
+            // or style error, there is no control and no line to claim one. The values are
+            // the source's, handed over whole; the sheet already says the map's own label
+            // alone when it knows neither.
+            toolbar={
+              <MapLayersControl
+                selection={layerSelection}
+                onToggle={handleToggleLayer}
+                allowed={showLayerControl(
+                  source.showLayersControl ?? false,
+                  MAPLIBRE_LAYER_CAPABILITIES,
+                )}
+                archiveVersion={source.archiveVersion}
+                archiveBytes={source.archiveBytes}
+              />
+            }
           />
           <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
         </>

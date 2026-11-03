@@ -24,6 +24,7 @@ import { ROUTES } from '@/constants/routes';
 import { useLocationStore } from '@/store/location-store';
 import { useFeedbackSync } from '@/hooks/use-feedback-sync';
 import { useBackgroundSync } from '@/hooks/use-background-sync';
+import { useRemoteConfigRefresh } from '@/hooks/use-remote-config-refresh';
 import { AudioPlayerBridge } from '@/components/audio-player-bridge';
 import { InterruptConfirmationModal } from '@/components/interrupt-confirmation-modal';
 import { UpdateRequiredModal } from '@/components/update-required-modal';
@@ -64,6 +65,11 @@ export default function RootLayout() {
   // Initialize sync hooks on app load
   useFeedbackSync();
   useBackgroundSync();
+
+  // Revalidate the remote config on every return to the foreground. The startup
+  // effect below runs once per JS process, so an app that survived in the
+  // background would otherwise keep the `/config` it fetched when it launched.
+  useRemoteConfigRefresh();
 
   // Start location subscription on app load
   useEffect(() => {

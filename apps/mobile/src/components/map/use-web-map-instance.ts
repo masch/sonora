@@ -12,6 +12,7 @@ import {
 import { toLngLatBounds, type GeoBounds } from '@sonora/shared';
 
 import { ensureLocalProtocol, type MapSourceState } from '@/hooks/use-map-source';
+import { attributionWithVersion } from '@/utils/map-attribution';
 import { logger } from '@/utils/logger';
 
 import { documentKeyOfLayer, type MapLoadErrorCode, type MapSourceConfig } from './map-view.types';
@@ -65,8 +66,14 @@ export interface WebMapInstanceOptions {
   /**
    * What the style is built from: the style the caller brought, the url the archive's
    * own style is downloaded from, and the attribution that travels with the tiles.
+   *
+   * `archiveVersion` is here because the credit is composed here: the notice belongs to
+   * the style document, the version belongs to the archive, and the style this hook
+   * hands MapLibre is the only place the web renderer holds both at once — the document
+   * is either in memory or about to be, and nothing that reaches the map may fetch the
+   * style again to say what it already says.
    */
-  source: Pick<MapSourceConfig, 'style' | 'styleUrl' | 'attribution'>;
+  source: Pick<MapSourceConfig, 'style' | 'styleUrl' | 'attribution' | 'archiveVersion'>;
   /** The whole download the map's style points at, once it is in memory. */
   archive: Pick<MapSourceState, 'status' | 'sourceUrl' | 'style'>;
   /**
@@ -153,9 +160,10 @@ export function useWebMapInstance({
   /**
    * The instance in `mapRef` is drawn: it loaded, and it is the build this render is for.
    *
-   * Derived during render rather than reset inside the effect, which keeps the
-   * false→true transition the ready-gated effects need. Left `true` across a retry, the
-   * pending focus flight and the layer selection never ran for the new instance, so a
+   * Derived during render and cleared by the build effect, so one instance's load is never
+   * read as another's: the replacement starts at "not loaded yet" and the effects below see
+   * the false→true transition they need. Left `true` across a rebuild that is not a retry,
+   * the pending focus flight and the layer selection never ran for the new instance, so a
    * rebuilt map never travelled to the selected point and ignored the active layers.
    */
   const ready = loadedAttempt !== null && loadedAttempt === attempt;
@@ -197,14 +205,24 @@ export function useWebMapInstance({
           const baseStyle = source.style ?? archive.style ?? inlineStyle;
 
           // The archive is already in memory: the style points at the local protocol.
+          // The credit is the document's own, extended with the version of the archive
+          // this device is drawing, so the walker can read both from one notice. The
+          // suffix is written here rather than into the cached document: the document is
+          // the publisher's and the version is this device's.
+          const basemapSource = baseStyle.sources.basemap as VectorSourceSpecification | undefined;
+          const attribution = attributionWithVersion(
+            basemapSource?.attribution,
+            source.archiveVersion,
+          );
           style = {
             ...baseStyle,
             sources: {
               ...baseStyle.sources,
               basemap: {
-                ...(baseStyle.sources.basemap as VectorSourceSpecification),
+                ...basemapSource,
                 type: 'vector',
                 url: archive.sourceUrl,
+                ...(attribution === undefined ? {} : { attribution }),
               },
             },
           };
@@ -286,8 +304,12 @@ export function useWebMapInstance({
       cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      // `ready` is not touched here: it is read from the build the map loaded for, so the
-      // replacement is reported as not ready until it says otherwise.
+      // The build that reported its load is gone with this instance, and the one that
+      // replaces it has drawn nothing, so readiness starts over: clearing it here, where
+      // the instance is removed, is what makes the replacement pass through "not loaded
+      // yet" and the ready-gated effects run against it. A retry is unaffected: its own
+      // attempt number already made the old answer stale.
+      setLoadedAttempt(null);
     };
     // The two refs are stable, and the callback the renderer hands in is built with no
     // dependencies of its own: `source` and `archive` are read by the fields listed, so
@@ -301,6 +323,7 @@ export function useWebMapInstance({
     source.style,
     source.styleUrl,
     source.attribution,
+    source.archiveVersion,
     centerLng,
     centerLat,
     zoom,

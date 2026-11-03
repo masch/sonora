@@ -50,6 +50,13 @@ export const es = {
       // Lo que anuncia el lector de pantalla: el grupo y si se dibuja.
       visible: 'Capa visible: {{name}}',
       hidden: 'Capa oculta: {{name}}',
+      // Lo que la hoja dice que es el mapa que está dibujando: la etiqueta del propio
+      // mapa, la versión del archivo y su tamaño, y las formas cortas para una fuente
+      // que solo supo contestar una de las dos — o ninguna.
+      loadedMap: 'Mapa: {{version}} · archivo {{size}}',
+      loadedMapVersion: 'Mapa: {{version}}',
+      loadedMapSize: 'Mapa: archivo {{size}}',
+      loadedMapOnly: 'Mapa',
     },
     // El mundo Deriva del inicio: los puntos de las experiencias sobre el mapa.
     world: {

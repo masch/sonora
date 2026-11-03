@@ -43,6 +43,7 @@ import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation
 import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
 import { downloadStyleAssets, localizeStyle } from '@/services/map-styles';
 import { TwView } from '@/tw';
+import { attributionWithVersion } from '@/utils/map-attribution';
 import { logger } from '@/utils/logger';
 
 import {
@@ -472,6 +473,16 @@ function buildMapStyle(
   options: {
     /** Absent when the point belongs to no region: there is no basemap to draw. */
     archiveUri?: string;
+    /**
+     * The version of the archive this style draws, so the credit MapLibre shows can say
+     * which artifact it is (`© OpenStreetMap contributors (v7)`).
+     *
+     * Read here, where the document and the resolved version are both inputs of one
+     * style build, and composed here rather than in the document: the document is the
+     * publisher's and is kept in a page cache under its url, so a suffix written into it
+     * would outlive the archive it named.
+     */
+    archiveVersion?: string | null;
     documents: readonly MapDocument[];
     /** Which basemap groups draw, resolved once by the view. */
     selection: readonly MapLayerSelection[];
@@ -481,18 +492,32 @@ function buildMapStyle(
     language: SupportedLanguage;
   },
 ): StyleSpecification {
-  const { archiveUri, documents, selection, showLabels, translate, language } = options;
+  const { archiveUri, archiveVersion, documents, selection, showLabels, translate, language } =
+    options;
   // A label layer is a symbol layer: without a glyphs source MapLibre fails to
   // draw it, so labels only exist when the base style can serve them.
   const includeLabels = showLabels && Boolean(base.glyphs);
   const basemap = base.sources?.basemap as VectorSourceSpecification | undefined;
+  // The credit is the document's own, extended with the version of the archive this
+  // device draws: the notice is never invented, and a style that publishes none (or an
+  // archive no version could be read from) keeps exactly what it wrote.
+  const attribution = attributionWithVersion(basemap?.attribution, archiveVersion);
 
   const sources: Record<string, unknown> = {
     ...base.sources,
     // The archive is a file on the device: its transport url replaces the remote
     // one the style was authored with, exactly as the web renderer swaps in its
     // in-memory one. Without an archive there is no basemap at all.
-    ...(archiveUri ? { basemap: { ...basemap, type: 'vector', url: archiveUri } } : {}),
+    ...(archiveUri
+      ? {
+          basemap: {
+            ...basemap,
+            type: 'vector',
+            url: archiveUri,
+            ...(attribution === undefined ? {} : { attribution }),
+          },
+        }
+      : {}),
   };
 
   // The groups are applied to the basemap's own layers, before any document layer
@@ -621,6 +646,8 @@ export default function ExperienceMap({
     (source.style as unknown as StyleSpecification | undefined) ??
     (remote.status === 'ready' ? remote.style : undefined);
   const attribution = source.attribution;
+  /** The version of the archive this map draws: the style's credit names it. */
+  const archiveVersion = source.archiveVersion;
 
   /**
    * The translation layer as the shared style builder takes it: the hook's adapter,
@@ -642,6 +669,7 @@ export default function ExperienceMap({
     if (!archiveUri) return null;
     return buildMapStyle(styleDocument ?? fallbackStyle(archiveUri, attribution), {
       archiveUri,
+      archiveVersion,
       documents: overlays,
       selection: effectiveSelection,
       showLabels,
@@ -654,6 +682,7 @@ export default function ExperienceMap({
     noRegion,
     styleDocument,
     attribution,
+    archiveVersion,
     showLabels,
     translateKey,
     language,

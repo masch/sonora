@@ -23,6 +23,27 @@ export interface MapSourceConfig {
    * assembled without resolving one (the Leaflet path never reads either field).
    */
   regionKey?: string | null;
+  /**
+   * The version of the archive `archiveUrl` points at (`v7`), as `archiveIdentity()`
+   * reads it — or `null` when there is no archive, or its url is one this app cannot
+   * key by version.
+   *
+   * It rides with the source for the same reason `regionKey` does: the sheet that names
+   * what the map is drawing has to name the artifact the renderer actually read, and the
+   * archive — not the style document — is what decides the tiles. `null` is the resolved
+   * answer and never a stand-in: a version nobody parsed (`v0`) would read as a stale map
+   * that the device never had.
+   */
+  archiveVersion?: string | null;
+  /**
+   * The bytes the payload advertises for that archive, or absent when it priced
+   * nothing.
+   *
+   * The same number the download layer compares against the file on disk, so a sheet that
+   * prints it is naming the archive the device was promised rather than measuring one.
+   * Absent and zero both mean the payload published no price, not a zero-byte archive.
+   */
+  archiveBytes?: number;
   /** MapLibre style URL served from R2. */
   styleUrl?: string;
   /** Inline style, used when no URL is configured yet. */
