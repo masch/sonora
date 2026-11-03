@@ -60,6 +60,8 @@ export interface VerifyDeps {
   fetchJson: (url: string) => Promise<unknown>;
   /** `GET <url>` as bytes, which is what a client's map loader does. */
   fetchBytes: (url: string) => Promise<Uint8Array>;
+  /** `HEAD <url>`, answered with the status alone: no archive is downloaded to ask. */
+  fetchStatus: (url: string) => Promise<number>;
   /** The built archive, read once so its size and digest describe the same bytes. */
   readArchive: (path: string) => Promise<Uint8Array>;
   log: (line: string) => void;
@@ -132,6 +134,59 @@ export async function readSnapshot(
   const entry = catalogEntry(await publishedConfig(input.apiBase, deps), input.region);
   const bytes = entry?.archiveBytes;
   return typeof bytes === 'number' ? String(bytes) : '';
+}
+
+/** What the create-only guard needs: the keys one version would take. */
+export interface AssertFreeInput {
+  region: string;
+  version: string;
+  apiBase: string;
+}
+
+/**
+ * Refuses a version whose keys are already taken, before anything is built or uploaded.
+ *
+ * A published version is immutable by policy: the url is the identity a client keys its
+ * downloaded archive by, so rewriting one object under the same name is how devices end up
+ * drawing bytes nobody published. This is the check that makes the policy real, and it runs
+ * against the same media route a client reads: `404` is a free key, `200` is a version
+ * somebody already published.
+ *
+ * It is deliberately a check before the write and not an atomic precondition — `wrangler r2
+ * object put` has no create-only mode — so it refuses the case that actually happens (an
+ * operator re-running a publish with the version still in the config) and leaves a
+ * simultaneous second publish of the same version to the operator's discipline.
+ */
+export async function assertFree(input: AssertFreeInput, deps: VerifyDeps): Promise<VerifyResult> {
+  const lines: string[] = [];
+  const failures: string[] = [];
+
+  for (const key of [
+    `tiles/${input.region}/${input.version}.pmtiles`,
+    `styles/${input.version}.json`,
+  ]) {
+    const status = await deps.fetchStatus(`${input.apiBase}/media/public/${key}`);
+
+    if (status === 404) {
+      lines.push(`  free: ${key}`);
+      continue;
+    }
+
+    if (status === 200) {
+      failures.push(
+        `${key} is already published in this environment: a version is written once and never rewritten, so this run would republish over the artifact devices are keyed to. Bump MAP_ARTIFACT_VERSION to a version nobody has published and deploy before publishing.`,
+      );
+      continue;
+    }
+
+    // Anything else — a 500, a redirect to a login page — says nothing about the key, and
+    // assuming it is free is how a guard turns into a silent overwrite.
+    failures.push(
+      `the check for ${key} answered ${status}: the key cannot be shown to be free, so nothing is uploaded.`,
+    );
+  }
+
+  return { ok: failures.length === 0, lines, failures };
 }
 
 /**
@@ -216,6 +271,7 @@ export function createDeps(log: (line: string) => void = (line) => console.log(l
       if (!response.ok) throw new Error(`${url} answered ${response.status}`);
       return new Uint8Array(await response.arrayBuffer());
     },
+    fetchStatus: async (url) => (await fetch(url, { method: 'HEAD' })).status,
     readArchive: async (path) => new Uint8Array(readFileSync(path)),
     log,
   };
@@ -226,6 +282,7 @@ const USAGE = [
   '  bun scripts/map-tiles/verify-published.ts --region=calamuchita --version=v1 \\',
   '    --archive=<cache>/out/calamuchita.pmtiles [--previous-bytes=<n>] [--api=<origin>]',
   '  bun scripts/map-tiles/verify-published.ts --snapshot --region=calamuchita [--api=<origin>]',
+  '  bun scripts/map-tiles/verify-published.ts --assert-free --region=calamuchita --version=v2 [--api=<origin>]',
 ].join('\n');
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
@@ -250,6 +307,19 @@ async function main(argv: string[]): Promise<number> {
   if (argv.includes('--snapshot')) {
     process.stdout.write(await readSnapshot({ region, apiBase }, deps));
     return 0;
+  }
+
+  if (argv.includes('--assert-free')) {
+    const version = flag(argv, 'version');
+    if (version === undefined) {
+      console.error(`map-tiles-verify-published: --version is required.\n\n${USAGE}`);
+      return 1;
+    }
+    const free = await assertFree({ region, version, apiBase }, deps);
+    for (const line of free.lines) deps.log(line);
+    for (const failure of free.failures) console.error(`  failed: ${failure}`);
+    if (free.ok) deps.log(`  ok: ${region} ${version} is unpublished in this environment`);
+    return free.ok ? 0 : 1;
   }
 
   const version = flag(argv, 'version');

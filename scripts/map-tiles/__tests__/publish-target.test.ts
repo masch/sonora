@@ -40,6 +40,32 @@ describe('the publish target', () => {
     expect(recipe).toContain('map-tiles-build REGION="$$region" CACHE="$$cache"');
   });
 
+  it('refuses a version that is already in the bucket, before it builds anything', () => {
+    const recipe = recipeOf('map-tiles-publish-staging');
+    const guard = recipe.indexOf('--assert-free');
+    const build = recipe.indexOf('map-tiles-build');
+
+    expect(guard).toBeGreaterThan(-1);
+    expect(build).toBeGreaterThan(-1);
+    // The guard is what makes a version immutable, so it runs before the five-minute build
+    // and not after it: a re-used version must cost nothing.
+    expect(guard).toBeLessThan(build);
+    expect(recipe).toContain('--version="$$version"');
+  });
+
+  it('keeps both low-level upload targets create-only as well', () => {
+    // The one command is not the only way to reach the bucket, so the rule lives in the
+    // targets that write, not in the wrapper that calls them.
+    for (const target of ['api-upload-map-tiles-staging', 'api-upload-map-tiles-production']) {
+      const recipe = recipeOf(target);
+      const guard = recipe.indexOf('--assert-free');
+      const put = recipe.indexOf('wrangler r2 object put');
+
+      expect(guard).toBeGreaterThan(-1);
+      expect(guard).toBeLessThan(put);
+    }
+  });
+
   it('builds the region it publishes, from a fresh extract unless FRESH=0', () => {
     const recipe = recipeOf('map-tiles-publish-staging');
 
