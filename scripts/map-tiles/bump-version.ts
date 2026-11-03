@@ -229,6 +229,30 @@ export function expandPath(value: string, home = process.env.HOME ?? ''): string
     .join(':');
 }
 
+/**
+ * The arguments that write the config commit, signed when the repository asks for it.
+ *
+ * `git commit-tree` is plumbing: it runs no hook and signs nothing unless told, so a repository
+ * whose policy is signed commits (branch protection checks it) would get an unsigned one from a
+ * script that looked like it obeyed. `-S` makes signing the repository's decision, not ours.
+ */
+export function commitTreeArgs(input: {
+  tree: string;
+  parent: string;
+  subject: string;
+  sign: boolean;
+}): string[] {
+  return [
+    'commit-tree',
+    input.tree,
+    '-p',
+    input.parent,
+    ...(input.sign ? ['-S'] : []),
+    '-m',
+    input.subject,
+  ];
+}
+
 /** The production seams: a real process runner, the repository's own git, and its root. */
 function defaultRun(): RunCommand {
   return async (command) => {
@@ -377,9 +401,17 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
       if (step.args[0] === 'write-tree') tree = result.stdout.trim();
     }
 
+    let sign = false;
+    try {
+      sign = git(['config', '--get', 'commit.gpgsign']).trim() === 'true';
+    } catch {
+      // No such key means the repository does not ask for signatures.
+      sign = false;
+    }
+
     const committed = await run({
       file: 'git',
-      args: ['commit-tree', tree, '-p', parent, '-m', commitSubject(input.version)],
+      args: commitTreeArgs({ tree, parent, subject: commitSubject(input.version), sign }),
       cwd: repoRoot,
     });
     if (committed.exitCode !== 0) {

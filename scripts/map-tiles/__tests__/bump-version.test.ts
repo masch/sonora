@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CONFIG_PATHS,
   branchName,
+  commitTreeArgs,
   configVersion,
   expandPath,
   bumpConfig,
@@ -224,6 +225,18 @@ describe('the check-version command line', () => {
   });
 });
 
+describe('commitTreeArgs', () => {
+  it('signs when the repository asks for it, because commit-tree signs nothing by itself', () => {
+    const signed = commitTreeArgs({ tree: 't', parent: 'p', subject: 's', sign: true });
+    const plain = commitTreeArgs({ tree: 't', parent: 'p', subject: 's', sign: false });
+
+    expect(signed).toContain('-S');
+    expect(plain).not.toContain('-S');
+    // The rest of the invocation is the same either way.
+    expect(signed.filter((arg) => arg !== '-S')).toEqual(plain);
+  });
+});
+
 describe('expandPath', () => {
   it('turns the tilde a shell would expand into the home a child process needs', () => {
     // `gh` lives on a PATH entry written as `~/dev/linux/dotfiles/bin` on at least one machine,
@@ -379,6 +392,35 @@ describe('bumpVersion', () => {
       expect(result.ok).toBe(true);
       expect(result.message).toContain('already exists');
       expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('writes a signed commit when the repository is configured for signed commits', async () => {
+    const repo = scratchRepo();
+    const { run, fetchStatus } = recorder();
+    try {
+      // A stand-in for gpg: git treats whatever it prints as the signature, so the commit carries
+      // a `gpgsig` header without a real key. What is under test is that git was asked to sign.
+      const fakeGpg = join(repo.root, 'fake-gpg.sh');
+      writeFileSync(
+        fakeGpg,
+        '#!/bin/sh\ncat > /dev/null\necho "-----BEGIN PGP SIGNATURE-----"\necho faked\necho "-----END PGP SIGNATURE-----"\necho "[GNUPG:] SIG_CREATED D 1 8 00 0" >&2\n',
+        { mode: 0o755 },
+      );
+      const git = realGit(repo.root);
+      git(['config', 'commit.gpgsign', 'true']);
+      git(['config', 'gpg.program', fakeGpg]);
+
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run, fetchStatus, repoRoot: repo.root, git },
+      );
+      expect(result.ok, `bumpVersion said: ${result.message ?? 'ok'}`).toBe(true);
+
+      const object = git(['cat-file', 'commit', `refs/heads/${branchName('staging', 'v2')}`]);
+      expect(object).toContain('gpgsig');
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
     }
