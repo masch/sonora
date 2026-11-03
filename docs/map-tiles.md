@@ -132,7 +132,7 @@ export JAVA_HOME=/tmp/tile-spike/jdk-21*
 ### The one command: today's OSM on staging
 
 ```bash
-make map-tiles-publish-staging VERSION=v2         # calamuchita v2, fresh extract from Geofabrik
+make map-tiles-publish-staging                    # calamuchita, first free version, fresh extract
 make map-tiles-publish-staging FRESH=0            # reuse the cached extract (patches or style only)
 make map-tiles-publish-staging VERSION=v2 CHECK=1 # render-checked before the upload
 make map-tiles-publish-staging VERSION=v2 BUMP=0  # land the bytes only; open the config PR later
@@ -140,15 +140,16 @@ make map-tiles-publish-staging VERSION=v2 BUMP=0  # land the bytes only; open th
 
 One run does what used to be five remembered steps, in this order, stopping at the first failure:
 
-1. installs the pinned JDK 21 + Maven if they are not stamped yet (free from the second run on);
-2. reads the byte count `/config` advertises for the region, before anything is built;
-3. **discards the cached Geofabrik extract** and builds (`map-tiles-build` with `--refresh-extract`);
-4. with `CHECK=1`, renders the built archive with the repository style;
-5. publishes the archive and the style to the staging bucket in place (`api-upload-map-tiles-staging`);
-6. verifies against **what clients read**: the `/config` url, the bytes the media route serves, and the size devices compare;
-7. opens the **config PR** that moves `MAP_ARTIFACT_VERSION` to that version (`bump-version.ts`), on its own branch, without touching the worktree or your current branch.
+1. **finds the first version nobody published** (`v1`, `v2`, …) when `VERSION` is not given, before it builds anything;
+2. installs the pinned JDK 21 + Maven if they are not stamped yet (free from the second run on);
+3. reads the byte count `/config` advertises for the region, before anything is built;
+4. **discards the cached Geofabrik extract** and builds (`map-tiles-build` with `--refresh-extract`);
+5. with `CHECK=1`, renders the built archive with the repository style;
+6. publishes the archive and the style to the staging bucket (`api-upload-map-tiles-staging`), which refuses a version already there;
+7. verifies against **what clients read**: the `/config` url, the bytes the media route serves, and the size devices compare;
+8. opens the **config PR** that moves `MAP_ARTIFACT_VERSION` to that version (`bump-version.ts`), on its own branch, without touching the worktree or your current branch.
 
-Why the extract matters is the whole point of the target. A cached extract is a cache hit forever (`--refresh-extract` is the only thing that changes that), so a rebuild after an OSM edit otherwise produces the same bytes from the same weeks-old file. The flags it takes are `REGION` (default `calamuchita`), `VERSION` (default `v1`), `FRESH=1`, `CHECK=0`, `PUBLISH_STYLE` (default `assets/map/styles/v1.json`), `CACHE`, `MAXZOOM` and `TOOLCHAIN` — the same variables the targets it wraps take. It refuses to start when wrangler is not authenticated, the style file is missing, or the version is already published, so a five-minute build is never spent on an upload that cannot happen.
+Why the extract matters is the whole point of the target. A cached extract is a cache hit forever (`--refresh-extract` is the only thing that changes that), so a rebuild after an OSM edit otherwise produces the same bytes from the same weeks-old file. The flags it takes are `REGION` (default `calamuchita`), `VERSION` (default: the first free one), `FRESH=1`, `CHECK=0`, `PUBLISH_STYLE` (default `assets/map/styles/v1.json`), `CACHE`, `MAXZOOM` and `TOOLCHAIN` — the same variables the targets it wraps take. It refuses to start when wrangler is not authenticated, the style file is missing, or the version is already published, so a five-minute build is never spent on an upload that cannot happen.
 
 **Publishing and going live are two steps, and the order is deliberate.** The artifacts land first and nobody reads them: `/config` builds the region catalog with a `HEAD` on the object of the version in play, and it omits a region whose object is missing — so moving the version first would point every client at nothing. After the publish, merging the config PR triggers the API deploy workflow, and _that_ merge is the go-live. To prove it once the deploy ran:
 

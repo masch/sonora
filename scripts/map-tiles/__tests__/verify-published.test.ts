@@ -11,6 +11,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   assertFree,
   catalogEntry,
+  firstFreeVersion,
   runVerify,
   tileVersionOf,
   type VerifyDeps,
@@ -126,6 +127,60 @@ describe('assertFree', () => {
     );
     expect(result.ok).toBe(false);
     expect(result.failures.join(' ')).toContain('500');
+  });
+});
+
+describe('firstFreeVersion', () => {
+  /** Answers the archive and style keys of `taken` with 200 and every other with 404. */
+  function statusDeps(taken: string[], unexpected?: number): VerifyDeps {
+    return {
+      ...deps(),
+      fetchStatus: async (url) => {
+        if (unexpected !== undefined) return unexpected;
+        return taken.some((version) => url.includes(`/${version}.`)) ? 200 : 404;
+      },
+    };
+  }
+
+  it('answers v1 when nothing is published', async () => {
+    const found = await firstFreeVersion({ region: 'calamuchita', apiBase: API }, statusDeps([]));
+    expect(found.ok).toBe(true);
+    expect(found.version).toBe('v1');
+  });
+
+  it('skips every version that is taken, in order', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      statusDeps(['v1', 'v2']),
+    );
+    expect(found.version).toBe('v3');
+  });
+
+  it('does not call a half-published version free', async () => {
+    // The style landed and the archive did not: the next publish has to move on.
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      { ...deps(), fetchStatus: async (url) => (url.endsWith('v1.json') ? 200 : 404) },
+    );
+    expect(found.version).toBe('v2');
+  });
+
+  it('stops at the limit instead of searching forever', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API, limit: 3 },
+      { ...deps(), fetchStatus: async () => 200 },
+    );
+    expect(found.ok).toBe(false);
+    expect(found.failures.join(' ')).toContain('v1..v3');
+  });
+
+  it('refuses to guess when the bucket cannot be asked', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      statusDeps([], 503),
+    );
+    expect(found.ok).toBe(false);
+    expect(found.failures.join(' ')).toContain('503');
   });
 });
 

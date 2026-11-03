@@ -66,6 +66,19 @@ describe('the publish target', () => {
     }
   });
 
+  it('finds the first free version when none is given, before anything is built', () => {
+    const recipe = recipeOf('map-tiles-publish-staging');
+    const search = recipe.indexOf('--first-free');
+    const build = recipe.indexOf('map-tiles-build');
+
+    // A plain `make map-tiles-publish-staging` has to be a complete run, so the version is
+    // discovered rather than defaulted to one that is almost certainly taken.
+    expect(search).toBeGreaterThan(-1);
+    expect(search).toBeLessThan(build);
+    expect(recipe).toContain('if [ -z "$$version" ]');
+    expect(recipe).toContain('no free version to publish');
+  });
+
   it('opens the config PR that makes the version live, after the upload is proven', () => {
     const recipe = recipeOf('map-tiles-publish-staging');
     const verify = recipe.indexOf('verify-published.ts --region=');

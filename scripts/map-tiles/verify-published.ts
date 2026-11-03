@@ -197,6 +197,58 @@ export async function assertFree(input: AssertFreeInput, deps: VerifyDeps): Prom
   return { ok: failures.length === 0, lines, failures };
 }
 
+/** What the free-version search needs: the region and the origin to ask. */
+export interface FirstFreeInput {
+  region: string;
+  apiBase: string;
+  /** How many versions to try, so a full bucket cannot spin forever. */
+  limit?: number;
+}
+
+/**
+ * The first version whose archive and style are both unpublished: `v1`, `v2`, …
+ *
+ * Sequential on purpose. The version is part of the archive's file name on every device, so the
+ * bookkeeping a timestamp would need (parse it back, keep it unique, never reuse) buys nothing
+ * here — a small integer that only ever grows is one a human can read in a log.
+ *
+ * It stops at `limit`, because "no free version" is a real answer when something is publishing in
+ * a loop, and an operator deserves to hear it instead of watching a search run.
+ */
+export async function firstFreeVersion(
+  input: FirstFreeInput,
+  deps: VerifyDeps,
+): Promise<{ ok: boolean; version?: string; lines: string[]; failures: string[] }> {
+  const limit = input.limit ?? 25;
+  for (let index = 1; index <= limit; index += 1) {
+    const version = `v${index}`;
+    const keys = [`tiles/${input.region}/${version}.pmtiles`, `styles/${version}.json`];
+    const statuses = await Promise.all(
+      keys.map((key) => deps.fetchStatus(`${input.apiBase}/media/public/${key}`)),
+    );
+    if (statuses.some((status) => status !== 404 && status !== 200)) {
+      return {
+        ok: false,
+        lines: [],
+        failures: [
+          `the check for ${keys[0]} answered ${statuses.join('/')}: the free version cannot be known, so nothing is published.`,
+        ],
+      };
+    }
+    // A version is taken as soon as either object exists: a half-published version is not free.
+    if (statuses.every((status) => status === 404)) {
+      return { ok: true, version, lines: [`  free: ${version}`], failures: [] };
+    }
+  }
+  return {
+    ok: false,
+    lines: [],
+    failures: [
+      `no free version in v1..v${limit} for ${input.region}: bump the search or clean up what is published.`,
+    ],
+  };
+}
+
 /**
  * Compare what was built against what a client is told, and against what it receives.
  *
@@ -300,6 +352,7 @@ const USAGE = [
   '  bun scripts/map-tiles/verify-published.ts --snapshot --region=calamuchita [--api=<origin>]',
   '  bun scripts/map-tiles/verify-published.ts --assert-free --region=calamuchita --version=v2 [--api=<origin>]',
   '  add --require-live to the verify form once the config PR merged and deployed.',
+  '  bun scripts/map-tiles/verify-published.ts --first-free --region=calamuchita [--api=<origin>]',
 ].join('\n');
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
@@ -324,6 +377,17 @@ async function main(argv: string[]): Promise<number> {
   if (argv.includes('--snapshot')) {
     process.stdout.write(await readSnapshot({ region, apiBase }, deps));
     return 0;
+  }
+
+  if (argv.includes('--first-free')) {
+    const found = await firstFreeVersion({ region, apiBase }, deps);
+    if (found.ok && found.version !== undefined) {
+      // The version alone: the recipe captures this into a variable.
+      process.stdout.write(found.version);
+      return 0;
+    }
+    for (const failure of found.failures) console.error(`  failed: ${failure}`);
+    return 1;
   }
 
   if (argv.includes('--assert-free')) {
