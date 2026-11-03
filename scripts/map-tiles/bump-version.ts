@@ -213,20 +213,63 @@ async function defaultFetchStatus(url: string): Promise<number> {
   return (await fetch(url, { method: 'HEAD' })).status;
 }
 
+/**
+ * A PATH a spawned child can actually use.
+ *
+ * A shell expands `~` in its own PATH; `execvp` does not, so a machine whose PATH carries a
+ * literal `~/dev/…/bin` finds its tools interactively and loses them to a child process. Here
+ * `gh` is exactly that: the run reported an empty failure because the executable was never found.
+ */
+export function expandPath(value: string, home = process.env.HOME ?? ''): string {
+  return value
+    .split(':')
+    .map((entry) =>
+      entry === '~' ? home : entry.startsWith('~/') ? join(home, entry.slice(2)) : entry,
+    )
+    .join(':');
+}
+
+/**
+ * The arguments that write the config commit, signed when the repository asks for it.
+ *
+ * `git commit-tree` is plumbing: it runs no hook and signs nothing unless told, so a repository
+ * whose policy is signed commits (branch protection checks it) would get an unsigned one from a
+ * script that looked like it obeyed. `-S` makes signing the repository's decision, not ours.
+ */
+export function commitTreeArgs(input: {
+  tree: string;
+  parent: string;
+  subject: string;
+  sign: boolean;
+}): string[] {
+  return [
+    'commit-tree',
+    input.tree,
+    '-p',
+    input.parent,
+    ...(input.sign ? ['-S'] : []),
+    '-m',
+    input.subject,
+  ];
+}
+
 /** The production seams: a real process runner, the repository's own git, and its root. */
 function defaultRun(): RunCommand {
   return async (command) => {
     const { spawnSync } = await import('node:child_process');
+    const env = { ...process.env, ...command.env };
     const result = spawnSync(command.file, command.args, {
       cwd: command.cwd,
       encoding: 'utf8',
-      env: { ...process.env, ...command.env },
+      env: { ...env, PATH: expandPath(env.PATH ?? '') },
       input: command.input,
     });
     return {
       exitCode: result.status ?? 1,
       stdout: result.stdout ?? '',
-      stderr: result.stderr ?? '',
+      // A child that could not be spawned at all has no stderr, and losing that reason is how a
+      // publish reported `gh pr create failed:` with nothing after it.
+      stderr: result.stderr || (result.error === undefined ? '' : result.error.message),
     };
   };
 }
@@ -358,9 +401,17 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
       if (step.args[0] === 'write-tree') tree = result.stdout.trim();
     }
 
+    let sign = false;
+    try {
+      sign = git(['config', '--get', 'commit.gpgsign']).trim() === 'true';
+    } catch {
+      // No such key means the repository does not ask for signatures.
+      sign = false;
+    }
+
     const committed = await run({
       file: 'git',
-      args: ['commit-tree', tree, '-p', parent, '-m', commitSubject(input.version)],
+      args: commitTreeArgs({ tree, parent, subject: commitSubject(input.version), sign }),
       cwd: repoRoot,
     });
     if (committed.exitCode !== 0) {
@@ -410,11 +461,16 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     });
 
     if (opened.exitCode !== 0) {
-      // A PR for this head that already exists is the state a re-run wants, not a failure.
-      if (/already exists/i.test(opened.stderr)) {
+      // A PR for this head that already exists is the state a re-run wants, not a failure — and
+      // which stream carries that sentence is `gh`'s business, not ours.
+      const said = `${opened.stderr}\n${opened.stdout}`;
+      if (/already exists/i.test(said)) {
         return { ok: true, branch, message: `a pull request for ${branch} already exists` };
       }
-      return { ok: false, message: `gh pr create failed: ${opened.stderr.trim()}` };
+      return {
+        ok: false,
+        message: `gh pr create failed: ${said.trim() || 'the command exited non-zero and said nothing'}`,
+      };
     }
 
     return { ok: true, branch, prUrl: opened.stdout.trim() || undefined };
@@ -441,13 +497,19 @@ function flag(argv: string[], name: string): string | undefined {
 }
 
 async function main(argv: string[]): Promise<number> {
-  const version = flag(argv, 'version');
+  // `--check-version` is the same argument under the name the publish target uses. When the check
+  // is what was asked for, its value is the one validated: reading `--version` first would green a
+  // run on a stale value and ignore the one the caller actually asked about.
+  const checking = argv.some(
+    (arg) => arg === '--check-version' || arg.startsWith('--check-version='),
+  );
+  const version = checking ? flag(argv, 'check-version') : flag(argv, 'version');
   if (version === undefined) {
     console.error(`map-tiles-bump-version: --version is required.\n\n${USAGE}`);
     return 1;
   }
 
-  if (argv.includes('--check-version')) {
+  if (checking) {
     const problem = versionProblem(version);
     if (problem !== null) {
       console.error(`map-tiles-bump-version: ${problem}`);

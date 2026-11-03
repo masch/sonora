@@ -15,11 +15,14 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   CONFIG_PATHS,
   branchName,
+  commitTreeArgs,
   configVersion,
+  expandPath,
   bumpConfig,
   bumpVersion,
   versionProblem,
@@ -202,6 +205,53 @@ function recorder(): {
   return { calls, run, fetchStatus: async () => 200 };
 }
 
+/** The script's own command line, run the way the publish target runs it. */
+function cli(args: string[]): { status: number; stdout: string; stderr: string } {
+  const script = fileURLToPath(new URL('../bump-version.ts', import.meta.url));
+  const result = spawnSync('bun', [script, ...args], { encoding: 'utf8' });
+  return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
+describe('the check-version command line', () => {
+  it('answers on its own, without a --version beside it', () => {
+    // The publish target calls exactly this before it builds; requiring `--version` first made the
+    // whole command stop with "version is required" on a version it had just discovered.
+    const ok = cli(['--check-version=v5']);
+    expect(ok.status).toBe(0);
+
+    const refused = cli(['--check-version=2026-11-03']);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('dash');
+
+    // Both flags: the check's own value is the one under test, not a stale `--version` beside it.
+    const both = cli(['--version=v5', '--check-version=2026-11-03']);
+    expect(both.status).toBe(1);
+    expect(both.stderr).toContain('dash');
+  });
+});
+
+describe('commitTreeArgs', () => {
+  it('signs when the repository asks for it, because commit-tree signs nothing by itself', () => {
+    const signed = commitTreeArgs({ tree: 't', parent: 'p', subject: 's', sign: true });
+    const plain = commitTreeArgs({ tree: 't', parent: 'p', subject: 's', sign: false });
+
+    expect(signed).toContain('-S');
+    expect(plain).not.toContain('-S');
+    // The rest of the invocation is the same either way.
+    expect(signed.filter((arg) => arg !== '-S')).toEqual(plain);
+  });
+});
+
+describe('expandPath', () => {
+  it('turns the tilde a shell would expand into the home a child process needs', () => {
+    // `gh` lives on a PATH entry written as `~/dev/linux/dotfiles/bin` on at least one machine,
+    // which is why the publish reported an empty failure: the child never found the executable.
+    expect(expandPath('~/bin:/usr/bin', '/home/someone')).toBe('/home/someone/bin:/usr/bin');
+    expect(expandPath('~:/usr/bin', '/home/someone')).toBe('/home/someone:/usr/bin');
+    expect(expandPath('/usr/bin', '/home/someone')).toBe('/usr/bin');
+  });
+});
+
 describe('bumpVersion', () => {
   it('writes the version to a branch without touching the worktree or the current branch', async () => {
     const repo = scratchRepo();
@@ -315,6 +365,67 @@ describe('bumpVersion', () => {
       expect(result.ok).toBe(true);
       expect(result.alreadyCurrent).toBe(true);
       expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('treats an already-existing pull request as done, whichever stream says so', async () => {
+    const repo = scratchRepo();
+    const { calls, run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        {
+          run: async (command) => {
+            if (command.file === 'gh') {
+              // gh writes this sentence where it likes, and reading only stderr lost it once.
+              return {
+                exitCode: 1,
+                stdout: 'a pull request for branch "x" already exists',
+                stderr: '',
+              };
+            }
+            return run(command);
+          },
+          fetchStatus,
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.message).toContain('already exists');
+      expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('writes a signed commit when the repository is configured for signed commits', async () => {
+    const repo = scratchRepo();
+    const { run, fetchStatus } = recorder();
+    try {
+      // A stand-in for gpg: git treats whatever it prints as the signature, so the commit carries
+      // a `gpgsig` header without a real key. What is under test is that git was asked to sign.
+      const fakeGpg = join(repo.root, 'fake-gpg.sh');
+      writeFileSync(
+        fakeGpg,
+        '#!/bin/sh\ncat > /dev/null\necho "-----BEGIN PGP SIGNATURE-----"\necho faked\necho "-----END PGP SIGNATURE-----"\necho "[GNUPG:] SIG_CREATED D 1 8 00 0" >&2\n',
+        { mode: 0o755 },
+      );
+      const git = realGit(repo.root);
+      git(['config', 'commit.gpgsign', 'true']);
+      git(['config', 'gpg.program', fakeGpg]);
+
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run, fetchStatus, repoRoot: repo.root, git },
+      );
+      expect(result.ok, `bumpVersion said: ${result.message ?? 'ok'}`).toBe(true);
+
+      const object = git(['cat-file', 'commit', `refs/heads/${branchName('staging', 'v2')}`]);
+      expect(object).toContain('gpgsig');
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
     }
