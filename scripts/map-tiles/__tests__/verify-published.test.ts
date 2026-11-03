@@ -209,6 +209,28 @@ describe('runVerify', () => {
     expect(result.lines.join('\n')).toContain('MAP_ARTIFACT_VERSION');
   });
 
+  it('checks the bytes of the version it published, not the one /config still names', async () => {
+    // Publishing happens before the config moves, so `/config` points at the previous version:
+    // comparing this run's archive against that url is how a good publish reads as a mismatch.
+    const previous = new TextEncoder().encode('the archive that is live until the deploy');
+    const seen: string[] = [];
+    const result = await runVerify(
+      { ...INPUT, version: 'v2' },
+      {
+        ...deps({ config: catalog('v1', previous.byteLength) }),
+        fetchBytes: async (url) => {
+          seen.push(url);
+          return url.endsWith('v2.pmtiles') ? BUILT : previous;
+        },
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(seen).toEqual([`${API}/media/public/tiles/calamuchita/v2.pmtiles`]);
+    // And the size in the payload describes the version still in play, so it is not compared.
+    expect(result.failures).toEqual([]);
+  });
+
   it('fails on that mismatch when the check is asked to prove the version is live', async () => {
     // `--require-live` is the post-deploy check: after the config PR merged and the Worker
     // deployed, a `/config` naming another version means clients are not on this artifact.

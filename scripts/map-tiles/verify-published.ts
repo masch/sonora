@@ -273,7 +273,15 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     return { ok: false, lines, failures };
   }
 
-  if (entry.version !== input.version) {
+  // Which url holds the bytes this run published: `/config` answers that only once the version is
+  // live, and before that it still names the previous one — comparing against those bytes is how
+  // a publish that succeeded reads as a mismatch.
+  const live = entry.version === input.version;
+  const servedUrl = live
+    ? entry.archiveUrl
+    : `${input.apiBase}/media/public/tiles/${input.region}/${input.version}.pmtiles`;
+
+  if (!live) {
     if (input.requireLive === true) {
       failures.push(
         `/config points clients at ${entry.version ?? 'a url with no version'}, and this run published ${input.version}: merging the config PR (MAP_ARTIFACT_VERSION=${input.version}) deploys it, and until it does no client sees this artifact.`,
@@ -287,10 +295,14 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     }
   }
 
-  // The size is what a device compares to decide whether the archive it holds is still
-  // the published one, so a payload that advertises another number — or none — makes a
-  // byte-perfect upload unreachable in silence.
-  if (entry.archiveBytes === null) {
+  // The size a device compares is the one `/config` advertises, so it is only this version's
+  // number once `/config` names it. Before that, the check belongs to the deploy, not to the
+  // publish.
+  if (!live) {
+    lines.push(
+      `  bytes checked at ${servedUrl}; the archived size in /config still describes ${entry.version ?? 'the previous version'} and moves with the deploy.`,
+    );
+  } else if (entry.archiveBytes === null) {
     failures.push(
       `/config publishes ${input.region} without a byte count, and a device decides whether its archive is current by comparing that number: it cannot tell this one from the one it already holds.`,
     );
@@ -300,9 +312,9 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     );
   }
 
-  const served = await deps.fetchBytes(entry.archiveUrl);
+  const served = await deps.fetchBytes(servedUrl);
   const servedDigest = sha256(served);
-  lines.push(`  served ${served.length} bytes by ${entry.archiveUrl}`);
+  lines.push(`  served ${served.length} bytes by ${servedUrl}`);
   lines.push(`  sha256 ${servedDigest}`);
 
   if (servedDigest !== builtDigest) {
