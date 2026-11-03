@@ -11,6 +11,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   assertFree,
   catalogEntry,
+  firstFreeVersion,
   runVerify,
   tileVersionOf,
   type VerifyDeps,
@@ -129,6 +130,60 @@ describe('assertFree', () => {
   });
 });
 
+describe('firstFreeVersion', () => {
+  /** Answers the archive and style keys of `taken` with 200 and every other with 404. */
+  function statusDeps(taken: string[], unexpected?: number): VerifyDeps {
+    return {
+      ...deps(),
+      fetchStatus: async (url) => {
+        if (unexpected !== undefined) return unexpected;
+        return taken.some((version) => url.includes(`/${version}.`)) ? 200 : 404;
+      },
+    };
+  }
+
+  it('answers v1 when nothing is published', async () => {
+    const found = await firstFreeVersion({ region: 'calamuchita', apiBase: API }, statusDeps([]));
+    expect(found.ok).toBe(true);
+    expect(found.version).toBe('v1');
+  });
+
+  it('skips every version that is taken, in order', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      statusDeps(['v1', 'v2']),
+    );
+    expect(found.version).toBe('v3');
+  });
+
+  it('does not call a half-published version free', async () => {
+    // The style landed and the archive did not: the next publish has to move on.
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      { ...deps(), fetchStatus: async (url) => (url.endsWith('v1.json') ? 200 : 404) },
+    );
+    expect(found.version).toBe('v2');
+  });
+
+  it('stops at the limit instead of searching forever', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API, limit: 3 },
+      { ...deps(), fetchStatus: async () => 200 },
+    );
+    expect(found.ok).toBe(false);
+    expect(found.failures.join(' ')).toContain('v1..v3');
+  });
+
+  it('refuses to guess when the bucket cannot be asked', async () => {
+    const found = await firstFreeVersion(
+      { region: 'calamuchita', apiBase: API },
+      statusDeps([], 503),
+    );
+    expect(found.ok).toBe(false);
+    expect(found.failures.join(' ')).toContain('503');
+  });
+});
+
 describe('runVerify', () => {
   it('passes when staging serves the bytes that were built, from the version just uploaded', async () => {
     const result = await runVerify(INPUT, deps());
@@ -154,6 +209,28 @@ describe('runVerify', () => {
     expect(result.lines.join('\n')).toContain('MAP_ARTIFACT_VERSION');
   });
 
+  it('checks the bytes of the version it published, not the one /config still names', async () => {
+    // Publishing happens before the config moves, so `/config` points at the previous version:
+    // comparing this run's archive against that url is how a good publish reads as a mismatch.
+    const previous = new TextEncoder().encode('the archive that is live until the deploy');
+    const seen: string[] = [];
+    const result = await runVerify(
+      { ...INPUT, version: 'v2' },
+      {
+        ...deps({ config: catalog('v1', previous.byteLength) }),
+        fetchBytes: async (url) => {
+          seen.push(url);
+          return url.endsWith('v2.pmtiles') ? BUILT : previous;
+        },
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(seen).toEqual([`${API}/media/public/tiles/calamuchita/v2.pmtiles`]);
+    // And the size in the payload describes the version still in play, so it is not compared.
+    expect(result.failures).toEqual([]);
+  });
+
   it('fails on that mismatch when the check is asked to prove the version is live', async () => {
     // `--require-live` is the post-deploy check: after the config PR merged and the Worker
     // deployed, a `/config` naming another version means clients are not on this artifact.
@@ -166,11 +243,20 @@ describe('runVerify', () => {
     expect(result.failures.join(' ')).toContain('MAP_ARTIFACT_VERSION');
   });
 
-  it('fails when the region is not in the catalog at all, so no client can reach it', async () => {
+  it('notes a pending region the catalog does not carry yet, which is the first publish', async () => {
+    // Production today publishes `regions: {}`: the very first publish there must not fail, the
+    // config PR that names the version is what puts the region in the catalog.
     const result = await runVerify(INPUT, deps({ config: {} }));
+    expect(result.failures).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(result.lines.join('\n')).toContain('pending');
+    expect(result.lines.join('\n')).toContain('calamuchita');
+  });
+
+  it('fails on a missing region when the check is asked to prove the version is live', async () => {
+    const result = await runVerify({ ...INPUT, requireLive: true }, deps({ config: {} }));
     expect(result.ok).toBe(false);
     expect(result.failures.join(' ')).toContain('calamuchita');
-    expect(result.failures.join(' ')).toContain('not published');
   });
 
   it('fails when /config advertises another size than the one built', async () => {

@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import {
   CONFIG_PATHS,
   branchName,
+  configVersion,
   bumpConfig,
   bumpVersion,
   versionProblem,
@@ -73,6 +74,12 @@ describe('bumpConfig', () => {
     expect(() => bumpConfig(`${CONFIG}MAP_ARTIFACT_VERSION = "v0"\n`, 'v2')).toThrow(/twice/);
   });
 
+  it('reads the version the config names, whatever the spacing around it', () => {
+    expect(configVersion(CONFIG)).toBe('v1');
+    expect(configVersion('MAP_ARTIFACT_VERSION="v7"\n')).toBe('v7');
+    expect(configVersion('[vars]\nMAP_RENDERER = "leaflet"\n')).toBeNull();
+  });
+
   it('names the branch after the environment and the version, so the two never collide', () => {
     expect(branchName('staging', 'v2')).toBe('chore/map-artifact-version-staging-v2');
     expect(branchName('production', 'v2')).toBe('chore/map-artifact-version-production-v2');
@@ -89,6 +96,8 @@ function scratchRepo(): {
   diskVersion: () => string;
   /** What a merge of the config PR looks like: `origin/main` moves onto that branch. */
   promoteToMain: (branch: string) => void;
+  /** Writes the config `origin/main` carries, for the cases about its content. */
+  writeMainConfig: (text: string) => void;
 } {
   const root = mkdtempSync(join(tmpdir(), 'map-tiles-bump-'));
   const env = {
@@ -122,6 +131,12 @@ function scratchRepo(): {
     root: work,
     branch: () => git(['rev-parse', '--abbrev-ref', 'HEAD']).trim(),
     diskVersion: () => readFileSync(join(work, CONFIG_PATHS.staging), 'utf8'),
+    writeMainConfig: (text: string) => {
+      writeFileSync(join(work, CONFIG_PATHS.staging), text);
+      git(['commit', '-q', '-am', 'main config']);
+      git(['push', '--quiet', 'origin', 'HEAD:main']);
+      git(['fetch', '--quiet', 'origin', 'main']);
+    },
     promoteToMain: (branch: string) => {
       git(['push', '--quiet', 'origin', `${branch}:main`]);
       git(['fetch', '--quiet', 'origin', 'main']);
@@ -279,6 +294,53 @@ describe('bumpVersion', () => {
       // The retry really pushed and really asked for a PR, instead of trusting the local branch.
       expect(retry.calls.filter((call) => call.args.includes('push'))).toHaveLength(1);
       expect(retry.calls.filter((call) => call.file === 'gh')).toHaveLength(1);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not open a pull request that only reformats the config', async () => {
+    const repo = scratchRepo();
+    // `origin/main` already says v2, written without the spaces the bump would use.
+    repo.writeMainConfig(
+      CONFIG.replace('MAP_ARTIFACT_VERSION = "v1"', 'MAP_ARTIFACT_VERSION="v2"'),
+    );
+    const { calls, run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run, fetchStatus, repoRoot: repo.root, git: realGit(repo.root) },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.alreadyCurrent).toBe(true);
+      expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('stops when the fetch fails, instead of committing on a stale base', async () => {
+    const repo = scratchRepo();
+    const { run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        {
+          run: async (command) => {
+            if (command.args.includes('fetch')) {
+              return { exitCode: 128, stdout: '', stderr: 'could not read from remote' };
+            }
+            return run(command);
+          },
+          fetchStatus,
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('fetch');
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
     }

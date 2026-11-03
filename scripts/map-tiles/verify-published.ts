@@ -197,6 +197,58 @@ export async function assertFree(input: AssertFreeInput, deps: VerifyDeps): Prom
   return { ok: failures.length === 0, lines, failures };
 }
 
+/** What the free-version search needs: the region and the origin to ask. */
+export interface FirstFreeInput {
+  region: string;
+  apiBase: string;
+  /** How many versions to try, so a full bucket cannot spin forever. */
+  limit?: number;
+}
+
+/**
+ * The first version whose archive and style are both unpublished: `v1`, `v2`, …
+ *
+ * Sequential on purpose. The version is part of the archive's file name on every device, so the
+ * bookkeeping a timestamp would need (parse it back, keep it unique, never reuse) buys nothing
+ * here — a small integer that only ever grows is one a human can read in a log.
+ *
+ * It stops at `limit`, because "no free version" is a real answer when something is publishing in
+ * a loop, and an operator deserves to hear it instead of watching a search run.
+ */
+export async function firstFreeVersion(
+  input: FirstFreeInput,
+  deps: VerifyDeps,
+): Promise<{ ok: boolean; version?: string; lines: string[]; failures: string[] }> {
+  const limit = input.limit ?? 25;
+  for (let index = 1; index <= limit; index += 1) {
+    const version = `v${index}`;
+    const keys = [`tiles/${input.region}/${version}.pmtiles`, `styles/${version}.json`];
+    const statuses = await Promise.all(
+      keys.map((key) => deps.fetchStatus(`${input.apiBase}/media/public/${key}`)),
+    );
+    if (statuses.some((status) => status !== 404 && status !== 200)) {
+      return {
+        ok: false,
+        lines: [],
+        failures: [
+          `the check for ${keys[0]} answered ${statuses.join('/')}: the free version cannot be known, so nothing is published.`,
+        ],
+      };
+    }
+    // A version is taken as soon as either object exists: a half-published version is not free.
+    if (statuses.every((status) => status === 404)) {
+      return { ok: true, version, lines: [`  free: ${version}`], failures: [] };
+    }
+  }
+  return {
+    ok: false,
+    lines: [],
+    failures: [
+      `no free version in v1..v${limit} for ${input.region}: bump the search or clean up what is published.`,
+    ],
+  };
+}
+
 /**
  * Compare what was built against what a client is told, and against what it receives.
  *
@@ -214,14 +266,26 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
 
   const entry = catalogEntry(await publishedConfig(input.apiBase, deps), input.region);
 
-  if (entry === null) {
-    failures.push(
-      `"${input.region}" is not published: /config carries no archive for it, so no client can reach what this run uploaded.`,
-    );
-    return { ok: false, lines, failures };
-  }
+  // Which url holds the bytes this run published: `/config` answers that only once the version is
+  // live, and before that it still names the previous one — comparing against those bytes is how
+  // a publish that succeeded reads as a mismatch. A region the catalog does not carry yet is the
+  // same case one step earlier: the very first publish into an environment.
+  const live = entry?.version === input.version;
+  const servedUrl = live
+    ? entry.archiveUrl
+    : `${input.apiBase}/media/public/tiles/${input.region}/${input.version}.pmtiles`;
 
-  if (entry.version !== input.version) {
+  if (entry === null) {
+    if (input.requireLive === true) {
+      failures.push(
+        `/config carries no archive for "${input.region}", so no client can reach ${input.version}: the deploy that names it has not happened.`,
+      );
+    } else {
+      lines.push(
+        `  pending: /config does not carry "${input.region}" yet; the config PR that names ${input.version} is what publishes it, and merging it deploys.`,
+      );
+    }
+  } else if (!live) {
     if (input.requireLive === true) {
       failures.push(
         `/config points clients at ${entry.version ?? 'a url with no version'}, and this run published ${input.version}: merging the config PR (MAP_ARTIFACT_VERSION=${input.version}) deploys it, and until it does no client sees this artifact.`,
@@ -235,10 +299,14 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     }
   }
 
-  // The size is what a device compares to decide whether the archive it holds is still
-  // the published one, so a payload that advertises another number — or none — makes a
-  // byte-perfect upload unreachable in silence.
-  if (entry.archiveBytes === null) {
+  // The size a device compares is the one `/config` advertises, so it is only this version's
+  // number once `/config` names it. Before that, the check belongs to the deploy, not to the
+  // publish.
+  if (!live || entry === null) {
+    lines.push(
+      `  bytes checked at ${servedUrl}; the size in /config describes ${entry?.version ?? 'no version of this region yet'} and moves with the deploy.`,
+    );
+  } else if (entry.archiveBytes === null) {
     failures.push(
       `/config publishes ${input.region} without a byte count, and a device decides whether its archive is current by comparing that number: it cannot tell this one from the one it already holds.`,
     );
@@ -248,9 +316,9 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     );
   }
 
-  const served = await deps.fetchBytes(entry.archiveUrl);
+  const served = await deps.fetchBytes(servedUrl);
   const servedDigest = sha256(served);
-  lines.push(`  served ${served.length} bytes by ${entry.archiveUrl}`);
+  lines.push(`  served ${served.length} bytes by ${servedUrl}`);
   lines.push(`  sha256 ${servedDigest}`);
 
   if (servedDigest !== builtDigest) {
@@ -300,6 +368,7 @@ const USAGE = [
   '  bun scripts/map-tiles/verify-published.ts --snapshot --region=calamuchita [--api=<origin>]',
   '  bun scripts/map-tiles/verify-published.ts --assert-free --region=calamuchita --version=v2 [--api=<origin>]',
   '  add --require-live to the verify form once the config PR merged and deployed.',
+  '  bun scripts/map-tiles/verify-published.ts --first-free --region=calamuchita [--api=<origin>]',
 ].join('\n');
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
@@ -324,6 +393,17 @@ async function main(argv: string[]): Promise<number> {
   if (argv.includes('--snapshot')) {
     process.stdout.write(await readSnapshot({ region, apiBase }, deps));
     return 0;
+  }
+
+  if (argv.includes('--first-free')) {
+    const found = await firstFreeVersion({ region, apiBase }, deps);
+    if (found.ok && found.version !== undefined) {
+      // The version alone: the recipe captures this into a variable.
+      process.stdout.write(found.version);
+      return 0;
+    }
+    for (const failure of found.failures) console.error(`  failed: ${failure}`);
+    return 1;
   }
 
   if (argv.includes('--assert-free')) {

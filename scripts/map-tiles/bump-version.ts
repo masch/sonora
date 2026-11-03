@@ -96,6 +96,18 @@ export interface BumpResult {
 
 const VERSION_FORBIDDEN = /[^A-Za-z0-9._]/;
 const VERSION_LINE = /^[ \t]*MAP_ARTIFACT_VERSION[ \t]*=[ \t]*"[^"]*"[ \t]*$/m;
+const VERSION_VALUE = /^[ \t]*MAP_ARTIFACT_VERSION[ \t]*=[ \t]*"([^"]*)"[ \t]*$/m;
+
+/**
+ * The version the config text already names, or `null` when it names none.
+ *
+ * Compared as a value rather than as text: `MAP_ARTIFACT_VERSION="v2"` and
+ * `MAP_ARTIFACT_VERSION = "v2"` are the same configuration, and rewriting one into the other is
+ * a pull request that changes nothing.
+ */
+export function configVersion(text: string): string | null {
+  return VERSION_VALUE.exec(text)?.[1] ?? null;
+}
 
 /**
  * Why a version cannot be a published one, or `null` when it can.
@@ -267,15 +279,27 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
 
   // `--dry-run` means no write anywhere, and a fetch writes remote-tracking refs and FETCH_HEAD.
   // The dry run therefore reads whatever `origin/main` the repository already has, and says so.
-  const fetched = dryRun
-    ? { exitCode: 0, stdout: '', stderr: '' }
-    : await run({ file: 'git', args: ['fetch', 'origin', 'main', '--quiet'], cwd: repoRoot });
+  if (!dryRun) {
+    const fetched = await run({
+      file: 'git',
+      args: ['fetch', 'origin', 'main', '--quiet'],
+      cwd: repoRoot,
+    });
+    if (fetched.exitCode !== 0) {
+      return {
+        ok: false,
+        message: `git fetch origin main failed, so every commit would be based on a stale ref: ${fetched.stderr.trim()}`,
+      };
+    }
+  }
 
   const parent = git(['rev-parse', 'origin/main']).trim();
   const current = git(['show', `${parent}:${path}`]);
 
   try {
-    if (bumpConfig(current, input.version) === current) {
+    // Compared as a value, not as text: a config that already says `v2` in another spacing is
+    // done, and a pull request that only reformats it is noise.
+    if (configVersion(current) === input.version) {
       return {
         ok: true,
         alreadyCurrent: true,
@@ -396,13 +420,6 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     return { ok: true, branch, prUrl: opened.stdout.trim() || undefined };
   } finally {
     rmSync(indexDir, { recursive: true, force: true });
-    if (fetched.exitCode !== 0) {
-      // Reported after the work, because it does not change what was pushed and the operator is
-      // the one who can restore the ref.
-      console.error(
-        `map-tiles-bump-version: git fetch origin main failed, so the commit is based on the local ref: ${fetched.stderr.trim()}`,
-      );
-    }
   }
 }
 
@@ -410,6 +427,7 @@ const USAGE = [
   'Usage:',
   '  bun scripts/map-tiles/bump-version.ts --version=v2 [--environment=staging|production] \\',
   '    [--region=calamuchita] [--archive=<cache>/out/calamuchita.pmtiles] [--dry-run]',
+  '  bun scripts/map-tiles/bump-version.ts --check-version=v3   # is this a version a device can key?',
 ].join('\n');
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
@@ -427,6 +445,15 @@ async function main(argv: string[]): Promise<number> {
   if (version === undefined) {
     console.error(`map-tiles-bump-version: --version is required.\n\n${USAGE}`);
     return 1;
+  }
+
+  if (argv.includes('--check-version')) {
+    const problem = versionProblem(version);
+    if (problem !== null) {
+      console.error(`map-tiles-bump-version: ${problem}`);
+      return 1;
+    }
+    return 0;
   }
 
   const environment = flag(argv, 'environment') ?? 'staging';
