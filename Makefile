@@ -681,7 +681,7 @@ map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publis
 	echo "==> toolchain (free when it is already stamped)"; \
 	$(MAKE) --no-print-directory map-tiles-toolchain; \
 	echo "==> build"; \
-	$(MAKE) --no-print-directory map-tiles-build REGION="$$region" $(if $(filter-out 0,$(FRESH)),REFRESH_EXTRACT=1,); \
+	$(MAKE) --no-print-directory map-tiles-build REGION="$$region" CACHE="$$cache" $(if $(filter-out 0,$(FRESH)),REFRESH_EXTRACT=1,); \
 	if [ "$(CHECK)" != "0" ]; then \
 		echo "==> render check"; \
 		bun scripts/map-tiles/render-check.ts --archive="$$archive"; \

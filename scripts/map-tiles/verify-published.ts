@@ -164,6 +164,19 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
     );
   }
 
+  // The size is what a device compares to decide whether the archive it holds is still
+  // the published one, so a payload that advertises another number — or none — makes a
+  // byte-perfect upload unreachable in silence.
+  if (entry.archiveBytes === null) {
+    failures.push(
+      `/config publishes ${input.region} without a byte count, and a device decides whether its archive is current by comparing that number: it cannot tell this one from the one it already holds.`,
+    );
+  } else if (entry.archiveBytes !== built.length) {
+    failures.push(
+      `/config advertises ${entry.archiveBytes} bytes for ${input.region} while the built archive is ${built.length}: a device compares that number, so it would keep the archive it already holds (or fetch again on every mount).`,
+    );
+  }
+
   const served = await deps.fetchBytes(entry.archiveUrl);
   const servedDigest = sha256(served);
   lines.push(`  served ${served.length} bytes by ${entry.archiveUrl}`);

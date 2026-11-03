@@ -73,6 +73,12 @@ export function useMapArchiveFile(
   // Every transfer polices the same budget, so a map opened for the first time cannot
   // grow the cache past what the payload allows.
   const cacheMaxBytes = useRemoteConfigStore((state) => state.config.map.download.cacheMaxBytes);
+  // What the payload says this region's archive weighs. The file name carries the
+  // version, and staging republishes a version in place, so the size is the only thing
+  // that can tell a file on the device from the artifact the server holds now.
+  const expectedBytes = useRemoteConfigStore((state) =>
+    regionKey ? state.config.map.regions[regionKey]?.archiveBytes : undefined,
+  );
 
   useEffect(() => {
     if (!archiveUrl || !identity || !key) return;
@@ -91,6 +97,7 @@ export function useMapArchiveFile(
     ensureArchiveOnDisk({
       archiveUrl,
       identity,
+      expectedBytes,
       cacheMaxBytes,
       onProgress: (progress) => {
         if (cancelled) return;
@@ -110,7 +117,7 @@ export function useMapArchiveFile(
       // the map will want, so a late landing is not wasted.
       cancelled = true;
     };
-  }, [archiveUrl, key, attempt, identity, cacheMaxBytes]);
+  }, [archiveUrl, key, attempt, identity, cacheMaxBytes, expectedBytes]);
 
   if (!key) return { status: 'error', error: 'archiveMissing' };
   // A settled result for another archive — or for another attempt of this one —

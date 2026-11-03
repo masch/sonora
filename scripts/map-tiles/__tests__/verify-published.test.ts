@@ -108,6 +108,36 @@ describe('runVerify', () => {
     expect(result.failures.join(' ')).toContain('not published');
   });
 
+  it('fails when /config advertises another size than the one built', async () => {
+    // A device compares this number, so a stale one keeps the archive it already has.
+    const stale = await runVerify(INPUT, deps({ config: catalog('v1', BUILT.byteLength - 1) }));
+    expect(stale.ok).toBe(false);
+    expect(stale.failures.join(' ')).toContain(String(BUILT.byteLength - 1));
+    expect(stale.failures.join(' ')).toContain(String(BUILT.byteLength));
+
+    // A region priced at zero is the same failure: there is nothing to compare.
+    const unpriced = await runVerify(INPUT, deps({ config: catalog('v1', 0) }));
+    expect(unpriced.ok).toBe(false);
+  });
+
+  it('fails when /config publishes the region without a byte count', async () => {
+    const config = {
+      map: {
+        regions: {
+          calamuchita: {
+            bbox: [-64.83, -32.28, -64.66, -32.12],
+            label: 'Valle de Calamuchita',
+            archiveUrl: `${API}/media/public/tiles/calamuchita/v1.pmtiles`,
+          },
+        },
+      },
+    };
+
+    const result = await runVerify(INPUT, deps({ config }));
+    expect(result.ok).toBe(false);
+    expect(result.failures.join(' ')).toContain('without a byte count');
+  });
+
   it('fails when what staging serves is not what was built', async () => {
     const served = new TextEncoder().encode('an older archive of another length');
     const result = await runVerify(INPUT, deps({ served }));
