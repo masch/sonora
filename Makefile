@@ -548,7 +548,10 @@ api-upload-public-audio-production: ## Upload audio to production public bucket.
 	@echo "Uploaded to production public bucket: sonora-production-public-audio/$(KEY)"
 
 # ── Self-built map tiles: one region in, one archive out ────────
-# The published archive is built here, not downloaded from a third party. One command,
+# The published archive is built here, not downloaded from a third party. The one command an
+# operator usually wants is `make map-tiles-publish-staging` (further down): today's extract,
+# built, published to staging and verified in a single run. The targets below are the pieces it
+# wraps. One command,
 # one region: the script reads the pinned upstream commit (scripts/map-tiles/upstream.json),
 # checks out that commit (or reuses the checkout already on it), applies
 # scripts/map-tiles/patches/*.patch in filename order, builds the profile jar and runs the
@@ -597,8 +600,8 @@ map-tiles-fetch-sources: ## Pre-seed every tiler source (resumed + verified) so 
 	bun scripts/map-tiles/fetch-sources.ts $(if $(REGION),--region="$(REGION)",) $(if $(CACHE),--cache="$(CACHE)",)
 
 .PHONY: map-tiles-build
-map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir]
-	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",)
+map-tiles-build: ## Build one region's PMTiles archive (needs JDK 21 + Maven). Usage: make map-tiles-build REGION=calamuchita [MAXZOOM=16] [CACHE=dir] [REFRESH_EXTRACT=1]
+	$(TOOLCHAIN_ENV) bun scripts/map-tiles/build.ts --region="$(REGION)" --maxzoom="$(MAXZOOM)" $(if $(CACHE),--cache="$(CACHE)",) $(if $(REFRESH_EXTRACT),--refresh-extract,)
 
 # ── Map tiles & style (public bucket) ────────────
 # Map artifacts are immutable per version, so they are cached for a year and the
@@ -638,6 +641,56 @@ api-upload-map-tiles-production: ## Upload a map region archive + style to the p
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/tiles/$(REGION)/$(VERSION).pmtiles --file="$(MAP_ARCHIVE_PATH)" --content-type=application/octet-stream --cache-control="public, max-age=31536000, immutable" --remote
 	@cd $(API_DIR) && bunx wrangler r2 object put sonora-production-public-audio/styles/$(VERSION).json --file="$(MAP_STYLE_PATH)" --content-type=application/json --cache-control="public, max-age=31536000, immutable" --remote
 	@echo "Uploaded tiles/$(REGION)/$(VERSION).pmtiles and styles/$(VERSION).json to the production public bucket"
+
+# ── One command: today's OSM on staging ─────────
+# The trap this target closes: a cached extract is never refreshed (see "A cached extract is kept
+# rather than refreshed" in scripts/map-tiles/README.md), so `make map-tiles-build` after an OSM
+# change rebuilds the same bytes from the same weeks-old file and the map looks untouched. One
+# run here discards the cached extract, builds, publishes and then proves that staging serves the
+# bytes it built — from the urls clients are actually told, not from the bucket we think we wrote.
+#
+#   make map-tiles-publish-staging                      # calamuchita v1, fresh extract
+#   make map-tiles-publish-staging FRESH=0              # reuse the cached extract (patches/style only)
+#   make map-tiles-publish-staging VERSION=v2 CHECK=1   # a new key, render-checked before uploading
+#
+# Budget: ~5 minutes warm (3m57s of it tiling) plus the extract, on top of whatever the cache is
+# missing. CHECK=1 adds headless Chromium. Nothing is uploaded when the build fails.
+STAGING_API ?= https://sonora-api-staging.sonora-api.workers.dev
+# 1 discards the cached Geofabrik extract first, which is the whole point of the target.
+FRESH ?= 1
+# 1 runs `make map-tiles-render-check` between the build and the upload.
+CHECK ?= 0
+PUBLISH_STYLE ?= assets/map/styles/v1.json
+
+.PHONY: map-tiles-publish-staging
+map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publish it to staging and verify what staging serves. Usage: make map-tiles-publish-staging [REGION=calamuchita] [VERSION=v1] [FRESH=0] [CHECK=1]
+	@set -eu; \
+	region="$(if $(REGION),$(REGION),calamuchita)"; \
+	version="$(if $(VERSION),$(VERSION),v1)"; \
+	cache="$(if $(CACHE),$(abspath $(CACHE)),$(CURDIR)/.tools/cache)"; \
+	archive="$$cache/out/$$region.pmtiles"; \
+	style="$(CURDIR)/$(PUBLISH_STYLE)"; \
+	if [ ! -f "$$style" ]; then echo "Error: $$style does not exist; nothing was built or uploaded."; exit 1; fi; \
+	if ! ( cd $(API_DIR) && bunx wrangler whoami >/dev/null 2>&1 ); then \
+		echo "Error: wrangler is not authenticated; run \`bunx wrangler login\` from $(API_DIR)."; \
+		echo "       Nothing was built or uploaded."; exit 1; \
+	fi; \
+	echo "==> staging: $$region $$version (style $(PUBLISH_STYLE))"; \
+	previous="$$(bun scripts/map-tiles/verify-published.ts --snapshot --region="$$region" --api="$(STAGING_API)")" || previous=; \
+	echo "==> /config advertises $${previous:-<nothing, this region is not published>} bytes for $$region"; \
+	echo "==> toolchain (free when it is already stamped)"; \
+	$(MAKE) --no-print-directory map-tiles-toolchain; \
+	echo "==> build"; \
+	$(MAKE) --no-print-directory map-tiles-build REGION="$$region" $(if $(filter-out 0,$(FRESH)),REFRESH_EXTRACT=1,); \
+	if [ "$(CHECK)" != "0" ]; then \
+		echo "==> render check"; \
+		bun scripts/map-tiles/render-check.ts --archive="$$archive"; \
+	fi; \
+	echo "==> publish"; \
+	$(MAKE) --no-print-directory api-upload-map-tiles-staging REGION="$$region" VERSION="$$version" ARCHIVE="$$archive" STYLE="$$style"; \
+	echo "==> verify what staging serves"; \
+	bun scripts/map-tiles/verify-published.ts --region="$$region" --version="$$version" --archive="$$archive" --api="$(STAGING_API)" $${previous:+--previous-bytes=$$previous}; \
+	echo "==> done: $$region $$version on staging"
 
 # ── Self-hosted map assets: glyphs + sprite (public bucket) ────
 # The published style used to point `glyphs` and `sprite` at a third party

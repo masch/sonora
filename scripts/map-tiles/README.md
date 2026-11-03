@@ -71,7 +71,7 @@ The fragile ones are the three planetiler fetches itself — `qrank.csv.gz`, `da
 
 A finished file is only renamed into place after it passes, and a file that no longer passes is discarded and fetched again. A partial is only resumed against the validator it was fetched with (`If-Range`), so an interrupted download continues but yesterday's bytes are never glued to today's file.
 
-A cached extract is kept rather than refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Delete `<cache>/planetiler/data/sources/<area>.osm.pbf` when you mean to take a newer one — the next run downloads and verifies it again.
+A cached extract is kept rather than refreshed: Geofabrik publishes a new `<area>-latest.osm.pbf` every day, and a build that silently moved to newer data would not be reproducible. Delete `<cache>/planetiler/data/sources/<area>.osm.pbf`, or pass `--refresh-extract` (the build deletes it for you), when you mean to take a newer one — the next run downloads and verifies it again. `make map-tiles-publish-staging` does exactly that, then builds and publishes to staging in one run.
 
 ### Where the cache lives, and why to keep it
 
