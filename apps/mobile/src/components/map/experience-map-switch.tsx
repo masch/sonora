@@ -93,7 +93,9 @@ function waypointsOf(experience: PlayableExperience) {
  * decided here too: the switch resolves the payload on every render, layers the
  * walker's own choices — held for the whole app run — on top, and hands the result
  * to the renderer, which applies it and resolves nothing. One place decides what the
- * map draws; the renderer only draws it.
+ * map draws; the renderer only draws it. The version and size of the archive ride
+ * along with the source it was handed, so the sheet can name the map it is describing
+ * without ever reading the config store itself.
  */
 export default function ExperienceMapSwitch({
   renderer,
@@ -183,6 +185,10 @@ export default function ExperienceMapSwitch({
               source.showLayersControl ?? false,
               MAPLIBRE_LAYER_CAPABILITIES,
             )}
+            // Which artifact the map above is drawing, so the sheet can say it: both
+            // values were resolved with the source, and this switch only forwards them.
+            archiveVersion={source.archiveVersion}
+            archiveBytes={source.archiveBytes}
           />
           <ReferenceCard reference={pressedReference} onDismiss={() => setPressedReference(null)} />
         </>

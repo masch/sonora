@@ -196,6 +196,9 @@ describe('useMapViewConfig', () => {
       archiveUrl: '',
       styleUrl: undefined,
       regionKey: null,
+      // No archive, so no version it could claim: `null` is the resolved answer.
+      archiveVersion: null,
+      archiveBytes: undefined,
     });
   });
 
@@ -206,7 +209,68 @@ describe('useMapViewConfig', () => {
       archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
       styleUrl: 'https://api.example/media/public/styles/v1.json',
       regionKey: 'calamuchita',
+      archiveVersion: 'v1',
+      archiveBytes: CALAMUCHITA.archiveBytes,
     });
+  });
+
+  it("carries the drawn archive's version and the size the payload advertises", async () => {
+    // The sheet that names the loaded map reads both off the source, so the version
+    // has to be the archive's own — the artifact that decides the tiles.
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.source.archiveVersion).toBe('v1');
+    expect(result.current.source.archiveBytes).toBe(4_000_000);
+  });
+
+  it("prefers the archive's version over the style document's", async () => {
+    // Both urls carry a version segment and the archive is the one the map reads, so a
+    // style published as v9 must not name the tiles the device draws.
+    mockMapConfig = {
+      ...mockMapConfig!,
+      styleUrl: 'https://api.example/media/public/styles/v9.json',
+      regions: {
+        calamuchita: {
+          ...CALAMUCHITA,
+          archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v7.pmtiles',
+        },
+      },
+    };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.source.archiveVersion).toBe('v7');
+  });
+
+  it('claims no version for an archive url it cannot key by one', async () => {
+    // A version segment carrying a dash cannot be told apart from the region on the way
+    // back, so `archiveIdentity()` refuses it — and a made-up version would tell the
+    // walker the wrong map is loaded.
+    mockMapConfig = {
+      ...mockMapConfig!,
+      regions: {
+        calamuchita: {
+          ...CALAMUCHITA,
+          archiveUrl: 'https://api.example/media/public/tiles/calamuchita/v2-preview.pmtiles',
+        },
+      },
+    };
+    const { result } = await renderHook(() => useMapViewConfig(IN_CALAMUCHITA));
+
+    expect(result.current.source.archiveVersion).toBeNull();
+    // The size the payload published is still a fact about the archive it named.
+    expect(result.current.source.archiveBytes).toBe(CALAMUCHITA.archiveBytes);
+  });
+
+  it('carries no version and no size for a point outside every region', async () => {
+    mockMapConfig = {
+      styleUrl: 'https://api.example/media/public/styles/v1.json',
+      regions: { calamuchita: CALAMUCHITA, 'otro-valle': OTRO_VALLE },
+      download: DOWNLOAD,
+    };
+    const { result } = await renderHook(() => useMapViewConfig(OUTSIDE_EVERY_REGION));
+
+    expect(result.current.source.archiveVersion).toBeNull();
+    expect(result.current.source.archiveBytes).toBeUndefined();
   });
 
   it('drops a style url the config left empty', async () => {

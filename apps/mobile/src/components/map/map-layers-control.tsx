@@ -3,11 +3,13 @@ import { useState } from 'react';
 import type { MapLayerGroupId, MapLayerSelection } from '@sonora/shared';
 
 import { Icon } from '@/components/icon';
+import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { IconButton } from '@/components/ui/icon-button';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwPressable, TwText, TwView } from '@/tw';
+import { formatBytes } from '@/utils/format-bytes';
 
 /**
  * The sentence each group is called by, one entry per id the vocabulary defines.
@@ -42,6 +44,36 @@ export interface MapLayersControlProps {
    * control with nothing in it is worse than no control.
    */
   allowed: boolean;
+  /**
+   * The version of the archive this map draws (`v7`), as the view resolved it off the
+   * source — `null` when there is no archive, or its url is one this app cannot key by
+   * a version.
+   *
+   * Handed in rather than looked up: the control is the sheet, not the map, so the
+   * view that already owns the source is the only place that knows which archive the
+   * renderer was given.
+   */
+  archiveVersion?: string | null;
+  /**
+   * The bytes the payload advertises for that archive. Absent, or zero, means the
+   * payload priced nothing.
+   */
+  archiveBytes?: number;
+}
+
+/**
+ * The sentence the sheet says about the map it drew, in the longest form the source can
+ * answer.
+ *
+ * Keyed by what is known instead of being assembled at the call site, because every
+ * language orders these three pieces differently and dropping one clause mid-template
+ * is how a stray `·` or an empty `archive` would reach a device.
+ */
+function loadedMapKey(version: string | null, size: string | null): TranslationKeys {
+  if (version && size) return 'map.layers.loadedMap';
+  if (version) return 'map.layers.loadedMapVersion';
+  if (size) return 'map.layers.loadedMapSize';
+  return 'map.layers.loadedMapOnly';
 }
 
 /**
@@ -58,12 +90,40 @@ export interface MapLayersControlProps {
  * it is a `TwPressable` and not a `Button`; the trigger is the design system's
  * `IconButton`, like the labels control beside it.
  */
-export default function MapLayersControl({ selection, onToggle, allowed }: MapLayersControlProps) {
-  const { t } = useAppTranslation();
+export default function MapLayersControl({
+  selection,
+  onToggle,
+  allowed,
+  archiveVersion,
+  archiveBytes,
+}: MapLayersControlProps) {
+  const { t, language } = useAppTranslation();
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
 
   if (!allowed) return null;
+
+  /**
+   * The version, only when there is one to read.
+   *
+   * A url the identity parser could not key leaves nothing here, and that is the honest
+   * answer: `v0` would claim an artifact that was never published, and the walker reads
+   * a version to decide whether the app is stale, so a placeholder is worse than silence.
+   */
+  const version = archiveVersion?.trim() ? archiveVersion.trim() : null;
+  /**
+   * The size, only when the payload priced one.
+   *
+   * Zero bytes is the payload declining to price the archive rather than an archive of
+   * no bytes, so it is dropped with the same logic as a missing version: `0 B` would be
+   * a measurement nobody made. What remains is still true — both, one of them, or, when
+   * the source answered neither, the map's label alone — which is what this line is for:
+   * it names the map the walker is looking at, and it never invents what it was not told.
+   */
+  const size =
+    typeof archiveBytes === 'number' && archiveBytes > 0
+      ? formatBytes(archiveBytes, language)
+      : null;
 
   return (
     <>
@@ -112,6 +172,18 @@ export default function MapLayersControl({ selection, onToggle, allowed }: MapLa
             </TwPressable>
           );
         })}
+        {/* Below the rows, inside the sheet: the line names the map the rows act on, and
+            it lives here so nothing is ever drawn over the map itself. It is not
+            interactive, so it takes no accessible name and no role — a screen reader
+            reads it as the sentence it is. */}
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          className="mt-1 border-t border-zinc-300/10 pt-3 dark:border-zinc-700/10"
+          testID="map-layers-loaded-map"
+        >
+          {t(loadedMapKey(version, size), { version, size })}
+        </ThemedText>
       </BottomModal>
     </>
   );
