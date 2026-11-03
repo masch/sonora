@@ -35,7 +35,7 @@ AUDIO_LINK_EXPIRY_SECONDS = "900"
 # Published once per version: bump this before publishing anything new. The upload
 # targets (and `make map-tiles-publish-staging`) refuse a version whose objects are
 # already in the bucket, so a republish is a new value here plus a deploy.
-MAP_ARTIFACT_VERSION = "v1"
+MAP_ARTIFACT_VERSION = "v5"
 # Regions the app prefetches when it opens. A region the public bucket does not
 # hold is dropped from the payload instead of being handed to a client.
 MAP_PRELOAD_REGIONS = "calamuchita"
