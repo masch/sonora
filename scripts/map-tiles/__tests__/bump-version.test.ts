@@ -222,6 +222,11 @@ describe('the check-version command line', () => {
     const refused = cli(['--check-version=2026-11-03']);
     expect(refused.status).toBe(1);
     expect(refused.stderr).toContain('dash');
+
+    // Both flags: the check's own value is the one under test, not a stale `--version` beside it.
+    const both = cli(['--version=v5', '--check-version=2026-11-03']);
+    expect(both.status).toBe(1);
+    expect(both.stderr).toContain('dash');
   });
 });
 

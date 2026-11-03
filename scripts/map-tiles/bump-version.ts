@@ -497,15 +497,19 @@ function flag(argv: string[], name: string): string | undefined {
 }
 
 async function main(argv: string[]): Promise<number> {
-  // `--check-version` is the same argument under the name the publish target uses: the check is
-  // reachable on its own, without a `--version` beside it.
-  const version = flag(argv, 'version') ?? flag(argv, 'check-version');
+  // `--check-version` is the same argument under the name the publish target uses. When the check
+  // is what was asked for, its value is the one validated: reading `--version` first would green a
+  // run on a stale value and ignore the one the caller actually asked about.
+  const checking = argv.some(
+    (arg) => arg === '--check-version' || arg.startsWith('--check-version='),
+  );
+  const version = checking ? flag(argv, 'check-version') : flag(argv, 'version');
   if (version === undefined) {
     console.error(`map-tiles-bump-version: --version is required.\n\n${USAGE}`);
     return 1;
   }
 
-  if (argv.some((arg) => arg === '--check-version' || arg.startsWith('--check-version='))) {
+  if (checking) {
     const problem = versionProblem(version);
     if (problem !== null) {
       console.error(`map-tiles-bump-version: ${problem}`);
