@@ -303,7 +303,7 @@
       "type": "symbol",
       "source": "basemap",
       "source-layer": "landuse",
-      "minzoom": 13,
+      "minzoom": 11,
       "filter": ["all", ["has", "name"], ["!=", "name", ""]],
       "layout": {
         "text-font": ["Noto Sans Italic"],
@@ -591,14 +591,14 @@
             ]
           ]
         ],
-        "text-size": 10,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 11, 9, 14, 10],
         "text-letter-spacing": 0.1,
         "text-max-width": 8,
         "text-variable-anchor": ["center", "top", "bottom", "left", "right"],
         "text-radial-offset": 0.6
       },
       "paint": {
-        "text-color": "#8f8f8f",
+        "text-color": "#5c5c5c",
         "text-halo-color": "#e0e0e0",
         "text-halo-width": 1
       }

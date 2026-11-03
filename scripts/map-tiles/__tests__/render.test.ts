@@ -70,6 +70,9 @@ interface TileExpectation {
  */
 const FILLS = ['landuse_park', 'landuse_heath', 'landuse_bare_rock'];
 
+/** The fills the two shallow tiles were measured to paint: the bare rock is not there yet. */
+const OPENING_FILLS = ['landuse_park', 'landuse_heath'];
+
 /**
  * What each tile is expected to draw, by zoom, deepest promise last.
  *
@@ -78,6 +81,13 @@ const FILLS = ['landuse_park', 'landuse_heath', 'landuse_bare_rock'];
  * the tile that lost it, and a tile nobody measured cannot be added without saying so below.
  */
 const TILES: TileExpectation[] = [
+  // The two shallow tiles are the opening frame's own: `landuse_label` starts at z11, and these
+  // are the zooms the world camera lands on when the published experiences sit far apart. Both
+  // were measured when the layer moved down from z13 — the area names here are the ones the
+  // opening frame used to miss. `landuse_bare_rock` paints nothing at either, so it is not
+  // promised; `landuse_park` and `landuse_heath` do.
+  { tile: '11/655/1217', labels: ['Los Cuarzos', 'Aldea', 'Espinillos'], fills: OPENING_FILLS },
+  { tile: '12/1311/2435', labels: ['Los Cuarzos', 'Aldea', 'Espinillos'], fills: OPENING_FILLS },
   { tile: '13/2622/4870', labels: ['Bosque Umepay'], fills: FILLS },
   { tile: '14/5245/9741', labels: ['Bosque Umepay', 'Huerta Madre'], fills: FILLS },
   { tile: '15/10491/19483', labels: ['Bosque Umepay', 'Huerta Madre'], fills: FILLS },
@@ -106,7 +116,7 @@ const blocked: false | string = !existsSync(ARCHIVE)
 /**
  * Whether this run has to render rather than skip.
  *
- * `CI=true` is what a pipeline sets, and a pipeline that skips the four tiles proves nothing about
+ * `CI=true` is what a pipeline sets, and a pipeline that skips the tiles proves nothing about
  * the map while still reporting success. A laptop keeps the skip: the archive needs JDK 21, Maven
  * and ~4 GB of sources, which is not something `bun test` may demand of every commit.
  */
@@ -189,10 +199,12 @@ describe('the tiles this repository promises', () => {
     }
   });
 
-  it('holds exactly the four tiles somebody measured', () => {
+  it('holds exactly the tiles somebody measured', () => {
     // The list is the promise. A tile added here without being measured would assert whatever
     // its author guessed, and the render would then be checking the guess, not the map.
     expect(TILES.map((each) => each.tile)).toEqual([
+      '11/655/1217',
+      '12/1311/2435',
       '13/2622/4870',
       '14/5245/9741',
       '15/10491/19483',
