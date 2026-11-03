@@ -85,6 +85,9 @@ beforeEach(() => {
     isLoading: true,
     error: null,
     versionStatus: 'ok',
+    // A new app run: no `/config` answer has been applied yet, which is what lets the
+    // cache draw. Leaving it set from a previous test would hide that path.
+    liveConfigApplied: false,
   });
   mockGetCachedConfig.mockResolvedValue(null);
   mockApiGet.mockResolvedValue({});
@@ -451,7 +454,8 @@ describe('RemoteConfigStore', () => {
       },
     });
 
-    useRemoteConfigStore.getState().refetch();
+    // A run nothing was already doing started, so a caller counting attempts is told so.
+    expect(useRemoteConfigStore.getState().refetch()).toBe(true);
 
     await waitFor(() => {
       expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(500);
@@ -564,6 +568,20 @@ describe('RemoteConfigStore', () => {
       expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(410);
     });
 
+    it('treats a stamp in the future as stale, exactly like one too old', async () => {
+      // A clock that was ahead when the entry was written makes its age negative. An
+      // age running backwards is not a fresh one: believed, the entry would be an
+      // answer for as long as the clock takes to catch up.
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(430, -60 * 1000));
+      mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(3);
+      // The retries decide the answer; the untrusted payload is what renders meanwhile.
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(430);
+    });
+
     it('does not trust a cache that carries no fetch time', async () => {
       // Builds before this one wrote the payload alone, and its age is
       // unknowable, so it cannot be the final answer either.
@@ -576,7 +594,7 @@ describe('RemoteConfigStore', () => {
       expect(useRemoteConfigStore.getState().config).toEqual(fullDefaults);
     });
 
-    it('does not start a second run while one is in flight', async () => {
+    it('does not start a second run while one is in flight, and says it started nothing', async () => {
       let resolveFirst: ((value: unknown) => void) | null = null;
       mockApiGet.mockImplementationOnce(
         () =>
@@ -590,12 +608,33 @@ describe('RemoteConfigStore', () => {
       await new Promise((resolve) => setImmediate(resolve));
       expect(mockApiGet).toHaveBeenCalledTimes(1);
 
-      useRemoteConfigStore.getState().refetch();
+      // Dropped: a caller that counts its own attempts must not pay for this one.
+      const started = useRemoteConfigStore.getState().refetch();
       expect(mockApiGet).toHaveBeenCalledTimes(1);
 
       resolveFirst!(remoteRadius(550));
       await initPromise;
+      expect(started).toBe(false);
       expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(550);
+    });
+
+    it('keeps the live payload when a later run reads an older cache entry', async () => {
+      // The network answered and its payload is what the app is showing. The cache on
+      // the device is older, because the write after that answer is the one that failed:
+      // a later run must not put the older entry back over it.
+      mockApiGet.mockResolvedValue(remoteRadius(620));
+      await useRemoteConfigStore.getState().init();
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(620);
+
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(300, 0));
+      mockApiGet.mockRejectedValue(new Error('Offline'));
+      useRemoteConfigStore.getState().refetch();
+
+      await waitFor(() => expect(mockGetCachedConfig).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(mockApiGet).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(useRemoteConfigStore.getState().isLoading).toBe(false));
+
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(620);
     });
 
     it('recomputes the version status from the payload a revalidation won', async () => {

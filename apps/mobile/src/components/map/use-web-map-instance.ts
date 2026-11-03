@@ -160,9 +160,10 @@ export function useWebMapInstance({
   /**
    * The instance in `mapRef` is drawn: it loaded, and it is the build this render is for.
    *
-   * Derived during render rather than reset inside the effect, which keeps the
-   * false→true transition the ready-gated effects need. Left `true` across a retry, the
-   * pending focus flight and the layer selection never ran for the new instance, so a
+   * Derived during render and cleared by the build effect, so one instance's load is never
+   * read as another's: the replacement starts at "not loaded yet" and the effects below see
+   * the false→true transition they need. Left `true` across a rebuild that is not a retry,
+   * the pending focus flight and the layer selection never ran for the new instance, so a
    * rebuilt map never travelled to the selected point and ignored the active layers.
    */
   const ready = loadedAttempt !== null && loadedAttempt === attempt;
@@ -303,8 +304,12 @@ export function useWebMapInstance({
       cancelledRef.current = true;
       mapRef.current?.remove();
       mapRef.current = null;
-      // `ready` is not touched here: it is read from the build the map loaded for, so the
-      // replacement is reported as not ready until it says otherwise.
+      // The build that reported its load is gone with this instance, and the one that
+      // replaces it has drawn nothing, so readiness starts over: clearing it here, where
+      // the instance is removed, is what makes the replacement pass through "not loaded
+      // yet" and the ready-gated effects run against it. A retry is unaffected: its own
+      // attempt number already made the old answer stale.
+      setLoadedAttempt(null);
     };
     // The two refs are stable, and the callback the renderer hands in is built with no
     // dependencies of its own: `source` and `archive` are read by the fields listed, so

@@ -576,6 +576,57 @@ describe('ExperienceMap (web)', () => {
     ]);
   });
 
+  it('keeps a replacement map not ready until it reports its own load', async () => {
+    // A rebuild that is not a retry (here, a new camera frame) replaces the instance
+    // while the build attempt stays the same. The replacement has drawn nothing, so it
+    // has to pass through "not loaded yet" for the ready-gated effects to run against
+    // it; taken as ready, it keeps drawing the groups the style authored instead of the
+    // selection the walker made.
+    const source = { archiveUrl: ARCHIVE, style: styleWithBasemapLayers() };
+    const hidden: MapLayerSelection[] = [{ id: 'water', visible: false, declared: true }];
+    const frame = { west: -64.83, south: -32.28, east: -64.66, north: -32.12 };
+
+    const view = await render(
+      <ExperienceMap
+        source={source}
+        overlays={[document]}
+        bounds={frame}
+        layerSelection={hidden}
+      />,
+    );
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+    expect(mockMapInstances[0].layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+    ]);
+
+    await act(async () => {
+      view.rerender(
+        <ExperienceMap
+          source={source}
+          overlays={[document]}
+          bounds={{ ...frame, east: -64 }}
+          layerSelection={hidden}
+        />,
+      );
+    });
+    await waitFor(() => expect(mockMapInstances).toHaveLength(2));
+
+    const replacement = mockMapInstances[1];
+    // Built and not drawn: nothing has been asked of its layers yet.
+    expect(replacement.layoutProperties).toEqual([]);
+
+    await act(async () => {
+      replacement.emit('load');
+    });
+
+    expect(replacement.layoutProperties).toEqual([
+      { layerId: 'water', name: 'visibility', value: 'none' },
+    ]);
+  });
+
   it('gives the interactive map surface a name and a test hook', async () => {
     const view = await render(
       <ExperienceMap

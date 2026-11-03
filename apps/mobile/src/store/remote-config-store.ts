@@ -133,6 +133,15 @@ interface RemoteConfigState {
   isLoading: boolean;
   error: Error | null;
   versionStatus: VersionStatus;
+  /**
+   * Whether a `/config` answer has already reached this app run.
+   *
+   * The cache is a head start, not a second opinion: once the network has answered, a
+   * later run that reads an older entry must leave the live payload alone, or a cache
+   * write that failed would put the older payload back over the answer the walker is
+   * already using. Before that point the cache is what draws.
+   */
+  liveConfigApplied: boolean;
   /** Initialise config: read cache, fetch API, merge. Call once at app startup. */
   init: () => Promise<void>;
   /**
@@ -140,9 +149,11 @@ interface RemoteConfigState {
    *
    * Safe to call at any time: a call that lands while a run is still in flight is
    * dropped rather than racing it to the cache, and a run that fails is retried
-   * before the store settles on what it already had.
+   * before the store settles on what it already had. Reports whether it started a
+   * run, because a dropped call bought nothing and a caller counting its own
+   * attempts has to hear that.
    */
-  refetch: () => void;
+  refetch: () => boolean;
 }
 
 /**
@@ -156,7 +167,13 @@ function toCachedEntry(read: CachedConfigRead): CachedRemoteConfig {
 }
 
 function isCachedConfigStale(entry: CachedRemoteConfig): boolean {
-  return entry.fetchedAt === null || Date.now() - entry.fetchedAt > CONFIG_CACHE_MAX_AGE_MS;
+  if (entry.fetchedAt === null) return true;
+  const age = Date.now() - entry.fetchedAt;
+  // An age that runs backwards is a stamp this device cannot trust (a clock that was
+  // ahead when the entry was written, or one that was corrected after it) and, like an
+  // unknown age, it is not a fresh one: believed, the entry stays an answer for as long
+  // as the clock takes to catch up.
+  return age < 0 || age > CONFIG_CACHE_MAX_AGE_MS;
 }
 
 function delay(ms: number): Promise<void> {
@@ -185,7 +202,10 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
     try {
       const read = await getCachedConfig();
       cached = read ? toCachedEntry(read) : null;
-      if (cached) {
+      // Only while nothing better has drawn: after a live payload, an entry read now is
+      // older than what is on screen by definition, and putting it back would undo the
+      // answer the network already gave.
+      if (cached && !get().liveConfigApplied) {
         // Deep-merge cache into defaults so nested partial values
         // (e.g. geofence with only radiusMeters) don't lose default fields.
         const merged: Record<string, unknown> = { ...INITIAL_REMOTE_CONFIG };
@@ -228,7 +248,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
           INITIAL_REMOTE_CONFIG,
           cached ? { ...cached.config, ...raw } : raw,
         );
-        set({ config: merged, error: null });
+        set({ config: merged, error: null, liveConfigApplied: true });
         lastError = null;
         try {
           await setCachedConfig(merged);
@@ -284,16 +304,27 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
     }
   }
 
+  /**
+   * Starts one run, and says whether it did.
+   *
+   * The verdict is synchronous because the run claims the slot before its first `await`:
+   * a caller that hears `false` can count on nothing having been asked of the network.
+   */
+  function startConfigRefresh(): boolean {
+    if (inFlight) return false;
+    void runConfigRefresh();
+    return true;
+  }
+
   return {
     config: INITIAL_REMOTE_CONFIG,
     isLoading: true,
     error: null,
     versionStatus: 'ok',
+    liveConfigApplied: false,
 
     init: runConfigRefresh,
 
-    refetch: () => {
-      void runConfigRefresh();
-    },
+    refetch: startConfigRefresh,
   };
 });

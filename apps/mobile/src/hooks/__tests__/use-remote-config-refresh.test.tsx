@@ -36,7 +36,9 @@ beforeEach(() => {
     appStateListener = handler;
     return { remove: removeSubscription } as unknown as NativeEventSubscription;
   }) as unknown as typeof AppState.addEventListener);
-  refetchSpy = jest.spyOn(store, 'refetch').mockImplementation(() => {});
+  // The store really started a run: a run that starts and then fails still counts
+  // against the floor, or a phone with no signal would ask on every single switch.
+  refetchSpy = jest.spyOn(store, 'refetch').mockImplementation(() => true);
 });
 
 afterEach(() => {
@@ -75,6 +77,34 @@ describe('useRemoteConfigRefresh', () => {
   });
 
   it('does not ask twice when the app is switched away and back within the floor', async () => {
+    await mountRefresh();
+
+    await appStateBecomes('active');
+    await appStateBecomes('background');
+    await appStateBecomes('active');
+
+    expect(refetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not charge the floor for a refetch that never started', async () => {
+    // The store drops a call that lands while a run is in flight, so nothing was asked
+    // of the network. Charging the floor for it would keep the walker's next return
+    // from asking at all, for a run that never happened.
+    refetchSpy.mockImplementation(() => false);
+    await mountRefresh();
+
+    await appStateBecomes('active');
+    await appStateBecomes('background');
+    await appStateBecomes('active');
+
+    expect(refetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('charges the floor for a run that started, however it ends', async () => {
+    // A run that started is a request that was really made, and whether it lands is the
+    // store's own retry to decide: the floor holds, so the walker's next switch does not
+    // restart the run the store is already retrying.
+    refetchSpy.mockImplementation(() => true);
     await mountRefresh();
 
     await appStateBecomes('active');

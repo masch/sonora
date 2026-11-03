@@ -36,11 +36,13 @@ export function useRemoteConfigRefresh(): void {
         return;
       }
 
-      // Stamped before the request, not after: a revalidation that fails must
-      // still count against the floor, or a phone with no signal would ask again
-      // on every single app switch.
-      lastAttemptAtRef.current = now;
-      useRemoteConfigStore.getState().refetch();
+      // Stamped only when a run really started. A call the store dropped bought nothing,
+      // and charging it would keep the walker's next return from asking at all; a run that
+      // started and then failed still counts, or a phone with no signal would ask again on
+      // every single app switch.
+      if (useRemoteConfigStore.getState().refetch()) {
+        lastAttemptAtRef.current = now;
+      }
     });
 
     return () => subscription.remove();
