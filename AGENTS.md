@@ -109,3 +109,10 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> befor
 - **Validation**: Always use `validateJson(schema)` or `validateQuery(schema)` from `src/middleware/validation-error`. Never use raw `zValidator`.
 - **Database Guard**: Always apply `dbGuard()` from `src/middleware/db-guard` on all DB routes. Never branch on `if (db)`.
 - **Security**: Always apply `envGuard()` on all API routers and `rateLimit()` on public mutation routes.
+
+## 14. Review Comments
+
+- **Reply to every finding, in its own thread**: what was wrong, what changed, the commit or commits that hold it, and the evidence the change actually allows: the failing test first and the new test where behavior changed, the command and its output, the manual check, or the CI run. A finding answered with a commit reference and no evidence is not answered.
+- **Summarize the PR once** when the finding set is non-trivial or the PR carries several commits: what it fixes, the commits, each finding with its disposition, local and CI checks, and what is still pending. Pending work is listed as pending, never implied to be done.
+- **Never reply "fixed" without evidence, and never leave a wrong finding unanswered**: answer it with the proof (the installed signature, the passing test, the CI run). When the concern underneath is valid even though the stated mechanism is not, address it anyway and say so.
+- **Always English**, whatever the thread language, and no em dashes.
