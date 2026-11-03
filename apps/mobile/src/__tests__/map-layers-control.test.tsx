@@ -42,6 +42,11 @@ function rowIds(view: RenderResult): string[] {
 
 /** Every testID in the sheet, in the order the sheet draws it. */
 function testIdsInOrder(view: RenderResult, node: unknown = view.toJSON()): string[] {
+  // A fragment root reaches this helper as a list of nodes, not as one node. Reading only
+  // the object shape made an array root answer `[]`, and an order assertion over two `[]`s
+  // compares two -1s — the kind of green that proves nothing about a layout.
+  if (Array.isArray(node)) return node.flatMap((child) => testIdsInOrder(view, child));
+
   const element = node as { props?: { testID?: unknown }; children?: unknown[] } | null;
   if (!element || typeof element !== 'object') return [];
 
