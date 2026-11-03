@@ -82,7 +82,8 @@ describe('the publish target', () => {
   it('opens the config PR that makes the version live, after the upload is proven', () => {
     const recipe = recipeOf('map-tiles-publish-staging');
     const verify = recipe.indexOf('verify-published.ts --region=');
-    const bump = recipe.indexOf('bump-version.ts');
+    // The config PR call, not the version check that runs earlier in the same recipe.
+    const bump = recipe.indexOf('bump-version.ts --environment=staging');
 
     // Publishing first and moving the config second is what keeps `/config` from naming an
     // object that does not exist yet.

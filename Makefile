@@ -677,6 +677,9 @@ map-tiles-publish-staging: ## Refresh the region's OSM extract, build it, publis
 		version="$$(bun scripts/map-tiles/verify-published.ts --first-free --region="$$region" --api="$(STAGING_API)")" || { \
 			echo "Error: no free version to publish for $$region; nothing was built."; exit 1; }; \
 	fi; \
+	# A version a device cannot key must fail before the upload, not after it. \
+	bun scripts/map-tiles/bump-version.ts --check-version="$$version" || { \
+		echo "Error: \"$$version\" is not a version an archive can be published under; nothing was built."; exit 1; }; \
 	cache="$(if $(CACHE),$(abspath $(CACHE)),$(CURDIR)/.tools/cache)"; \
 	archive="$$cache/out/$$region.pmtiles"; \
 	style="$(CURDIR)/$(PUBLISH_STYLE)"; \
@@ -728,7 +731,7 @@ map-tiles-bump-pr: ## Open the config PR that moves MAP_ARTIFACT_VERSION to a pu
 		echo "  make map-tiles-bump-pr VERSION=v2 [ENVIRONMENT=staging|production] [ARCHIVE=path] [DRY=1]"; \
 		exit 1; \
 	fi
-	@bun scripts/map-tiles/bump-version.ts --version="$(VERSION)" --environment="$(if $(ENVIRONMENT),$(ENVIRONMENT),staging)" --region="$(if $(REGION),$(REGION),calamuchita)" $(if $(ARCHIVE),--archive="$(ARCHIVE)",) $(if $(DRY),--dry-run,)
+	@bun scripts/map-tiles/bump-version.ts --version="$(VERSION)" --environment="$(if $(ENVIRONMENT),$(ENVIRONMENT),staging)" --region="$(if $(REGION),$(REGION),calamuchita)" $(if $(ARCHIVE),--archive="$(ARCHIVE)",) $(if $(filter-out 0,$(DRY)),--dry-run,)
 
 # ── Self-hosted map assets: glyphs + sprite (public bucket) ────
 # The published style used to point `glyphs` and `sprite` at a third party

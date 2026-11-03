@@ -243,11 +243,20 @@ describe('runVerify', () => {
     expect(result.failures.join(' ')).toContain('MAP_ARTIFACT_VERSION');
   });
 
-  it('fails when the region is not in the catalog at all, so no client can reach it', async () => {
+  it('notes a pending region the catalog does not carry yet, which is the first publish', async () => {
+    // Production today publishes `regions: {}`: the very first publish there must not fail, the
+    // config PR that names the version is what puts the region in the catalog.
     const result = await runVerify(INPUT, deps({ config: {} }));
+    expect(result.failures).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(result.lines.join('\n')).toContain('pending');
+    expect(result.lines.join('\n')).toContain('calamuchita');
+  });
+
+  it('fails on a missing region when the check is asked to prove the version is live', async () => {
+    const result = await runVerify({ ...INPUT, requireLive: true }, deps({ config: {} }));
     expect(result.ok).toBe(false);
     expect(result.failures.join(' ')).toContain('calamuchita');
-    expect(result.failures.join(' ')).toContain('not published');
   });
 
   it('fails when /config advertises another size than the one built', async () => {

@@ -266,22 +266,26 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
 
   const entry = catalogEntry(await publishedConfig(input.apiBase, deps), input.region);
 
-  if (entry === null) {
-    failures.push(
-      `"${input.region}" is not published: /config carries no archive for it, so no client can reach what this run uploaded.`,
-    );
-    return { ok: false, lines, failures };
-  }
-
   // Which url holds the bytes this run published: `/config` answers that only once the version is
   // live, and before that it still names the previous one — comparing against those bytes is how
-  // a publish that succeeded reads as a mismatch.
-  const live = entry.version === input.version;
+  // a publish that succeeded reads as a mismatch. A region the catalog does not carry yet is the
+  // same case one step earlier: the very first publish into an environment.
+  const live = entry?.version === input.version;
   const servedUrl = live
     ? entry.archiveUrl
     : `${input.apiBase}/media/public/tiles/${input.region}/${input.version}.pmtiles`;
 
-  if (!live) {
+  if (entry === null) {
+    if (input.requireLive === true) {
+      failures.push(
+        `/config carries no archive for "${input.region}", so no client can reach ${input.version}: the deploy that names it has not happened.`,
+      );
+    } else {
+      lines.push(
+        `  pending: /config does not carry "${input.region}" yet; the config PR that names ${input.version} is what publishes it, and merging it deploys.`,
+      );
+    }
+  } else if (!live) {
     if (input.requireLive === true) {
       failures.push(
         `/config points clients at ${entry.version ?? 'a url with no version'}, and this run published ${input.version}: merging the config PR (MAP_ARTIFACT_VERSION=${input.version}) deploys it, and until it does no client sees this artifact.`,
@@ -298,9 +302,9 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
   // The size a device compares is the one `/config` advertises, so it is only this version's
   // number once `/config` names it. Before that, the check belongs to the deploy, not to the
   // publish.
-  if (!live) {
+  if (!live || entry === null) {
     lines.push(
-      `  bytes checked at ${servedUrl}; the archived size in /config still describes ${entry.version ?? 'the previous version'} and moves with the deploy.`,
+      `  bytes checked at ${servedUrl}; the size in /config describes ${entry?.version ?? 'no version of this region yet'} and moves with the deploy.`,
     );
   } else if (entry.archiveBytes === null) {
     failures.push(
