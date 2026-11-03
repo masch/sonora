@@ -213,20 +213,39 @@ async function defaultFetchStatus(url: string): Promise<number> {
   return (await fetch(url, { method: 'HEAD' })).status;
 }
 
+/**
+ * A PATH a spawned child can actually use.
+ *
+ * A shell expands `~` in its own PATH; `execvp` does not, so a machine whose PATH carries a
+ * literal `~/dev/…/bin` finds its tools interactively and loses them to a child process. Here
+ * `gh` is exactly that: the run reported an empty failure because the executable was never found.
+ */
+export function expandPath(value: string, home = process.env.HOME ?? ''): string {
+  return value
+    .split(':')
+    .map((entry) =>
+      entry === '~' ? home : entry.startsWith('~/') ? join(home, entry.slice(2)) : entry,
+    )
+    .join(':');
+}
+
 /** The production seams: a real process runner, the repository's own git, and its root. */
 function defaultRun(): RunCommand {
   return async (command) => {
     const { spawnSync } = await import('node:child_process');
+    const env = { ...process.env, ...command.env };
     const result = spawnSync(command.file, command.args, {
       cwd: command.cwd,
       encoding: 'utf8',
-      env: { ...process.env, ...command.env },
+      env: { ...env, PATH: expandPath(env.PATH ?? '') },
       input: command.input,
     });
     return {
       exitCode: result.status ?? 1,
       stdout: result.stdout ?? '',
-      stderr: result.stderr ?? '',
+      // A child that could not be spawned at all has no stderr, and losing that reason is how a
+      // publish reported `gh pr create failed:` with nothing after it.
+      stderr: result.stderr || (result.error === undefined ? '' : result.error.message),
     };
   };
 }
@@ -410,11 +429,16 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     });
 
     if (opened.exitCode !== 0) {
-      // A PR for this head that already exists is the state a re-run wants, not a failure.
-      if (/already exists/i.test(opened.stderr)) {
+      // A PR for this head that already exists is the state a re-run wants, not a failure — and
+      // which stream carries that sentence is `gh`'s business, not ours.
+      const said = `${opened.stderr}\n${opened.stdout}`;
+      if (/already exists/i.test(said)) {
         return { ok: true, branch, message: `a pull request for ${branch} already exists` };
       }
-      return { ok: false, message: `gh pr create failed: ${opened.stderr.trim()}` };
+      return {
+        ok: false,
+        message: `gh pr create failed: ${said.trim() || 'the command exited non-zero and said nothing'}`,
+      };
     }
 
     return { ok: true, branch, prUrl: opened.stdout.trim() || undefined };

@@ -20,6 +20,7 @@ import {
   CONFIG_PATHS,
   branchName,
   configVersion,
+  expandPath,
   bumpConfig,
   bumpVersion,
   versionProblem,
@@ -202,6 +203,16 @@ function recorder(): {
   return { calls, run, fetchStatus: async () => 200 };
 }
 
+describe('expandPath', () => {
+  it('turns the tilde a shell would expand into the home a child process needs', () => {
+    // `gh` lives on a PATH entry written as `~/dev/linux/dotfiles/bin` on at least one machine,
+    // which is why the publish reported an empty failure: the child never found the executable.
+    expect(expandPath('~/bin:/usr/bin', '/home/someone')).toBe('/home/someone/bin:/usr/bin');
+    expect(expandPath('~:/usr/bin', '/home/someone')).toBe('/home/someone:/usr/bin');
+    expect(expandPath('/usr/bin', '/home/someone')).toBe('/usr/bin');
+  });
+});
+
 describe('bumpVersion', () => {
   it('writes the version to a branch without touching the worktree or the current branch', async () => {
     const repo = scratchRepo();
@@ -314,6 +325,38 @@ describe('bumpVersion', () => {
 
       expect(result.ok).toBe(true);
       expect(result.alreadyCurrent).toBe(true);
+      expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('treats an already-existing pull request as done, whichever stream says so', async () => {
+    const repo = scratchRepo();
+    const { calls, run, fetchStatus } = recorder();
+    try {
+      const result = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        {
+          run: async (command) => {
+            if (command.file === 'gh') {
+              // gh writes this sentence where it likes, and reading only stderr lost it once.
+              return {
+                exitCode: 1,
+                stdout: 'a pull request for branch "x" already exists',
+                stderr: '',
+              };
+            }
+            return run(command);
+          },
+          fetchStatus,
+          repoRoot: repo.root,
+          git: realGit(repo.root),
+        },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.message).toContain('already exists');
       expect(calls.filter((call) => call.file === 'gh')).toHaveLength(0);
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
