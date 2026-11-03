@@ -3,11 +3,39 @@ import Constants from 'expo-constants';
 import type { RemoteConfigPayload } from '@sonora/shared';
 import { DEFAULT_REMOTE_CONFIG, RemoteConfigPayloadSchema, gte } from '@sonora/shared';
 import { getCachedConfig, setCachedConfig } from '../storage/config-cache';
+import type { CachedConfigRead, CachedRemoteConfig } from '../storage/config-cache';
 import { APP_CONFIG } from '../config/app-config';
 import { ApiClient } from '../services/api-client';
 import { logger } from '../utils/logger';
 
-const CONFIG_TIMEOUT_MS = 3000;
+/**
+ * Budget for one `/config` attempt.
+ *
+ * Three seconds was shorter than a cold radio costs on Android — DNS, then TCP,
+ * then TLS, with the radio itself waking up first — so the run that matters most
+ * (the cold start after the app had been closed) was the one most likely to be
+ * cut off before its answer arrived. Config renders from cache first, so a longer
+ * budget delays nothing the walker can see.
+ */
+const CONFIG_TIMEOUT_MS = 8000;
+
+/**
+ * Attempts per revalidation. One attempt plus two retries retires the failure the
+ * field report describes (a single run aborted, previous payload kept for good)
+ * without turning a genuinely offline phone into a busy loop.
+ */
+const CONFIG_MAX_ATTEMPTS = 3;
+
+/** 500 ms, then 1 s: enough that a retry never rides a radio that is still waking. */
+const CONFIG_RETRY_BASE_MS = 500;
+
+/**
+ * How old a cached payload may be before it stops being an answer in its own
+ * right. Half an hour is short enough that a map version published in the
+ * morning reaches a phone opened after lunch, and long enough that an ordinary
+ * app switch reuses the cache instead of insisting on the network.
+ */
+const CONFIG_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 
 const INITIAL_REMOTE_CONFIG: RemoteConfigPayload = {
   ...DEFAULT_REMOTE_CONFIG,
@@ -107,24 +135,62 @@ interface RemoteConfigState {
   versionStatus: VersionStatus;
   /** Initialise config: read cache, fetch API, merge. Call once at app startup. */
   init: () => Promise<void>;
-  /** Re-fetch config from the API. Call to refresh at any time. */
+  /**
+   * Re-fetch config from the API, cache first for instant render.
+   *
+   * Safe to call at any time: a call that lands while a run is still in flight is
+   * dropped rather than racing it to the cache, and a run that fails is retried
+   * before the store settles on what it already had.
+   */
   refetch: () => void;
 }
 
+/**
+ * A cache read arrives either as this build's stamped entry or, from a cache
+ * written before the stamp existed (and from the browser bundle's cache module,
+ * which still writes the bare payload), as the payload alone. Both render; the
+ * payload alone cannot say how old it is, and an unknown age is not a trusted age.
+ */
+function toCachedEntry(read: CachedConfigRead): CachedRemoteConfig {
+  return 'config' in read ? read : { config: read, fetchedAt: null };
+}
+
+function isCachedConfigStale(entry: CachedRemoteConfig): boolean {
+  return entry.fetchedAt === null || Date.now() - entry.fetchedAt > CONFIG_CACHE_MAX_AGE_MS;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
-  async function loadConfig(signal: AbortSignal) {
+  /** One `/config` attempt with its own budget, so a retry starts from a live signal. */
+  async function requestConfig(): Promise<Partial<RemoteConfigPayload>> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG_TIMEOUT_MS);
+    try {
+      return await ApiClient.get<Partial<RemoteConfigPayload>>('/config', {
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function loadConfig() {
     set({ isLoading: true, error: null });
 
     // Read cache immediately for instant render
-    let cached: RemoteConfigPayload | null = null;
+    let cached: CachedRemoteConfig | null = null;
     try {
-      cached = await getCachedConfig();
+      const read = await getCachedConfig();
+      cached = read ? toCachedEntry(read) : null;
       if (cached) {
         // Deep-merge cache into defaults so nested partial values
         // (e.g. geofence with only radiusMeters) don't lose default fields.
         const merged: Record<string, unknown> = { ...INITIAL_REMOTE_CONFIG };
-        for (const key of Object.keys(cached) as (keyof RemoteConfigPayload)[]) {
-          const val = cached[key];
+        for (const key of Object.keys(cached.config) as (keyof RemoteConfigPayload)[]) {
+          const val = cached.config[key];
           if (val !== undefined && typeof val === 'object' && val !== null && !Array.isArray(val)) {
             (merged as Record<string, unknown>)[key] = {
               ...((merged as Record<string, unknown>)[key] as Record<string, unknown>),
@@ -144,15 +210,40 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
       );
     }
 
-    // Try API — overlay cache first, then API wins over both cache and defaults.
-    let apiError: unknown = null;
-    try {
-      const raw = await ApiClient.get<Partial<RemoteConfigPayload>>('/config', { signal });
-      const merged = mergeRemoteConfig(INITIAL_REMOTE_CONFIG, cached ? { ...cached, ...raw } : raw);
-      await setCachedConfig(merged);
-      set({ config: merged, error: null });
-    } catch (err) {
-      apiError = err;
+    // A fresh cache is already an answer, so one failed attempt may settle on it.
+    // A stale one is only what we happen to be showing, so the whole retry budget
+    // is spent before the store accepts it — that is what keeps a cached payload
+    // from winning forever. With no cache at all there is nothing to settle on.
+    const attempts = cached && !isCachedConfigStale(cached) ? 1 : CONFIG_MAX_ATTEMPTS;
+
+    let lastError: unknown = null;
+    let settled = false;
+
+    for (let attempt = 0; attempt < attempts && !settled; attempt += 1) {
+      if (attempt > 0) await delay(CONFIG_RETRY_BASE_MS * 2 ** (attempt - 1));
+      try {
+        const raw = await requestConfig();
+        // API wins over both cache and defaults.
+        const merged = mergeRemoteConfig(
+          INITIAL_REMOTE_CONFIG,
+          cached ? { ...cached.config, ...raw } : raw,
+        );
+        set({ config: merged, error: null });
+        lastError = null;
+        try {
+          await setCachedConfig(merged);
+        } catch (err) {
+          // A cache we could not write costs the next cold start its head start;
+          // it does not invalidate the payload we just got.
+          logger.warn(
+            '[RemoteConfigStore] Failed to write config cache',
+            (err as Error)?.message ?? err,
+          );
+        }
+        settled = true;
+      } catch (err) {
+        lastError = err;
+      }
     }
 
     // ── Compute versionStatus (server-authoritative grace period) ───
@@ -169,18 +260,28 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
 
     set({ versionStatus });
 
-    if (apiError) {
-      if (apiError instanceof Error && apiError.name === 'AbortError') {
-        // Timeout — not an actionable error, keep current config
-        set({ isLoading: false });
-        return;
-      }
-      if (!cached) {
-        set({ error: apiError instanceof Error ? apiError : new Error('Failed to load config') });
-      }
+    // An abort is not an actionable error: with a cache the walker keeps a
+    // working app, and without one the defaults still carry the build's floor.
+    const aborted = lastError instanceof Error && lastError.name === 'AbortError';
+    if (lastError && !aborted && !cached) {
+      set({ error: lastError instanceof Error ? lastError : new Error('Failed to load config') });
     }
 
     set({ isLoading: false });
+  }
+
+  let inFlight = false;
+
+  async function runConfigRefresh(): Promise<void> {
+    // A foreground resume can land while the cold-start run is still waiting on a
+    // sleeping radio; two runs would race to write the cache with different ages.
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      await loadConfig();
+    } finally {
+      inFlight = false;
+    }
   }
 
   return {
@@ -189,20 +290,10 @@ export const useRemoteConfigStore = create<RemoteConfigState>((set, get) => {
     error: null,
     versionStatus: 'ok',
 
-    init: async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), CONFIG_TIMEOUT_MS);
-      try {
-        await loadConfig(controller.signal);
-      } finally {
-        clearTimeout(timer);
-      }
-    },
+    init: runConfigRefresh,
 
     refetch: () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), CONFIG_TIMEOUT_MS);
-      loadConfig(controller.signal).finally(() => clearTimeout(timer));
+      void runConfigRefresh();
     },
   };
 });

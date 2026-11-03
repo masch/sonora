@@ -47,6 +47,37 @@ const DEFAULT_APP_VERSION = {
 
 const fullDefaults: RemoteConfigPayload = { ...DEFAULT_REMOTE_CONFIG, ...DEFAULT_APP_VERSION };
 
+/**
+ * A cache entry as the store reads it: the payload and the moment it was
+ * fetched. `ageMs` decides whether the payload is still an answer in its own
+ * right, which is what the revalidation tests below turn on.
+ */
+function cachedEntry(radiusMeters: number, ageMs: number) {
+  return {
+    config: {
+      ...fullDefaults,
+      geofence: {
+        trip: { radiusMeters, defaultMode: 'formatDefaultRadius' },
+        track: { radiusMeters, defaultMode: 'formatDefaultRadius' },
+        bypassGeofence: false,
+        bypassIosBrowser: true,
+      },
+    } as RemoteConfigPayload,
+    fetchedAt: Date.now() - ageMs,
+  };
+}
+
+/** A `/config` answer that differs from the defaults in one readable field. */
+function remoteRadius(radiusMeters: number) {
+  return {
+    geofence: {
+      trip: { radiusMeters, defaultMode: 'formatDefaultRadius' },
+      track: { radiusMeters, defaultMode: 'formatDefaultRadius' },
+      bypassGeofence: false,
+    },
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   useRemoteConfigStore.setState({
@@ -203,7 +234,7 @@ describe('RemoteConfigStore', () => {
         layers: { showControl: false, groups: [] },
       },
     };
-    mockGetCachedConfig.mockResolvedValue(cachedConfig);
+    mockGetCachedConfig.mockResolvedValue({ config: cachedConfig, fetchedAt: Date.now() });
     mockApiGet.mockRejectedValue(new Error('Offline'));
 
     await useRemoteConfigStore.getState().init();
@@ -309,7 +340,7 @@ describe('RemoteConfigStore', () => {
     const partialCache = {
       geofence: { trip: { radiusMeters: 999 } },
     } as unknown as RemoteConfigPayload;
-    mockGetCachedConfig.mockResolvedValue(partialCache);
+    mockGetCachedConfig.mockResolvedValue({ config: partialCache, fetchedAt: Date.now() });
     mockApiGet.mockRejectedValue(new Error('Offline'));
 
     await useRemoteConfigStore.getState().init();
@@ -427,6 +458,161 @@ describe('RemoteConfigStore', () => {
     });
 
     expect(useRemoteConfigStore.getState().config.geofence.bypassGeofence).toBe(false);
+  });
+
+  // ── Revalidation (S1, S2, S5, S6) ───────────────────────────────
+  //
+  // The field report: a published map version did not reach the phone until the
+  // app data was cleared, because `/config` was fetched once per JS process and
+  // a single aborted run kept the previous payload for good. These tests pin the
+  // three ways that stops being true: a failed run is retried, a cold start gets
+  // a budget a sleeping radio can meet, and a cached payload past its max age is
+  // never the final answer.
+
+  describe('revalidation', () => {
+    it('retries a failed run instead of keeping the previous payload for good', async () => {
+      mockApiGet
+        .mockRejectedValueOnce(new Error('Network Error'))
+        .mockResolvedValueOnce(remoteRadius(700));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(2);
+      const state = useRemoteConfigStore.getState();
+      expect(state.config.geofence.trip.radiusMeters).toBe(700);
+      expect(state.error).toBeNull();
+    });
+
+    it('retries a run that aborted and never surfaces the abort as an error', async () => {
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(450, 60 * 60 * 1000));
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      mockApiGet.mockRejectedValue(abortError);
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(3);
+      const state = useRemoteConfigStore.getState();
+      expect(state.config.geofence.trip.radiusMeters).toBe(450);
+      expect(state.error).toBeNull();
+      expect(state.isLoading).toBe(false);
+    });
+
+    it('stops after a bounded number of attempts', async () => {
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(400, 60 * 60 * 1000));
+      mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(3);
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(400);
+      expect(useRemoteConfigStore.getState().error).toBeNull();
+    });
+
+    it('gives a cold-start answer longer than the old three-second budget', async () => {
+      // A phone whose radio is asleep answers late. The run has to still be
+      // alive at five seconds, which the previous 3 s budget was not.
+      jest.useFakeTimers();
+      try {
+        const signals: AbortSignal[] = [];
+        mockApiGet.mockImplementation((_path: string, options?: { signal?: AbortSignal }) => {
+          const signal = options!.signal!;
+          signals.push(signal);
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => {
+              const error = new Error('The operation was aborted');
+              error.name = 'AbortError';
+              reject(error);
+            });
+          });
+        });
+
+        const initPromise = useRemoteConfigStore.getState().init();
+        await jest.advanceTimersByTimeAsync(5_000);
+
+        expect(signals).toHaveLength(1);
+        expect(signals[0].aborted).toBe(false);
+
+        // Still bounded: the budget is longer, not absent.
+        await jest.advanceTimersByTimeAsync(60_000);
+        await initPromise;
+        expect(signals[0].aborted).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('takes a freshly cached payload as the answer after one attempt', async () => {
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(420, 0));
+      mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(1);
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(420);
+    });
+
+    it('keeps trying the network while the cached payload is past its max age', async () => {
+      mockGetCachedConfig.mockResolvedValue(cachedEntry(410, 24 * 60 * 60 * 1000));
+      mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(3);
+      // The stale payload still renders: the retries decide the answer, they do
+      // not blank the screen while they run.
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(410);
+    });
+
+    it('does not trust a cache that carries no fetch time', async () => {
+      // Builds before this one wrote the payload alone, and its age is
+      // unknowable, so it cannot be the final answer either.
+      mockGetCachedConfig.mockResolvedValue(fullDefaults);
+      mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+      await useRemoteConfigStore.getState().init();
+
+      expect(mockApiGet).toHaveBeenCalledTimes(3);
+      expect(useRemoteConfigStore.getState().config).toEqual(fullDefaults);
+    });
+
+    it('does not start a second run while one is in flight', async () => {
+      let resolveFirst: ((value: unknown) => void) | null = null;
+      mockApiGet.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      );
+      mockApiGet.mockResolvedValue(remoteRadius(600));
+
+      const initPromise = useRemoteConfigStore.getState().init();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+      useRemoteConfigStore.getState().refetch();
+      expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+      resolveFirst!(remoteRadius(550));
+      await initPromise;
+      expect(useRemoteConfigStore.getState().config.geofence.trip.radiusMeters).toBe(550);
+    });
+
+    it('recomputes the version status from the payload a revalidation won', async () => {
+      await useRemoteConfigStore.getState().init();
+      expect(useRemoteConfigStore.getState().versionStatus).toBe('ok');
+
+      // A foreground revalidation is the path a published minimum version now
+      // reaches a running app by, so the status has to be recomputed there too.
+      mockApiGet.mockResolvedValue({
+        appVersion: { minimumVersion: '2.0.0', blockOlderVersions: false },
+      });
+      useRemoteConfigStore.getState().refetch();
+
+      await waitFor(() => {
+        expect(useRemoteConfigStore.getState().versionStatus).toBe('warn');
+      });
+    });
   });
 });
 
