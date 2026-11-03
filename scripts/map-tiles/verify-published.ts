@@ -52,6 +52,14 @@ export interface VerifyInput {
   archivePath: string;
   /** The size `/config` advertised before the build, when the caller read it. */
   previousBytes: number | null;
+  /**
+   * Whether `/config` has to name this version for the run to pass.
+   *
+   * Publishing happens before the config moves, so right after an upload a `/config` naming the
+   * previous version is the expected state and not a failure. After the config PR merged and the
+   * Worker deployed, it is exactly the failure worth catching — that is `--require-live`.
+   */
+  requireLive?: boolean;
   apiBase: string;
 }
 
@@ -214,9 +222,17 @@ export async function runVerify(input: VerifyInput, deps: VerifyDeps): Promise<V
   }
 
   if (entry.version !== input.version) {
-    failures.push(
-      `/config points clients at ${entry.version ?? 'a url with no version'}, and this run published ${input.version}: set MAP_ARTIFACT_VERSION=${input.version} (apps/api/wrangler.staging.toml) and deploy, or publish ${entry.version ?? 'that version'} instead.`,
-    );
+    if (input.requireLive === true) {
+      failures.push(
+        `/config points clients at ${entry.version ?? 'a url with no version'}, and this run published ${input.version}: merging the config PR (MAP_ARTIFACT_VERSION=${input.version}) deploys it, and until it does no client sees this artifact.`,
+      );
+    } else {
+      // Publishing first is the whole procedure: the objects are immutable and unread until the
+      // config names their version, so this is the step that has not happened yet.
+      lines.push(
+        `  pending: /config still names ${entry.version ?? 'no version'}; the config PR moves MAP_ARTIFACT_VERSION to ${input.version}, and merging it deploys.`,
+      );
+    }
   }
 
   // The size is what a device compares to decide whether the archive it holds is still
@@ -283,6 +299,7 @@ const USAGE = [
   '    --archive=<cache>/out/calamuchita.pmtiles [--previous-bytes=<n>] [--api=<origin>]',
   '  bun scripts/map-tiles/verify-published.ts --snapshot --region=calamuchita [--api=<origin>]',
   '  bun scripts/map-tiles/verify-published.ts --assert-free --region=calamuchita --version=v2 [--api=<origin>]',
+  '  add --require-live to the verify form once the config PR merged and deployed.',
 ].join('\n');
 
 /** `--name=value` or `--name value`, the same shape the other scripts use. */
@@ -337,7 +354,14 @@ async function main(argv: string[]): Promise<number> {
   }
 
   const result = await runVerify(
-    { region, version, archivePath: resolve(archive), previousBytes, apiBase },
+    {
+      region,
+      version,
+      archivePath: resolve(archive),
+      previousBytes,
+      apiBase,
+      requireLive: argv.includes('--require-live'),
+    },
     deps,
   );
 

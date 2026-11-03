@@ -138,13 +138,30 @@ describe('runVerify', () => {
     expect(result.lines.join('\n')).toContain(`served ${BUILT.byteLength} bytes`);
   });
 
-  it('fails when /config still points clients at another version', async () => {
+  it('notes the pending version bump when /config still names another version', async () => {
+    // Publishing happens before the config moves: the objects are immutable and nobody reads
+    // them until `/config` names that version, so a publish that has not reached clients yet
+    // is a step of the procedure and not a failure.
     const result = await runVerify(
       { ...INPUT, version: 'v2' },
       deps({ config: catalog('v1', BUILT.byteLength) }),
     );
+    expect(result.failures).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(result.lines.join('\n')).toContain('pending');
+    expect(result.lines.join('\n')).toContain('v1');
+    expect(result.lines.join('\n')).toContain('v2');
+    expect(result.lines.join('\n')).toContain('MAP_ARTIFACT_VERSION');
+  });
+
+  it('fails on that mismatch when the check is asked to prove the version is live', async () => {
+    // `--require-live` is the post-deploy check: after the config PR merged and the Worker
+    // deployed, a `/config` naming another version means clients are not on this artifact.
+    const result = await runVerify(
+      { ...INPUT, version: 'v2', requireLive: true },
+      deps({ config: catalog('v1', BUILT.byteLength) }),
+    );
     expect(result.ok).toBe(false);
-    expect(result.failures.join(' ')).toContain('v1');
     expect(result.failures.join(' ')).toContain('v2');
     expect(result.failures.join(' ')).toContain('MAP_ARTIFACT_VERSION');
   });
