@@ -73,13 +73,23 @@ describe('bumpConfig', () => {
     expect(() => bumpConfig(`${CONFIG}MAP_ARTIFACT_VERSION = "v0"\n`, 'v2')).toThrow(/twice/);
   });
 
-  it('names the branch after the version it publishes', () => {
-    expect(branchName('v2')).toBe('chore/map-artifact-version-v2');
+  it('names the branch after the environment and the version, so the two never collide', () => {
+    expect(branchName('staging', 'v2')).toBe('chore/map-artifact-version-staging-v2');
+    expect(branchName('production', 'v2')).toBe('chore/map-artifact-version-production-v2');
+    // The documented examples use one version for both environments: one branch would mean the
+    // production run force-updating the staging branch and landing under its pull request.
+    expect(branchName('staging', 'v2')).not.toBe(branchName('production', 'v2'));
   });
 });
 
 /** A repository shaped like this one, with `origin/main` holding the config to bump. */
-function scratchRepo(): { root: string; branch: () => string; diskVersion: () => string } {
+function scratchRepo(): {
+  root: string;
+  branch: () => string;
+  diskVersion: () => string;
+  /** What a merge of the config PR looks like: `origin/main` moves onto that branch. */
+  promoteToMain: (branch: string) => void;
+} {
   const root = mkdtempSync(join(tmpdir(), 'map-tiles-bump-'));
   const env = {
     ...process.env,
@@ -112,6 +122,23 @@ function scratchRepo(): { root: string; branch: () => string; diskVersion: () =>
     root: work,
     branch: () => git(['rev-parse', '--abbrev-ref', 'HEAD']).trim(),
     diskVersion: () => readFileSync(join(work, CONFIG_PATHS.staging), 'utf8'),
+    promoteToMain: (branch: string) => {
+      git(['push', '--quiet', 'origin', `${branch}:main`]);
+      git(['fetch', '--quiet', 'origin', 'main']);
+    },
+  };
+}
+
+/** A runner whose `git push` fails, as a network drop or a rejected ref would. */
+function failingPush(): { run: RunCommand } {
+  const { run } = recorder();
+  return {
+    run: async (command) => {
+      if (command.file === 'git' && command.args.includes('push')) {
+        return { exitCode: 1, stdout: '', stderr: 'the remote hung up' } as CommandResult;
+      }
+      return run(command);
+    },
   };
 }
 
@@ -166,7 +193,7 @@ describe('bumpVersion', () => {
       );
 
       expect(result.ok).toBe(true);
-      expect(result.branch).toBe('chore/map-artifact-version-v2');
+      expect(result.branch).toBe('chore/map-artifact-version-staging-v2');
       expect(result.prUrl).toBe('https://github.com/masch/sonora/pull/999');
       // The operator is still on their own branch, with their own edit still on disk.
       expect(repo.branch()).toBe('feat/something');
@@ -174,7 +201,7 @@ describe('bumpVersion', () => {
       // And the config commit carries the bump alone.
       const committed = realGit(repo.root)([
         'show',
-        'chore/map-artifact-version-v2:apps/api/wrangler.staging.toml',
+        'chore/map-artifact-version-staging-v2:apps/api/wrangler.staging.toml',
       ]);
       expect(committed).toContain('MAP_ARTIFACT_VERSION = "v2"');
       expect(committed).not.toContain('local edit');
@@ -182,13 +209,13 @@ describe('bumpVersion', () => {
       const pr = calls.find((call) => call.file === 'gh');
       expect(pr?.args).toContain('--base');
       expect(pr?.args).toContain('main');
-      expect(pr?.args).toContain('chore/map-artifact-version-v2');
+      expect(pr?.args).toContain('chore/map-artifact-version-staging-v2');
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
     }
   });
 
-  it('does nothing when the config already names that version', async () => {
+  it('does nothing once origin/main itself names that version', async () => {
     const repo = scratchRepo();
     const { calls, run } = recorder();
     try {
@@ -198,7 +225,9 @@ describe('bumpVersion', () => {
       );
       expect(first.ok).toBe(true);
 
-      // The same version again: the second run finds it published in the config and stops.
+      // The PR merged: the only state that means "this version is already in the config".
+      repo.promoteToMain('chore/map-artifact-version-staging-v2');
+
       const second = await bumpVersion(
         { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
         { run, repoRoot: repo.root, git: realGit(repo.root) },
@@ -206,6 +235,34 @@ describe('bumpVersion', () => {
       expect(second.ok).toBe(true);
       expect(second.alreadyCurrent).toBe(true);
       expect(calls.filter((call) => call.file === 'gh')).toHaveLength(1);
+    } finally {
+      rmSync(repo.root, { recursive: true, force: true });
+    }
+  });
+
+  it('retries the push and the pull request when the previous run died before GitHub', async () => {
+    const repo = scratchRepo();
+    const failing = failingPush();
+    try {
+      // The local branch is created before the push, so a failure here leaves one behind that
+      // must not be mistaken for a completed run.
+      const failed = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run: failing.run, repoRoot: repo.root, git: realGit(repo.root) },
+      );
+      expect(failed.ok).toBe(false);
+      expect(failed.message).toContain('push');
+
+      const retry = recorder();
+      const second = await bumpVersion(
+        { environment: 'staging', version: 'v2', region: 'calamuchita', archivePath: null },
+        { run: retry.run, repoRoot: repo.root, git: realGit(repo.root) },
+      );
+      expect(second.ok).toBe(true);
+      expect(second.prUrl).toBe('https://github.com/masch/sonora/pull/999');
+      // The retry really pushed and really asked for a PR, instead of trusting the local branch.
+      expect(retry.calls.filter((call) => call.args.includes('push'))).toHaveLength(1);
+      expect(retry.calls.filter((call) => call.file === 'gh')).toHaveLength(1);
     } finally {
       rmSync(repo.root, { recursive: true, force: true });
     }

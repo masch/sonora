@@ -126,9 +126,16 @@ export function bumpConfig(text: string, version: string): string {
   return text.replace(VERSION_LINE, `MAP_ARTIFACT_VERSION = "${version}"`);
 }
 
-/** The branch a version's config PR lives on: one per version, so a re-run finds its own. */
-export function branchName(version: string): string {
-  return `chore/map-artifact-version-${version}`;
+/**
+ * The branch a config PR lives on: one per environment **and** version.
+ *
+ * Keying it by version alone collides the two environments, because the documented examples use
+ * the same version for both: a production run would force-update the staging branch, land
+ * production's config under a staging PR, and then read `gh`'s "a pull request already exists" as
+ * success — so production's PR never opens and staging's PR carries the wrong environment.
+ */
+export function branchName(environment: BumpEnvironment, version: string): string {
+  return `chore/map-artifact-version-${environment}-${version}`;
 }
 
 function commitSubject(version: string): string {
@@ -223,7 +230,7 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     });
 
   const path = CONFIG_PATHS[input.environment];
-  const branch = branchName(input.version);
+  const branch = branchName(input.environment, input.version);
 
   // A fetch that cannot run (no remote, no network) leaves the local ref in place; the run says so
   // rather than silently basing the commit on whatever ref happened to be there.
@@ -248,30 +255,9 @@ export async function bumpVersion(input: BumpInput, deps: BumpDeps = {}): Promis
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
 
-  // A re-run of the same version finds the branch it opened before and stops there, instead of
-  // pushing a second commit onto a PR that is already waiting for a human.
-  const existing = await run({
-    file: 'git',
-    args: ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`],
-    cwd: repoRoot,
-  });
-  if (existing.exitCode === 0) {
-    let committed = '';
-    try {
-      committed = git(['show', `${branch}:${path}`]);
-    } catch {
-      committed = '';
-    }
-    if (committed.includes(`MAP_ARTIFACT_VERSION = "${input.version}"`)) {
-      return {
-        ok: true,
-        alreadyCurrent: true,
-        branch,
-        message: `${branch} already carries ${input.version}`,
-      };
-    }
-  }
-
+  // No early return on a local branch: the branch is created here, so a run that failed at the
+  // push or at `gh pr create` leaves one behind that proves nothing. A re-run redoes both, and
+  // `gh` answering "a pull request already exists" is the only re-run state worth trusting.
   const next = bumpConfig(current, input.version);
   const published = publishedArchive(input.archivePath);
   const body = prBody(input, published);
