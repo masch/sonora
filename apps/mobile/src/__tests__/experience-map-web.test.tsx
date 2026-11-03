@@ -48,6 +48,12 @@ const ARCHIVE_RETRYING = 'https://api.example/media/public/tiles/retrying/v1.pmt
 const STYLE_RETRYING = 'https://api.example/media/public/styles/retrying.json';
 /** A transfer this suite holds open, so the wait it starts can be observed. */
 const ARCHIVE_HELD = 'https://api.example/media/public/tiles/held/v1.pmtiles';
+/** Three archives of their own, so the credit cases never share a registry entry. */
+const ATTRIBUTED = 'https://api.example/media/public/tiles/attributed/v7.pmtiles';
+const STYLE_ATTRIBUTED = 'https://api.example/media/public/styles/attributed.json';
+/** A url the app cannot key by version, which is the resolved answer for an unknown one. */
+const UNKEYED = 'https://api.example/media/public/tiles/unkeyed/basemap.pmtiles';
+const UNATTRIBUTED = 'https://api.example/media/public/tiles/unattributed/v7.pmtiles';
 
 /** The logger, as jest sees it: a drawn map's error is reported and nothing more. */
 const mockedLogger = logger as unknown as { error: jest.Mock };
@@ -72,6 +78,19 @@ function styleWith(glyphs: boolean): StyleSpecification {
     version: 8,
     ...(glyphs ? { glyphs: 'https://example.com/{fontstack}/{range}.pbf' } : {}),
     sources: { basemap: { type: 'vector', url: ARCHIVE } },
+    layers: [],
+  };
+}
+
+/** The notice the published style carries, markup and all. */
+const OSM_NOTICE =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/** A style that publishes a credit, the way the published one does. */
+function styleWithAttribution(attribution: string): StyleSpecification {
+  return {
+    version: 8,
+    sources: { basemap: { type: 'vector', url: ARCHIVE, attribution } },
     layers: [],
   };
 }
@@ -149,6 +168,74 @@ describe('ExperienceMap (web)', () => {
     expect(style.sources.basemap.url).toMatch(/^sonora:\/\//);
     expect(style.sources.basemap.type).toBe('vector');
     expect(mockAddProtocol).toHaveBeenCalledWith('sonora', expect.anything());
+  });
+
+  it('adds the drawn version to the credit the style document publishes', async () => {
+    // The style is only a url here: the document is fetched like the published one, and
+    // the notice is composed where the renderer already holds it.
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(2048),
+      json: async () => styleWithAttribution(OSM_NOTICE),
+    }) as unknown as typeof fetch;
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ATTRIBUTED, styleUrl: STYLE_ATTRIBUTED, archiveVersion: 'v7' }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+
+    const style = mockMapInstances[0].options.style as {
+      sources: { basemap: { attribution?: string } };
+    };
+    // The style's own words, and the version of the archive this device is drawing.
+    expect(style.sources.basemap.attribution).toBe(`${OSM_NOTICE} (v7)`);
+  });
+
+  it('leaves the credit as the style wrote it when the version is unknown', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(2048),
+      json: async () => styleWithAttribution(OSM_NOTICE),
+    }) as unknown as typeof fetch;
+
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: UNKEYED,
+          archiveVersion: null,
+          style: styleWithAttribution(OSM_NOTICE),
+        }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+
+    const style = mockMapInstances[0].options.style as {
+      sources: { basemap: { attribution?: string } };
+    };
+    // No `(v?)`, no `(v0)`: an answer nobody has is not printed.
+    expect(style.sources.basemap.attribution).toBe(OSM_NOTICE);
+  });
+
+  it('fabricates no credit for a style that publishes none', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: UNATTRIBUTED, archiveVersion: 'v7', style: styleWith(false) }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+
+    const style = mockMapInstances[0].options.style as {
+      sources: { basemap: Record<string, unknown> };
+    };
+    expect(style.sources.basemap).not.toHaveProperty('attribution');
   });
 
   it('applies the reference documents once the map is loaded', async () => {

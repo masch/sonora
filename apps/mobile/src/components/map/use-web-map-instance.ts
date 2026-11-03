@@ -12,6 +12,7 @@ import {
 import { toLngLatBounds, type GeoBounds } from '@sonora/shared';
 
 import { ensureLocalProtocol, type MapSourceState } from '@/hooks/use-map-source';
+import { attributionWithVersion } from '@/utils/map-attribution';
 import { logger } from '@/utils/logger';
 
 import { documentKeyOfLayer, type MapLoadErrorCode, type MapSourceConfig } from './map-view.types';
@@ -65,8 +66,14 @@ export interface WebMapInstanceOptions {
   /**
    * What the style is built from: the style the caller brought, the url the archive's
    * own style is downloaded from, and the attribution that travels with the tiles.
+   *
+   * `archiveVersion` is here because the credit is composed here: the notice belongs to
+   * the style document, the version belongs to the archive, and the style this hook
+   * hands MapLibre is the only place the web renderer holds both at once — the document
+   * is either in memory or about to be, and nothing that reaches the map may fetch the
+   * style again to say what it already says.
    */
-  source: Pick<MapSourceConfig, 'style' | 'styleUrl' | 'attribution'>;
+  source: Pick<MapSourceConfig, 'style' | 'styleUrl' | 'attribution' | 'archiveVersion'>;
   /** The whole download the map's style points at, once it is in memory. */
   archive: Pick<MapSourceState, 'status' | 'sourceUrl' | 'style'>;
   /**
@@ -197,14 +204,24 @@ export function useWebMapInstance({
           const baseStyle = source.style ?? archive.style ?? inlineStyle;
 
           // The archive is already in memory: the style points at the local protocol.
+          // The credit is the document's own, extended with the version of the archive
+          // this device is drawing, so the walker can read both from one notice. The
+          // suffix is written here rather than into the cached document: the document is
+          // the publisher's and the version is this device's.
+          const basemapSource = baseStyle.sources.basemap as VectorSourceSpecification | undefined;
+          const attribution = attributionWithVersion(
+            basemapSource?.attribution,
+            source.archiveVersion,
+          );
           style = {
             ...baseStyle,
             sources: {
               ...baseStyle.sources,
               basemap: {
-                ...(baseStyle.sources.basemap as VectorSourceSpecification),
+                ...basemapSource,
                 type: 'vector',
                 url: archive.sourceUrl,
+                ...(attribution === undefined ? {} : { attribution }),
               },
             },
           };
@@ -301,6 +318,7 @@ export function useWebMapInstance({
     source.style,
     source.styleUrl,
     source.attribution,
+    source.archiveVersion,
     centerLng,
     centerLat,
     zoom,

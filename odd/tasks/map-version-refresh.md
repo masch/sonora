@@ -16,6 +16,10 @@ S5 — La pregunta que fija el alcance, verbatim: "como se puede hacer cuando se
 
 S6 — El diagnóstico medido en el repo: `/config` se pide una sola vez por proceso (`apps/mobile/src/app/_layout.tsx:93`), con 3 s de presupuesto (`remote-config-store.ts:16`), y un abort deja la config anterior sin reintento (`remote-config-store.ts:170-175`); `refetch()` existe (`:202`) y ningún componente lo llama. Todo lo demás está versionado: el archivo en disco lleva la versión en el nombre (`map-archives.ts:99-101`) y el estilo se cachea por huella de URL (`map-style-cache.ts:41-49`), así que una `/config` vieja es la única causa posible de que el mapa quede viejo.
 
+S7 — Pedido posterior, verbatim: "se podria poner la version tmabien el mensaje de la imagen? OpenStreetMap contributors (vXXX)". Decisión de forma, verbatim: la atribución se lee "© OpenStreetMap contributors (v7)" — la versión adentro del mismo cartel, sin traducir el texto legal ni agregar separadores. Se entrega en el mismo PR que S3/S4.
+
+S8 — La atribución no se inventa: el aviso base sale del documento de estilo que el dispositivo ya dibuja (`sources.basemap.attribution`), y la app sólo le agrega ` (vN)` con la misma versión que resolvió para el source. Sin versión parseable no hay sufijo — nunca `(v?)` ni `(v0)`.
+
 ## Tasks
 
 | ID  | Qué                                                                                                                                                                                 | Specs          | Ruta     | Commit                                                                                           |
@@ -34,3 +38,5 @@ L3 — "corrijamos, pero también se podria hacer que en el boton del mapa se mu
 L4 — Decisión de alcance: la versión se muestra dentro del control de capas (no como badge sobre el mapa ni tras long-press), y el arreglo cubre también el arranque en frío: "como se puede hacer cuando se reinicia la app?".
 
 L5 — Entrega: una sola rama y un solo PR por pedido explícito ("todo en el mismo pr"). El PR suma 1036 líneas autoradas en tres work units — `40c0e04` (etiquetas, #641), `51ec8c8` (config, #644) y `6a20dda` (versión en la hoja, #644) — por encima del slice de ~400, así que la revisión se apoya en el corte por unidad de commit en lugar de en PRs encadenados; el gate humano 🥦 se resetea con cada push.
+
+L6 — "se podria poner la version tmabien el mensaje de la imagen? OpenStreetMap contributors (vXXX)". Forma elegida: `© OpenStreetMap contributors (v7)`. Se suma al PR ya abierto por pedido del dueño, así que el gate 🥦 y la revisión del candidato se resetean otra vez.

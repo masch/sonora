@@ -197,6 +197,24 @@ function styleWith(glyphs: boolean): StyleSpecification {
   } as StyleSpecification;
 }
 
+/** The credit the published style carries, markup and all. */
+const OSM_NOTICE =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/** The same document publishing a credit, the way the published one does. */
+function styleWithAttribution(attribution: string): StyleSpecification {
+  return {
+    ...styleWith(false),
+    sources: { basemap: { type: 'vector', url: ARCHIVE_URL, attribution } },
+  } as StyleSpecification;
+}
+
+/** The basemap source the map was handed: the archive on disk and the credit it shows. */
+function drawnBasemap(index = 0): { attribution?: string; url?: string } | undefined {
+  return mockMapProps[index].mapStyle.sources?.basemap as
+    { attribution?: string; url?: string } | undefined;
+}
+
 /**
  * The same document with one layer per selector group, so a group the payload turns
  * off can be seen in the style the map is handed.
@@ -876,6 +894,65 @@ describe('ExperienceMap (native)', () => {
     );
     expect(mockMapProps[0].mapStyle.sources?.basemap).toMatchObject({ url: ARCHIVE_URI });
     expect(drawnLayerIds()).toContain('refs:umepay:label');
+  });
+
+  it('adds the drawn version to the credit the style document publishes', async () => {
+    // The document is only a url on a device, so it is fetched: the credit is composed
+    // where the renderer holds both the document and the archive it is drawing, and the
+    // notice MapLibre shows is the one this style was handed.
+    const styleUrl = `${STYLE_URL}?attribution`;
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => styleWithAttribution(OSM_NOTICE) }) as never;
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, archiveVersion: 'v7', styleUrl }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // The style's own words, and the version of the artifact this device draws — one
+    // notice, with the suffix after the link rather than inside it.
+    expect(drawnBasemap()).toMatchObject({
+      attribution: `${OSM_NOTICE} (v7)`,
+      url: ARCHIVE_URI,
+    });
+  });
+
+  it('leaves the credit as the style wrote it when the version is unknown', async () => {
+    await render(
+      <ExperienceMap
+        source={{
+          archiveUrl: ARCHIVE_URL,
+          archiveVersion: null,
+          style: styleWithAttribution(OSM_NOTICE),
+        }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // No `(v?)`, no `(v0)`: the resolved answer for an unkeyable archive is that there
+    // is no version, not a version nobody parsed.
+    expect(drawnBasemap()?.attribution).toBe(OSM_NOTICE);
+  });
+
+  it('fabricates no credit for a style that publishes none', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, archiveVersion: 'v7', style: styleWith(false) }}
+        overlays={[]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapProps).toHaveLength(1));
+
+    // A version with nothing to append it to adds nothing, and never invents a notice.
+    expect(drawnBasemap()).not.toHaveProperty('attribution');
   });
 
   it('declares every gesture the card map answers', async () => {
