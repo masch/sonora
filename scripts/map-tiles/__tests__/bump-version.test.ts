@@ -15,6 +15,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   CONFIG_PATHS,
@@ -202,6 +203,26 @@ function recorder(): {
   // Both objects of the version are published, which is what a real publish leaves behind.
   return { calls, run, fetchStatus: async () => 200 };
 }
+
+/** The script's own command line, run the way the publish target runs it. */
+function cli(args: string[]): { status: number; stdout: string; stderr: string } {
+  const script = fileURLToPath(new URL('../bump-version.ts', import.meta.url));
+  const result = spawnSync('bun', [script, ...args], { encoding: 'utf8' });
+  return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
+describe('the check-version command line', () => {
+  it('answers on its own, without a --version beside it', () => {
+    // The publish target calls exactly this before it builds; requiring `--version` first made the
+    // whole command stop with "version is required" on a version it had just discovered.
+    const ok = cli(['--check-version=v5']);
+    expect(ok.status).toBe(0);
+
+    const refused = cli(['--check-version=2026-11-03']);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain('dash');
+  });
+});
 
 describe('expandPath', () => {
   it('turns the tilde a shell would expand into the home a child process needs', () => {

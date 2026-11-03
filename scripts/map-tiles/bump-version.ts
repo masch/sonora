@@ -465,13 +465,15 @@ function flag(argv: string[], name: string): string | undefined {
 }
 
 async function main(argv: string[]): Promise<number> {
-  const version = flag(argv, 'version');
+  // `--check-version` is the same argument under the name the publish target uses: the check is
+  // reachable on its own, without a `--version` beside it.
+  const version = flag(argv, 'version') ?? flag(argv, 'check-version');
   if (version === undefined) {
     console.error(`map-tiles-bump-version: --version is required.\n\n${USAGE}`);
     return 1;
   }
 
-  if (argv.includes('--check-version')) {
+  if (argv.some((arg) => arg === '--check-version' || arg.startsWith('--check-version='))) {
     const problem = versionProblem(version);
     if (problem !== null) {
       console.error(`map-tiles-bump-version: ${problem}`);
