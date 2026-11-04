@@ -709,7 +709,13 @@ export default function ExperienceMap({
   if (!style) return null;
 
   const camera: Partial<CameraCenterStop & CameraBoundsStop> = bounds
-    ? { bounds: [bounds.west, bounds.south, bounds.east, bounds.north] }
+    ? {
+        bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
+        // Pixel room around the fit, so a bolder label on an edge point is not clipped by
+        // the card. The web renderer's fitBounds carries the same idea; native had none,
+        // which is why the wider bold labels overran the viewport on a phone.
+        padding: { top: 32, right: 32, bottom: 32, left: 32 },
+      }
     : { center: [centerLng, centerLat] as LngLat, zoom };
 
   return (
