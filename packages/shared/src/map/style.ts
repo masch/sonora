@@ -27,8 +27,8 @@ const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 14, 15, 16];
  */
 const BOLD_TEXT_MAX_WIDTH = 6;
 const BOLD_HALO_WIDTH = 3;
-const BOLD_DOT_RADIUS = 11;
-const BOLD_DOT_STROKE_WIDTH = 3;
+const BOLD_DOT_RADIUS = 8;
+const BOLD_DOT_STROKE_WIDTH = 2.5;
 
 /**
  * The tap target, which is not the dot the walker sees.

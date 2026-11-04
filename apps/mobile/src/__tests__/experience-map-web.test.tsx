@@ -1248,8 +1248,8 @@ describe('ExperienceMap (web) — bold references', () => {
       'circle-opacity': 0.01,
     });
     expect(layerWith('refs:umepay:circle')?.paint).toMatchObject({
-      'circle-radius': 11,
-      'circle-stroke-width': 3,
+      'circle-radius': 8,
+      'circle-stroke-width': 2.5,
     });
     expect(layerWith('refs:umepay:label')?.layout?.['text-size']).toEqual([
       'interpolate',

@@ -11,6 +11,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { IconButton } from '@/components/ui/icon-button';
 import LoadingView from '@/components/loading-view';
 import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
@@ -103,6 +104,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
+  const [showLabels, setShowLabels] = useState(true);
   /**
    * What a tap asked for, and only what the camera still owes it.
    *
@@ -294,7 +296,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const filtersRow = (
     // The row is a layout, not a control: labelling it would need `accessible`, which
     // would in turn swallow the chips' own names. Each chip announces itself.
-    <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
+    <TwView className="flex-row items-center gap-2" testID={`${testID}-filters`}>
       {FILTER_OPTIONS.map((option) => {
         const filter = option ?? 'all';
         return (
@@ -308,6 +310,23 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
           />
         );
       })}
+      {/* The labels toggle belongs with the filters: when the crowded frame is the
+          problem, hiding the experience names is the walker's own declutter, and it sits
+          beside the filters rather than floating over the map because it acts on what the
+          row chooses to show. */}
+      <IconButton
+        onPress={() => setShowLabels(!showLabels)}
+        variant="outline"
+        size="sm"
+        className="bg-white/95 dark:bg-zinc-800/95 border-0"
+        accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+        testID="toggle-map-labels"
+        icon={{
+          ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+          android: showLabels ? 'label_off' : 'label',
+          web: showLabels ? 'label_off' : 'label',
+        }}
+      />
     </TwView>
   );
 
@@ -336,6 +355,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         // barrio that only appears once they are close enough to be standing in it is a
         // name they never read.
         boldReferences={true}
+        showLabels={showLabels}
         toolbar={filtersRow}
         // One wait, in the card, and the same card: the renderer says which stage it is
         // in, and only a transfer it is really paying for gets its own sentence.

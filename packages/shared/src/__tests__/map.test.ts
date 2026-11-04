@@ -496,8 +496,8 @@ describe('reference style layers', () => {
       'circle-opacity': 0.01,
     });
     expect(layerWith(`${REFERENCE_SOURCE_PREFIX}sendero:circle`)?.paint).toMatchObject({
-      'circle-radius': 11,
-      'circle-stroke-width': 3,
+      'circle-radius': 8,
+      'circle-stroke-width': 2.5,
     });
     expect(layerWith(`${REFERENCE_SOURCE_PREFIX}sendero:label`)?.paint?.['text-halo-width']).toBe(
       3,

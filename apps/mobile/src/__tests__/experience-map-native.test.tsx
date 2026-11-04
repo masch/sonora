@@ -1903,8 +1903,8 @@ describe('ExperienceMap — bold references', () => {
       'circle-opacity': 0.01,
     });
     expect(drawnReferenceLayer('refs:umepay:circle')?.paint).toMatchObject({
-      'circle-radius': 11,
-      'circle-stroke-width': 3,
+      'circle-radius': 8,
+      'circle-stroke-width': 2.5,
     });
     expect(drawnReferenceLayer('refs:umepay:label')?.layout?.['text-size']).toEqual([
       'interpolate',

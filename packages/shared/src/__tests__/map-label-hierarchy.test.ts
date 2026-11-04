@@ -54,8 +54,8 @@ describe('bold references: the hub’s markers carry their own weight', () => {
   it('draws the dot at radius 11 with a 3 white stroke', () => {
     const circle = layerWith(`${SOURCE}:circle`);
 
-    expect(circle?.paint?.['circle-radius']).toBe(11);
-    expect(circle?.paint?.['circle-stroke-width']).toBe(3);
+    expect(circle?.paint?.['circle-radius']).toBe(8);
+    expect(circle?.paint?.['circle-stroke-width']).toBe(2.5);
     expect(circle?.paint?.['circle-stroke-color']).toBe('#ffffff');
   });
 

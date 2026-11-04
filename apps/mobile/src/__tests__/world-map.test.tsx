@@ -70,6 +70,8 @@ interface RecordedMapProps {
   onFocusSettled?: () => void;
   /** The hub asks for the references' own weight, which it and no other caller draws. */
   boldReferences?: boolean;
+  /** Whether the reference labels draw; the walker can hide them from the filter row. */
+  showLabels?: boolean;
   /** Drawn above the map, only once the map can draw. */
   toolbar?: ReactNode;
   /** The caller's own surface while the map cannot draw. */
@@ -436,6 +438,19 @@ describe('WorldMap', () => {
     expect(latestMap().boldReferences).toBe(true);
     // The flag that used to decide this is gone: no screen selects a look at runtime.
     expect(latestMap()).not.toHaveProperty('labelHierarchy');
+  });
+
+  it('hides the experience names when the walker toggles the labels off, and back on', async () => {
+    await renderWith(PAYLOAD);
+
+    // The names are on until the walker asks to declutter the crowded frame.
+    expect(latestMap().showLabels).toBe(true);
+
+    fireEvent.press(screen.getByTestId('toggle-map-labels'));
+    await waitFor(() => expect(latestMap().showLabels).toBe(false));
+
+    fireEvent.press(screen.getByTestId('toggle-map-labels'));
+    await waitFor(() => expect(latestMap().showLabels).toBe(true));
   });
 
   it('draws only through the MapLibre map component and never loads Leaflet', async () => {
