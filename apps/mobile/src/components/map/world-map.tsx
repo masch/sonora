@@ -310,23 +310,6 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
           />
         );
       })}
-      {/* The labels toggle belongs with the filters: when the crowded frame is the
-          problem, hiding the experience names is the walker's own declutter, and it sits
-          beside the filters rather than floating over the map because it acts on what the
-          row chooses to show. */}
-      <IconButton
-        onPress={() => setShowLabels(!showLabels)}
-        variant="outline"
-        size="sm"
-        className="bg-white/95 dark:bg-zinc-800/95 border-0"
-        accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
-        testID="toggle-map-labels"
-        icon={{
-          ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
-          android: showLabels ? 'label_off' : 'label',
-          web: showLabels ? 'label_off' : 'label',
-        }}
-      />
     </TwView>
   );
 
@@ -372,16 +355,34 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         // the filter — the place has places — so it is not the world-empty sentence,
         // which would describe a map with nothing published at all.
         overlay={
-          visible.length === 0 ? (
-            <ThemedText
-              type="small"
-              themeColor="textSecondary"
-              className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
-              testID={`${testID}-filtered-empty`}
-            >
-              {t('map.world.filteredEmpty')}
-            </ThemedText>
-          ) : null
+          <>
+            {/* The labels toggle floats over the map, not beside the filters: it acts on
+                the map itself, and a walker who wants to read the names underneath the
+                experiences flips it without leaving the frame. */}
+            <IconButton
+              onPress={() => setShowLabels(!showLabels)}
+              variant="outline"
+              size="sm"
+              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
+              accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+              testID="toggle-map-labels"
+              icon={{
+                ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+                android: showLabels ? 'label_off' : 'label',
+                web: showLabels ? 'label_off' : 'label',
+              }}
+            />
+            {visible.length === 0 ? (
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
+                testID={`${testID}-filtered-empty`}
+              >
+                {t('map.world.filteredEmpty')}
+              </ThemedText>
+            ) : null}
+          </>
         }
       />
 
