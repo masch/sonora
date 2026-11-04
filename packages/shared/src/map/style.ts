@@ -3,6 +3,35 @@ export const REFERENCE_SOURCE_PREFIX = 'refs:';
 
 const DEFAULT_COLOR = '#065f46';
 const LABEL_FONT = ['Noto Sans Regular'];
+/** The heavier face the hub's own labels use, so they read as things to open. */
+const BOLD_LABEL_FONT = ['Noto Sans Medium'];
+
+/**
+ * The weight the world hub gives the experiences' own markers.
+ *
+ * The hub keeps every name the basemap publishes — a barrio is named where the document
+ * names it — so the experiences cannot be told apart by the absence of anything
+ * underneath them. They carry their own weight instead. Written once, in the module both
+ * renderers build their reference layers from, so a label that is 13 px on the web build
+ * is 13 px on a device, and deliberately above the basemap's own names: the walker has to
+ * be able to tell at a glance which names on that frame are things they can open.
+ */
+const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 14, 15, 16];
+const BOLD_HALO_WIDTH = 3;
+const BOLD_DOT_RADIUS = 11;
+const BOLD_DOT_STROKE_WIDTH = 3;
+
+/**
+ * The tap target, which is not the dot the walker sees.
+ *
+ * A thumb covers about ten millimetres and the drawn dot covers five: a target the size
+ * of the marker is a target the walker misses. The circle below is drawn at a radius the
+ * thumb can find and at an opacity just above zero, because a layer at zero is not drawn
+ * and a layer that is not drawn is not hit. It draws nothing the eye can see and answers
+ * a press the dot alone would have lost.
+ */
+const BOLD_HIT_RADIUS = 16;
+const BOLD_HIT_OPACITY = 0.01;
 
 export interface MapStyleLayer {
   id: string;
@@ -41,6 +70,16 @@ export interface ReferenceLayerOptions {
    * free side is still culled, which is what stops two of them reading as one word.
    */
   movableLabels?: boolean;
+  /**
+   * Whether the references draw with their own weight, above the basemap's names.
+   *
+   * Asked for by the world hub, the one frame where an openable experience and the barrio
+   * it sits in are drawn together: a larger label, a heavier halo, a bigger dot and a tap
+   * target wider than the dot. Read here and nowhere else, so both renderers take the
+   * numbers from one place; absent or false builds today's layers exactly, which is what
+   * every other map draws.
+   */
+  bold?: boolean;
 }
 
 export function buildReferenceStyleLayers(
@@ -52,6 +91,7 @@ export function buildReferenceStyleLayers(
   // per-feature minzoom on the layer, so it becomes a zoom comparison.
   const fromZoom = ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]];
   const forGeometry = (kind: string) => ['all', ['==', ['geometry-type'], kind], fromZoom];
+  const bold = options.bold === true;
 
   const layers: MapStyleLayer[] = [
     {
@@ -68,19 +108,39 @@ export function buildReferenceStyleLayers(
       filter: forGeometry('LineString'),
       paint: { 'line-color': color, 'line-width': 3, 'line-opacity': 0.9 },
     },
-    {
-      id: `${sourceId}:circle`,
+  ];
+
+  if (bold) {
+    // Added before the dot, because MapLibre draws in array order: the target sits under
+    // the marker and the marker is what the eye reads. Its id still names the document
+    // (`refs:<key>:circle-hit`), which is what makes the press path work untouched on
+    // both renderers: they answer a tap by asking which reference layer was touched, and
+    // the key is read out of whichever one it was.
+    layers.push({
+      id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
       filter: forGeometry('Point'),
       paint: {
         'circle-color': color,
-        'circle-radius': 6,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2,
+        'circle-radius': BOLD_HIT_RADIUS,
+        'circle-opacity': BOLD_HIT_OPACITY,
       },
+    });
+  }
+
+  layers.push({
+    id: `${sourceId}:circle`,
+    type: 'circle',
+    source: sourceId,
+    filter: forGeometry('Point'),
+    paint: {
+      'circle-color': color,
+      'circle-radius': bold ? BOLD_DOT_RADIUS : 6,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': bold ? BOLD_DOT_STROKE_WIDTH : 2,
     },
-  ];
+  });
 
   if (options.includeLabels !== false) {
     const anchor = options.labelAnchor ?? 'top';
@@ -98,7 +158,9 @@ export function buildReferenceStyleLayers(
           'text-max-width': 8,
           // A crowd is a size problem before it is a placement problem: at the wide frame
           // the world opens on, a smaller label fits where a full one would have to move.
-          'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 15, 12],
+          'text-size': bold
+            ? BOLD_LABEL_SIZE
+            : ['interpolate', ['linear'], ['zoom'], 13, 10, 15, 12],
           // Whatever the walker came for is placed first, so it keeps its label when the
           // last free side is taken.
           'symbol-sort-key': ['coalesce', ['get', 'sortKey'], 0],
@@ -106,7 +168,7 @@ export function buildReferenceStyleLayers(
       : {
           'text-anchor': anchor,
           'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
-          'text-size': 12,
+          'text-size': bold ? BOLD_LABEL_SIZE : 12,
         };
     layers.push({
       id: `${sourceId}:label`,
@@ -115,7 +177,7 @@ export function buildReferenceStyleLayers(
       filter: forGeometry('Point'),
       layout: {
         'text-field': ['get', 'labelText'],
-        'text-font': LABEL_FONT,
+        'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
         ...placement,
         // Culling is the point, not a limitation: with overlap allowed, two labels
         // that land on the same pixel draw on top of each other and read as a
@@ -127,7 +189,7 @@ export function buildReferenceStyleLayers(
         // asks for its own colour first, then the reference's, then the default.
         'text-color': ['coalesce', ['get', 'labelColor'], color],
         'text-halo-color': '#ffffff',
-        'text-halo-width': 1.4,
+        'text-halo-width': bold ? BOLD_HALO_WIDTH : 1.4,
       },
     });
   }

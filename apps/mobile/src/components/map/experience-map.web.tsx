@@ -81,6 +81,7 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   showLabels = true,
+  boldReferences = false,
   layerSelection,
   focus,
   onFocusSettled,
@@ -116,6 +117,15 @@ export default function ExperienceMap({
   const glyphsAvailableRef = useRef(false);
   /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
   const showLabelsRef = useRef(showLabels);
+  /**
+   * The references' own weight, read inside `applyOverlays` for the same reason.
+   *
+   * It reaches the reference layers here because this is where they are built on this
+   * renderer: `applyMapDocuments` hands the numbers from the shared builder, so a document
+   * that leaves the hub's filter and comes back keeps the weight instead of returning at
+   * the classic size.
+   */
+  const boldReferencesRef = useRef(boldReferences);
   const translateRef = useRef(translateKey);
   /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
   const languageRef = useRef(language);
@@ -157,6 +167,10 @@ export default function ExperienceMap({
     showLabelsRef.current = showLabels;
   }, [showLabels]);
 
+  useEffect(() => {
+    boldReferencesRef.current = boldReferences;
+  }, [boldReferences]);
+
   /** Draws the current documents. Safe to call on every content or locale change. */
   const applyOverlays = useCallback((map: MapHandle) => {
     // MapLibre cannot call the translation layer, so keys become text here. A
@@ -168,6 +182,7 @@ export default function ExperienceMap({
     try {
       applyMapDocuments(map, resolved, {
         includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
+        bold: boldReferencesRef.current,
       });
     } catch (err) {
       logger.error('ExperienceMap failed to apply reference documents:', err);

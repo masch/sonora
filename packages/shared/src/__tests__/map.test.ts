@@ -395,6 +395,114 @@ describe('reference style layers', () => {
       `${REFERENCE_SOURCE_PREFIX}sendero:circle`,
     ]);
   });
+
+  it('draws exactly today’s layers when bold is not asked for', () => {
+    // Only the world hub asks for the emphasised markers, so the default is what every
+    // other map draws and it has to stay today's map pixel for pixel: same layers, same
+    // order, same numbers, no extra target. Written out in full, so a later change to
+    // the bold branch cannot ride along with the plain one.
+    expect(buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`)).toEqual([
+      {
+        id: `${REFERENCE_SOURCE_PREFIX}sendero:fill`,
+        type: 'fill',
+        source: `${REFERENCE_SOURCE_PREFIX}sendero`,
+        filter: [
+          'all',
+          ['==', ['geometry-type'], 'Polygon'],
+          ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]],
+        ],
+        paint: {
+          'fill-color': ['coalesce', ['get', 'color'], '#065f46'],
+          'fill-opacity': 0.25,
+          'fill-outline-color': ['coalesce', ['get', 'color'], '#065f46'],
+        },
+      },
+      {
+        id: `${REFERENCE_SOURCE_PREFIX}sendero:line`,
+        type: 'line',
+        source: `${REFERENCE_SOURCE_PREFIX}sendero`,
+        filter: [
+          'all',
+          ['==', ['geometry-type'], 'LineString'],
+          ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]],
+        ],
+        paint: {
+          'line-color': ['coalesce', ['get', 'color'], '#065f46'],
+          'line-width': 3,
+          'line-opacity': 0.9,
+        },
+      },
+      {
+        id: `${REFERENCE_SOURCE_PREFIX}sendero:circle`,
+        type: 'circle',
+        source: `${REFERENCE_SOURCE_PREFIX}sendero`,
+        filter: [
+          'all',
+          ['==', ['geometry-type'], 'Point'],
+          ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]],
+        ],
+        paint: {
+          'circle-color': ['coalesce', ['get', 'color'], '#065f46'],
+          'circle-radius': 6,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      },
+      {
+        id: `${REFERENCE_SOURCE_PREFIX}sendero:label`,
+        type: 'symbol',
+        source: `${REFERENCE_SOURCE_PREFIX}sendero`,
+        filter: [
+          'all',
+          ['==', ['geometry-type'], 'Point'],
+          ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]],
+        ],
+        layout: {
+          'text-field': ['get', 'labelText'],
+          'text-font': ['Noto Sans Regular'],
+          'text-anchor': 'top',
+          'text-offset': [0, 0.8],
+          'text-size': 12,
+          'text-allow-overlap': false,
+        },
+        paint: {
+          'text-color': [
+            'coalesce',
+            ['get', 'labelColor'],
+            ['coalesce', ['get', 'color'], '#065f46'],
+          ],
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.4,
+        },
+      },
+    ]);
+  });
+
+  it('adds the tap target and the heavier marker when bold is asked for', () => {
+    const layers = buildReferenceStyleLayers(`${REFERENCE_SOURCE_PREFIX}sendero`, { bold: true });
+    const layerWith = (id: string) => layers.find((layer) => layer.id === id);
+
+    // The target is named after the document and drawn before the dot, because the map
+    // draws in insertion order and a press asks which reference layer was touched.
+    expect(layers.map((layer) => layer.id)).toEqual([
+      `${REFERENCE_SOURCE_PREFIX}sendero:fill`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:line`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:circle-hit`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:circle`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:label`,
+    ]);
+    expect(layerWith(`${REFERENCE_SOURCE_PREFIX}sendero:circle-hit`)?.paint).toMatchObject({
+      'circle-radius': 16,
+      'circle-opacity': 0.01,
+    });
+    expect(layerWith(`${REFERENCE_SOURCE_PREFIX}sendero:circle`)?.paint).toMatchObject({
+      'circle-radius': 11,
+      'circle-stroke-width': 3,
+    });
+    expect(layerWith(`${REFERENCE_SOURCE_PREFIX}sendero:label`)?.paint?.['text-halo-width']).toBe(
+      3,
+    );
+  });
 });
 
 describe('applyMapDocuments', () => {

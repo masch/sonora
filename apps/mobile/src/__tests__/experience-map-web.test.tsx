@@ -1152,3 +1152,173 @@ describe('foldAttribution', () => {
     expect(() => foldAttribution(map, null)).not.toThrow();
   });
 });
+
+/**
+ * The hub's style as the published document draws it: the basemap's own names, which the
+ * hub's markers must never cost.
+ */
+function styleWithBasemapLabels(): StyleSpecification {
+  const layer = (id: string, type: 'symbol' | 'fill' | 'background', extra = {}) => ({
+    id,
+    type,
+    ...(type === 'background' ? {} : { source: 'basemap' }),
+    ...extra,
+  });
+
+  return {
+    version: 8,
+    glyphs: 'https://example.com/{fontstack}/{range}.pbf',
+    sources: { basemap: { type: 'vector', url: ARCHIVE } },
+    layers: [
+      layer('background', 'background'),
+      layer('water', 'fill'),
+      layer('landuse_label', 'symbol', { minzoom: 11, layout: { 'text-field': ['get', 'name'] } }),
+      layer('places_locality', 'symbol', { layout: { 'text-field': ['get', 'name'] } }),
+      layer('roads_labels_major', 'symbol', { layout: { 'text-field': ['get', 'name'] } }),
+    ],
+  } as StyleSpecification;
+}
+
+describe('ExperienceMap (web) — bold references', () => {
+  beforeEach(() => {
+    mockMapInstances.length = 0;
+    mockedLogger.error.mockClear();
+    mockGetHeader.mockReset().mockResolvedValue({
+      minZoom: 0,
+      maxZoom: 15,
+      minLon: -64.83,
+      minLat: -32.28,
+      maxLon: -64.66,
+      maxLat: -32.12,
+    });
+    mockGetZxy.mockReset();
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(2048),
+      json: async () => styleWith(true),
+    }) as unknown as typeof fetch;
+  });
+
+  it('draws the basemap’s own names exactly as the document wrote them', async () => {
+    const style = styleWithBasemapLabels();
+    await render(
+      <ExperienceMap source={{ archiveUrl: ARCHIVE, style }} overlays={[]} boldReferences={true} />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const drawn = mockMapInstances[0].options.style as { layers: unknown[] };
+
+    // Byte for byte: the weight belongs to the references and never to the names
+    // underneath them, so a barrio is still named at the zoom the document names it.
+    expect(drawn.layers).toEqual(style.layers);
+  });
+
+  it('draws the bold dot, the bigger label and a hit circle when the hub asks for it', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWith(true) }}
+        overlays={[document]}
+        boldReferences={true}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    await act(async () => {
+      map.emit('load');
+    });
+
+    const added = map.layers as unknown as {
+      id: string;
+      paint?: Record<string, unknown>;
+      layout?: Record<string, unknown>;
+    }[];
+    const layerWith = (id: string) => added.find((layer) => layer.id === id);
+
+    // The target is added before the dot, because the map draws in insertion order.
+    expect(added.map((layer) => layer.id)).toEqual([
+      'refs:umepay:fill',
+      'refs:umepay:line',
+      'refs:umepay:circle-hit',
+      'refs:umepay:circle',
+      'refs:umepay:label',
+    ]);
+    expect(layerWith('refs:umepay:circle-hit')?.paint).toMatchObject({
+      'circle-radius': 16,
+      'circle-opacity': 0.01,
+    });
+    expect(layerWith('refs:umepay:circle')?.paint).toMatchObject({
+      'circle-radius': 11,
+      'circle-stroke-width': 3,
+    });
+    expect(layerWith('refs:umepay:label')?.layout?.['text-size']).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      13,
+      14,
+      15,
+      16,
+    ]);
+    expect(layerWith('refs:umepay:label')?.paint?.['text-halo-width']).toBe(3);
+  });
+
+  it('reports the reference when the tap lands on the hit circle instead of the dot', async () => {
+    // On the web renderer the press asks the map which reference layer is under the point,
+    // so the transparent target has to answer with the same document the dot does.
+    const onFeaturePress = jest.fn();
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWith(false) }}
+        overlays={[document]}
+        boldReferences={true}
+        onFeaturePress={onFeaturePress}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    const map = mockMapInstances[0];
+    await act(async () => {
+      map.emit('load');
+    });
+    await act(async () => {
+      map.emitTap([
+        { layer: { id: 'refs:umepay:circle-hit' }, properties: { experienceSlug: 'taller' } },
+      ]);
+    });
+
+    expect(onFeaturePress).toHaveBeenCalledWith({
+      documentKey: 'umepay',
+      experienceSlug: 'taller',
+    });
+  });
+
+  it('draws today’s reference layers when nothing is asked for', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWith(false) }}
+        overlays={[document]}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    const added = mockMapInstances[0].layers as unknown as {
+      id: string;
+      paint?: Record<string, unknown>;
+    }[];
+
+    expect(added.map((layer) => layer.id)).toEqual([
+      'refs:umepay:fill',
+      'refs:umepay:line',
+      'refs:umepay:circle',
+    ]);
+    expect(added.find((layer) => layer.id === 'refs:umepay:circle')?.paint).toMatchObject({
+      'circle-radius': 6,
+      'circle-stroke-width': 2,
+    });
+  });
+});

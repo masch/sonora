@@ -1801,3 +1801,180 @@ const trip: TripExperience = {
     },
   ],
 };
+
+/**
+ * A style document that carries the basemap's own names, which the hub's markers must
+ * never cost, plus the neighbours it must leave alone.
+ */
+function styleWithBasemapLabels(): StyleSpecification {
+  return {
+    version: 8,
+    glyphs: 'https://api.example/media/public/glyphs/{fontstack}/{range}.pbf',
+    sources: { basemap: { type: 'vector', url: ARCHIVE_URL } },
+    layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#ffffff' } },
+      { id: 'water', type: 'fill', source: 'basemap', 'source-layer': 'water' },
+      {
+        id: 'landuse_label',
+        type: 'symbol',
+        source: 'basemap',
+        'source-layer': 'landuse',
+        minzoom: 11,
+        layout: { 'text-field': ['get', 'name'] },
+      },
+      {
+        id: 'places_locality',
+        type: 'symbol',
+        source: 'basemap',
+        'source-layer': 'places',
+        layout: { 'text-field': ['get', 'name'] },
+      },
+      {
+        id: 'roads_labels_major',
+        type: 'symbol',
+        source: 'basemap',
+        'source-layer': 'roads',
+        layout: { 'text-field': ['get', 'name'] },
+      },
+    ],
+  } as StyleSpecification;
+}
+
+/** The `minzoom` the map was handed for one layer, or `undefined` when it carries none. */
+function drawnMinZoom(layerId: string): number | undefined {
+  const layers = (mockMapProps[0].mapStyle.layers ?? []) as { id: string; minzoom?: number }[];
+  return layers.find((layer) => layer.id === layerId)?.minzoom;
+}
+
+/** The drawn reference layer with this id, as the style spec the double recorded. */
+function drawnReferenceLayer(layerId: string) {
+  const layers = (mockMapProps[0].mapStyle.layers ?? []) as {
+    id: string;
+    paint?: Record<string, unknown>;
+    layout?: Record<string, unknown>;
+  }[];
+  return layers.find((layer) => layer.id === layerId);
+}
+
+describe('ExperienceMap — bold references', () => {
+  beforeEach(() => {
+    resetMapDouble();
+    mockedUseMapArchiveFile.mockReturnValue({
+      status: 'ready',
+      uri: ARCHIVE_URI,
+    } as ReturnType<typeof useMapArchiveFile>);
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => styleWith(true),
+    }) as never;
+  });
+
+  it('draws the basemap’s own names exactly as the document wrote them', async () => {
+    const style = styleWithBasemapLabels();
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style }}
+        overlays={[]}
+        boldReferences={true}
+      />,
+    );
+
+    // Byte for byte: the weight belongs to the references and never to the names
+    // underneath them, so a barrio is still named at the zoom the document names it.
+    expect(mockMapProps[0].mapStyle.layers).toEqual(style.layers);
+    expect(drawnMinZoom('landuse_label')).toBe(11);
+    expect(drawnMinZoom('places_locality')).toBeUndefined();
+  });
+
+  it('draws the bold dot, the bigger label and a hit circle when the hub asks for it', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
+        overlays={[document]}
+        boldReferences={true}
+      />,
+    );
+
+    const ids = drawnLayerIds();
+    // The transparent target is drawn first, so the marker the walker reads sits on top.
+    expect(ids.indexOf('refs:umepay:circle-hit')).toBeLessThan(ids.indexOf('refs:umepay:circle'));
+    expect(drawnReferenceLayer('refs:umepay:circle-hit')?.paint).toMatchObject({
+      'circle-radius': 16,
+      'circle-opacity': 0.01,
+    });
+    expect(drawnReferenceLayer('refs:umepay:circle')?.paint).toMatchObject({
+      'circle-radius': 11,
+      'circle-stroke-width': 3,
+    });
+    expect(drawnReferenceLayer('refs:umepay:label')?.layout?.['text-size']).toEqual([
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      13,
+      14,
+      15,
+      16,
+    ]);
+    expect(drawnReferenceLayer('refs:umepay:label')?.paint?.['text-halo-width']).toBe(3);
+  });
+
+  it('reports the reference when the press lands on the hit circle instead of the dot', async () => {
+    // The native renderer queries each reference layer in turn, so the target has to be
+    // one of them and has to report the same document the dot does.
+    const onFeaturePress = jest.fn();
+    mockHit('refs:umepay:circle-hit', { experienceSlug: 'taller' });
+
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
+        overlays={[document]}
+        boldReferences={true}
+        onFeaturePress={onFeaturePress}
+      />,
+    );
+
+    await act(async () => {
+      await mockMapProps[0].onPress?.({ nativeEvent: { point: [40, 60], lngLat: [-64.7, -32.2] } });
+    });
+
+    expect(onFeaturePress).toHaveBeenCalledWith({
+      documentKey: 'umepay',
+      experienceSlug: 'taller',
+    });
+  });
+
+  it('draws today’s reference layers and basemap zooms when nothing is asked for', async () => {
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWithBasemapLabels() }}
+        overlays={[document]}
+      />,
+    );
+
+    expect(drawnLayerIds()).not.toContain('refs:umepay:circle-hit');
+    expect(drawnReferenceLayer('refs:umepay:circle')?.paint).toMatchObject({
+      'circle-radius': 6,
+      'circle-stroke-width': 2,
+    });
+    expect(drawnReferenceLayer('refs:umepay:label')?.layout?.['text-size']).toBe(12);
+    expect(drawnMinZoom('landuse_label')).toBe(11);
+    expect(drawnMinZoom('places_locality')).toBeUndefined();
+  });
+
+  it('leaves the experience’s own map on today’s markers', async () => {
+    await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={{ archiveUrl: ARCHIVE_URL, style: styleWith(true) }}
+        experience={trip}
+      />,
+    );
+
+    // The switch draws the detail map, which asks for no weight: the emphasis belongs to
+    // the hub, where the names crowd each other, and a place the walker is already
+    // reading does not have to shout over the basemap it is drawn on.
+    expect(drawnLayerIds()).toContain('refs:itinerary:circle');
+    expect(drawnLayerIds()).not.toContain('refs:itinerary:circle-hit');
+    expect(drawnLayerIds()).not.toContain('refs:referencias:circle-hit');
+  });
+});

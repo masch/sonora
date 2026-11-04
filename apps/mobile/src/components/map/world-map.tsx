@@ -329,6 +329,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         focus={traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null}
         onFocusSettled={landFlight}
         onFeaturePress={handleFeaturePress}
+        // The hub is where an openable experience and the barrio around it are drawn on
+        // one frame, so its markers carry their own weight and a tap target wider than the
+        // dot. The basemap's own names are left exactly as the document publishes them:
+        // the hub's frame is also where the walker learns the names of the places, and a
+        // barrio that only appears once they are close enough to be standing in it is a
+        // name they never read.
+        boldReferences={true}
         toolbar={filtersRow}
         // One wait, in the card, and the same card: the renderer says which stage it is
         // in, and only a transfer it is really paying for gets its own sentence.
