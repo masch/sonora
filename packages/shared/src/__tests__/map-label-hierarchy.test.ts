@@ -75,6 +75,15 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     expect(label?.layout?.['text-font']).toEqual(['Noto Sans Medium']);
   });
 
+  it('wraps the bold label at 6 em, so its bigger glyphs stay as wide as the classic label', () => {
+    // 8 em at the classic 12 px was 96 px; 8 em at the bold 16 px would be 128 px and
+    // outrun the opening frame's side margin. Six em is 96 px again: the weight comes
+    // from the face and the size, not from a wider column. The world hub's own labels
+    // are the movable ones, which is where the wrap lives.
+    const label = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
+    expect(label?.layout?.['text-max-width']).toBe(6);
+  });
+
   it('keeps the bold label culled and the movable one movable', () => {
     const movable = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
 

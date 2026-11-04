@@ -708,13 +708,19 @@ export default function ExperienceMap({
   // type honest instead of asserting it away.
   if (!style) return null;
 
+  /**
+   * Pixel room around the opening fit, so a bolder label on an edge point is not clipped
+   * by the card. The bold face wraps at 6 em (about 96 px at 16 px) and can run two or
+   * three lines, so the sides and the south need more than the top; the south is the
+   * label's own direction and gets the most. Native had none, and the web renderer's
+   * fitBounds carries the same idea at 24 px, which the wider bold labels outgrew.
+   */
+  const BOUNDS_PADDING = { top: 40, right: 48, bottom: 56, left: 48 };
+
   const camera: Partial<CameraCenterStop & CameraBoundsStop> = bounds
     ? {
         bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
-        // Pixel room around the fit, so a bolder label on an edge point is not clipped by
-        // the card. The web renderer's fitBounds carries the same idea; native had none,
-        // which is why the wider bold labels overran the viewport on a phone.
-        padding: { top: 32, right: 32, bottom: 32, left: 32 },
+        padding: BOUNDS_PADDING,
       }
     : { center: [centerLng, centerLat] as LngLat, zoom };
 

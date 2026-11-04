@@ -17,6 +17,15 @@ const BOLD_LABEL_FONT = ['Noto Sans Medium'];
  * be able to tell at a glance which names on that frame are things they can open.
  */
 const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 14, 15, 16];
+/**
+ * The column the bold label wraps into, narrower than the classic 8 em on purpose.
+ *
+ * `text-max-width` is measured in em of the face, so a bold title at 16 px with the same
+ * 8 em is 128 px wide where the classic 12 px title was 96 px: the extra width is what
+ * ran a phone's edge title off the card. Six em at 16 px is 96 px again, so the heavier
+ * face buys the emphasis without buying a label the opening frame cannot hold.
+ */
+const BOLD_TEXT_MAX_WIDTH = 6;
 const BOLD_HALO_WIDTH = 3;
 const BOLD_DOT_RADIUS = 11;
 const BOLD_DOT_STROKE_WIDTH = 3;
@@ -154,8 +163,10 @@ export function buildReferenceStyleLayers(
           'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
           'text-radial-offset': 0.8,
           // A title's width is the one extent the fit cannot know, so the label wraps at a
-          // fixed width instead of extending sideways for as long as its words are.
-          'text-max-width': 8,
+          // fixed width instead of extending sideways for as long as its words are. The bold
+          // face wraps narrower (see BOLD_TEXT_MAX_WIDTH) so its bigger glyphs do not outrun
+          // the same frame.
+          'text-max-width': bold ? BOLD_TEXT_MAX_WIDTH : 8,
           // A crowd is a size problem before it is a placement problem: at the wide frame
           // the world opens on, a smaller label fits where a full one would have to move.
           'text-size': bold
