@@ -117,15 +117,6 @@ export default function ExperienceMap({
   const glyphsAvailableRef = useRef(false);
   /** Read inside `applyOverlays`, which is stable, so toggling never rebuilds the map. */
   const showLabelsRef = useRef(showLabels);
-  /**
-   * The references' own weight, read inside `applyOverlays` for the same reason.
-   *
-   * It reaches the reference layers here because this is where they are built on this
-   * renderer: `applyMapDocuments` hands the numbers from the shared builder, so a document
-   * that leaves the hub's filter and comes back keeps the weight instead of returning at
-   * the classic size.
-   */
-  const boldReferencesRef = useRef(boldReferences);
   const translateRef = useRef(translateKey);
   /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
   const languageRef = useRef(language);
@@ -167,27 +158,30 @@ export default function ExperienceMap({
     showLabelsRef.current = showLabels;
   }, [showLabels]);
 
-  useEffect(() => {
-    boldReferencesRef.current = boldReferences;
-  }, [boldReferences]);
-
   /** Draws the current documents. Safe to call on every content or locale change. */
-  const applyOverlays = useCallback((map: MapHandle) => {
-    // MapLibre cannot call the translation layer, so keys become text here. A
-    // document that carries its own text is read in the active language.
-    const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(overlay, translateRef.current, languageRef.current),
-    );
+  const applyOverlays = useCallback(
+    (map: MapHandle) => {
+      // MapLibre cannot call the translation layer, so keys become text here. A
+      // document that carries its own text is read in the active language.
+      const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
+        withResolvedLabels(overlay, translateRef.current, languageRef.current),
+      );
 
-    try {
-      applyMapDocuments(map, resolved, {
-        includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
-        bold: boldReferencesRef.current,
-      });
-    } catch (err) {
-      logger.error('ExperienceMap failed to apply reference documents:', err);
-    }
-  }, []);
+      try {
+        applyMapDocuments(map, resolved, {
+          includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
+          // `boldReferences` is a direct dependency, not a ref like the others: it is fixed
+          // for the life of this map (true for the hub, absent for the detail map) and never
+          // toggles at runtime, so capturing it in the callback's deps keeps the callback
+          // stable in practice and removes the one-render window a mirrored ref would have.
+          bold: boldReferences,
+        });
+      } catch (err) {
+        logger.error('ExperienceMap failed to apply reference documents:', err);
+      }
+    },
+    [boldReferences],
+  );
 
   const openReference = useCallback((feature: RenderedFeature) => {
     const handler = onFeaturePressRef.current;
