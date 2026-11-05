@@ -440,17 +440,15 @@ describe('WorldMap', () => {
     expect(latestMap()).not.toHaveProperty('labelHierarchy');
   });
 
-  it('hides the experience names when the walker toggles the labels off, and back on', async () => {
+  it('draws no labels toggle when the map cannot draw a name', async () => {
     await renderWith(PAYLOAD);
 
-    // The names are on until the walker asks to declutter the crowded frame.
+    // This payload publishes no region, so the map draws the reference plane: that style
+    // carries no glyphs, no name is ever placed, and a toggle there would flip a setting
+    // with nothing to show for it. The switch's own sheet keeps the toggle-when-drawn case.
+    expect(screen.queryByTestId('toggle-map-labels')).toBeNull();
+    // The names are still requested, so a region that lands later draws them by default.
     expect(latestMap().showLabels).toBe(true);
-
-    fireEvent.press(screen.getByTestId('toggle-map-labels'));
-    await waitFor(() => expect(latestMap().showLabels).toBe(false));
-
-    fireEvent.press(screen.getByTestId('toggle-map-labels'));
-    await waitFor(() => expect(latestMap().showLabels).toBe(true));
   });
 
   it('draws only through the MapLibre map component and never loads Leaflet', async () => {

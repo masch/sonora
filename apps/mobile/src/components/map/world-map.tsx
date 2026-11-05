@@ -99,6 +99,71 @@ function waitMessage(
  * change them (filter, language), never stored: the world is a projection of what
  * the lists already read, so there is no second copy to drift.
  */
+/**
+ * What the hub draws over its own card once the map can draw.
+ *
+ * A local component rather than markup inside `WorldMap`: the map body is already at the
+ * size the repository's doctor gate allows, and this block belongs to the overlay slot
+ * anyway — it is about what the frame shows, not about how the map is built.
+ */
+interface WorldMapOverlayProps {
+  testID: string;
+  showLabels: boolean;
+  onToggleLabels: () => void;
+  /**
+   * False when the map cannot place a name at all.
+   *
+   * A centre outside every published region draws the reference plane, and that style
+   * carries no glyphs, so a toggle there would flip a setting with nothing to show for it.
+   */
+  labelsToggleAllowed: boolean;
+  /** The sentence for a filter that left nothing to draw, or null when something drew. */
+  filteredEmpty: string | null;
+}
+
+function WorldMapOverlay({
+  testID,
+  showLabels,
+  onToggleLabels,
+  labelsToggleAllowed,
+  filteredEmpty,
+}: WorldMapOverlayProps) {
+  const { t } = useAppTranslation();
+
+  return (
+    <>
+      {/* The labels toggle floats over the map, not beside the filters: it acts on the map
+          itself, and a walker who wants to read the names underneath the experiences flips
+          it without leaving the frame. */}
+      {labelsToggleAllowed && (
+        <IconButton
+          onPress={onToggleLabels}
+          variant="outline"
+          size="sm"
+          className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
+          accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+          testID="toggle-map-labels"
+          icon={{
+            ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+            android: showLabels ? 'label_off' : 'label',
+            web: showLabels ? 'label_off' : 'label',
+          }}
+        />
+      )}
+      {filteredEmpty === null ? null : (
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
+          testID={`${testID}-filtered-empty`}
+        >
+          {filteredEmpty}
+        </ThemedText>
+      )}
+    </>
+  );
+}
+
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
   const { t, language } = useAppTranslation();
   const colors = useThemeColors();
@@ -358,34 +423,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         // the filter — the place has places — so it is not the world-empty sentence,
         // which would describe a map with nothing published at all.
         overlay={
-          <>
-            {/* The labels toggle floats over the map, not beside the filters: it acts on
-                the map itself, and a walker who wants to read the names underneath the
-                experiences flips it without leaving the frame. */}
-            <IconButton
-              onPress={() => setShowLabels(!showLabels)}
-              variant="outline"
-              size="sm"
-              className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
-              accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
-              testID="toggle-map-labels"
-              icon={{
-                ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
-                android: showLabels ? 'label_off' : 'label',
-                web: showLabels ? 'label_off' : 'label',
-              }}
-            />
-            {visible.length === 0 ? (
-              <ThemedText
-                type="small"
-                themeColor="textSecondary"
-                className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
-                testID={`${testID}-filtered-empty`}
-              >
-                {t('map.world.filteredEmpty')}
-              </ThemedText>
-            ) : null}
-          </>
+          <WorldMapOverlay
+            testID={testID}
+            showLabels={showLabels}
+            onToggleLabels={() => setShowLabels((current) => !current)}
+            labelsToggleAllowed={source.regionKey !== null}
+            filteredEmpty={visible.length === 0 ? t('map.world.filteredEmpty') : null}
+          />
         }
       />
 
