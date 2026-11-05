@@ -115,6 +115,16 @@ export interface WorldDocumentsOptions {
    */
   colors?: Partial<Record<UserExperienceFormat, string>>;
   /**
+   * The longitudes the camera is fitted to, when they are not the ones being drawn.
+   *
+   * A format filter can leave a single eastern experience on a map still framed to the
+   * whole world: with only that one point to measure, the east edge of the frame would be
+   * the point itself, it would count as the westmost one, and its name would grow east and
+   * be clipped. The caller passes the unfiltered longitudes so the side keeps describing
+   * the frame the walker is looking at, not the slice a filter left.
+   */
+  frameLongitudes?: readonly number[];
+  /**
    * The colour of the labels, when the format colour cannot carry text.
    *
    * A format colour is a surface: the pastel that fills a card disappears as text over
@@ -213,7 +223,7 @@ function worldPathDocument(experience: WorldExperience): MapDocument | null {
  */
 export function worldDocuments(
   experiences: readonly WorldExperience[],
-  { language, colors, labelColor }: WorldDocumentsOptions,
+  { language, colors, labelColor, frameLongitudes }: WorldDocumentsOptions,
 ): MapDocument[] {
   const drawable = experiences.filter(isFinitePoint);
 
@@ -229,9 +239,13 @@ export function worldDocuments(
    * edge flips: at a narrower threshold the next one in would flip too, and a name growing
    * west from a dot in the middle of the card lands on its neighbours.
    */
-  const longitudes = drawable.map((experience) => experience.longitude);
-  const westmost = Math.min(...longitudes);
-  const span = Math.max(...longitudes) - westmost;
+  const frame = (
+    frameLongitudes && frameLongitudes.length > 0
+      ? frameLongitudes
+      : drawable.map((experience) => experience.longitude)
+  ).filter((longitude) => Number.isFinite(longitude));
+  const westmost = Math.min(...frame);
+  const span = Math.max(...frame) - westmost;
 
   const points = drawable.map((experience): MapReferenceFeature => {
     const label: MapReferenceText = { [language]: worldPointLabel(experience) };

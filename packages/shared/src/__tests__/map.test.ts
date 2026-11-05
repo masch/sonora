@@ -592,6 +592,22 @@ describe('applyMapDocuments', () => {
     expect(layers.map((layer) => layer.id)).toContain(`${REFERENCE_SOURCE_PREFIX}sendero:label`);
   });
 
+  it('removes the west-side label too when labels are turned off', () => {
+    // The hub draws its names in two layers, one per side of the card. A rule that only
+    // knew `:label` left the eastern name on screen after the walker hid the labels.
+    const { map, layers } = createFakeMap();
+    const document = documentWith('sendero', [point]);
+    applyMapDocuments(map, [document], { bold: true });
+    layers.push({ id: `${REFERENCE_SOURCE_PREFIX}sendero:label-west`, source: 'sendero' });
+
+    applyMapDocuments(map, [document], { includeLabels: false });
+
+    expect(layers.map((layer) => layer.id)).not.toContain(
+      `${REFERENCE_SOURCE_PREFIX}sendero:label-west`,
+    );
+    expect(layers.map((layer) => layer.id)).toContain(`${REFERENCE_SOURCE_PREFIX}sendero:circle`);
+  });
+
   it('removes reference layers and sources that are no longer present', () => {
     const { map, calls, layers, sources } = createFakeMap();
     applyMapDocuments(map, [documentWith('sendero', [point])]);

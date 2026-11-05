@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildReferenceStyleLayers, REFERENCE_SOURCE_PREFIX } from '../map';
+import {
+  buildReferenceStyleLayers,
+  REFERENCE_SOURCE_PREFIX,
+  WORLD_POINTS_DOCUMENT_KEY,
+  worldDocuments,
+} from '../map';
 
 const SOURCE = `${REFERENCE_SOURCE_PREFIX}sendero`;
 
@@ -166,5 +171,57 @@ describe('without bold: today’s markers, unchanged', () => {
     expect(buildReferenceStyleLayers(SOURCE, { bold: false })).toEqual(
       buildReferenceStyleLayers(SOURCE),
     );
+  });
+});
+
+/**
+ * The side a name grows towards describes the frame, not the slice a filter left.
+ *
+ * With one eastern experience left on a map still framed to the whole world, measuring
+ * only what is drawn would make that point the westmost one, so its name would grow east
+ * and be clipped. The caller passes the unfiltered longitudes for exactly this case.
+ */
+describe('label side follows the camera frame', () => {
+  const experience = (slug: string, longitude: number) => ({
+    slug,
+    title: slug.toUpperCase(),
+    format: 'track' as const,
+    latitude: -32.19,
+    longitude,
+    durationSeconds: 600,
+    free: true,
+  });
+
+  /** The properties of the one point in the points document. */
+  const sideOf = (documents: ReturnType<typeof worldDocuments>, slug: string) => {
+    const points = documents.find((document) => document.key === WORLD_POINTS_DOCUMENT_KEY);
+    const feature = points?.collection.features.find(
+      (candidate) => candidate.properties.experienceSlug === slug,
+    );
+    return feature?.properties.labelSide;
+  };
+
+  it('keeps the eastern point on its own side when a filter leaves it alone', () => {
+    const east = experience('manifiesto', -64.731576);
+    const west = experience('lavandas', -64.752621);
+
+    const wholeWorld = worldDocuments([east, west], { language: 'es' });
+    const eastAlone = worldDocuments([east], {
+      language: 'es',
+      frameLongitudes: [west.longitude, east.longitude],
+    });
+
+    expect(sideOf(wholeWorld, 'manifiesto')).toBe('west');
+    expect(sideOf(eastAlone, 'manifiesto')).toBe('west');
+  });
+
+  it('leaves a point in the middle of the frame growing east', () => {
+    const west = experience('lavandas', -64.752621);
+    const middle = experience('nina', -64.744619);
+    const east = experience('manifiesto', -64.731576);
+
+    const documents = worldDocuments([west, middle, east], { language: 'es' });
+
+    expect(sideOf(documents, 'nina')).toBeUndefined();
   });
 });

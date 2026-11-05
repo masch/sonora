@@ -132,13 +132,16 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     () =>
       worldDocuments(visible, {
         language,
+        // The side a name grows towards is about the frame, not about what a filter left:
+        // the camera stays fitted to the whole world when a chip narrows the map.
+        frameLongitudes: experiences.map((experience) => experience.longitude),
         colors: {
           trip: colors[CARD_BG_COLOR_KEYS.trip],
           track: colors[CARD_BG_COLOR_KEYS.track],
         },
         labelColor: colors.homeCardText,
       }),
-    [visible, language, colors],
+    [visible, language, colors, experiences],
   );
 
   /**
