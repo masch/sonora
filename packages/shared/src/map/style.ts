@@ -16,7 +16,7 @@ const BOLD_LABEL_FONT = ['Noto Sans Medium'];
  * is 13 px on a device, and deliberately above the basemap's own names: the walker has to
  * be able to tell at a glance which names on that frame are things they can open.
  */
-const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 12, 15, 13];
+const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 11, 15, 12];
 /**
  * The column the bold label wraps into: wide enough that a hub title stays on one line.
  *
@@ -31,6 +31,18 @@ const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 12, 15, 13];
  */
 const BOLD_TEXT_MAX_WIDTH = 20;
 const BOLD_HALO_WIDTH = 3;
+
+/**
+ * The property a point carries when its name must grow leftwards, and the share of the
+ * frame that makes it so.
+ *
+ * MapLibre reads an anchor order per layer, never per feature, so the side has to be a
+ * datum the style filters on: one label layer grows names east, a second grows them west.
+ * Only a point against the eastern edge needs the second, because a name growing east from
+ * there is drawn past the card and cut.
+ */
+export const LABEL_WEST_SIDE = 'west';
+export const LABEL_WEST_FROM_FRAME_SHARE = 0.8;
 /**
  * The dot, one size for every caller.
  *
@@ -177,9 +189,9 @@ export function buildReferenceStyleLayers(
           // stays horizontal-first on purpose: the detail map's crowds run along a road, so
           // a label beside its point is unambiguous there.
           'text-variable-anchor': bold
-            ? ['top', 'bottom', 'left', 'right']
+            ? ['left', 'top', 'bottom', 'right']
             : ['left', 'right', 'top', 'bottom'],
-          'text-radial-offset': 0.8,
+          'text-radial-offset': 0.25,
           // A title's width is the one extent the fit cannot know, so the label wraps at a
           // fixed width instead of extending sideways for as long as its words are. The bold
           // face wraps narrower (see BOLD_TEXT_MAX_WIDTH) so its bigger glyphs do not outrun
@@ -199,28 +211,63 @@ export function buildReferenceStyleLayers(
           'text-offset': anchor === 'bottom' ? [0, -0.8] : [0, 0.8],
           'text-size': bold ? BOLD_LABEL_SIZE : 12,
         };
-    layers.push({
-      id: `${sourceId}:label`,
-      type: 'symbol',
-      source: sourceId,
-      filter: forGeometry('Point'),
-      layout: {
-        'text-field': ['get', 'labelText'],
-        'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
-        ...placement,
-        // Culling is the point, not a limitation: with overlap allowed, two labels
-        // that land on the same pixel draw on top of each other and read as a
-        // corrupted word. A crowded map is expected to drop the loser.
-        'text-allow-overlap': false,
-      },
-      paint: {
-        // A reference drawn in a surface colour can still name itself legibly: the label
-        // asks for its own colour first, then the reference's, then the default.
-        'text-color': ['coalesce', ['get', 'labelColor'], color],
-        'text-halo-color': '#ffffff',
-        'text-halo-width': bold ? BOLD_HALO_WIDTH : 1.4,
-      },
+    const labelLayout = (anchorOrder: readonly string[]) => ({
+      'text-field': ['get', 'labelText'],
+      'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
+      ...(movable
+        ? {
+            ...placement,
+            'text-variable-anchor': anchorOrder,
+          }
+        : placement),
+      // Culling is the point, not a limitation: with overlap allowed, two labels that land
+      // on the same pixel draw on top of each other and read as a corrupted word. A
+      // crowded map is expected to drop the loser.
+      //
+      // It has to stay on. Turning it off stopped MapLibre advancing past the first
+      // anchor, so every name sat above its dot and the sides were never tried at all.
+      'text-allow-overlap': false,
     });
+
+    const labelPaint = {
+      // A reference drawn in a surface colour can still name itself legibly: the label
+      // asks for its own colour first, then the reference's, then the default.
+      'text-color': ['coalesce', ['get', 'labelColor'], color],
+      'text-halo-color': '#ffffff',
+      'text-halo-width': bold ? BOLD_HALO_WIDTH : 1.4,
+    };
+
+    // Only the hub splits its names by side; every other caller keeps one label layer and
+    // the filter it always had.
+    const splitSides = bold && movable;
+
+    /** One label layer, with the anchor order its side of the frame needs. */
+    const labelLayer = (id: string, anchorOrder: readonly string[], side: 'east' | 'west') => ({
+      id,
+      type: 'symbol' as const,
+      source: sourceId,
+      filter: splitSides
+        ? [
+            ...forGeometry('Point'),
+            side === 'west'
+              ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
+              : ['!', ['has', 'labelSide']],
+          ]
+        : forGeometry('Point'),
+      layout: labelLayout(anchorOrder),
+      paint: labelPaint,
+    });
+
+    const eastAnchors = bold
+      ? ['left', 'top', 'bottom', 'right']
+      : ['left', 'right', 'top', 'bottom'];
+    layers.push(labelLayer(`${sourceId}:label`, eastAnchors, 'east'));
+
+    // The eastern edge gets its own layer, growing names westwards. Only the world hub asks
+    // for it: the detail map has no eastern convention to respect.
+    if (splitSides) {
+      layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
+    }
   }
 
   return layers;

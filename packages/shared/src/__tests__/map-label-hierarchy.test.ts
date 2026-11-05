@@ -59,7 +59,7 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     expect(circle?.paint?.['circle-stroke-color']).toBe('#ffffff');
   });
 
-  it('grows the label from 12 px at z13 to 13 px at z15, with a 3 halo, in the heavier face', () => {
+  it('grows the label from 11 px at z13 to 12 px at z15, with a 3 halo, in the heavier face', () => {
     const label = layerWith(`${SOURCE}:label`);
 
     expect(label?.layout?.['text-size']).toEqual([
@@ -67,9 +67,9 @@ describe('bold references: the hub’s markers carry their own weight', () => {
       ['linear'],
       ['zoom'],
       13,
-      12,
+      11,
       15,
-      13,
+      12,
     ]);
     expect(label?.paint?.['text-halo-width']).toBe(3);
     expect(label?.layout?.['text-font']).toEqual(['Noto Sans Medium']);
@@ -92,26 +92,34 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     const hub = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
     const detail = layerWith(`${SOURCE}:label`, { movableLabels: true });
 
-    expect(hub?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
+    expect(hub?.layout?.['text-variable-anchor']).toEqual(['left', 'top', 'bottom', 'right']);
     expect(detail?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
   });
 
-  it('keeps the bold label culled and the movable one movable', () => {
-    const movable = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
+  it('lets the hub draw every name and keeps the classic label culled', () => {
+    const hub = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
+    const classic = layerWith(`${SOURCE}:label`, { movableLabels: true });
 
-    expect(movable?.layout?.['text-allow-overlap']).toBe(false);
-    // The hub stacks above or below its dot first: horizontal-first clipped the leftmost
-    // experience off the card, because the style cannot know where the viewport ends.
-    expect(movable?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
+    // Culling stays on, because with it off MapLibre never advances past the first
+    // anchor: it would put every name above its dot and give up on the sides. The hub
+    // orders right first, where the northern cluster has room, and falls back to the
+    // vertical sides; the detail map keeps its horizontal-first order for a road crowd.
+    expect(hub?.layout?.['text-allow-overlap']).toBe(false);
+    expect(classic?.layout?.['text-allow-overlap']).toBe(false);
+    // The value names the side of the text pinned to the point, so `left` is the one that
+    // makes a name grow to the RIGHT of its dot. The hub asks for that first because its
+    // northern cluster sits on the left of the card, where a name growing leftwards runs
+    // off the edge and one growing upwards collides with its neighbour.
+    expect(hub?.layout?.['text-variable-anchor']).toEqual(['left', 'top', 'bottom', 'right']);
     // The weight replaces the size, not the placement.
-    expect(movable?.layout?.['text-size']).toEqual([
+    expect(hub?.layout?.['text-size']).toEqual([
       'interpolate',
       ['linear'],
       ['zoom'],
       13,
-      12,
+      11,
       15,
-      13,
+      12,
     ]);
   });
 
