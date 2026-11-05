@@ -28,7 +28,7 @@
 # works for a one-off run or for a single commit:
 #   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" make gga
 #   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" git commit
-PROVIDER="opencode:opencode-go/deepseek-v4.1-flash"
+PROVIDER="opencode:opencode/deepseek-v4.1-flash-free"
 
 # File patterns to include in review (comma-separated)
 # Default: * (all files)
