@@ -1903,17 +1903,17 @@ describe('ExperienceMap — bold references', () => {
       'circle-opacity': 0.01,
     });
     expect(drawnReferenceLayer('refs:umepay:circle')?.paint).toMatchObject({
-      'circle-radius': 8,
-      'circle-stroke-width': 2.5,
+      'circle-radius': 6,
+      'circle-stroke-width': 2,
     });
     expect(drawnReferenceLayer('refs:umepay:label')?.layout?.['text-size']).toEqual([
       'interpolate',
       ['linear'],
       ['zoom'],
       13,
+      12,
+      15,
       13,
-      15,
-      15,
     ]);
     expect(drawnReferenceLayer('refs:umepay:label')?.paint?.['text-halo-width']).toBe(3);
   });

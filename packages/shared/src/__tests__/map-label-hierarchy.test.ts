@@ -54,12 +54,12 @@ describe('bold references: the hub’s markers carry their own weight', () => {
   it('draws the dot at radius 11 with a 3 white stroke', () => {
     const circle = layerWith(`${SOURCE}:circle`);
 
-    expect(circle?.paint?.['circle-radius']).toBe(8);
-    expect(circle?.paint?.['circle-stroke-width']).toBe(2.5);
+    expect(circle?.paint?.['circle-radius']).toBe(6);
+    expect(circle?.paint?.['circle-stroke-width']).toBe(2);
     expect(circle?.paint?.['circle-stroke-color']).toBe('#ffffff');
   });
 
-  it('grows the label from 14 px at z13 to 16 px at z15, with a 3 halo, in the heavier face', () => {
+  it('grows the label from 12 px at z13 to 13 px at z15, with a 3 halo, in the heavier face', () => {
     const label = layerWith(`${SOURCE}:label`);
 
     expect(label?.layout?.['text-size']).toEqual([
@@ -67,9 +67,9 @@ describe('bold references: the hub’s markers carry their own weight', () => {
       ['linear'],
       ['zoom'],
       13,
+      12,
+      15,
       13,
-      15,
-      15,
     ]);
     expect(label?.paint?.['text-halo-width']).toBe(3);
     expect(label?.layout?.['text-font']).toEqual(['Noto Sans Medium']);
@@ -81,7 +81,7 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     // from the face and the size, not from a wider column. The world hub's own labels
     // are the movable ones, which is where the wrap lives.
     const label = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
-    expect(label?.layout?.['text-max-width']).toBe(6);
+    expect(label?.layout?.['text-max-width']).toBe(20);
   });
 
   it('stacks the hub label above or below its dot before it moves sideways', () => {
@@ -109,9 +109,9 @@ describe('bold references: the hub’s markers carry their own weight', () => {
       ['linear'],
       ['zoom'],
       13,
+      12,
+      15,
       13,
-      15,
-      15,
     ]);
   });
 

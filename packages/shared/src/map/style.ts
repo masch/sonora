@@ -16,19 +16,31 @@ const BOLD_LABEL_FONT = ['Noto Sans Medium'];
  * is 13 px on a device, and deliberately above the basemap's own names: the walker has to
  * be able to tell at a glance which names on that frame are things they can open.
  */
-const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 13, 15, 15];
+const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 12, 15, 13];
 /**
- * The column the bold label wraps into, narrower than the classic 8 em on purpose.
+ * The column the bold label wraps into: wide enough that a hub title stays on one line.
  *
- * `text-max-width` is measured in em of the face, so a bold title at 16 px with the same
- * 8 em is 128 px wide where the classic 12 px title was 96 px: the extra width is what
- * ran a phone's edge title off the card. Six em at 16 px is 96 px again, so the heavier
- * face buys the emphasis without buying a label the opening frame cannot hold.
+ * The three experiences at the north of the world sit 137 and 204 metres apart, which is
+ * 19 and 28 pixels on a phone card, and a two-line label is about 32 pixels tall. Three
+ * stacked two-line labels need roughly 96 pixels of the 47 available, so MapLibre culls
+ * one of them: that is why the northernmost experience had no name at all. One line per
+ * label is 16 pixels, and three of those do fit the band.
+ *
+ * Twenty em at 13 px is 260 px, wider than any hub title and far narrower than the card,
+ * so this buys the single line without turning a long name into a wall of text.
  */
-const BOLD_TEXT_MAX_WIDTH = 6;
+const BOLD_TEXT_MAX_WIDTH = 20;
 const BOLD_HALO_WIDTH = 3;
-const BOLD_DOT_RADIUS = 8;
-const BOLD_DOT_STROKE_WIDTH = 2.5;
+/**
+ * The dot, one size for every caller.
+ *
+ * It used to grow with the bold half, and the walker asked for it back down: on a phone
+ * the bigger dot crowded the neighbours long before the label did, and the emphasis is
+ * carried by the face and the halo anyway. One constant, so the hub's dot and the detail
+ * map's dot cannot drift apart.
+ */
+const DOT_RADIUS = 6;
+const DOT_STROKE_WIDTH = 2;
 
 /**
  * The tap target, which is not the dot the walker sees.
@@ -145,9 +157,9 @@ export function buildReferenceStyleLayers(
     filter: forGeometry('Point'),
     paint: {
       'circle-color': color,
-      'circle-radius': bold ? BOLD_DOT_RADIUS : 6,
+      'circle-radius': DOT_RADIUS,
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': bold ? BOLD_DOT_STROKE_WIDTH : 2,
+      'circle-stroke-width': DOT_STROKE_WIDTH,
     },
   });
 
