@@ -16,7 +16,7 @@ const BOLD_LABEL_FONT = ['Noto Sans Medium'];
  * is 13 px on a device, and deliberately above the basemap's own names: the walker has to
  * be able to tell at a glance which names on that frame are things they can open.
  */
-const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 14, 15, 16];
+const BOLD_LABEL_SIZE = ['interpolate', ['linear'], ['zoom'], 13, 13, 15, 15];
 /**
  * The column the bold label wraps into, narrower than the classic 8 em on purpose.
  *
@@ -156,11 +156,17 @@ export function buildReferenceStyleLayers(
     const movable = options.movableLabels === true;
     const placement = movable
       ? {
-          // Four candidate sides, tried in this order. The sides come first because the
-          // world's crowds are vertical — the places of one hamlet sit along the same
-          // road — and a label beside its point is unambiguous where one above it and
-          // one below it are not.
-          'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+          // Four candidate sides, and the order is the difference between a label that
+          // fits and one the card never shows. This branch draws the world hub: its points
+          // sit close together on a tall card, so the label stacks above or below its dot
+          // first and only moves sideways when both vertical sides are taken. Horizontal
+          // first was the old order and it clipped the leftmost experience off the card,
+          // because the style cannot know where the viewport ends. The classic order below
+          // stays horizontal-first on purpose: the detail map's crowds run along a road, so
+          // a label beside its point is unambiguous there.
+          'text-variable-anchor': bold
+            ? ['top', 'bottom', 'left', 'right']
+            : ['left', 'right', 'top', 'bottom'],
           'text-radial-offset': 0.8,
           // A title's width is the one extent the fit cannot know, so the label wraps at a
           // fixed width instead of extending sideways for as long as its words are. The bold

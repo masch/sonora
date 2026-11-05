@@ -67,9 +67,9 @@ describe('bold references: the hub’s markers carry their own weight', () => {
       ['linear'],
       ['zoom'],
       13,
-      14,
+      13,
       15,
-      16,
+      15,
     ]);
     expect(label?.paint?.['text-halo-width']).toBe(3);
     expect(label?.layout?.['text-font']).toEqual(['Noto Sans Medium']);
@@ -84,20 +84,34 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     expect(label?.layout?.['text-max-width']).toBe(6);
   });
 
+  it('stacks the hub label above or below its dot before it moves sideways', () => {
+    // Two documents, two crowds, two orders. The hub's points sit close together on a tall
+    // card, so a label that stacks vertically stays inside the frame; the detail map's
+    // crowds run along a road, where a label beside its point is the unambiguous one. The
+    // split is what keeps the leftmost experience from being drawn outside the card.
+    const hub = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
+    const detail = layerWith(`${SOURCE}:label`, { movableLabels: true });
+
+    expect(hub?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
+    expect(detail?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
+  });
+
   it('keeps the bold label culled and the movable one movable', () => {
     const movable = layerWith(`${SOURCE}:label`, { bold: true, movableLabels: true });
 
     expect(movable?.layout?.['text-allow-overlap']).toBe(false);
-    expect(movable?.layout?.['text-variable-anchor']).toEqual(['left', 'right', 'top', 'bottom']);
+    // The hub stacks above or below its dot first: horizontal-first clipped the leftmost
+    // experience off the card, because the style cannot know where the viewport ends.
+    expect(movable?.layout?.['text-variable-anchor']).toEqual(['top', 'bottom', 'left', 'right']);
     // The weight replaces the size, not the placement.
     expect(movable?.layout?.['text-size']).toEqual([
       'interpolate',
       ['linear'],
       ['zoom'],
       13,
-      14,
+      13,
       15,
-      16,
+      15,
     ]);
   });
 

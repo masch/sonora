@@ -1256,9 +1256,9 @@ describe('ExperienceMap (web) — bold references', () => {
       ['linear'],
       ['zoom'],
       13,
-      14,
+      13,
       15,
-      16,
+      15,
     ]);
     expect(layerWith('refs:umepay:label')?.paint?.['text-halo-width']).toBe(3);
   });

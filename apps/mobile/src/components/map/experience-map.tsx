@@ -715,7 +715,7 @@ export default function ExperienceMap({
    * label's own direction and gets the most. Native had none, and the web renderer's
    * fitBounds carries the same idea at 24 px, which the wider bold labels outgrew.
    */
-  const BOUNDS_PADDING = { top: 40, right: 48, bottom: 56, left: 48 };
+  const BOUNDS_PADDING = { top: 64, right: 56, bottom: 72, left: 56 };
 
   const camera: Partial<CameraCenterStop & CameraBoundsStop> = bounds
     ? {
