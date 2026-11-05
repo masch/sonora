@@ -3,6 +3,7 @@ import type { SupportedLanguage } from '../enums';
 import { formatPrice } from '../utils/format-price';
 import type { GeoBounds } from './camera';
 import type { MapDocument, MapReferenceFeature, MapReferenceText } from './document';
+import { LABEL_WEST_FROM_FRAME_SHARE, LABEL_WEST_SIDE } from './style';
 import type { TranslateKey } from './labels';
 
 /**
@@ -114,6 +115,16 @@ export interface WorldDocumentsOptions {
    */
   colors?: Partial<Record<UserExperienceFormat, string>>;
   /**
+   * The longitudes the camera is fitted to, when they are not the ones being drawn.
+   *
+   * A format filter can leave a single eastern experience on a map still framed to the
+   * whole world: with only that one point to measure, the east edge of the frame would be
+   * the point itself, it would count as the westmost one, and its name would grow east and
+   * be clipped. The caller passes the unfiltered longitudes so the side keeps describing
+   * the frame the walker is looking at, not the slice a filter left.
+   */
+  frameLongitudes?: readonly number[];
+  /**
    * The colour of the labels, when the format colour cannot carry text.
    *
    * A format colour is a surface: the pastel that fills a card disappears as text over
@@ -212,12 +223,33 @@ function worldPathDocument(experience: WorldExperience): MapDocument | null {
  */
 export function worldDocuments(
   experiences: readonly WorldExperience[],
-  { language, colors, labelColor }: WorldDocumentsOptions,
+  { language, colors, labelColor, frameLongitudes }: WorldDocumentsOptions,
 ): MapDocument[] {
   const drawable = experiences.filter(isFinitePoint);
 
+  /**
+   * How far into the frame a point must sit for its name to grow leftwards.
+   *
+   * A name grows away from its dot, and the style cannot tell where the card ends: a point
+   * near the eastern edge whose name grows east is drawn past it and cut. The easternmost
+   * experiences get the opposite side instead, which the renderer expresses as a second
+   * label layer because MapLibre's anchor is a layer property, not a feature one.
+   *
+   * Four fifths of the way across, so only the point that is genuinely against the right
+   * edge flips: at a narrower threshold the next one in would flip too, and a name growing
+   * west from a dot in the middle of the card lands on its neighbours.
+   */
+  const frame = (
+    frameLongitudes && frameLongitudes.length > 0
+      ? frameLongitudes
+      : drawable.map((experience) => experience.longitude)
+  ).filter((longitude) => Number.isFinite(longitude));
+  const westmost = Math.min(...frame);
+  const span = Math.max(...frame) - westmost;
+
   const points = drawable.map((experience): MapReferenceFeature => {
     const label: MapReferenceText = { [language]: worldPointLabel(experience) };
+    const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
     return {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
@@ -227,6 +259,7 @@ export function worldDocuments(
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
+        ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
       },
     };
   });

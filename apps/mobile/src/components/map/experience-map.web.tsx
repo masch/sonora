@@ -81,6 +81,7 @@ export default function ExperienceMap({
   center = [-64.738, -32.212],
   zoom = 14,
   showLabels = true,
+  boldReferences = false,
   layerSelection,
   focus,
   onFocusSettled,
@@ -158,21 +159,29 @@ export default function ExperienceMap({
   }, [showLabels]);
 
   /** Draws the current documents. Safe to call on every content or locale change. */
-  const applyOverlays = useCallback((map: MapHandle) => {
-    // MapLibre cannot call the translation layer, so keys become text here. A
-    // document that carries its own text is read in the active language.
-    const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
-      withResolvedLabels(overlay, translateRef.current, languageRef.current),
-    );
+  const applyOverlays = useCallback(
+    (map: MapHandle) => {
+      // MapLibre cannot call the translation layer, so keys become text here. A
+      // document that carries its own text is read in the active language.
+      const resolved: MapDocument[] = overlaysRef.current.map((overlay) =>
+        withResolvedLabels(overlay, translateRef.current, languageRef.current),
+      );
 
-    try {
-      applyMapDocuments(map, resolved, {
-        includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
-      });
-    } catch (err) {
-      logger.error('ExperienceMap failed to apply reference documents:', err);
-    }
-  }, []);
+      try {
+        applyMapDocuments(map, resolved, {
+          includeLabels: showLabelsRef.current && glyphsAvailableRef.current,
+          // `boldReferences` is a direct dependency, not a ref like the others: it is fixed
+          // for the life of this map (true for the hub, absent for the detail map) and never
+          // toggles at runtime, so capturing it in the callback's deps keeps the callback
+          // stable in practice and removes the one-render window a mirrored ref would have.
+          bold: boldReferences,
+        });
+      } catch (err) {
+        logger.error('ExperienceMap failed to apply reference documents:', err);
+      }
+    },
+    [boldReferences],
+  );
 
   const openReference = useCallback((feature: RenderedFeature) => {
     const handler = onFeaturePressRef.current;

@@ -68,6 +68,10 @@ interface RecordedMapProps {
   onFeaturePress?: (reference: MapReferencePress) => void;
   /** What the renderer calls when the flight it ran comes to rest. */
   onFocusSettled?: () => void;
+  /** The hub asks for the references' own weight, which it and no other caller draws. */
+  boldReferences?: boolean;
+  /** Whether the reference labels draw; the walker can hide them from the filter row. */
+  showLabels?: boolean;
   /** Drawn above the map, only once the map can draw. */
   toolbar?: ReactNode;
   /** The caller's own surface while the map cannot draw. */
@@ -423,6 +427,28 @@ describe('WorldMap', () => {
     // The point names the experience and nothing else: duration and price belong to the
     // preview, where there is room for them.
     expect(points[0].properties.label?.en).toBe(trip.title);
+  });
+
+  it('asks its map for the bold reference markers, and for nothing else', async () => {
+    await renderWith(PAYLOAD);
+
+    // The hub is the one screen where the experiences have to be told apart from the
+    // names they sit among, so it asks for the heavier markers; the basemap's own names
+    // are left to the document, not raised or silenced by a switch here.
+    expect(latestMap().boldReferences).toBe(true);
+    // The flag that used to decide this is gone: no screen selects a look at runtime.
+    expect(latestMap()).not.toHaveProperty('labelHierarchy');
+  });
+
+  it('draws no labels toggle when the map cannot draw a name', async () => {
+    await renderWith(PAYLOAD);
+
+    // This payload publishes no region, so the map draws the reference plane: that style
+    // carries no glyphs, no name is ever placed, and a toggle there would flip a setting
+    // with nothing to show for it. The switch's own sheet keeps the toggle-when-drawn case.
+    expect(screen.queryByTestId('toggle-map-labels')).toBeNull();
+    // The names are still requested, so a region that lands later draws them by default.
+    expect(latestMap().showLabels).toBe(true);
   });
 
   it('draws only through the MapLibre map component and never loads Leaflet', async () => {

@@ -125,6 +125,15 @@ export interface ExperienceMapProps {
   /** Draw the reference label layer. Defaults to true. */
   showLabels?: boolean;
   /**
+   * Draw the references with their own weight, above the basemap's names.
+   *
+   * Passed in rather than decided by the renderer: the world hub is the one screen that
+   * asks for it, because it is the one frame where an openable experience and the barrio
+   * it sits in are drawn together. Absent draws today's markers exactly, which is what
+   * every other map wants.
+   */
+  boldReferences?: boolean;
+  /**
    * Which basemap groups draw, as the view that owns the decision resolved them.
    *
    * The renderer applies this and resolves nothing itself: the switch seeds it from

@@ -51,8 +51,11 @@ export function applyMapDocuments(
   for (const layerId of existingLayers) {
     if (!layerId.startsWith(REFERENCE_SOURCE_PREFIX)) continue;
     const sourceId = sourceIdOfLayer(layerId);
-    // A desired source can still carry a stale label layer when labels are off.
-    if (desired.has(sourceId) && !(options.includeLabels === false && layerId.endsWith(':label'))) {
+    // A desired source can still carry a stale label layer when labels are off. The hub
+    // draws its names in two layers, one per side of the card, so both suffixes count:
+    // a rule that only knew `:label` left the eastern name on screen after the toggle.
+    const isLabelLayer = layerId.endsWith(':label') || layerId.endsWith(':label-west');
+    if (desired.has(sourceId) && !(options.includeLabels === false && isLabelLayer)) {
       continue;
     }
     map.removeLayer(layerId);

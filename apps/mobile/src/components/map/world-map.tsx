@@ -11,6 +11,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { IconButton } from '@/components/ui/icon-button';
 import LoadingView from '@/components/loading-view';
 import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
@@ -98,11 +99,77 @@ function waitMessage(
  * change them (filter, language), never stored: the world is a projection of what
  * the lists already read, so there is no second copy to drift.
  */
+/**
+ * What the hub draws over its own card once the map can draw.
+ *
+ * A local component rather than markup inside `WorldMap`: the map body is already at the
+ * size the repository's doctor gate allows, and this block belongs to the overlay slot
+ * anyway — it is about what the frame shows, not about how the map is built.
+ */
+interface WorldMapOverlayProps {
+  testID: string;
+  showLabels: boolean;
+  onToggleLabels: () => void;
+  /**
+   * False when the map cannot place a name at all.
+   *
+   * A centre outside every published region draws the reference plane, and that style
+   * carries no glyphs, so a toggle there would flip a setting with nothing to show for it.
+   */
+  labelsToggleAllowed: boolean;
+  /** The sentence for a filter that left nothing to draw, or null when something drew. */
+  filteredEmpty: string | null;
+}
+
+function WorldMapOverlay({
+  testID,
+  showLabels,
+  onToggleLabels,
+  labelsToggleAllowed,
+  filteredEmpty,
+}: WorldMapOverlayProps) {
+  const { t } = useAppTranslation();
+
+  return (
+    <>
+      {/* The labels toggle floats over the map, not beside the filters: it acts on the map
+          itself, and a walker who wants to read the names underneath the experiences flips
+          it without leaving the frame. */}
+      {labelsToggleAllowed && (
+        <IconButton
+          onPress={onToggleLabels}
+          variant="outline"
+          size="sm"
+          className="absolute top-3 right-3 bg-white/95 dark:bg-zinc-800/95 shadow-md z-20 border-0"
+          accessibilityLabel={showLabels ? t('map.hideLabels') : t('map.showLabels')}
+          testID="toggle-map-labels"
+          icon={{
+            ios: showLabels ? 'tag.slash.fill' : 'tag.fill',
+            android: showLabels ? 'label_off' : 'label',
+            web: showLabels ? 'label_off' : 'label',
+          }}
+        />
+      )}
+      {filteredEmpty === null ? null : (
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
+          testID={`${testID}-filtered-empty`}
+        >
+          {filteredEmpty}
+        </ThemedText>
+      )}
+    </>
+  );
+}
+
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
   const { t, language } = useAppTranslation();
   const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
+  const [showLabels, setShowLabels] = useState(true);
   /**
    * What a tap asked for, and only what the camera still owes it.
    *
@@ -130,13 +197,16 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     () =>
       worldDocuments(visible, {
         language,
+        // The side a name grows towards is about the frame, not about what a filter left:
+        // the camera stays fitted to the whole world when a chip narrows the map.
+        frameLongitudes: experiences.map((experience) => experience.longitude),
         colors: {
           trip: colors[CARD_BG_COLOR_KEYS.trip],
           track: colors[CARD_BG_COLOR_KEYS.track],
         },
         labelColor: colors.homeCardText,
       }),
-    [visible, language, colors],
+    [visible, language, colors, experiences],
   );
 
   /**
@@ -294,7 +364,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const filtersRow = (
     // The row is a layout, not a control: labelling it would need `accessible`, which
     // would in turn swallow the chips' own names. Each chip announces itself.
-    <TwView className="flex-row gap-2" testID={`${testID}-filters`}>
+    <TwView className="flex-row items-center gap-2" testID={`${testID}-filters`}>
       {FILTER_OPTIONS.map((option) => {
         const filter = option ?? 'all';
         return (
@@ -329,6 +399,14 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         focus={traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null}
         onFocusSettled={landFlight}
         onFeaturePress={handleFeaturePress}
+        // The hub is where an openable experience and the barrio around it are drawn on
+        // one frame, so its markers carry their own weight and a tap target wider than the
+        // dot. The basemap's own names are left exactly as the document publishes them:
+        // the hub's frame is also where the walker learns the names of the places, and a
+        // barrio that only appears once they are close enough to be standing in it is a
+        // name they never read.
+        boldReferences={true}
+        showLabels={showLabels}
         toolbar={filtersRow}
         // One wait, in the card, and the same card: the renderer says which stage it is
         // in, and only a transfer it is really paying for gets its own sentence.
@@ -345,16 +423,13 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         // the filter — the place has places — so it is not the world-empty sentence,
         // which would describe a map with nothing published at all.
         overlay={
-          visible.length === 0 ? (
-            <ThemedText
-              type="small"
-              themeColor="textSecondary"
-              className="absolute inset-x-0 bottom-0 bg-backgroundElement px-3 py-2 text-center"
-              testID={`${testID}-filtered-empty`}
-            >
-              {t('map.world.filteredEmpty')}
-            </ThemedText>
-          ) : null
+          <WorldMapOverlay
+            testID={testID}
+            showLabels={showLabels}
+            onToggleLabels={() => setShowLabels((current) => !current)}
+            labelsToggleAllowed={source.regionKey !== null}
+            filteredEmpty={visible.length === 0 ? t('map.world.filteredEmpty') : null}
+          />
         }
       />
 
