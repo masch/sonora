@@ -41,13 +41,24 @@ MAP_ARTIFACT_VERSION = "v8"
 MAP_PRELOAD_REGIONS = "calamuchita"
 # Renderer served to this environment's clients. `maplibre` switches every build
 # that left the choice open; anything else keeps them on the Leaflet map.
-MAP_RENDERER = "leaflet"
-# Capability gate, not a preference: only these platforms can render the new map.
-# `web` is included in staging only: the web bundle published from df1f0ae carries
-# the MapLibre worker, so a browser is now able to render it. The global value stays
-# `leaflet`, so this only decides who *can* be switched on — the device allowlist
-# decides who *is*.
-MAP_RENDERER_PLATFORMS = "android,ios,web"
+# Staging serves the new map to the whole capable fleet on purpose: a stale staging
+# build is reinstalled, not supported (same reasoning as `MAP_LAYERS_WIRE` below).
+# The rollback is this value back to `leaflet` plus a deploy — no app release — and
+# it reaches every build that left the choice open. A build made with
+# `EXPO_PUBLIC_MAP_RENDERER=maplibre` stays on MapLibre regardless (T7 device builds).
+MAP_RENDERER = "maplibre"
+# Capability gate, not a preference: only these platforms can render the new map, and
+# `resolveMapRenderer` reads it before any list, so an incapable or missing platform
+# keeps Leaflet even with the value above. `web` is deliberately absent: the export
+# emits MapLibre's worker as a static asset (`scripts/copy-maplibre-worker.mjs`), but
+# the bundle published to staging is a manual `deploy-mobile-web-staging` run, so
+# nothing guarantees the served export carries it and a browser without it dies in
+# the map's error state. Add `web` back only after a HEAD on the deployed
+# `/maplibre-gl-worker.js` answers 200 with a JavaScript content type. No allowlist or
+# denylist is set: every capable device is served, and an individual device is pulled
+# back through `MAP_RENDERER_DEVICE_IDS_BLOCKED` (a Cloudflare secret) rather than
+# turning the environment off.
+MAP_RENDERER_PLATFORMS = "android,ios"
 
 # --- Layer selector (`map.layers`) -----------------------------------------
 # This environment publishes the field because staging is for testing: a stale
