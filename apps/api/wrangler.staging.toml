@@ -49,16 +49,18 @@ MAP_PRELOAD_REGIONS = "calamuchita"
 MAP_RENDERER = "maplibre"
 # Capability gate, not a preference: only these platforms can render the new map, and
 # `resolveMapRenderer` reads it before any list, so an incapable or missing platform
-# keeps Leaflet even with the value above. `web` is deliberately absent: the export
-# emits MapLibre's worker as a static asset (`scripts/copy-maplibre-worker.mjs`), but
-# the bundle published to staging is a manual `deploy-mobile-web-staging` run, so
-# nothing guarantees the served export carries it and a browser without it dies in
-# the map's error state. Add `web` back only after a HEAD on the deployed
-# `/maplibre-gl-worker.js` answers 200 with a JavaScript content type. No allowlist or
-# denylist is set: every capable device is served, and an individual device is pulled
-# back through `MAP_RENDERER_DEVICE_IDS_BLOCKED` (a Cloudflare secret) rather than
-# turning the environment off.
-MAP_RENDERER_PLATFORMS = "android,ios"
+# keeps Leaflet even with the value above. `web` is included because the export emits
+# MapLibre's worker as a static asset (`scripts/copy-maplibre-worker.mjs`) and the
+# deployment the staging alias actually serves has it: a HEAD on
+# `/maplibre-gl-worker.js` answers `200`, `application/javascript`, 508 KB. Should a
+# future web deployment lose the asset, a browser would ask for the worker, be handed
+# the SPA fallback as `text/html`, and die in the map's error state — the failure
+# `fix(staging): put staging back on Leaflet until the web worker loads` retreated
+# from — so the HEAD above is the check that belongs in front of any staging web
+# deploy. No allowlist or denylist is set: every capable device is served, and an
+# individual device is pulled back through `MAP_RENDERER_DEVICE_IDS_BLOCKED` (a
+# Cloudflare secret) rather than turning the environment off.
+MAP_RENDERER_PLATFORMS = "android,ios,web"
 
 # --- Layer selector (`map.layers`) -----------------------------------------
 # This environment publishes the field because staging is for testing: a stale
