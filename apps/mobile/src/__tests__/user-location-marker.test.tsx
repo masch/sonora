@@ -214,6 +214,10 @@ describe('the walker’s position on the native renderer', () => {
     // A new style on native re-applies it and re-fetches every tile: a fix every few
     // metres must only move the point, so both renders handed the map one style.
     expect(mockMapStyles[mockMapStyles.length - 1]).toBe(firstStyle);
+    // And the point really moved: a regression that froze the first fix would keep the
+    // style identical and pass everything above.
+    const latest = mockGeoSources[mockGeoSources.length - 1];
+    expect(drawnUserLocation([latest])[0]?.geometry?.coordinates).toEqual([-64.739, -32.213]);
   });
 
   it('draws one dot for a detail map, which hands the walker over as a position only', async () => {
@@ -255,6 +259,8 @@ describe('the walker’s position on the web renderer', () => {
   function fakeMap() {
     const sources = new Map<string, { setData: jest.Mock }>();
     const layers: { id: string }[] = [];
+    /** Every removal, in order: MapLibre refuses to drop a source its layers still read. */
+    const removals: string[] = [];
 
     const map: MapHandle = {
       on: jest.fn(),
@@ -266,12 +272,14 @@ describe('the walker’s position on the web renderer', () => {
         sources.set(id, { setData: jest.fn(), ...(value as object) } as never);
       }) as MapHandle['addSource'],
       removeSource: ((id: string) => {
+        removals.push(`source:${id}`);
         sources.delete(id);
       }) as MapHandle['removeSource'],
       addLayer: ((layer: { id: string }) => {
         layers.push(layer);
       }) as MapHandle['addLayer'],
       removeLayer: ((id: string) => {
+        removals.push(`layer:${id}`);
         const index = layers.findIndex((layer) => layer.id === id);
         if (index >= 0) layers.splice(index, 1);
       }) as MapHandle['removeLayer'],
@@ -282,7 +290,7 @@ describe('the walker’s position on the web renderer', () => {
       queryRenderedFeatures: () => [],
     };
 
-    return { map, sources, layers };
+    return { map, sources, layers, removals };
   }
 
   it('adds the source and its two layers, halo first', () => {
@@ -358,13 +366,22 @@ describe('the walker’s position on the web renderer', () => {
   });
 
   it('clears the layers before the source when the fix is lost', () => {
-    const { map, sources, layers } = fakeMap();
+    const { map, sources, layers, removals } = fakeMap();
 
-    applyUserLocation(map, WALKER);
+    applyUserLocation(map, WALKER, { label: 'Tu ubicación', includeLabel: true });
+    removals.length = 0;
     applyUserLocation(map, null);
 
-    expect(layers).toEqual([]);
     expect([...sources.keys()]).toEqual([]);
+    // The order is the assertion: MapLibre refuses to remove a source its layers still
+    // read, and a fake that only checks the end state cannot tell the two apart.
+    expect(removals).toEqual([
+      'layer:user-location:halo',
+      'layer:user-location:dot',
+      'layer:user-location:label',
+      'source:user-location',
+    ]);
+    expect(layers).toEqual([]);
   });
 
   it('does nothing twice when there was nothing drawn', () => {

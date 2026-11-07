@@ -69,3 +69,27 @@ export function applyUserLocation(
     map.removeLayer(layerId);
   }
 }
+
+/**
+ * Puts the walker's layers back on top of the map.
+ *
+ * Layers are drawn in the order they were added, so a document reconciled after the
+ * walker — a trip filter cleared and set again, a reference document arriving with the
+ * payload — lands above the dot, and an overlapping path covers it. MapLibre has no
+ * `moveLayer` in the slice this module drives, so the layers are removed and added
+ * again: they are three circles and a label, and the cost of re-adding them is a
+ * repaint, never a tile.
+ *
+ * The order is restored, not computed: whatever the caller's set-up drew is left alone
+ * and only these layers move.
+ */
+export function raiseUserLocation(map: MapHandle): void {
+  const drawn = new Set((map.getStyle()?.layers ?? []).map((layer) => layer.id));
+  const layers = userLocationStyleLayers({ includeLabel: true }).filter((layer) =>
+    drawn.has(layer.id),
+  );
+  if (layers.length === 0) return;
+
+  for (const layer of layers) map.removeLayer(layer.id);
+  for (const layer of layers) map.addLayer(layer);
+}

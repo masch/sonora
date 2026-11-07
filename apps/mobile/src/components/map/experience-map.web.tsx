@@ -33,6 +33,7 @@ import {
   type MapWaitState,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
+import { raiseUserLocation } from './apply-user-location';
 import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
@@ -220,6 +221,10 @@ export default function ExperienceMap({
     const map = mapRef.current;
     if (!ready || !map) return;
     applyOverlays(map);
+    // A document reconciled after the walker lands above it, and a path drawn over the
+    // dot hides the one point on the frame that is the walker's own. The order is
+    // restored here, where the documents changed, so no coordinate update has to.
+    raiseUserLocation(map);
     // `language` is an input even though `applyOverlays` reads it through a ref: without
     // it here, switching the app language leaves every reference in the old one, because
     // the callback is stable and nothing else in the deps changes.

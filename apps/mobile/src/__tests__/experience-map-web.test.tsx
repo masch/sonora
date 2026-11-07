@@ -315,6 +315,64 @@ describe('ExperienceMap (web)', () => {
     ]);
   });
 
+  it('keeps the walker above a document reconciled after it', async () => {
+    // A filter chip cleared and set again reconciles a whole trip anew, and its path is
+    // added above whatever is already drawn: without restoring the order, the path runs
+    // over the dot that says where the walker is.
+    const path: MapDocument = {
+      key: 'world-path-trip',
+      scope: 'global',
+      collection: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [-64.74, -32.213],
+                [-64.738, -32.212],
+              ],
+            },
+            properties: {},
+          },
+        ],
+      },
+    };
+    const source = { archiveUrl: ARCHIVE, style: styleWith(true) };
+    const view = await render(
+      <ExperienceMap
+        source={source}
+        overlays={[]}
+        userCoordinates={{ latitude: -32.2125, longitude: -64.7385 }}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+    const drawn = mockMapInstances[0];
+
+    await act(async () => {
+      view.rerender(
+        <ExperienceMap
+          source={source}
+          overlays={[path]}
+          userCoordinates={{ latitude: -32.2125, longitude: -64.7385 }}
+        />,
+      );
+    });
+
+    const ids = drawn.layers.map((layer: { id: string }) => layer.id);
+    expect(ids).toContain('refs:world-path-trip:line');
+    expect(ids.slice(-3)).toEqual([
+      'user-location:halo',
+      'user-location:dot',
+      'user-location:label',
+    ]);
+  });
+
   it('adds and removes the label layer with the labels toggle', async () => {
     // A stable source keeps the map instance alive across the toggle.
     const source = { archiveUrl: ARCHIVE, style: styleWith(true) };
