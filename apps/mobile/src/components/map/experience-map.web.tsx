@@ -33,6 +33,8 @@ import {
   type MapWaitState,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
+import { raiseUserLocation } from './apply-user-location';
+import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
 /** No selection at all: no group is declared, so the style draws what it authored. */
@@ -80,6 +82,7 @@ export default function ExperienceMap({
   bounds,
   center = [-64.738, -32.212],
   zoom = 14,
+  userCoordinates,
   showLabels = true,
   boldReferences = false,
   layerSelection,
@@ -218,6 +221,10 @@ export default function ExperienceMap({
     const map = mapRef.current;
     if (!ready || !map) return;
     applyOverlays(map);
+    // A document reconciled after the walker lands above it, and a path drawn over the
+    // dot hides the one point on the frame that is the walker's own. The order is
+    // restored here, where the documents changed, so no coordinate update has to.
+    raiseUserLocation(map);
     // `language` is an input even though `applyOverlays` reads it through a ref: without
     // it here, switching the app language leaves every reference in the old one, because
     // the callback is stable and nothing else in the deps changes.
@@ -239,6 +246,9 @@ export default function ExperienceMap({
     // switch rebuilds the array on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, selectionKey, applyLayerSelection]);
+
+  // The walker's own position, which is no part of the documents this renderer owns.
+  useUserLocation({ mapRef, ready, coordinates: userCoordinates, showLabels, glyphsAvailableRef });
 
   /**
    * The failure this renderer would report, if any.

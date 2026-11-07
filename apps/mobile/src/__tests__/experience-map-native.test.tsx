@@ -116,6 +116,7 @@ jest.mock('@/components/loading-view', () => {
 import {
   mockCameraFlights,
   mockCameraProps,
+  mockGeoSources,
   mockHit,
   mockMapProps,
   mockMapStyles,
@@ -1525,15 +1526,23 @@ describe('ExperienceMap (native)', () => {
       center: [-58.3816, -34.6037],
       zoom: 14,
     });
-    // Origin, one numbered stop per waypoint, the path and the walker position.
+    // Origin, one numbered stop per waypoint and the path. The walker is not a stop of
+    // the walk: the renderer draws the position the switch hands it as its own point.
     const itinerary = drawnFeatures('itinerary');
     expect(itinerary.map((feature) => feature.properties?.labelIndex ?? null)).toEqual([
       1,
       2,
       3,
       null,
-      null,
     ]);
+    // And that point is drawn once, from the position and never from the document: the
+    // walker's own source is there, and the itinerary kept only what the trip published.
+    expect(drawnFeatures('itinerary')).toHaveLength(4);
+    const userSource = mockGeoSources.filter((source) => source.id === 'user-location');
+    expect(userSource).toHaveLength(1);
+    expect(
+      (userSource[0]?.data as { features?: { geometry?: { coordinates?: number[] } }[] }).features,
+    ).toHaveLength(1);
     // Labels are part of every surface now, so the itinerary's own label layer is
     // there; switching them off is the control's job and is pinned in the switch's
     // own suite, where pressing it is the thing being tested.

@@ -238,14 +238,39 @@ describe('ExperienceMapSwitch', () => {
     expect(props.userCoordinates).toEqual(userCoordinates);
 
     const features = overlays[0].collection.features;
-    // origin + two waypoints + the walker position
-    expect(features.filter((feature) => feature.geometry.type === 'Point')).toHaveLength(4);
+    // origin + two waypoints. The walker is not a stop of the walk: the renderer draws it
+    // from `userCoordinates`, and encoding it here as well drew the same person twice.
+    expect(features.filter((feature) => feature.geometry.type === 'Point')).toHaveLength(3);
+    expect(features.some((feature) => feature.properties.labelKey === 'map.userLocation')).toBe(
+      false,
+    );
     const line = features.find((feature) => feature.geometry.type === 'LineString');
     expect(line?.geometry.coordinates).toEqual([
       [-58.3816, -34.6037],
       [-58.3817, -34.6038],
       [-58.3818, -34.6039],
     ]);
+  });
+
+  it('hands the walker position over for a track as well as for a trip', async () => {
+    // Both formats draw through this switch, so the position is forwarded once, here, and
+    // drawn once, by the renderer: no type is left without it.
+    await render(
+      <ExperienceMapSwitch
+        renderer="maplibre"
+        source={source}
+        experience={track}
+        userCoordinates={userCoordinates}
+      />,
+    );
+
+    expect(mockExperienceMapProps).toHaveLength(1);
+    expect(mockExperienceMapProps[0].userCoordinates).toEqual(userCoordinates);
+    expect(
+      (mockExperienceMapProps[0].overlays as MapDocument[])[0].collection.features.some(
+        (feature) => feature.properties.labelKey === 'map.userLocation',
+      ),
+    ).toBe(false);
   });
 
   it('forwards the experience geo data to the leaflet renderer', async () => {

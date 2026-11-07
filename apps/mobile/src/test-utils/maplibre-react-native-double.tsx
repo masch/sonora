@@ -15,6 +15,8 @@ import { TwView } from '@/tw';
 import {
   mockCameraFlights,
   mockCameraProps,
+  mockGeoSources,
+  mockLayers,
   mockMapProps,
   mockMapStyles,
   mockMapZoom,
@@ -106,6 +108,32 @@ export function Camera(props: Record<string, unknown> & { ref?: Ref<CameraDouble
     // `ref` is stripped so an assertion on the camera's declarative props keeps
     // comparing the camera options and nothing else.
     mockCameraProps.push(cameraProps);
+  });
+
+  return null;
+}
+
+/**
+ * The declarative source the walker's position is drawn from. It renders its layers
+ * the way the real component does and records both, so a suite can assert the point
+ * the map was handed without a renderer.
+ */
+export function GeoJSONSource(props: { id?: string; data?: unknown; children?: ReactNode }) {
+  const { id, data, children } = props;
+
+  // Recorded from an effect, for the same reason the map is: mutating a module value
+  // during render is what the compiler forbids.
+  useEffect(() => {
+    mockGeoSources.push({ id, data });
+  }, [id, data]);
+
+  return <TwView testID={id}>{children}</TwView>;
+}
+
+/** One style layer nested in a source: recorded and drawn as nothing. */
+export function Layer(props: Record<string, unknown>) {
+  useEffect(() => {
+    mockLayers.push(props);
   });
 
   return null;
