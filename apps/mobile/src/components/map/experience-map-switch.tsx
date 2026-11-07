@@ -164,7 +164,6 @@ export default function ExperienceMapSwitch({
       const itinerary = itineraryDocument({
         origin: { latitude: experience.latitude, longitude: experience.longitude },
         waypoints,
-        userCoordinates,
       });
       const overlays: MapDocument[] = [itinerary, ...(experience.mapDocuments ?? [])];
 

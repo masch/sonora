@@ -9,7 +9,7 @@ import type {
   PressEventWithFeatures,
   StyleSpecification,
 } from '@maplibre/maplibre-react-native';
-import { Camera, Map as MapLibreMap } from '@maplibre/maplibre-react-native';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
 
@@ -44,29 +44,11 @@ import {
   type MapReferencePress,
   type MapWaitState,
 } from './map-view.types';
-import { MapGestureSurface } from './map-scroll-lock';
+import { MapCanvas } from './map-canvas';
 import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
 const HITBOX_PIXELS = 22;
-
-/**
- * Every gesture the card answers, declared rather than inherited from the defaults.
- *
- * Not documentation: on Android the native view only asks its parent not to intercept
- * the touch when pan is declared (`dragPan` → `MLRNMapView.onTouchEvent`), and without
- * that ask the vertical page scroll under the card steals the drag and aborts the pinch
- * mid-gesture. The rest keep the behavior the defaults already had, so declaring them
- * changes nothing beyond the parent letting go.
- */
-const CARD_GESTURES = {
-  dragPan: true,
-  touchZoom: true,
-  doubleTapZoom: true,
-  doubleTapHoldZoom: true,
-  touchRotate: true,
-  touchPitch: true,
-} as const;
 
 /**
  * How long one run may wait for the style document before it reports the style as
@@ -462,9 +444,11 @@ function MapFailureSurface({ code, onRetry, testID, className }: MapFailureSurfa
  * object handed to `Map` only changes then: on native a new `mapStyle` re-applies
  * the style and re-fetches its tiles, so a re-render must not produce one.
  *
- * `userCoordinates` and `waypoints` are accepted for the shared contract and not
- * read here: the switch already encodes both in the itinerary document it hands
- * over as an overlay, so drawing them twice would double the marker.
+ * `waypoints` is accepted for the shared contract and not read here: the switch already
+ * encodes them in the itinerary document it hands over as an overlay, so drawing them
+ * twice would double the marker. `userCoordinates` is drawn here, and only here: it is
+ * the one point on the frame that is not a place the payload published, so it carries no
+ * label and no press.
  */
 export default function ExperienceMap({
   source,
@@ -472,6 +456,7 @@ export default function ExperienceMap({
   bounds,
   center = [-64.738, -32.212],
   zoom = 14,
+  userCoordinates,
   showLabels = true,
   boldReferences = false,
   layerSelection,
@@ -729,35 +714,20 @@ export default function ExperienceMap({
       {/* The caller's controls, above the card and only now that it draws: a row over
           a card with no pixels is the flicker this seam exists to prevent. */}
       {toolbar}
-      <MapGestureSurface testID={testID} className={className}>
-        <MapLibreMap
-          ref={mapRef}
-          mapStyle={style}
-          onPress={reportPress}
-          // The only report of a camera landing: the flight's, never the walker's.
-          onRegionDidChange={reportLanding}
-          {...CARD_GESTURES}
-          // The label describes the map itself: the loading key would be announced by
-          // a screen reader over a map that has already drawn.
-          accessibilityLabel={t('map.mapLabel')}
-          testID={`${testID}-map`}
-        >
-          <Camera ref={cameraRef} {...camera} />
-        </MapLibreMap>
-        {/* One honest line over the reference plane: the map is not broken, this place
-            is outside the regions the app publishes. */}
-        {noRegion && (
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            className="absolute bottom-0 left-0 right-0 bg-backgroundElement px-3 py-2 text-center"
-            testID={`${testID}-no-region`}
-          >
-            {t('map.noRegion')}
-          </ThemedText>
-        )}
-        {overlay}
-      </MapGestureSurface>
+      <MapCanvas
+        testID={testID}
+        className={className}
+        style={style}
+        mapRef={mapRef}
+        cameraRef={cameraRef}
+        camera={camera}
+        onPress={reportPress}
+        onRegionDidChange={reportLanding}
+        userCoordinates={userCoordinates}
+        labelsAllowed={showLabels && Boolean(style.glyphs)}
+        noRegion={noRegion}
+        overlay={overlay}
+      />
     </>
   );
 }

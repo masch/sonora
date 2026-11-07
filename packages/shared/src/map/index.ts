@@ -5,6 +5,7 @@ export * from './style';
 export * from './labels';
 export * from './layer-groups';
 export * from './itinerary';
+export * from './user-location';
 export * from './links';
 export * from './regions';
 export * from './world';

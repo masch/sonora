@@ -126,12 +126,26 @@ export const mockQueryRenderedFeatures = jest.fn<
   [unknown, { layers?: string[] }?]
 >(async () => []);
 
+/**
+ * Every `GeoJSONSource` the component rendered, oldest first.
+ *
+ * The walker's own position is drawn from a source of its own, so this is where a
+ * suite reads whether the map was handed a point, and which one: `data` is the
+ * GeoJSON the source draws, and `id` says which source it belongs to.
+ */
+export const mockGeoSources: { id?: string; data?: unknown }[] = [];
+
+/** Every layer the component nested inside a source, oldest first. */
+export const mockLayers: Record<string, unknown>[] = [];
+
 /** Clears what the previous test handed to the double. */
 export function resetMapDouble(): void {
   mockMapProps.length = 0;
   mockCameraProps.length = 0;
   mockCameraFlights.length = 0;
   mockMapStyles.length = 0;
+  mockGeoSources.length = 0;
+  mockLayers.length = 0;
   mockMapZoom = 12;
   mockQueryRenderedFeatures.mockReset();
   // Default: nothing drawn is under the press.
