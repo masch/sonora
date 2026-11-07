@@ -280,6 +280,41 @@ describe('ExperienceMap (web)', () => {
     );
   });
 
+  it('draws the walker position on a detail map, from the coordinates it was handed', async () => {
+    // What the trip and track screens ask for: a camera of their own, a declared group
+    // selection, an itinerary, and the position the device reports.
+    const selection: MapLayerSelection[] = [{ id: 'water', visible: true, declared: true }];
+    await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE, style: styleWith(true) }}
+        overlays={[document]}
+        center={[-64.738, -32.212]}
+        zoom={15}
+        layerSelection={selection}
+        userCoordinates={{ latitude: -32.2125, longitude: -64.7385 }}
+      />,
+    );
+
+    await waitFor(() => expect(mockMapInstances).toHaveLength(1));
+    await act(async () => {
+      mockMapInstances[0].emit('load');
+    });
+
+    const drawn = mockMapInstances[0];
+    expect(Object.keys(drawn.sources)).toContain('user-location');
+    const ids = drawn.layers.map((layer: { id: string }) => layer.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(['user-location:halo', 'user-location:dot', 'user-location:label']),
+    );
+    // The walker's own name is the last thing drawn, so a document added later cannot
+    // cover it, and the dot is under it.
+    expect(ids.slice(-3)).toEqual([
+      'user-location:halo',
+      'user-location:dot',
+      'user-location:label',
+    ]);
+  });
+
   it('adds and removes the label layer with the labels toggle', async () => {
     // A stable source keeps the map instance alive across the toggle.
     const source = { archiveUrl: ARCHIVE, style: styleWith(true) };

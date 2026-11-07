@@ -18,6 +18,7 @@ import {
 } from '@sonora/shared';
 
 import WorldMap from '@/components/map/world-map';
+import { useLocationStore } from '@/store/location-store';
 import { useAppTranslation } from '@/hooks/use-translation';
 import {
   FOCUS_SETTLE_FALLBACK_MS,
@@ -70,6 +71,8 @@ interface RecordedMapProps {
   onFocusSettled?: () => void;
   /** The hub asks for the references' own weight, which it and no other caller draws. */
   boldReferences?: boolean;
+  /** Where the device says the walker is, handed over as the store reports it. */
+  userCoordinates?: { latitude: number; longitude: number };
   /** Whether the reference labels draw; the walker can hide them from the filter row. */
   showLabels?: boolean;
   /** Drawn above the map, only once the map can draw. */
@@ -305,6 +308,26 @@ describe('WorldMap', () => {
     // Nothing to filter yet: the row does not exist, visually or for a screen reader.
     expect(screen.queryByTestId('world-map-filters')).toBeNull();
     expect(screen.queryByLabelText('map.world.filterAll')).toBeNull();
+  });
+
+  it('hands the walker’s own position to the map, and stops when the fix is lost', async () => {
+    mockedFetch.mockResolvedValue(PAYLOAD);
+    useLocationStore.setState({ coords: { latitude: -32.2125, longitude: -64.7385 } });
+
+    await render(<WorldMap />);
+    await waitFor(() => expect(mockMapProps.length).toBeGreaterThan(0));
+
+    // The position is handed over as the store reports it, and the renderer draws it:
+    // the switch, which is what the detail screens use, hands the same one.
+    expect(latestMap().userCoordinates).toEqual({ latitude: -32.2125, longitude: -64.7385 });
+
+    // A device that loses its fix stops reporting one, and the map draws no dot: the
+    // request is not what is gated, the position is.
+    await act(async () => {
+      useLocationStore.setState({ coords: null });
+    });
+
+    expect(latestMap().userCoordinates).toBeUndefined();
   });
 
   it('keeps the chips out of the card until the map can draw', async () => {

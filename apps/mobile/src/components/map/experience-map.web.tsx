@@ -33,6 +33,7 @@ import {
   type MapWaitState,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
+import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
 /** No selection at all: no group is declared, so the style draws what it authored. */
@@ -80,6 +81,7 @@ export default function ExperienceMap({
   bounds,
   center = [-64.738, -32.212],
   zoom = 14,
+  userCoordinates,
   showLabels = true,
   boldReferences = false,
   layerSelection,
@@ -239,6 +241,9 @@ export default function ExperienceMap({
     // switch rebuilds the array on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, selectionKey, applyLayerSelection]);
+
+  // The walker's own position, which is no part of the documents this renderer owns.
+  useUserLocation({ mapRef, ready, coordinates: userCoordinates, showLabels, glyphsAvailableRef });
 
   /**
    * The failure this renderer would report, if any.

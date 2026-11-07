@@ -114,7 +114,13 @@ export interface ExperienceMapProps {
   bounds?: GeoBounds | null;
   center?: [number, number];
   zoom?: number;
-  /** Where the walker is, when the app knows it. */
+  /**
+   * Where the walker is, when the app knows it.
+   *
+   * Drawn by the renderer as its own point, above every document: it is the one thing on
+   * the frame that is not a place the payload published, so it gets no label and no press.
+   * It is never encoded in a document as well, which would draw the same person twice.
+   */
   userCoordinates?: { latitude: number; longitude: number };
   /**
    * The itinerary both implementations need: the new map derives its route

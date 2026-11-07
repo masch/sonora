@@ -18,6 +18,7 @@ import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useWorldExperiences } from '@/hooks/use-world-experiences';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
+import { useLocationStore } from '@/store/location-store';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
@@ -179,6 +180,15 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * tapping the same point twice would look like no change and never open again.
    */
   const [flight, setFlight] = useState<{ slug: string; id: number } | null>(null);
+  /**
+   * Where the walker is, as the device already reports it.
+   *
+   * Read from the store the app starts once at launch, never watched again here: the
+   * store owns the permission, the accuracy threshold and the subscription, and a
+   * second watcher would only compete with it. The map draws this as its own point,
+   * apart from experiences.
+   */
+  const userCoordinates = useLocationStore((state) => state.coords);
   const [openedSlug, setOpenedSlug] = useState<string | null>(null);
   const requestId = useRef(0);
 
@@ -394,6 +404,9 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         className="relative h-[400px] w-full overflow-hidden rounded-2xl"
         source={source}
         overlays={documents}
+        userCoordinates={userCoordinates ?? undefined}
+        // The walker's own position, which the renderer draws apart from the places: the
+        // itinerary carries the stops of the walk and never this.
         bounds={cameraBounds}
         center={worldCenter ? [worldCenter.longitude, worldCenter.latitude] : undefined}
         focus={traveller ? { latitude: traveller.latitude, longitude: traveller.longitude } : null}

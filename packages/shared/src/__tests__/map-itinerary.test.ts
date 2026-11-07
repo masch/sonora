@@ -7,7 +7,6 @@ const waypoints = [
   { latitude: -32.2119, longitude: -64.7381 },
   { latitude: -32.2118, longitude: -64.7382 },
 ];
-const userCoordinates = { latitude: -32.2115, longitude: -64.7385 };
 
 describe('itineraryDocument', () => {
   it('builds an experience-scoped document keyed `itinerary`', () => {
@@ -58,19 +57,16 @@ describe('itineraryDocument', () => {
     ).toBe(false);
   });
 
-  it('adds the walker position only when coordinates are known', () => {
-    const withUser = itineraryDocument({ origin, userCoordinates });
-    const userPoint = withUser.collection.features.find(
-      (feature) => feature.properties.labelKey === 'map.userLocation',
-    );
+  it('carries the places the experience published and nothing about the walker', () => {
+    const document = itineraryDocument({ origin, waypoints });
 
-    expect(userPoint?.geometry.coordinates).toEqual([-64.7385, -32.2115]);
-
-    const withoutUser = itineraryDocument({ origin });
+    // The walker is drawn by the renderer from the position the device reports. A second
+    // copy here was the same person drawn twice, once as a stop of the walk.
     expect(
-      withoutUser.collection.features.some(
+      document.collection.features.some(
         (feature) => feature.properties.labelKey === 'map.userLocation',
       ),
     ).toBe(false);
+    expect(document.collection.features).toHaveLength(4);
   });
 });
