@@ -166,6 +166,9 @@ doctor-diff: ## Run React Doctor audit on staged diff (regression check)
 expo-doctor: ## Run Expo Doctor to verify dependency compatibility
 	cd apps/mobile && APP_VERSION_NAME="$(APP_VERSION_NAME)" bunx expo-doctor
 
+# The policy floor is read from bunfig.toml, never defaulted: a silent fallback would keep a
+# stale floor after a rename. Days round up, so the guard cannot accept an age below the
+# configured floor, and a non-numeric answer is refused instead of skipping the comparison.
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	@ROOT=$$(pwd); \
@@ -175,9 +178,16 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 		echo "  Restore it under [install] in bunfig.toml; AGENTS.md §10 forbids reducing it."; \
 		exit 1; \
 	fi; \
-	FLOOR_DAYS=$$(( FLOOR / 86400 )); \
+	FLOOR_DAYS=$$(( (FLOOR + 86399) / 86400 )); \
 	read -r -p "Minimum release age in days (policy floor $$FLOOR_DAYS, default $$FLOOR_DAYS): " DAYS; \
 	DAYS=$${DAYS:-$$FLOOR_DAYS}; \
+	case "$$DAYS" in \
+		''|*[!0-9]*) \
+			echo "✘ $$DAYS is not a whole number of days."; \
+			echo "  The release-age policy floor is $$FLOOR_DAYS day(s); enter at least that."; \
+			exit 1; \
+			;; \
+	esac; \
 	if [ "$$DAYS" -lt "$$FLOOR_DAYS" ]; then \
 		echo "✘ $$DAYS day(s) is below the release-age policy floor of $$FLOOR_DAYS day(s)."; \
 		echo "  That floor is minimumReleaseAge in bunfig.toml, and AGENTS.md §10 forbids reducing it."; \
