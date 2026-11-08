@@ -5,7 +5,7 @@
  * Shared versions live in one place: the `catalog` block of the root package.json, which
  * every workspace references as `"catalog:"`. A catalog removes the duplication, but it is
  * a default, not a rule: any workspace may still write a literal version and bun will
- * happily install a different copy. Three rules cover what the catalog cannot:
+ * happily install a different copy. Four rules cover what the catalog cannot:
  *
  *   1. catalog-literal — a workspace that declares a cataloged package with an explicit
  *      version instead of `catalog:`. This is the drift the catalog exists to prevent.
@@ -15,6 +15,9 @@
  *      this rule is what keeps them in agreement.
  *   3. stale-catalog — a catalog entry no workspace references, which is a typo or a
  *      package that was removed and left its version behind.
+ *   4. orphan-catalog-reference — a workspace that asks for `"catalog:"` on a package the
+ *      catalog does not declare. bun cannot resolve it, so the install would fail right
+ *      after this checker reported success.
  *
  * Read-only. There is nothing to write: the version lives in the catalog, so fixing a
  * failure means editing the catalog or the manifest by hand.
@@ -46,7 +49,7 @@ export interface Manifest {
 }
 
 export interface Violation {
-  kind: 'catalog-literal' | 'cross-workspace-drift' | 'stale-catalog';
+  kind: 'catalog-literal' | 'cross-workspace-drift' | 'stale-catalog' | 'orphan-catalog-reference';
   workspace: string;
   pkg: string;
   declared: string;
@@ -151,6 +154,7 @@ export function validate(manifests: Manifest[], catalog: Record<string, string>)
     if (!(pkg in catalog)) continue;
     for (const entry of entries) {
       if (entry.version === CATALOG_SPECIFIER) continue;
+      if (entry.version.startsWith(WORKSPACE_PROTOCOL)) continue;
       violations.push({
         kind: 'catalog-literal',
         workspace: entry.workspace,
@@ -165,7 +169,10 @@ export function validate(manifests: Manifest[], catalog: Record<string, string>)
   for (const [pkg, entries] of declaredBy) {
     if (pkg in catalog) continue;
     if (pkg.startsWith('@sonora/')) continue;
-    const literals = entries.filter((entry) => !entry.version.startsWith(WORKSPACE_PROTOCOL));
+    const literals = entries.filter(
+      (entry) =>
+        !entry.version.startsWith(WORKSPACE_PROTOCOL) && entry.version !== CATALOG_SPECIFIER,
+    );
     if (literals.length < 2) continue;
     const distinct = new Set(literals.map((entry) => entry.version));
     if (distinct.size < 2) continue;
@@ -200,12 +207,30 @@ export function validate(manifests: Manifest[], catalog: Record<string, string>)
     });
   }
 
+  // Rule 4: a `catalog:` reference is only resolvable while the catalog declares it.
+  for (const [pkg, entries] of declaredBy) {
+    if (pkg in catalog) continue;
+    for (const entry of entries) {
+      if (entry.version !== CATALOG_SPECIFIER) continue;
+      violations.push({
+        kind: 'orphan-catalog-reference',
+        workspace: entry.workspace,
+        pkg,
+        declared: CATALOG_SPECIFIER,
+        expected: 'an entry in the root catalog',
+      });
+    }
+  }
+
   return violations;
 }
 
 function describe(violation: Violation): string {
   if (violation.kind === 'catalog-literal') {
     return `catalog-literal       ${violation.workspace}  ${violation.pkg}  declares ${violation.declared} instead of ${violation.expected}; the version lives in the root catalog, remove it or use "catalog:"`;
+  }
+  if (violation.kind === 'orphan-catalog-reference') {
+    return `orphan-catalog-reference ${violation.workspace}  ${violation.pkg}  declares "catalog:" but the root catalog has no entry for it; bun cannot resolve it`;
   }
   if (violation.kind === 'stale-catalog') {
     return `stale-catalog         ${violation.pkg} is in the root catalog as ${violation.expected} but no workspace declares it`;

@@ -251,4 +251,33 @@ describe('check-deps', () => {
     expect(code).toBe(1);
     expect(stderr).toContain('no `catalog` block');
   });
+
+  it('does not call a workspace-protocol reference to a cataloged package a literal', () => {
+    build({
+      catalog: { '@sonora/shared': '1.0.0' },
+      workspaces: { a: { '@sonora/shared': 'workspace:*' } },
+    });
+
+    const { code, stdout, stderr } = runCli();
+
+    expect(code).toBe(0);
+    expect(stdout).toContain('every workspace agrees with the root catalog');
+    expect(stderr).toBe('');
+  });
+
+  it('reports a catalog reference the catalog does not declare, without calling it drift', () => {
+    build({
+      catalog: {},
+      workspaces: { a: { zustand: 'catalog:' } },
+      blocks: { b: { devDependencies: { zustand: 'catalog:' } } },
+    });
+
+    const { code, stderr } = runCli();
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('orphan-catalog-reference apps/a/package.json  zustand');
+    expect(stderr).toContain('orphan-catalog-reference apps/b/package.json  zustand');
+    expect(stderr).toContain('2 violation(s)');
+    expect(driftLines(stderr)).toHaveLength(0);
+  });
 });

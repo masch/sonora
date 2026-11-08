@@ -172,9 +172,9 @@ expo-doctor: ## Run Expo Doctor to verify dependency compatibility
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	@ROOT=$$(pwd); \
-	FLOOR=$$(grep -E '^[[:space:]]*minimumReleaseAge[[:space:]]*=' bunfig.toml | grep -oE '[0-9]+' | head -1); \
-	if [ -z "$$FLOOR" ]; then \
-		echo "✘ minimumReleaseAge is missing from bunfig.toml, so the release-age policy floor cannot be read."; \
+	FLOOR=$$(bun -e "console.log(Bun.TOML.parse(await Bun.file('bunfig.toml').text())?.install?.minimumReleaseAge ?? '')" 2>/dev/null); \
+	if ! printf '%s' "$$FLOOR" | grep -qE '^[0-9]+$$'; then \
+		echo "✘ minimumReleaseAge is missing, or is not a whole number of seconds, in bunfig.toml."; \
 		echo "  Restore it under [install] in bunfig.toml; AGENTS.md §10 forbids reducing it."; \
 		exit 1; \
 	fi; \
