@@ -28,7 +28,13 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DEP_FIELDS = ['dependencies', 'devDependencies'] as const;
+// Every block a manifest can restate a cataloged version in.
+const DEP_FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'peerDependencies',
+  'optionalDependencies',
+] as const;
 const WORKSPACE_PROTOCOL = 'workspace:';
 const CATALOG_SPECIFIER = 'catalog:';
 
@@ -88,11 +94,14 @@ export function loadWorkspaces(root: string): Manifest[] {
 
     let matches: string[] = [];
     if (last === '*') {
-      if (!existsSync(base)) continue;
-      matches = readdirSync(base)
-        .filter((entry) => statSync(join(base, entry)).isDirectory())
-        .filter((entry) => existsSync(join(base, entry, 'package.json')))
-        .map((entry) => join(base, entry));
+      // A pattern whose base directory is missing has no matches either, so it falls through
+      // to the same loud error instead of being skipped.
+      if (existsSync(base)) {
+        matches = readdirSync(base)
+          .filter((entry) => statSync(join(base, entry)).isDirectory())
+          .filter((entry) => existsSync(join(base, entry, 'package.json')))
+          .map((entry) => join(base, entry));
+      }
     } else if (existsSync(join(root, pattern))) {
       matches = [join(root, pattern)];
     }
@@ -162,7 +171,11 @@ export function validate(manifests: Manifest[], catalog: Record<string, string>)
     if (distinct.size < 2) continue;
     const tally = new Map<string, number>();
     for (const entry of literals) tally.set(entry.version, (tally.get(entry.version) ?? 0) + 1);
-    const expected = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    // Ties break on the version string itself, descending, so the reported `expected` depends on
+    // the declarations and never on the order the manifests were read in.
+    const expected = [...tally.entries()].sort(
+      (a, b) => b[1] - a[1] || (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0),
+    )[0][0];
     for (const entry of literals) {
       if (entry.version === expected) continue;
       violations.push({

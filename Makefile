@@ -169,8 +169,12 @@ expo-doctor: ## Run Expo Doctor to verify dependency compatibility
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	@ROOT=$$(pwd); \
-	FLOOR=$$(grep -E '^[[:space:]]*minimumReleaseAge' bunfig.toml | grep -oE '[0-9]+' | head -1); \
-	FLOOR=$${FLOOR:-345600}; \
+	FLOOR=$$(grep -E '^[[:space:]]*minimumReleaseAge[[:space:]]*=' bunfig.toml | grep -oE '[0-9]+' | head -1); \
+	if [ -z "$$FLOOR" ]; then \
+		echo "✘ minimumReleaseAge is missing from bunfig.toml, so the release-age policy floor cannot be read."; \
+		echo "  Restore it under [install] in bunfig.toml; AGENTS.md §10 forbids reducing it."; \
+		exit 1; \
+	fi; \
 	FLOOR_DAYS=$$(( FLOOR / 86400 )); \
 	read -r -p "Minimum release age in days (policy floor $$FLOOR_DAYS, default $$FLOOR_DAYS): " DAYS; \
 	DAYS=$${DAYS:-$$FLOOR_DAYS}; \
@@ -190,7 +194,8 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PACKAGES; \
 	elif echo "$$OUTPUT" | grep -qE 'ERR_MODULE_NOT_FOUND|command not found'; then \
 		echo "Packages not installed. Installing from package.json specs..."; \
-		PKGSPECS=$$(node -e "const p=require('$$ROOT/apps/mobile/package.json').dependencies; \
+		PKGSPECS=$$(node -e "const m=require('$$ROOT/apps/mobile/package.json'); \
+			const p=Object.assign({}, m.devDependencies, m.dependencies); \
 			Object.entries(p).filter(([n]) => n === 'expo' || n.startsWith('expo-') || n.startsWith('@expo/')) \
 				.forEach(([n,v]) => process.stdout.write(n+'@'+v+' '))"); \
 		echo "Installing: $$PKGSPECS"; \

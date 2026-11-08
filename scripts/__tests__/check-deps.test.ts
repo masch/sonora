@@ -8,7 +8,12 @@ const SCRIPT = join(import.meta.dir, '..', 'check-deps.ts');
 
 interface Fixture {
   catalog: Record<string, string>;
+  /** `dependencies` block, per workspace directory. */
   workspaces: Record<string, Record<string, string>>;
+  /** Extra blocks per workspace directory, e.g. `{ b: { peerDependencies: { react: '19.1.0' } } }`. */
+  blocks?: Record<string, Record<string, Record<string, string>>>;
+  /** Root `workspaces` patterns, in declaration order. Defaults to `['apps/*']`. */
+  patterns?: string[];
 }
 
 let root: string;
@@ -17,18 +22,33 @@ function build(fixture: Fixture): void {
   writeFileSync(
     join(root, 'package.json'),
     `${JSON.stringify(
-      { name: 'fixture', private: true, workspaces: ['apps/*'], catalog: fixture.catalog },
+      {
+        name: 'fixture',
+        private: true,
+        workspaces: fixture.patterns ?? ['apps/*'],
+        catalog: fixture.catalog,
+      },
       null,
       2,
     )}\n`,
   );
-  for (const [dir, deps] of Object.entries(fixture.workspaces)) {
+  const dirs = new Set([...Object.keys(fixture.workspaces), ...Object.keys(fixture.blocks ?? {})]);
+  for (const dir of dirs) {
+    const data: Record<string, unknown> = { name: `@fixture/${dir}`, version: '1.0.0' };
+    const dependencies = fixture.workspaces[dir];
+    if (dependencies) data.dependencies = dependencies;
+    for (const [field, block] of Object.entries(fixture.blocks?.[dir] ?? {})) data[field] = block;
     mkdirSync(join(root, 'apps', dir), { recursive: true });
-    writeFileSync(
-      join(root, 'apps', dir, 'package.json'),
-      `${JSON.stringify({ name: `@fixture/${dir}`, version: '1.0.0', dependencies: deps }, null, 2)}\n`,
-    );
+    writeFileSync(join(root, 'apps', dir, 'package.json'), `${JSON.stringify(data, null, 2)}\n`);
   }
+}
+
+/** The `cross-workspace-drift` lines of a run, order-independent. */
+function driftLines(stderr: string): string[] {
+  return stderr
+    .split('\n')
+    .filter((line) => line.startsWith('cross-workspace-drift'))
+    .sort();
 }
 
 function runCli(...args: string[]) {
@@ -118,6 +138,101 @@ describe('check-deps', () => {
     const { code } = runCli();
 
     expect(code).toBe(0);
+  });
+
+  it('keeps the majority version as expected whatever order the manifests are read in', () => {
+    build({
+      catalog: { react: '19.2.3' },
+      workspaces: {
+        a: { react: 'catalog:', 'react-native-screens': '4.30.1' },
+        b: { react: 'catalog:', 'react-native-screens': '4.26.0' },
+      },
+      blocks: { c: { devDependencies: { 'react-native-screens': '4.26.0' } } },
+    });
+
+    const { code, stderr } = runCli();
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('apps/a/package.json');
+    expect(stderr).toContain('expected 4.26.0');
+    expect(stderr).toContain('1 violation(s)');
+  });
+
+  it('fails loudly when a workspace glob base directory does not exist', () => {
+    writeFileSync(
+      join(root, 'package.json'),
+      `${JSON.stringify(
+        { name: 'fixture', private: true, workspaces: ['apps/*'], catalog: { react: '19.2.3' } },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const { code, stderr } = runCli();
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('workspace pattern "apps/*" matched no package.json');
+    expect(stderr).not.toContain('stale-catalog');
+  });
+
+  it('reports the same expected version when a drift tie is declared in another order', () => {
+    const tie = {
+      catalog: { react: '19.2.3' },
+      workspaces: {
+        a: { react: 'catalog:', 'react-native-screens': '4.26.0' },
+        b: { react: 'catalog:', 'react-native-screens': '4.30.1' },
+      },
+    };
+
+    build({ ...tie, patterns: ['apps/a', 'apps/b'] });
+    const forward = runCli();
+    build({ ...tie, patterns: ['apps/b', 'apps/a'] });
+    const reversed = runCli();
+
+    expect(forward.code).toBe(1);
+    expect(forward.stderr).toContain('cross-workspace-drift');
+    expect(driftLines(forward.stderr)).toHaveLength(1);
+    expect(driftLines(reversed.stderr)).toEqual(driftLines(forward.stderr));
+  });
+
+  it('reports a catalog literal declared under peer or optional dependencies', () => {
+    build({
+      catalog: { react: '19.2.3' },
+      workspaces: { a: { react: 'catalog:' } },
+      blocks: {
+        b: { peerDependencies: { react: '19.1.0' } },
+        c: { optionalDependencies: { react: '19.0.0' } },
+      },
+    });
+
+    const { code, stderr } = runCli();
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('apps/b/package.json');
+    expect(stderr).toContain('19.1.0');
+    expect(stderr).toContain('apps/c/package.json');
+    expect(stderr).toContain('19.0.0');
+    expect(stderr).toContain('2 violation(s)');
+  });
+
+  it('reports drift for declarations under peer or optional dependencies', () => {
+    build({
+      catalog: { react: '19.2.3' },
+      workspaces: { a: { react: 'catalog:', 'react-native-screens': '4.26.0' } },
+      blocks: {
+        b: { devDependencies: { 'react-native-screens': '4.26.0' } },
+        c: { peerDependencies: { 'react-native-screens': '4.30.1' } },
+        d: { optionalDependencies: { 'react-native-screens': '4.26.0' } },
+      },
+    });
+
+    const { code, stderr } = runCli();
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('apps/c/package.json');
+    expect(stderr).toContain('declared 4.30.1  expected 4.26.0');
+    expect(stderr).not.toContain('apps/d/package.json');
+    expect(stderr).toContain('1 violation(s)');
   });
 
   it('fails with a clear message when the root declares no catalog', () => {
