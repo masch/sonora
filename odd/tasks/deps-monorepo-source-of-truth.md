@@ -31,16 +31,16 @@
 
 ## Tasks
 
-| ID  | Description                                                                                                                                                            | Specs           | Commit  |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------- |
-| T1  | Root `package.json`: the `catalog` block with the currently compliant versions, and `"catalog:"` references from every workspace that declares them                    | S2, S5          | pending |
-| T2  | `scripts/check-deps.ts`: three rules over the public CLI, read-only, one line per violation                                                                            | S3, S4          | pending |
-| T3  | `scripts/__tests__/check-deps.test.ts`: a clean tree, a restated literal, cross-workspace drift, a stale catalog entry, the workspace protocol, a root with no catalog | S10             | pending |
-| T4  | `Makefile`: `deps-check` runs the script; `deps-sync` removed                                                                                                          | S4              | pending |
-| T5  | `expo-upgrade`: refuse a release age below the floor `bunfig.toml` declares instead of accepting `0`                                                                   | S8, G1          | 28a8d44 |
-| T6  | `AGENTS.md` §10: the catalog, the three checks, the out-of-catalog packages and the SDK-matrix boundary                                                                | S7              | pending |
-| T7  | Remove `deps.shared.json`, `scripts/sync-deps.ts` and their test; retract the false "no catalogs" claim from `AGENTS.md` and the PR body                               | S2, S4, S11, G5 | pending |
-| T8  | Reconcile this document and the PR body with the catalog mechanism, and commit the rework                                                                              | S11             | pending |
+| ID  | Description                                                                                                                                                            | Specs           | Commit                                                           |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| T1  | Root `package.json`: the `catalog` block with the currently compliant versions, and `"catalog:"` references from every workspace that declares them                    | S2, S5          | d1f4541                                                          |
+| T2  | `scripts/check-deps.ts`: three rules over the public CLI, read-only, one line per violation                                                                            | S3, S4          | d1f4541                                                          |
+| T3  | `scripts/__tests__/check-deps.test.ts`: a clean tree, a restated literal, cross-workspace drift, a stale catalog entry, the workspace protocol, a root with no catalog | S10             | d1f4541                                                          |
+| T4  | `Makefile`: `deps-check` runs the script; `deps-sync` removed                                                                                                          | S4              | d1f4541                                                          |
+| T5  | `expo-upgrade`: refuse a release age below the floor `bunfig.toml` declares instead of accepting `0`                                                                   | S8, G1          | 28a8d44                                                          |
+| T6  | `AGENTS.md` §10: the catalog, the three checks, the out-of-catalog packages and the SDK-matrix boundary                                                                | S7              | d1f4541                                                          |
+| T7  | Remove `deps.shared.json`, `scripts/sync-deps.ts` and their test; retract the false "no catalogs" claim from `AGENTS.md` and the PR body                               | S2, S4, S11, G5 | d1f4541                                                          |
+| T8  | Reconcile this document and the PR body with the catalog mechanism, and commit the rework                                                                              | S11             | this commit (document); PR body blocked on the push of `d1f4541` |
 
 ## Log
 
@@ -51,3 +51,14 @@
 - **L5** — `catalog` is a default, not a rule: bun installs a literal version a workspace writes even for a cataloged package, and the catalog cannot cover SDK-managed packages without fighting `expo install --check`. So `scripts/check-deps.ts` keeps exactly the three checks the catalog does not perform, and the SDK-managed family stays out of the catalog on purpose (S2, S3, S6).
 - **L6** — Evidence for the rework: `bun scripts/check-deps.ts` → `check-deps: every workspace agrees with the root catalog` (exit 0); `bun test scripts/__tests__/check-deps.test.ts` → 6 pass / 0 fail, 16 assertions; `bun install --frozen-lockfile` → no changes; `bunx tsc --project scripts/tsconfig.json --noEmit` → clean. Root `scripts/` has no ESLint config (lint runs per workspace), so the type-check is the static gate there.
 - **L7** — The catalog broke the repository's own lint gate: `package-json-dependencies/controlled-versions` demands a fixed version for every dependency, and on `"catalog:"` its fixer throws `tag 'catalog:' not found for package '@types/node'`, so `make lint` exited 2 and the pre-commit hook refused the commit. The plugin is at its latest release (1.0.20, April 2024) and has no catalog support, and its only escape hatch, `excludePatterns`, matches dependency names. Each workspace config now derives those names from the root catalog with `Object.keys(require('../../package.json').catalog ?? {})`, so there is no second list to maintain, `make deps-check` still holds the reference, and the exact-pin rule keeps covering every package the catalog does not name. `make lint` is green across the four workspaces.
+- **L8** — Native review of `d1f4541` (lineage `review-65bc32f7049caf4b`, base-diff `e64e52d..31f5ec7`, tier high, 1183 changed lines) closed **approved** with 12 non-blocking findings: 5 WARNING, 7 SUGGESTION, none opening a correction. The reliability lens was refused twice at admission for a payload without the top-level `evidence` array (slot not consumed, payload kept under `.git/gentle-ai/rejected-results/`) and was admitted on the third run. Four of those findings name real follow-up material and are recorded as G7-G10 below rather than reopened here.
+- **L9** — Delivery state at this point: `d1f4541` is the only unpushed commit, the PR body still describes `deps.shared.json` because the remote still holds `28a8d44` and `fa6d080` alone, and no issue tracks this work. Both PR-side updates are queued behind the push decision, which belongs to the human.
+
+## Review findings, recorded as follow-ups
+
+| #   | Finding                                                                                                                         | Lenses            | State    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------- | -------- |
+| G7  | A cataloged literal can slip past the `catalog-literal` rule through the shapes at `check-deps.ts:180-186`                      | risk              | reported |
+| G8  | A catalog nested under `workspaces` is not covered (`check-deps.ts:68-76`)                                                      | readability       | reported |
+| G9  | The cross-workspace tally breaks ties by declaration order, so the reported expected version can vary (`check-deps.ts:150-190`) | reliability, risk | reported |
+| G10 | Test fixtures duplicate the tree setup, which is why `check-deps.test.ts:32-38` reads heavier than it needs to                  | reliability       | reported |
