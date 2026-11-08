@@ -224,12 +224,8 @@ pin-deps: install ## Pin all workspace dependencies to exact versions from bun.l
 	bun run scripts/pin-deps.ts
 
 .PHONY: deps-check
-deps-check: ## Validate every workspace dependency against deps.shared.json
-	bun scripts/sync-deps.ts
-
-.PHONY: deps-sync
-deps-sync: ## Dry-run the shared dependency versions; pass LIVE=1 to write them
-	@bun scripts/sync-deps.ts $(if $(LIVE),--apply,)
+deps-check: ## Validate every workspace against the root bun catalog
+	bun scripts/check-deps.ts
 
 .PHONY: scripts-typecheck
 scripts-typecheck: ## Type-check scripts/ with tsc

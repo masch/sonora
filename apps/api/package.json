@@ -28,15 +28,15 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260702.1",
-    "@types/node": "26.6.6",
+    "@types/node": "catalog:",
     "@types/pg": "8.23.1",
     "@types/qrcode": "1.5.6",
     "drizzle-kit": "0.31.11",
-    "eslint": "9.39.5",
+    "eslint": "catalog:",
     "tsx": "4.23.15",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.72.1",
-    "vitest": "4.1.12",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "4.106.0"
   }
 }
