@@ -23,15 +23,30 @@
 
 ## Tasks
 
-| ID  | Description                                                                                                                                                                        | Specs          | Route  | Commit                                                               |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------ | -------------------------------------------------------------------- |
-| T1  | Structural consistency: dynamic Expo package selection in the `Makefile` fallback, drop ignored `resolutions` blocks, deduplicate the `lightningcss` override, unify `@types/node` | S1, S2         | inline | `chore(deps): derive expo package list and drop ignored resolutions` |
-| T2  | Patch alignment inside SDK 57 across `apps/mobile`, `apps/admin`, `apps/api`, `packages/shared` and the root                                                                       | S2, S3, S4, S7 | inline | `chore(deps): align expo sdk 57 patches and safe bumps`              |
-| T3  | Regenerate `bun.lock` and confirm resolution                                                                                                                                       | S3             | inline | folded into T2                                                       |
-| T4  | Full verification gate                                                                                                                                                             | S6             | inline | none (evidence only)                                                 |
+| ID  | Description                                                                                                                                                                        | Specs          | Route  | Commit                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------ | ------------------------- |
+| T1  | Structural consistency: dynamic Expo package selection in the `Makefile` fallback, drop ignored `resolutions` blocks, deduplicate the `lightningcss` override, unify `@types/node` | S1, S2         | inline | `72224fe`, `e5c08bd`      |
+| T2  | Bumps that resolve under SDK 57 and the release-age policy: 17 non-Expo packages across `apps/api`, `apps/admin`, `apps/mobile`, `packages/shared` and the root                    | S2, S3, S4, S7 | inline | `e5c08bd`                 |
+| T3  | Regenerate `bun.lock` and confirm each resolved version in `node_modules`                                                                                                          | S3             | inline | folded into `e5c08bd`     |
+| T4  | Verification gate                                                                                                                                                                  | S6             | inline | no commit, evidence below |
+| T5  | Expo SDK 57 patch line, 13 packages                                                                                                                                                | S4             | —      | deferred, see L4          |
+
+## Verification evidence (T4)
+
+- `bun install` → rc 0, no peer warnings once `test-renderer` was reverted.
+- `apps/api`: typecheck, lint, `vitest run` → rc 0.
+- `packages/shared`: lint, `vitest run` → rc 0.
+- `apps/mobile`: typecheck, lint, `jest` → rc 0.
+- `apps/admin`: typecheck, lint, `jest` → rc 0.
+- `make verify-web` → rc 0; the exported web bundle is re-required by node and loads cleanly.
+- `bunx expo-doctor` in `apps/mobile` and `apps/admin` → 20/21. The single failing check is the SDK version matrix, accounted for entirely by the deferred Expo patches (T5/L4) plus the two reverts recorded in L5.
+- Pre-commit hooks on both commits: format-check, test-ci, lint, typecheck, doctor-ci, expo-doctor (non-blocking), gga → all passed.
 
 ## Log
 
 - **L1** — User's original request, verbatim: "quiera antes ver las inconsitencia que encontramos, quiero actualizar a nivel repo general todos"
 - **L2** — Scope decision: after the inventory was presented, the user selected "Olas 0+1: consistencia y patches del SDK 57 (recomendado)".
 - **L3** — Correction of an orchestrator error: the `*` marker in `bun outdated` means the displayed `Latest` is already capped by `minimumReleaseAge`, so those versions are installable. `tailwindcss` and `@tailwindcss/postcss` 4.3.4 therefore belong in wave 1.
+- **L4** — The whole Expo SDK 57 patch line is blocked, not a single package. `bun install` refused `expo@57.0.32`, `expo-asset@57.0.21`, `expo-background-fetch@57.0.22`, `expo-build-properties@57.0.23`, `expo-constants@57.0.23`, `expo-glass-effect@57.0.5`, `expo-location@57.0.23`, `expo-router@57.0.30`, `expo-splash-screen@57.0.11` and `expo-task-manager@57.0.22` with `blocked by minimum-release-age: 345600 seconds`. Registry publish times are all 2026-11-05 around 09:30, so they unlock roughly one day later. The policy is not touched; those packages stay at their current versions and T5 carries them forward.
+- **L5** — Two bumps were self-inflicted regressions and were reverted, not worked around: `@types/react@19.3.0` (expo-doctor reports the SDK expects `~19.2.4`) and `test-renderer@1.3.1` (pulls `react-reconciler@~0.34.0`, which peers `react ^19.3.0` against the installed `react@19.2.3`). Note for later: neither `test-renderer` nor `react-test-renderer` is imported anywhere under `apps/mobile/src`, so `test-renderer` looks like an unused devDependency and a candidate for removal under its own change.
+- **L6** — Waves 0 and 1 are complete with the verification evidence above. Wave 2 (SDK 58) and wave 3 (TypeScript 7, ESLint 10, Jest 30, Vitest 5, Firebase 13, React Native Firebase 27, react-native-webview 14, @babel/runtime 8, @cloudflare/workers-types 5, gesture-handler 3) remain out of scope per S2.
