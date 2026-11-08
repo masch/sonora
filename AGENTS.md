@@ -90,11 +90,10 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> befor
 ## 10. Dependency Management
 
 - **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (currently 345600s = 4 days) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
-- **Shared versions**: the `catalog` block of the root `package.json` is the single source of truth for versions that must be uniform across workspaces. Every workspace that declares a cataloged package references it as `"catalog:"` and never restates the version, so a shared bump is one edit in the catalog instead of one per manifest.
-- **The catalog is a default, not a rule**: bun installs whatever literal version a workspace writes, even when the package is cataloged. `make deps-check` is what makes the catalog hold.
-- **The exact-pin rule stops at the catalog**: `package-json-dependencies/controlled-versions` demands a fixed version for every dependency, and `"catalog:"` is not one, so the rule crashed on it. Each workspace's ESLint config derives the excluded names from the root catalog itself instead of restating them, which keeps one list and leaves the exact-pin rule in charge of everything the catalog does not name.
-- **Dependency check**: `make deps-check` runs `scripts/check-deps.ts` and fails on three things: a workspace that restates a cataloged version as a literal, any package two workspaces declare with different versions, and a catalog entry no workspace references. The pre-commit hook and the `deps` job in `ci-pr` both run it.
-- **What stays out of the catalog**: SDK-managed packages (`expo*`, `react`, `react-dom`, `react-native*`, `nativewind`, `react-native-css`, `jest-expo`, `eslint-config-expo`, `@types/react`) are deliberately not cataloged, because `expo install --check` is the authority for the version the installed SDK expects and would otherwise fight the catalog. They are held in agreement by the cross-workspace drift rule instead.
+- **Shared versions**: the `catalog` block of the root `package.json` is the single source of truth. A cataloged package is referenced as `"catalog:"` and never restated.
+- **The catalog is a default, not a rule**: bun installs any literal a workspace writes, so `make deps-check` is what holds it. It fails on a restated literal, cross-workspace drift, a stale catalog entry and a `catalog:` reference with no entry. The pre-commit hook and the `deps` job in `ci-pr` run it.
+- **Exact pins stop at the catalog**: `controlled-versions` cannot read `"catalog:"`, so each workspace's ESLint config derives the excluded names from the root catalog. Do not restate that list.
+- **What stays out**: SDK-managed packages, because `expo install --check` owns their versions; the drift rule holds them in agreement instead.
 
 ## 11. Payment and Checkout Conventions
 
