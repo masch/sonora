@@ -169,8 +169,17 @@ expo-doctor: ## Run Expo Doctor to verify dependency compatibility
 .PHONY: expo-upgrade
 expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	@ROOT=$$(pwd); \
-	read -r -p "Minimum release age in days (0 = immediate, default 4): " DAYS; \
-	DAYS=$${DAYS:-4}; \
+	FLOOR=$$(grep -E '^[[:space:]]*minimumReleaseAge' bunfig.toml | grep -oE '[0-9]+' | head -1); \
+	FLOOR=$${FLOOR:-345600}; \
+	FLOOR_DAYS=$$(( FLOOR / 86400 )); \
+	read -r -p "Minimum release age in days (policy floor $$FLOOR_DAYS, default $$FLOOR_DAYS): " DAYS; \
+	DAYS=$${DAYS:-$$FLOOR_DAYS}; \
+	if [ "$$DAYS" -lt "$$FLOOR_DAYS" ]; then \
+		echo "✘ $$DAYS day(s) is below the release-age policy floor of $$FLOOR_DAYS day(s)."; \
+		echo "  That floor is minimumReleaseAge in bunfig.toml, and AGENTS.md §10 forbids reducing it."; \
+		echo "  Re-run this target and accept at least $$FLOOR_DAYS day(s)."; \
+		exit 1; \
+	fi; \
 	SECONDS=$$(( DAYS * 86400 )); \
 	MOBILE="$$ROOT/apps/mobile"; \
 	echo "Checking recommended versions..."; \
@@ -213,6 +222,14 @@ socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_S
 .PHONY: pin-deps
 pin-deps: install ## Pin all workspace dependencies to exact versions from bun.lock
 	bun run scripts/pin-deps.ts
+
+.PHONY: deps-check
+deps-check: ## Validate every workspace dependency against deps.shared.json
+	bun scripts/sync-deps.ts
+
+.PHONY: deps-sync
+deps-sync: ## Dry-run the shared dependency versions; pass LIVE=1 to write them
+	@bun scripts/sync-deps.ts $(if $(LIVE),--apply,)
 
 .PHONY: scripts-typecheck
 scripts-typecheck: ## Type-check scripts/ with tsc

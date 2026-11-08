@@ -90,6 +90,10 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> befor
 ## 10. Dependency Management
 
 - **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (currently 345600s = 4 days) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
+- **Declared versions**: `deps.shared.json` at the repository root is the single source of truth for versions that must be uniform across workspaces. `shared` maps a package name to the exact version every workspace that declares it must use. `lockstep` groups packages that move together, so one member cannot be bumped alone. `allowDrift` names the packages that are deliberately allowed to differ, and has to spell them out one by one.
+- **Dependency commands**: `make deps-check` validates every workspace against `deps.shared.json` and exits non-zero on any violation, including a package declared twice with two different versions. `make deps-sync` is a dry run that prints what would change and writes nothing; `make deps-sync LIVE=1` writes it. A lockstep group is moved as a unit: a group that `shared` covers only partially is rejected rather than split across two versions.
+- **The Expo SDK matrix outranks `deps.shared.json`**: `expo install --check` remains the authority for SDK-aligned native modules such as `react-native-screens`, `react-native-safe-area-context`, `react-native-reanimated` and `react-native-gesture-handler`, because the expected version depends on the installed SDK. When the two disagree, the SDK is right and the shared file is what gets corrected.
+- **No catalogs**: `bun catalog:` is not available on the pinned bun version. Both declaration shapes fail with `failed to resolve`, so do not reintroduce catalogs as a design for this repository.
 
 ## 11. Payment and Checkout Conventions
 
