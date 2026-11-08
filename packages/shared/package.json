@@ -6,13 +6,13 @@
   "types": "src/index.ts",
   "dependencies": {
     "zod": "4.6.7",
-    "@babel/runtime": "7.29.10"
+    "@babel/runtime": "catalog:"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.12",
-    "vitest": "4.1.12",
-    "eslint": "9.39.5",
-    "typescript-eslint": "8.72.1"
+    "vitest": "catalog:",
+    "eslint": "catalog:",
+    "typescript-eslint": "catalog:"
   },
   "scripts": {
     "test": "bunx vitest run",
