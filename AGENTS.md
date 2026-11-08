@@ -90,6 +90,10 @@ Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> befor
 ## 10. Dependency Management
 
 - **Bun Release Age**: The `minimumReleaseAge` setting in `bunfig.toml` (currently 345600s = 4 days) is a strict safety policy. Agents must NEVER comment out, bypass, or reduce this value. If a task requires a version newer than the limit, you must stop, report the conflict, and ask the user how to proceed.
+- **Shared versions**: the `catalog` block of the root `package.json` is the single source of truth. A cataloged package is referenced as `"catalog:"` and never restated.
+- **The catalog is a default, not a rule**: bun installs any literal a workspace writes, so `make deps-check` is what holds it. It fails on a restated literal, cross-workspace drift, a stale catalog entry and a `catalog:` reference with no entry. The pre-commit hook and the `deps` job in `ci-pr` run it.
+- **Exact pins stop at the catalog**: `controlled-versions` cannot read `"catalog:"`, so each workspace's ESLint config derives the excluded names from the root catalog. Do not restate that list.
+- **What stays out**: SDK-managed packages, because `expo install --check` owns their versions; the drift rule holds them in agreement instead.
 
 ## 11. Payment and Checkout Conventions
 

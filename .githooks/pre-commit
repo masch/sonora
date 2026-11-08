@@ -77,6 +77,7 @@ run_step "test-ci" "make test-ci"
 run_step "lint" "make lint"
 run_step "typecheck" "make typecheck"
 run_step "doctor-ci" "make doctor-ci"
+run_step "deps-check" "make deps-check"
 
 # expo-doctor is non-blocking (known bun false positives)
 printf "  ✓ expo-doctor... "

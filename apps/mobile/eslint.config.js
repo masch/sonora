@@ -3,6 +3,10 @@ const { defineConfig } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
 const i18nextPlugin = require('eslint-plugin-i18next');
 const packageJsonDepsPlugin = require('eslint-plugin-package-json-dependencies');
+// The root bun catalog owns the version of every package it names. A workspace
+// references those as "catalog:", which is not a semver range this rule can pin, so
+// they are excluded here and `scripts/check-deps.ts` is what enforces the reference.
+const catalogPackages = Object.keys(require('../../package.json').catalog ?? {});
 const jsoncParser = require('jsonc-eslint-parser');
 
 /**
@@ -60,7 +64,7 @@ module.exports = defineConfig([
         'error',
         {
           granularity: 'fixed',
-          excludePatterns: ['@sonora/*'],
+          excludePatterns: ['@sonora/*', ...catalogPackages],
         },
       ],
     },
