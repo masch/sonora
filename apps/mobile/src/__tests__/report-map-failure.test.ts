@@ -94,6 +94,48 @@ describe('reportMapFailure', () => {
     reportMapFailure('mapFailed', { stage: 'draw', message: 'Worker failed to load' });
     expect(descriptionOf(0)).toBe('map mapFailed draw Worker failed to load');
   });
+
+  it('keeps a coordinate out, because it is where the walker is', () => {
+    // MapLibre refuses a bad camera with `Invalid LngLat object: (-64.738, -32.212)`, and
+    // that sentence would otherwise travel with the report: how many decimals the camera
+    // had never diagnoses a failure, only that a coordinate was in it.
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      message: 'Invalid LngLat object: (-64.738, -32.212)',
+    });
+    expect(descriptionOf(0)).not.toContain('-64.738');
+    expect(descriptionOf(0)).not.toContain('-32.212');
+    expect(descriptionOf(0)).toContain('<coords>');
+  });
+
+  it('redacts a url the sentence glues to prose, in any scheme', () => {
+    // An exception message is the one field we do not build ourselves, so the redaction
+    // cannot assume a space before the scheme or a lowercase one.
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      message: 'failed:https://t.example/1.pbf?token=s3cr3t',
+    });
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      message: 'see HTTPS://t.example/1.pbf?token=s3cr3t',
+    });
+    expect(descriptionOf(0)).not.toContain('s3cr3t');
+    expect(descriptionOf(1)).not.toContain('s3cr3t');
+  });
+
+  it('redacts every url an exception sentence carries', () => {
+    // MapLibre's own failure sentence embeds the request it made, and a tile request can
+    // carry a signed query and credentials: a sentence nobody thought to redact would
+    // otherwise be the way both leave the device.
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      message:
+        'AJAXError: Not Found (404): https://user:s3cr3t@example.test/tiles/1/2/3.pbf?token=s3cr3t',
+    });
+    expect(descriptionOf(0)).not.toContain('s3cr3t');
+    expect(descriptionOf(0)).not.toContain('user:');
+    expect(descriptionOf(0)).toContain('https://example.test/tiles/1/2/3.pbf');
+  });
 });
 
 describe('redactUrl', () => {
@@ -101,9 +143,29 @@ describe('redactUrl', () => {
     expect(redactUrl('https://example.test/a/b.json?x=1#y')).toBe('https://example.test/a/b.json');
   });
 
+  it('strips the credentials out of the authority', () => {
+    // A signed url can carry userinfo, and a third-party dashboard is not where one
+    // belongs: what it names is the host, not who asked.
+    expect(redactUrl('https://user:s3cr3t@example.test/style.json?x=1#y')).toBe(
+      'https://example.test/style.json',
+    );
+  });
+
+  it('leaves a percent-encoded separator in the path alone', () => {
+    // `%3F` is a character of the path, not the start of a query: cutting there would
+    // name a different document than the one that failed.
+    expect(redactUrl('https://example.test/a%3Fx%3D1')).toBe('https://example.test/a%3Fx%3D1');
+  });
+
   it('hands back nothing for a missing url', () => {
     expect(redactUrl(undefined)).toBeNull();
     expect(redactUrl(null)).toBeNull();
     expect(redactUrl('')).toBeNull();
+  });
+
+  it('strips userinfo but keeps an @ that belongs to the path', () => {
+    expect(redactUrl('https://user@example.test/x?q=1')).toBe('https://example.test/x');
+    expect(redactUrl('HTTPS://user:pw@example.test/x?q=1')).toBe('HTTPS://example.test/x');
+    expect(redactUrl('https://example.test/a@b/c.json?x=1#y')).toBe('https://example.test/a@b/c.json');
   });
 });

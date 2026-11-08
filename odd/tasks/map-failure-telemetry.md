@@ -42,6 +42,14 @@ after a fixed timeout, so a stalled worker or style is reportable instead of sil
 S7 — The console log of a failure names `sourceId`, the tile URL, the HTTP status and the
 stage, and the WebGL context loss stops being the one silent path.
 
+S8 — The native waits report too. Quoted decision: _"meterlo en esta rama"_ — the native
+renderer's archive and style waits reach analytics with the same episode discipline as the
+web renderer, instead of leaving a native map that cannot draw invisible.
+
+S9 — What does not report yet is named rather than implied. The native draw stage (a
+MapLibre error event, a context loss, an init throw, a load deadline) stays open: the
+native canvas exposes no error callback, so closing it is its own slice.
+
 ## Tasks
 
 | ID  | Spec   | Route  | Commit                                                               |
@@ -49,6 +57,8 @@ stage, and the WebGL context loss stops being the one silent path.
 | T1  | S2–S5  | inline | `feat(mobile): report map failures to analytics once per episode`    |
 | T2  | S2, S7 | inline | `feat(mobile): name what failed and fail a web map that never loads` |
 | T3  | S6     | inline | `feat(mobile): name what failed and fail a web map that never loads` |
+| T4  | S8     | worker | uncommitted: the native waits report through the same episode funnel    |
+| T5  | S9     | open   | the native draw stage, its own slice                                  |
 
 ## Log
 
@@ -77,3 +87,38 @@ cause on top of the real one. Every path that fails a build now goes through one
 `__tests__/use-web-map-instance-failure.test.tsx` pins it by asserting a single report.
 The file was `use-web-map-instance-context-loss.test.tsx` until it started covering the
 deadline and the reports as well.
+
+L7 (defects found by independent verification of the whole diff, corrected before merge):
+
+- The draw-stage report named no cause at all. A worker that never loads arrives as an
+  `ErrorEvent` with no `sourceId` and no `tile`, and the handler dropped
+  `event.error.message`, so the event read `map mapFailed draw` — the exact defect this
+  feature exists to remove. The exception's sentence now travels in `message`.
+- `event.tile.url` does not exist: MapLibre's `Tile` has no `url`, and a failed request is
+  an `AJAXError` carrying `.status` and `.url` on the error itself. The url and the status
+  were therefore always null; both are now read from the error.
+- A `load` later than the deadline left `mapErrorCode` set, and `load` waits for tiles and
+  the sprite, so a slow but working map stayed behind a "map failed" card forever. That
+  was a regression this feature introduced; `load` now withdraws the failure and the
+  report stays as the record the deadline made.
+- `redactUrl` kept userinfo in the authority and a URL inside an exception message was
+  appended unredacted, so a signed URL could reach a third party. Both are closed, and the
+  case list in `__tests__/report-map-failure.test.ts` pins them.
+
+L8 (scope, closed by decision): the native renderer resolves its archive and style through
+`use-map-archive-file` and `useRemoteStyle` and never called `reportMapFailure`, so a
+native map that could not draw was invisible. Verification showed the premise that
+`use-map-source` served both renderers was false. The native waits now report through one
+`useEffect` in `ExperienceMap`, placed after `failure` is computed and before the early
+return, with the vocabulary widened in `map-view.types.ts` so the reporter accepts the
+native codes without importing a renderer.
+
+L9 (verbatim, the decision that put native in this branch): _"meterlo en esta rama"_. What
+the native report cannot say yet, recorded rather than smoothed over: it carries no
+`sourceId` and no exception sentence, because neither the archive hook's state nor the
+style outcome keeps one, and its draw stage reports nothing at all (S9, T5).
+
+L10 (the style status, native): `StyleOutcome` could not take a `status` field — that name
+is the union's own discriminant — so the answer travels as `httpStatus`, the same name the
+report detail uses. An offline rejection carries none, and absent is the honest answer
+there.

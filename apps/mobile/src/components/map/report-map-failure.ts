@@ -1,6 +1,6 @@
 import { AnalyticsService } from '@/services/analytics';
 
-import type { MapLoadErrorCode } from './map-view.types';
+import type { MapReportedErrorCode } from './map-view.types';
 
 /**
  * The one place a map failure becomes a report we can read from the outside.
@@ -72,15 +72,47 @@ export function resetReportedMapFailures(): void {
 }
 
 /**
- * A url without the part that is not the document's name.
+ * A url without the parts that are not the document's name.
  *
- * A tile url can carry a signed query, and a style url carrying the map center would be
- * the walker's own position: neither belongs in a third-party dashboard.
+ * A tile url can carry a signed query, a style url carrying the map center would be the
+ * walker's own position, and an authority can carry credentials: none of the three
+ * belongs in a third-party dashboard. The cut falls on the literal separators only: a
+ * percent-encoded one (`%3F`) is a character of the path and cutting there would name a
+ * different document than the one that failed.
  */
 export function redactUrl(url?: string | null): string | null {
   if (!url) return null;
   const cut = url.search(/[?#]/);
-  return cut === -1 ? url : url.slice(0, cut);
+  const named = cut === -1 ? url : url.slice(0, cut);
+  // `https://user:secret@example.test/x` names `example.test` and nothing else: the
+  // credentials in the authority are who asked, not what failed.
+  return named.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/]*@/i, '$1');
+}
+
+/**
+ * Every url in a sentence, with the parts that must not travel cut off.
+ *
+ * MapLibre's own failure sentence embeds the request it made
+ * (`AJAXError: Not Found (404): <url>`), so an exception carrying a signed tile url, or
+ * credentials, would otherwise be the way both leave the device: inside text nobody
+ * thought to redact because it is not the url field.
+ */
+function redactUrlsIn(text: string): string {
+  return text.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi, (found) => redactUrl(found) ?? '');
+}
+
+/**
+ * A coordinate pair, which is the walker's own position when it is the map's centre.
+ *
+ * MapLibre refuses an invalid camera with `Invalid LngLat object: (-64.738, -32.212)`,
+ * and that sentence travels with the report: how many decimals it had is never what
+ * diagnoses a failure, only that a coordinate was there.
+ */
+const COORDINATE_PAIR = /[-+]?\d{1,3}\.\d{3,},\s*[-+]?\d{1,3}\.\d{3,}/g;
+
+/** Everything a detail may carry that must not leave the device. */
+function sanitize(text: string): string {
+  return redactUrlsIn(text).replace(COORDINATE_PAIR, '<coords>');
 }
 
 /**
@@ -90,7 +122,7 @@ export function redactUrl(url?: string | null): string | null {
  * one broken source are the same failure, and an error with neither source nor url is
  * one failure per stage. A different code is always a different episode.
  */
-function episodeKey(code: MapLoadErrorCode, detail: MapFailureDetail): string {
+function episodeKey(code: MapReportedErrorCode, detail: MapFailureDetail): string {
   return [
     code,
     detail.stage,
@@ -98,8 +130,9 @@ function episodeKey(code: MapLoadErrorCode, detail: MapFailureDetail): string {
     redactUrl(detail.url) ?? '',
     detail.sourceId ?? '',
     // A different sentence is a different failure — one worker that did not load is not
-    // the same episode as one WebGL context the browser refused to create.
-    (detail.message ?? '').slice(0, 60),
+    // the same episode as one WebGL context the browser refused to create. Redacted, so
+    // two tiles of one source stay one episode although each signature differs.
+    sanitize(detail.message ?? '').slice(0, 60),
   ].join('|');
 }
 
@@ -109,9 +142,10 @@ function episodeKey(code: MapLoadErrorCode, detail: MapFailureDetail): string {
  * The stable code and the stage come first because they are what the report is for; the
  * url comes before the source id because it is the field that names a cause, and a long
  * source id is the field we can afford to lose to the 100-character limit. The
- * exception's own sentence comes last, for the same reason.
+ * exception's own sentence comes last, for the same reason — and redacted, because a
+ * sentence may carry a url the field above would have redacted.
  */
-function describeFailure(code: MapLoadErrorCode, detail: MapFailureDetail): string {
+function describeFailure(code: MapReportedErrorCode, detail: MapFailureDetail): string {
   const parts = ['map', code, detail.stage];
   if (detail.httpStatus !== undefined && detail.httpStatus !== null) {
     parts.push(String(detail.httpStatus));
@@ -119,7 +153,7 @@ function describeFailure(code: MapLoadErrorCode, detail: MapFailureDetail): stri
   const url = redactUrl(detail.url);
   if (url) parts.push(url);
   if (detail.sourceId) parts.push(`source=${detail.sourceId}`);
-  if (detail.message) parts.push(detail.message);
+  if (detail.message) parts.push(sanitize(detail.message));
   return parts.join(' ').slice(0, MAX_MAP_FAILURE_MESSAGE);
 }
 
@@ -130,7 +164,7 @@ function describeFailure(code: MapLoadErrorCode, detail: MapFailureDetail): stri
  * on the dashboard and a screenshot read on a phone name the same failure; the detail
  * travels in the bounded description instead of inventing a dimension per cause.
  */
-export function reportMapFailure(code: MapLoadErrorCode, detail: MapFailureDetail): void {
+export function reportMapFailure(code: MapReportedErrorCode, detail: MapFailureDetail): void {
   const key = episodeKey(code, detail);
   if (reported.includes(key)) return;
 

@@ -621,8 +621,12 @@ describe('ExperienceMap (web)', () => {
     expect(view.queryByTestId('experience-map-error')).toBeNull();
     expect(mockMapInstances).toHaveLength(1);
     expect(map.layers.length).toBeGreaterThan(0);
-    // What the walker cannot see is still reported, with the library's own error.
-    expect(mockedLogger.error).toHaveBeenCalledWith('ExperienceMap error:', recoverable);
+    // What the walker cannot see is still reported, with the library's own error and the
+    // fields that name what failed.
+    expect(mockedLogger.error).toHaveBeenCalledWith('ExperienceMap error:', recoverable, {
+      sourceId: null,
+      url: null,
+    });
   });
 
   it('hands a rebuilt map the layer selection and the pending flight', async () => {

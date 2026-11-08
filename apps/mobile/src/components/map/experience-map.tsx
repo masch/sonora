@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import {
   useMapArchiveFile,
-  type MapArchiveErrorCode,
   type MapArchiveFileState,
 } from '@/hooks/use-map-archive-file';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
@@ -42,9 +41,12 @@ import {
   FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
   type MapReferencePress,
+  type MapStyleErrorCode,
+  type MapWaitErrorCode,
   type MapWaitState,
 } from './map-view.types';
 import { MapCanvas } from './map-canvas';
+import { reportMapFailure } from './report-map-failure';
 import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
@@ -59,17 +61,13 @@ const HITBOX_PIXELS = 22;
 const STYLE_TIMEOUT_MS = 10 * 1000;
 
 /**
- * Stable codes for what can go wrong while the style is fetched. The hook reports one
- * of these and the view translates it, so no sentence a request layer produced is ever
- * drawn on screen for a walker to read.
+ * The sentence each code becomes on screen; the words live here, not in the hooks.
+ *
+ * `MapWaitErrorCode` is the two waits this renderer has — the archive file and the style
+ * document — and not the shared `MapLoadErrorCode`: a code the web renderer never raises
+ * is not part of that one.
  */
-type MapStyleErrorCode = 'styleTimeout' | 'styleRequestFailed' | 'styleInvalid';
-
-/** Every stable failure code the map screen can render, from either of its two waits. */
-type MapLoadErrorCode = MapStyleErrorCode | MapArchiveErrorCode;
-
-/** The sentence each code becomes on screen; the words live here, not in the hooks. */
-const ERROR_MESSAGE_KEYS: Record<MapLoadErrorCode, TranslationKeys> = {
+const ERROR_MESSAGE_KEYS: Record<MapWaitErrorCode, TranslationKeys> = {
   styleTimeout: 'map.errors.styleTimeout',
   styleRequestFailed: 'map.errors.styleUnavailable',
   styleInvalid: 'map.errors.styleUnavailable',
@@ -92,9 +90,16 @@ const ERROR_MESSAGE_KEYS: Record<MapLoadErrorCode, TranslationKeys> = {
  */
 const styles = new Map<string, StyleSpecification>();
 
-/** What one transfer settles to. It never rejects: a failure is an outcome with a code. */
+/**
+ * What one transfer settles to. It never rejects: a failure is an outcome with a code.
+ *
+ * `httpStatus` rides with the failure because a style the origin refused and one that
+ * never answered read the same on screen, and the report is the only place that can tell
+ * them apart.
+ */
 type StyleOutcome =
-  { status: 'ready'; style: StyleSpecification } | { status: 'error'; code: MapStyleErrorCode };
+  | { status: 'ready'; style: StyleSpecification }
+  | { status: 'error'; code: MapStyleErrorCode; httpStatus?: number };
 
 /**
  * One transfer of a style document, shared by every run that waits for the same url.
@@ -155,9 +160,17 @@ function requestStyleDocument(url: string, controller: AbortController): Promise
         // A cancelled transfer has nobody left to report to; a real failure keeps its
         // detail in the log, because the screen only ever shows the code.
         if (!controller.signal.aborted) logger.warn('map style request failed', error);
-        finish({ status: 'error', code: 'styleRequestFailed' });
+        finish({ status: 'error', code: 'styleRequestFailed', ...httpStatusOf(error) });
       });
   });
+}
+
+/** The answer a server gave, when the failure carries one, as a detail field. */
+function httpStatusOf(error: unknown): { httpStatus?: number } {
+  // A style request fails as an `ApiError`, which carries the status on itself; an
+  // offline rejection carries none, and absent is the honest answer there.
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === 'number' ? { httpStatus: status } : {};
 }
 
 /**
@@ -232,6 +245,13 @@ interface BaseStyleState {
   style?: StyleSpecification;
   /** The stable code of a failed run, translated where the screen shows it. */
   error?: MapStyleErrorCode;
+  /**
+   * The answer a server gave, when a server was the one that failed.
+   *
+   * It rides with the code so the report can name a 404 apart from a 500: on screen both
+   * are the same translated sentence, and nothing else of the request survives.
+   */
+  httpStatus?: number;
 }
 
 /** What one run settled, and which run — `url` plus `attempt` — it belongs to. */
@@ -294,7 +314,7 @@ function useRemoteStyle(styleUrl: string | undefined, attempt: number): BaseStyl
   if (settled?.url !== styleUrl || settled.attempt !== attempt) return { status: 'loading' };
   return settled.outcome.status === 'ready'
     ? { status: 'ready', style: settled.outcome.style }
-    : { status: 'error', error: settled.outcome.code };
+    : { status: 'error', error: settled.outcome.code, httpStatus: settled.outcome.httpStatus };
 }
 
 /**
@@ -329,7 +349,7 @@ function failureCode(input: {
   noRegion: boolean;
   archive: MapArchiveFileState;
   remote: BaseStyleState;
-}): MapLoadErrorCode | undefined {
+}): MapWaitErrorCode | undefined {
   if (input.noRegion) return undefined;
   if (input.archive.status === 'error') return input.archive.error;
   return input.remote.status === 'error' ? input.remote.error : undefined;
@@ -394,7 +414,7 @@ function toPressReference(
 
 interface MapFailureSurfaceProps {
   /** The failure this map resolved, from either of its two waits. */
-  code: MapLoadErrorCode;
+  code: MapWaitErrorCode;
   onRetry: () => void;
   testID: string;
   className: string;
@@ -634,6 +654,28 @@ export default function ExperienceMap({
   );
 
   const failure = failureCode({ noRegion, archive, remote });
+
+  /**
+   * The one report a native map failure makes, once per episode.
+   *
+   * It is an effect and not part of the render body: the report is a side effect of a
+   * commit, and the renderer commits more than once over one failure. The episode
+   * registry deduplicates the repeats of one cause; it is not a licence to report from
+   * a function that React is allowed to call whenever it wants.
+   *
+   * The stage and the url are the wait the code came from, never inferred from the code
+   * alone: `failureCode` reports the archive before the style, so an archive that failed
+   * is the archive's. A place in no region has no failure at all and reports nothing.
+   */
+  useEffect(() => {
+    if (!failure) return;
+    const archiveFailed = archive.status === 'error';
+    reportMapFailure(failure, {
+      stage: archiveFailed ? 'archive' : 'style',
+      url: (archiveFailed ? source.archiveUrl : source.styleUrl) ?? null,
+      httpStatus: archiveFailed ? null : (remote.httpStatus ?? null),
+    });
+  }, [failure, archive.status, source.archiveUrl, source.styleUrl, remote.httpStatus]);
 
   /**
    * What is still pending: the stage, and the transfer the walker is really paying for.

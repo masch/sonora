@@ -4,6 +4,7 @@ import type { StyleSpecification } from 'maplibre-gl';
 import { PMTiles } from 'pmtiles';
 
 import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
+import { reportMapFailure } from '@/components/map/report-map-failure';
 import { logger } from '@/utils/logger';
 
 /**
@@ -53,6 +54,13 @@ class MapSourceFailure extends Error {
   constructor(
     readonly code: MapSourceErrorCode,
     readonly detail: unknown,
+    /**
+     * The answer a server gave, when a server was the one that failed.
+     *
+     * The status line used to reach the log only as part of a sentence, so a 404 archive
+     * and a 200 whose body was not an archive read the same from the outside.
+     */
+    readonly httpStatus?: number,
   ) {
     super(code);
     this.name = 'MapSourceFailure';
@@ -62,6 +70,17 @@ class MapSourceFailure extends Error {
 /** The code a failed run reports; a throw that named none is an archive download failure. */
 function failureCode(error: unknown): MapSourceErrorCode {
   return error instanceof MapSourceFailure ? error.code : 'archiveDownloadFailed';
+}
+
+/**
+ * The answer a server gave, when the request layer is the one that failed.
+ *
+ * A style request fails as an `ApiError`, which carries the status on itself; without
+ * this the report would say `styleRequestFailed` and nothing about why.
+ */
+function httpStatusOf(detail: unknown): number | null {
+  const status = (detail as { status?: unknown } | null)?.status;
+  return typeof status === 'number' ? status : null;
 }
 
 export interface MapSourceState {
@@ -198,6 +217,7 @@ async function downloadArchive(archiveUrl: string): Promise<Response> {
     throw new MapSourceFailure(
       'archiveDownloadFailed',
       new Error(`${response.status} ${response.statusText}`),
+      response.status,
     );
   }
   return response;
@@ -356,12 +376,21 @@ export function useMapSource(
     const fail = (error: unknown) => {
       if (cancelled) return;
       const code = failureCode(error);
+      const failure = error instanceof MapSourceFailure ? error : null;
+      const isStyle = code === 'styleRequestFailed' || code === 'styleInvalid';
+      // The document this wait asked for: the two waits fail with different urls, and
+      // which one it was is the first thing a report has to answer.
+      const url = (isStyle ? styleUrl : archiveUrl) ?? null;
+      const httpStatus = failure?.httpStatus ?? httpStatusOf(failure?.detail);
       // The detail a request or the filesystem produced stays here; the screen only ever
       // receives the code, which it translates.
-      logger.warn(
-        `map source failed (${code})`,
-        error instanceof MapSourceFailure ? error.detail : error,
-      );
+      logger.warn(`map source failed (${code})`, {
+        url,
+        httpStatus,
+        detail: failure ? failure.detail : error,
+      });
+      // The same failure, reported where it can be read without the walker's console.
+      reportMapFailure(code, { stage: isStyle ? 'style' : 'archive', url, httpStatus });
       setResult({ key, styleUrl, attempt, state: { status: 'error', error: code } });
     };
 

@@ -16,6 +16,7 @@ import { attributionWithVersion } from '@/utils/map-attribution';
 import { logger } from '@/utils/logger';
 
 import { documentKeyOfLayer, type MapLoadErrorCode, type MapSourceConfig } from './map-view.types';
+import { reportMapFailure, type MapFailureDetail } from './report-map-failure';
 import type { FocusFlightOptions } from './use-map-focus-flight';
 
 // MapLibre runs in a Web Worker that the metro web build does not emit, so the app
@@ -23,6 +24,54 @@ import type { FocusFlightOptions } from './use-map-focus-flight';
 // failed to load". `scripts/copy-maplibre-worker.mjs` publishes that worker into
 // `public/` at build time and this points MapLibre at it. It runs once per page load.
 maplibregl.setWorkerUrl('/maplibre-gl-worker.js');
+
+/**
+ * How long a web map may go without reporting `load` or `error` before it is failed.
+ *
+ * The native renderer has its own deadline for its style wait; on the web there was
+ * none, so a worker or a style that never answers throws nothing, reports nothing, and
+ * leaves the card spinning forever — the one failure no log could reach. The deadline
+ * is generous on purpose: it only has to catch a wait that is never going to end.
+ */
+export const WEB_LOAD_TIMEOUT_MS = 20_000;
+
+/**
+ * The failure MapLibre reports, in the shape the library actually produces.
+ *
+ * A request that failed arrives as an `AJAXError`: the status the server answered with
+ * and the url that was requested live **on the error itself**, never on the event.
+ */
+interface MapLibreFailure extends Error {
+  /** The answer a server gave, on a request that failed. */
+  status?: number;
+  /** The request that failed, query string and all. */
+  url?: string;
+}
+
+/** The parts of MapLibre's `error` event that say *what* failed, not only *that* it did. */
+interface MapLibreErrorEvent {
+  error?: MapLibreFailure;
+  /** The style source the failure belongs to, when the library knows one. */
+  sourceId?: string;
+  /**
+   * The tile being loaded, which is the library's internal `Tile` instance.
+   *
+   * It carries no url at all, so a url read from here is a read that never finds
+   * anything: the tile's request is only named on the error above.
+   */
+  tile?: unknown;
+}
+
+/**
+ * The console record of an `error` event.
+ *
+ * The library reports a source on the event and the request on the error, and the
+ * renderer used to keep neither: a worker served as an SPA fallback, a basemap whose
+ * TileJSON never arrived and a tile that 404s all produced the same line.
+ */
+function errorFields(event: MapLibreErrorEvent): { sourceId: string | null; url: string | null } {
+  return { sourceId: event.sourceId ?? null, url: event.error?.url ?? null };
+}
 
 export interface RenderedFeature {
   layer: { id: string };
@@ -176,6 +225,8 @@ export function useWebMapInstance({
 
   useEffect(() => {
     cancelledRef.current = false;
+    /** The deadline this build owes: cleared by its own load, its failure, or its removal. */
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
 
     function init() {
       try {
@@ -248,11 +299,61 @@ export function useWebMapInstance({
         // about that: the event carries no fatal flag, and `sourceId`/`tile` appear on
         // both kinds. What this code can own is the order: drawn, or never drawn.
         let drewOnce = false;
+        /**
+         * This instance's failure is already reported.
+         *
+         * MapLibre emits `error` once per failing tile, and a report per event would
+         * spend the eight non-fatal slots Crashlytics keeps per session on one broken
+         * basemap. The reporter deduplicates what it can, and this flag is the part it
+         * cannot see: two tiles of one source are one failure.
+         */
+        let reported = false;
 
-        map.on('error', ((event: { error?: Error }) => {
-          logger.error('ExperienceMap error:', event.error);
-          if (drewOnce) return;
+        /**
+         * This build's failure: shown every time, reported once per cause.
+         *
+         * The code is set on every failure because the screen has to say that the map cannot
+         * draw: a late `load` withdraws a deadline, and the context loss that follows is
+         * still a map drawing nothing. Only the report is held back per stage — MapLibre
+         * emits `error` once per failing tile, so the draw stage reports once per build,
+         * while a lost context is its own episode and names itself.
+         *
+         * Also the reason the deadline below cannot contradict an earlier answer: an error
+         * that arrives before the map ever drew has already failed this build, and a
+         * "timed out" report twenty seconds later would be a second, false cause on top of
+         * the real one. The deadline is cleared here for that reason.
+         */
+        const fail = (detail: MapFailureDetail): void => {
+          clearTimeout(loadTimer);
           setMapErrorCode('mapFailed');
+          if (detail.stage === 'draw') {
+            if (reported) return;
+            reported = true;
+          }
+          reportMapFailure('mapFailed', detail);
+        };
+
+        // A map that never draws and never fails has to acquire a failure of its own, or
+        // the wait has no end and nothing is reported at all.
+        loadTimer = setTimeout(() => {
+          if (cancelledRef.current || drewOnce) return;
+          logger.error('ExperienceMap load timed out:', { timeoutMs: WEB_LOAD_TIMEOUT_MS });
+          fail({ stage: 'timeout', message: `no load after ${WEB_LOAD_TIMEOUT_MS}ms` });
+        }, WEB_LOAD_TIMEOUT_MS);
+
+        map.on('error', ((event: MapLibreErrorEvent) => {
+          logger.error('ExperienceMap error:', event.error, errorFields(event));
+          if (drewOnce) return;
+          // The cause is the error's own: a request that failed carries the status and
+          // the url there, and a worker that never loaded carries only its sentence —
+          // an event with neither source nor tile would otherwise report the bare stage.
+          fail({
+            stage: 'draw',
+            sourceId: event.sourceId ?? null,
+            httpStatus: event.error?.status ?? null,
+            url: event.error?.url ?? null,
+            message: event.error?.message ?? null,
+          });
         }) as never);
 
         /**
@@ -265,11 +366,23 @@ export function useWebMapInstance({
          * state, so the screen follows the one signal that means "this map cannot draw
          * any more" instead of guessing from a message.
          */
-        watchContextLoss(containerRef.current, () => setMapErrorCode('mapFailed'));
+        watchContextLoss(containerRef.current, () => {
+          // Reported because this used to be the one silent failure: a reset context
+          // draws nothing, fires no `error`, and left no trace anywhere.
+          logger.error('ExperienceMap context lost:', { attempt });
+          fail({ stage: 'contextLost' });
+        });
 
         map.on('load', (() => {
           if (cancelledRef.current) return;
           drewOnce = true;
+          clearTimeout(loadTimer);
+          // The map drew, so it is not a failed map. `load` waits for tiles and the
+          // sprite, so a working map can pass the deadline above and load afterwards:
+          // leaving the code would keep a "map failed" card over a map that draws, and
+          // the walker would have no way back to it. The report stays as the record the
+          // deadline made; only the screen stops saying the map failed.
+          setMapErrorCode(null);
           // The build this instance drew, not a bare flag: the next build starts unloaded.
           setLoadedAttempt(attempt);
           applyOverlays(map);
@@ -293,8 +406,17 @@ export function useWebMapInstance({
           if (hit) openReference(hit);
         }) as never);
       } catch (err) {
+        // The map that threw cannot keep a deadline running: it would report a second,
+        // false cause on top of this one.
+        clearTimeout(loadTimer);
         logger.error('ExperienceMap init failed:', err);
-        if (!cancelledRef.current) setMapErrorCode('mapFailed');
+        if (!cancelledRef.current) {
+          reportMapFailure('mapFailed', {
+            stage: 'draw',
+            message: err instanceof Error ? err.message : String(err),
+          });
+          setMapErrorCode('mapFailed');
+        }
       }
     }
 
@@ -302,6 +424,7 @@ export function useWebMapInstance({
 
     return () => {
       cancelledRef.current = true;
+      clearTimeout(loadTimer);
       mapRef.current?.remove();
       mapRef.current = null;
       // The build that reported its load is gone with this instance, and the one that
