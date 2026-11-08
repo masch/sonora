@@ -7,6 +7,10 @@ import {
 } from 'expo/config-plugins';
 import APP_IDENTIFIERS from '../../packages/shared/src/app-identifiers.json';
 import { fontConfig } from './src/config/font.ts';
+import {
+  LOCATION_USAGE_COPY,
+  LOCATION_USAGE_FALLBACK,
+} from './src/i18n/location-permission-copy.ts';
 
 const isProduction = process.env.APP_ENV === 'production';
 
@@ -89,6 +93,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       associatedDomains: [`applinks:${activeEnv.domain}`],
       infoPlist: {
         UIBackgroundModes: ['fetch'],
+        // Required for the per-language `InfoPlist.strings` files written by
+        // `with-localized-location-permission` to be read in the device's own language
+        // instead of the app's single primary localization (Expo's localization guide).
+        CFBundleAllowMixedLocalizations: true,
       },
     },
     android: {
@@ -152,6 +160,30 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       'expo-localization',
+      [
+        'expo-location',
+        {
+          // Only while the app is on screen, which is the whole of what it is asked for:
+          // the walker's own point on the map, and the check that says whether they are
+          // standing at an experience. Nothing here records a track in the background, so
+          // the always-usage keys are omitted instead of declared and never used.
+          //
+          // This is only the unlocalized fallback: the plugin below writes the
+          // per-language `InfoPlist.strings` iOS actually shows, from the same copy.
+          locationWhenInUsePermission: LOCATION_USAGE_FALLBACK,
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false,
+          // No motion activity is read anywhere in the app: an unused usage key is a
+          // permission prompt nobody ever asked for, and a review question with no answer.
+          motionUsagePermission: false,
+        },
+      ],
+      [
+        './plugins/with-localized-location-permission',
+        {
+          messages: LOCATION_USAGE_COPY,
+        },
+      ],
       'expo-asset',
       [
         'expo-font',
