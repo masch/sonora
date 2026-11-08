@@ -15,19 +15,25 @@
 #   PROVIDER="lmstudio:qwen2.5-coder-7b-instruct"
 #   PROVIDER="github:gpt-4o"
 #   PROVIDER="github:deepseek-r1"
-# This provider needs an **OpenCode Go subscription**. Without one, every commit's
-# review fails with "Model unavailable" / "Insufficient account funds" and the
-# pre-commit hook refuses the commit — `AGENTS.md` forbids `--no-verify`, so a
-# contributor without the plan cannot commit until they install it or ask a maintainer
-# for an alternative. The `opencode-go/*` namespace is the subscription; the bare
-# `opencode/*` one is pay-per-use and answers "Insufficient account funds" without
-# credit. Run `opencode models` to see what the installed plan actually offers.
+# This repo deliberately stays on the free tier, and deliberately avoids the
+# `opencode-go/*` subscription namespace. That namespace is a paid plan whose quota is
+# shared with anything else running on it; when it runs out, every commit's review fails
+# with "Model unavailable" / "Insufficient account funds" and the pre-commit hook refuses
+# the commit. `AGENTS.md` forbids `--no-verify`, so a contributor whose plan is exhausted
+# cannot commit at all. Keep this provider free so the hook works for someone with no paid
+# plan, and so exhausting a shared quota can never block committing.
+#
+# The free models live in the bare `opencode/*` namespace. Run `opencode models` to see
+# which free models the installed catalog actually offers, and verify the exact name
+# before changing it: a model that left the catalog fails the same way a missing plan
+# does, and `gga run` exits 0 after saying so, which is why `.githooks/pre-commit` checks
+# the output instead of trusting the exit code.
 #
 # `PROVIDER` below is the default: this file is loaded after the environment, so setting
 # PROVIDER on the command line changes nothing. The override is `GGA_PROVIDER`, and it
 # works for a one-off run or for a single commit:
-#   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" make gga
-#   GGA_PROVIDER="opencode:opencode-go/glm-5.3-flash" git commit
+#   GGA_PROVIDER="opencode:opencode/deepseek-v4.1-flash-free" make gga
+#   GGA_PROVIDER="opencode:opencode/deepseek-v4.1-flash-free" git commit
 PROVIDER="opencode:opencode/deepseek-v4.1-flash-free"
 
 # File patterns to include in review (comma-separated)
