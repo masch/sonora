@@ -1,7 +1,7 @@
 # Tasks: Monorepo Dependency Source of Truth
 
 **Feature**: `deps-monorepo-source-of-truth`
-**Branch**: `chore/deps-monorepo-source-of-truth`
+**Branch**: `chore/deps-policy` (consolidated; it was `chore/deps-monorepo-source-of-truth`, stacked on `chore/deps-sdk57-alignment`)
 **Delivery Strategy**: `ask-on-risk`
 
 ## Specs
@@ -53,6 +53,7 @@
 - **L7** — The catalog broke the repository's own lint gate: `package-json-dependencies/controlled-versions` demands a fixed version for every dependency, and on `"catalog:"` its fixer throws `tag 'catalog:' not found for package '@types/node'`, so `make lint` exited 2 and the pre-commit hook refused the commit. The plugin is at its latest release (1.0.20, April 2024) and has no catalog support, and its only escape hatch, `excludePatterns`, matches dependency names. Each workspace config now derives those names from the root catalog with `Object.keys(require('../../package.json').catalog ?? {})`, so there is no second list to maintain, `make deps-check` still holds the reference, and the exact-pin rule keeps covering every package the catalog does not name. `make lint` is green across the four workspaces.
 - **L8** — Native review of `d1f4541` (lineage `review-65bc32f7049caf4b`, base-diff `e64e52d..31f5ec7`, tier high, 1183 changed lines) closed **approved** with 12 non-blocking findings: 5 WARNING, 7 SUGGESTION, none opening a correction. The reliability lens was refused twice at admission for a payload without the top-level `evidence` array (slot not consumed, payload kept under `.git/gentle-ai/rejected-results/`) and was admitted on the third run. Four of those findings name real follow-up material and are recorded as G7-G10 below rather than reopened here.
 - **L9** — Delivery state at this point: `d1f4541` is the only unpushed commit, the PR body still describes `deps.shared.json` because the remote still holds `28a8d44` and `fa6d080` alone, and no issue tracks this work. Both PR-side updates are queued behind the push decision, which belongs to the human.
+- **L10** — Superseded delivery: the human chose one issue and one pull request instead of the two stacked pull requests, so the two dependency lines are consolidated on `chore/deps-policy`, cut from `chore/deps-sdk57-alignment` (which already carried current `main`) with `chore/deps-monorepo-source-of-truth` merged in. No history was rewritten: the merge is conflict-free and every commit keeps its own review. #656 and #658 are closed as replaced. `apps/mobile/app.config.ts` stays out on purpose, because #652 records that its usage string ships in a single language and the commit gate rejected exactly that; it belongs to its own pull request.
 
 ## Review findings, recorded as follow-ups
 
