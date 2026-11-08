@@ -182,9 +182,8 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 	elif echo "$$OUTPUT" | grep -qE 'ERR_MODULE_NOT_FOUND|command not found'; then \
 		echo "Packages not installed. Installing from package.json specs..."; \
 		PKGSPECS=$$(node -e "const p=require('$$ROOT/apps/mobile/package.json').dependencies; \
-			['@expo/ui','expo','expo-background-fetch','expo-font', \
-			 'expo-location','expo-router','expo-task-manager'] \
-			.forEach(d=>process.stdout.write(d+'@'+p[d]+' '))"); \
+			Object.entries(p).filter(([n]) => n === 'expo' || n.startsWith('expo-') || n.startsWith('@expo/')) \
+				.forEach(([n,v]) => process.stdout.write(n+'@'+v+' '))"); \
 		echo "Installing: $$PKGSPECS"; \
 		cd "$$MOBILE" && bun add --minimum-release-age $$SECONDS $$PKGSPECS; \
 		echo "Re-checking recommended versions..."; \
