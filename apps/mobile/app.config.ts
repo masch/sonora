@@ -152,6 +152,22 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       'expo-localization',
+      [
+        'expo-location',
+        {
+          // Only while the app is on screen, which is the whole of what it is asked for:
+          // the walker's own point on the map, and the check that says whether they are
+          // standing at an experience. Nothing here records a track in the background, so
+          // the always-usage keys are omitted instead of declared and never used.
+          locationWhenInUsePermission:
+            'Sonora usa tu ubicación para mostrarte dónde estás en el mapa y saber cuándo estás en una experiencia.',
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false,
+          // No motion activity is read anywhere in the app: an unused usage key is a
+          // permission prompt nobody ever asked for, and a review question with no answer.
+          motionUsagePermission: false,
+        },
+      ],
       'expo-asset',
       [
         'expo-font',

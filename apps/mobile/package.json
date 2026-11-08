@@ -6,13 +6,13 @@
     "@expo-google-fonts/caveat": "0.4.2",
     "@expo/ui": "57.0.26",
     "@expo/vector-icons": "15.1.1",
-    "@maplibre/maplibre-react-native": "11.5.0",
+    "@maplibre/maplibre-react-native": "11.5.1",
     "@react-native-community/netinfo": "12.0.1",
     "@react-native-firebase/analytics": "21.14.0",
     "@react-native-firebase/app": "21.14.0",
     "@react-native-firebase/crashlytics": "21.14.0",
     "@sonora/shared": "workspace:*",
-    "@tailwindcss/postcss": "4.3.3",
+    "@tailwindcss/postcss": "4.3.4",
     "expo": "57.0.31",
     "expo-application": "57.0.3",
     "expo-asset": "57.0.20",
@@ -39,15 +39,15 @@
     "expo-task-manager": "57.0.21",
     "expo-web-browser": "57.0.3",
     "firebase": "11.3.1",
-    "i18next": "26.3.6",
-    "maplibre-gl": "6.14.0",
+    "i18next": "26.7.1",
+    "maplibre-gl": "6.16.0",
     "nativewind": "5.0.0-rc.0",
     "pmtiles": "4.5.0",
     "postcss": "8.5.32",
     "promise": "8.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-i18next": "17.0.11",
+    "react-i18next": "17.1.12",
     "react-native": "0.86.3",
     "react-native-css": "3.0.7",
     "react-native-gesture-handler": "2.32.0",
@@ -58,25 +58,25 @@
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
     "sp-react-native-in-app-updates": "2.0.0",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "4.3.4",
     "zustand": "5.0.16"
   },
   "devDependencies": {
     "@babel/runtime": "7.29.10",
     "@react-native/jest-preset": "0.86.3",
-    "@testing-library/react-native": "14.0.1",
+    "@testing-library/react-native": "14.1.0",
     "@types/jest": "29.5.14",
     "@types/leaflet": "1.9.22",
     "@types/react": "19.2.15",
     "eslint": "9.39.5",
     "eslint-config-expo": "57.0.2",
     "eslint-plugin-i18next": "6.1.5",
-    "firebase-tools": "15.22.4",
+    "firebase-tools": "15.34.2",
     "jest": "29.7.0",
     "jest-expo": "57.0.6",
     "lightningcss": "1.30.1",
     "prettier": "3.9.10",
-    "react-doctor": "0.9.18",
+    "react-doctor": "0.9.22",
     "react-test-renderer": "19.2.3",
     "test-renderer": "1.2.0",
     "typescript": "6.0.3"
@@ -115,12 +115,6 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(\\.bun/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage/async-storage|@react-native-community/.*))"
     ]
-  },
-  "overrides": {
-    "lightningcss": "1.30.1"
-  },
-  "resolutions": {
-    "lightningcss": "1.30.1"
   },
   "private": true
 }
