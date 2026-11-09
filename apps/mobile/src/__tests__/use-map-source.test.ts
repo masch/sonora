@@ -11,6 +11,9 @@ jest.mock('pmtiles', () => ({
   },
 }));
 
+// The report is the assertion here; what the transport does with it is its own suite.
+jest.mock('@/services/analytics', () => ({ AnalyticsService: { recordError: jest.fn() } }));
+
 /**
  * The storage the client cache writes to, in memory.
  *
@@ -37,6 +40,8 @@ jest.mock('@/storage/app-storage', () => ({
 }));
 
 import { ensureLocalProtocol, useMapSource } from '@/hooks/use-map-source';
+import { AnalyticsService } from '@/services/analytics';
+import { logger } from '@/utils/logger';
 // The one key rule, shared with the native renderer: the web renderer and the device
 // cache a style document in the same place, under the same name.
 import { fetchStyleDocument, styleCacheKey } from '@/services/map-style-cache';
@@ -82,6 +87,11 @@ const ARCHIVE_CODE_CORRUPT = 'https://api.example/media/public/tiles/code-corrup
 const STYLE_CODE_STYLE = 'https://api.example/media/public/styles/code-style.json';
 const STYLE_CODE_INVALID = 'https://api.example/media/public/styles/code-invalid.json';
 const STYLE_CODE_KEEP = 'https://api.example/media/public/styles/code-keep.json';
+const ARCHIVE_CODE_STYLE_STATUS =
+  'https://api.example/media/public/tiles/code-style-status/v1.pmtiles';
+const STYLE_CODE_STYLE_STATUS = 'https://api.example/media/public/styles/code-style-status.json';
+/** The archive whose 404 is followed all the way to the log and to the report. */
+const ARCHIVE_REPORTED_FAILURE = 'https://api.example/media/public/tiles/reported/v1.pmtiles';
 
 /** The storage key each of the styles above is cached under (see `styleCacheKey`). */
 const KEY_WRITE = 'map_style_cache_29842252';
@@ -515,6 +525,35 @@ describe('the code a failed run reports', () => {
     expect(result.current.error).not.toContain('Not Found');
   });
 
+  it('keeps the document and the answer for the log, and reports the episode', async () => {
+    // The console record and the report are the two places a failure survives the phone:
+    // a code alone cannot tell a 404 archive apart from a body that is not an archive.
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    }) as unknown as typeof fetch;
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const recordError = jest.mocked(AnalyticsService.recordError);
+    recordError.mockClear();
+
+    const { result } = await renderHook(() => useMapSource(ARCHIVE_REPORTED_FAILURE));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    // The console keeps the whole url and the answer the server gave.
+    expect(warn).toHaveBeenCalledWith(
+      'map source failed (archiveDownloadFailed)',
+      expect.objectContaining({ url: ARCHIVE_REPORTED_FAILURE, httpStatus: 404 }),
+    );
+    // The report keeps the stable code and the bounded description.
+    expect(recordError).toHaveBeenCalledWith(
+      expect.any(Error),
+      `map archiveDownloadFailed archive 404 ${ARCHIVE_REPORTED_FAILURE}`,
+      { reference: 'archiveDownloadFailed' },
+    );
+    warn.mockRestore();
+  });
+
   it('names the style as the stage that failed', async () => {
     globalThis.fetch = jest.fn((url: string) => {
       if (url === ARCHIVE_CODE_STYLE) return Promise.resolve(archiveResponse());
@@ -527,6 +566,29 @@ describe('the code a failed run reports', () => {
     expect(result.current.error).toBe('styleRequestFailed');
     // Nothing the network threw is handed over as copy.
     expect(result.current.error).not.toContain('Network request failed');
+  });
+
+  it('carries the answer the server gave for a style it could not fetch', async () => {
+    // A rejected style request is the one failure here that names its own answer: the API
+    // client throws with the status on the error, and without reading it the report would
+    // say `styleRequestFailed` and nothing about why.
+    globalThis.fetch = jest.fn((url: string) => {
+      if (url === ARCHIVE_CODE_STYLE_STATUS) return Promise.resolve(archiveResponse());
+      return Promise.resolve({ ok: false, status: 503, statusText: 'Service Unavailable' });
+    }) as unknown as typeof fetch;
+    const recordError = jest.mocked(AnalyticsService.recordError);
+    recordError.mockClear();
+
+    const { result } = await renderHook(() =>
+      useMapSource(ARCHIVE_CODE_STYLE_STATUS, STYLE_CODE_STYLE_STATUS),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(recordError).toHaveBeenCalledWith(
+      expect.any(Error),
+      `map styleRequestFailed style 503 ${STYLE_CODE_STYLE_STATUS}`,
+      { reference: 'styleRequestFailed' },
+    );
   });
 
   it('reports a body that is not a drawable style as styleInvalid', async () => {

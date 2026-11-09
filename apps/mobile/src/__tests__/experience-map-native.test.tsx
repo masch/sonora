@@ -11,8 +11,10 @@ import { MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 import { ThemedText } from '@/components/themed-text';
 import type { MapWaitState } from '@/components/map/map-view.types';
 import { useNativeFocusFlight } from '@/components/map/use-native-focus-flight';
+import { resetReportedMapFailures } from '@/components/map/report-map-failure';
 import type { TripExperience } from '@/data/experiences';
 import { useMapArchiveFile } from '@/hooks/use-map-archive-file';
+import { AnalyticsService } from '@/services/analytics';
 import { styleCacheKey } from '@/services/map-style-cache';
 import { appStorage } from '@/storage/app-storage';
 import { logger } from '@/utils/logger';
@@ -85,6 +87,10 @@ jest.mock('@/utils/logger', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+// Analytics is where a failure leaves the device, so the double is the only way to read
+// what a mount reported. The reporter's own shape has its own suite.
+jest.mock('@/services/analytics', () => ({ AnalyticsService: { recordError: jest.fn() } }));
+
 // `LoadingView` is what the spinner is: recording its renders is the only way to ask
 // whether a mount ever passed through the loading branch, because `render()` from
 // RTL-RN flushes effects and microtasks before an assertion can look at the tree. The
@@ -127,6 +133,9 @@ import {
 import { FOCUS_DURATION_MS, FOCUS_MIN_ZOOM } from '@/components/map/map-view.types';
 
 const mockedUseMapArchiveFile = jest.mocked(useMapArchiveFile);
+
+/** What a mount reported to analytics, in call order. */
+const recordError = jest.mocked(AnalyticsService.recordError);
 
 /** The asset store's doubles, as this suite arranges them per test. */
 const mockedStyleStore = jest.requireMock('@/services/map-styles') as {
@@ -334,6 +343,10 @@ describe('ExperienceMap (native)', () => {
     mockedUseMapArchiveFile.mockReturnValue({ status: 'ready', uri: ARCHIVE_URI });
     loadingMessages.length = 0;
     for (const key of Object.keys(mockStorage)) delete mockStorage[key];
+    // The episode registry belongs to the module, and this suite mounts many pages: each
+    // case starts not having reported anything.
+    resetReportedMapFailures();
+    recordError.mockClear();
     cacheStorage.getItem.mockClear();
     cacheStorage.setItem.mockClear();
     mockedStyleStore.downloadStyleAssets.mockReset().mockResolvedValue(undefined);
@@ -869,6 +882,124 @@ describe('ExperienceMap (native)', () => {
     expect(view.queryByText('map.errors.archiveUnavailable')).toBeTruthy();
     expect(view.queryByText('archiveDownloadFailed')).toBeNull();
     expect(mockMapProps).toHaveLength(0);
+  });
+
+  it('reports an archive failure once, with the archive url and the code as the reference', async () => {
+    // A native map that cannot draw used to reach a console nobody can open on someone
+    // else's phone: the report is the only way this failure leaves the device.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveDownloadFailed' });
+    const source = { archiveUrl: ARCHIVE_URL, style: styleWith(true) };
+
+    const view = await render(<ExperienceMap source={source} overlays={[]} />);
+    // The renderer commits more than once over one failure, and the report is per
+    // episode: a second commit is not a second cause.
+    await act(async () => {
+      view.rerender(<ExperienceMap source={source} overlays={[]} />);
+    });
+
+    expect(recordError).toHaveBeenCalledTimes(1);
+    // The stage and the document that failed are what tell this apart from a style that
+    // never arrived; the code is the reference the dashboard groups by.
+    expect(String(recordError.mock.calls[0][1])).toBe(
+      `map archiveDownloadFailed archive ${ARCHIVE_URL}`,
+    );
+    expect(recordError.mock.calls[0][2]).toMatchObject({ reference: 'archiveDownloadFailed' });
+  });
+
+  it('reports a style failure with the style url and the answer the server gave', async () => {
+    // The status is the field that separates a style the origin refused from one that
+    // never answered, and both read `styleRequestFailed` on screen.
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' }) as never;
+    const styleUrl = `${STYLE_URL}?reported`;
+
+    const view = await render(
+      <ExperienceMap source={{ archiveUrl: ARCHIVE_URL, styleUrl }} overlays={[]} />,
+    );
+    await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
+
+    expect(recordError).toHaveBeenCalledTimes(1);
+    // The query the caller put on the url never travels: it is not the document's name.
+    expect(String(recordError.mock.calls[0][1])).toBe(
+      `map styleRequestFailed style 503 ${STYLE_URL}`,
+    );
+    expect(recordError.mock.calls[0][2]).toMatchObject({ reference: 'styleRequestFailed' });
+  });
+
+  it('reports the archive document without the credentials or the query it carries', async () => {
+    // A url is the one field the report takes from configuration, and configuration is
+    // not ours to trust: a signature or credentials in it must not reach a third party.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveDownloadFailed' });
+    const archiveUrl =
+      'https://user:s3cr3t@api.example/media/public/tiles/calamuchita/v1.pmtiles?sig=s3cr3t';
+
+    await render(<ExperienceMap source={{ archiveUrl, style: styleWith(true) }} overlays={[]} />);
+
+    expect(recordError).toHaveBeenCalledTimes(1);
+    expect(String(recordError.mock.calls[0][1])).toBe(
+      'map archiveDownloadFailed archive https://api.example/media/public/tiles/calamuchita/v1.pmtiles',
+    );
+  });
+
+  it('does not report again when the caller rebuilds its source object', async () => {
+    // The effect depends on the url, not on the object that carries it: a caller that
+    // rebuilds `source` on every render must not turn one failure into a stream.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveDownloadFailed' });
+    const source = { archiveUrl: ARCHIVE_URL, style: styleWith(true) };
+
+    const view = await render(<ExperienceMap source={source} overlays={[]} />);
+    await act(async () => {
+      view.rerender(<ExperienceMap source={{ ...source }} overlays={[]} />);
+    });
+
+    expect(recordError).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the archive, and only once, when both waits fail', async () => {
+    // `failureCode` reports the archive before the style, so the report has to name the
+    // same cause the screen does, or the dashboard sends someone to the wrong document.
+    mockedUseMapArchiveFile.mockReturnValue({ status: 'error', error: 'archiveDownloadFailed' });
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' }) as never;
+
+    const view = await render(
+      <ExperienceMap
+        source={{ archiveUrl: ARCHIVE_URL, styleUrl: `${STYLE_URL}?both` }}
+        overlays={[]}
+      />,
+    );
+    await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
+
+    expect(recordError).toHaveBeenCalledTimes(1);
+    expect(String(recordError.mock.calls[0][1])).toBe(
+      `map archiveDownloadFailed archive ${ARCHIVE_URL}`,
+    );
+  });
+
+  it('reports nothing for a place that belongs to no published region', async () => {
+    // No region is a fact about the place, not a broken map: the reference plane still
+    // draws and the style it never reads is not a failure to report.
+    globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as never;
+    // The log is shared by every case in this file, so the wait below has to read this
+    // case's own failure and not one an earlier mount left there.
+    jest.mocked(logger.warn).mockClear();
+
+    const view = await render(
+      <ExperienceMap
+        source={{ regionKey: null, archiveUrl: '', styleUrl: `${STYLE_URL}?no-region-report` }}
+        overlays={[document]}
+      />,
+    );
+
+    // The style transfer really failed, so the silence below is the decision and not a
+    // case that never happened.
+    await waitFor(() =>
+      expect(logger.warn).toHaveBeenCalledWith('map style request failed', expect.anything()),
+    );
+    expect(view.queryByTestId('experience-map-error')).toBeNull();
+    expect(recordError).not.toHaveBeenCalled();
   });
 
   it('loads the configured style before handing it to the map', async () => {

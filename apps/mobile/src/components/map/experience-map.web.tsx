@@ -15,7 +15,7 @@ import {
 import LoadingView from '@/components/loading-view';
 import MapErrorView from './map-error-view';
 import { ThemedText } from '@/components/themed-text';
-import { useMapSource } from '@/hooks/use-map-source';
+import { useMapSource, type MapSourceState } from '@/hooks/use-map-source';
 import { applyLayerSelection } from './web-layer-visibility';
 
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -34,6 +34,7 @@ import {
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
 import { raiseUserLocation } from './apply-user-location';
+import { reportMapFailure } from './report-map-failure';
 import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
 
@@ -62,6 +63,28 @@ function toPressReference(
   if (typeof properties.imageUrl === 'string') reference.imageUrl = properties.imageUrl;
   if (typeof properties.linkUrl === 'string') reference.linkUrl = properties.linkUrl;
   return reference;
+}
+
+/**
+ * Reports the one failure the shared source hook cannot.
+ *
+ * `useMapSource` opens no wait at all without an archive url, so a published region whose
+ * payload carried none settles on `archiveMissing` with no line in the console and no
+ * report. The hook never sees `regionKey`, so it cannot tell that region from a point
+ * outside the catalog; this renderer can, and it is where the report belongs. It lives
+ * here rather than in the renderer's body so the one branch this adds does not enlarge the
+ * render path the component already carries.
+ */
+function useMissingArchiveReport(
+  noRegion: boolean,
+  archive: Pick<MapSourceState, 'status' | 'error'>,
+  archiveUrl?: string,
+): void {
+  const missing = !noRegion && archive.status === 'error' && archive.error === 'archiveMissing';
+  useEffect(() => {
+    if (!missing) return;
+    reportMapFailure('archiveMissing', { stage: 'archive', url: archiveUrl ?? null });
+  }, [missing, archiveUrl]);
 }
 
 /**
@@ -261,6 +284,15 @@ export default function ExperienceMap({
     (!noRegion && archive.status === 'error'
       ? (archive.error ?? 'archiveDownloadFailed')
       : undefined);
+
+  /**
+   * The one failure the shared source hook cannot report.
+   *
+   * A published region whose payload carried no archive url reaches the screen through
+   * `archiveMissing`, which the hook itself never reports: it opens no wait at all
+   * without an archive url.
+   */
+  useMissingArchiveReport(noRegion, archive, source.archiveUrl);
 
   /** Restarts the wait that failed, and only that one. */
   const retry = useCallback(() => {
