@@ -41,7 +41,7 @@
     "firebase": "11.3.1",
     "i18next": "catalog:",
     "maplibre-gl": "6.16.0",
-    "nativewind": "5.0.0-rc.0",
+    "nativewind": "5.0.0-rc.1",
     "pmtiles": "4.5.0",
     "postcss": "catalog:",
     "promise": "8.3.0",
