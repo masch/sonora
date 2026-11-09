@@ -25,10 +25,16 @@ jest.mock('@/utils/logger', () => ({
   logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+// What a report does with its fields is the reporter's own suite: here the assertion is
+// that the failure the shared source hook cannot report still reaches analytics.
+jest.mock('@/services/analytics', () => ({ AnalyticsService: { recordError: jest.fn() } }));
+
 import ExperienceMap from '@/components/map/experience-map.web';
+import { resetReportedMapFailures } from '@/components/map/report-map-failure';
 import { ThemedText } from '@/components/themed-text';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
 import { logger } from '@/utils/logger';
+import { AnalyticsService } from '@/services/analytics';
 import { foldAttribution } from '@/components/map/use-web-map-instance';
 import {
   documentKeyOfLayer,
@@ -57,6 +63,9 @@ const UNATTRIBUTED = 'https://api.example/media/public/tiles/unattributed/v7.pmt
 
 /** The logger, as jest sees it: a drawn map's error is reported and nothing more. */
 const mockedLogger = logger as unknown as { error: jest.Mock };
+
+/** The report, as jest sees it: what a failure the renderer owns reaches. */
+const recordError = jest.mocked(AnalyticsService.recordError);
 
 const document: MapDocument = {
   key: 'umepay',
@@ -119,6 +128,9 @@ describe('ExperienceMap (web)', () => {
     mockMapInstances.length = 0;
     mockAddProtocol.mockClear();
     mockedLogger.error.mockClear();
+    // The episode registry belongs to a page session, and each case is its own page.
+    resetReportedMapFailures();
+    recordError.mockClear();
     mockGetHeader.mockReset().mockResolvedValue({
       minZoom: 0,
       maxZoom: 15,
@@ -471,6 +483,41 @@ describe('ExperienceMap (web)', () => {
 
     await waitFor(() => expect(view.queryByTestId('experience-map-error')).toBeTruthy());
     expect(mockMapInstances).toHaveLength(0);
+  });
+
+  it('reports a published region whose archive is missing, once for the episode', async () => {
+    // The shared source hook opens no wait at all without an archive url, so this failure
+    // reaches the screen and nothing else: the hook never sees `regionKey` and cannot tell
+    // a published region from a point outside the catalog. This renderer can, so it is the
+    // one that reports it.
+    const view = await render(
+      <ExperienceMap source={{ regionKey: 'calamuchita', archiveUrl: '' }} overlays={[]} />,
+    );
+
+    await waitFor(() => expect(view.queryByText('map.errors.archiveMissing')).toBeTruthy());
+    expect(recordError).toHaveBeenCalledTimes(1);
+    const [, description, context] = recordError.mock.calls[0];
+    expect(String(description)).toContain('archiveMissing');
+    expect(String(description)).toContain('archive');
+    expect(context).toEqual({ reference: 'archiveMissing' });
+
+    // A second mount is the same episode, and the registry is what keeps it one report.
+    await act(async () => {
+      await view.unmount();
+    });
+    await render(
+      <ExperienceMap source={{ regionKey: 'calamuchita', archiveUrl: '' }} overlays={[]} />,
+    );
+    expect(recordError).toHaveBeenCalledTimes(1);
+
+    // A point outside every region draws the reference plane on purpose: no archive there
+    // is a fact about the place, and it must never read as a failure to anyone.
+    const noRegion = await render(
+      <ExperienceMap source={{ regionKey: null, archiveUrl: '' }} overlays={[]} />,
+    );
+    expect(noRegion.queryByText('map.noRegion')).toBeTruthy();
+    expect(noRegion.queryByTestId('experience-map-error')).toBeNull();
+    expect(recordError).toHaveBeenCalledTimes(1);
   });
 
   it('draws translated copy for the failed stage, and nothing a request produced', async () => {

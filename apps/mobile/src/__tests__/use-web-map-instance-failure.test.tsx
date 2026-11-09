@@ -30,9 +30,16 @@ const ARCHIVE = 'https://api.example/media/public/tiles/calamuchita/v1.pmtiles';
 /** The handler each canvas was given, in creation order: one per map instance. */
 const watched: ((() => void) | null)[] = [];
 
-/** The node MapLibre draws into; a fresh canvas per query, recording only the loss event. */
-const freshContainer = () =>
+/**
+ * The node MapLibre draws into; a fresh canvas per query, recording only the loss event.
+ *
+ * `connected` is the document's own answer, and the one the hook reads before it
+ * withdraws a failure: a failure surface replaces the map and unmounts its container, so
+ * a late `load` can land on a node nobody renders.
+ */
+const freshContainer = (connected = true) =>
   ({
+    isConnected: connected,
     querySelector: (selector: string) => {
       if (selector !== 'canvas') return null;
       const slot = watched.push(null) - 1;
@@ -55,8 +62,8 @@ const loseContext = (index: number): void => {
 };
 
 /** The options a renderer hands the hook; re-spread on a retry so `attempt` alone rebuilds. */
-const mapInstanceOptions = (attempt = 0): WebMapInstanceOptions => ({
-  containerRef: { current: freshContainer() },
+const mapInstanceOptions = (attempt = 0, connected = true): WebMapInstanceOptions => ({
+  containerRef: { current: freshContainer(connected) },
   source: {},
   archive: { status: 'ready', sourceUrl: ARCHIVE },
   noRegion: true, // the reference plane: no archive is downloaded, the map builds at once
@@ -250,6 +257,38 @@ describe('useWebMapInstance failure reporting', () => {
       expect(result.current.mapErrorCode).toBeNull();
       expect(recordError).toHaveBeenCalledTimes(1);
       expect(String(recordError.mock.calls[0][1])).toContain('timeout');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps the failure when a late load lands on a container the error surface unmounted', async () => {
+    // The failure card replaced the map, so its container is unmounted and the instance
+    // keeps drawing into a detached node. Withdrawing the failure there would re-render
+    // an empty container over a map bound to the old node; the retry is what rebuilds it.
+    jest.useFakeTimers();
+    try {
+      const { result } = await renderMapInstance(mapInstanceOptions(0, false));
+      await run(() => jest.advanceTimersByTime(WEB_LOAD_TIMEOUT_MS));
+      expect(result.current.mapErrorCode).toBe('mapFailed');
+      await run(() => mockMapInstances[0].emit('load'));
+      expect(result.current.mapErrorCode).toBe('mapFailed');
+      expect(recordError).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('withdraws a late load’s failure while the container is still in the document', async () => {
+    // The other half of the same rule: a container the renderer still draws into is a map
+    // that recovered, and the card has to go with the failure it was showing.
+    jest.useFakeTimers();
+    try {
+      const { result } = await renderMapInstance(mapInstanceOptions(0, true));
+      await run(() => jest.advanceTimersByTime(WEB_LOAD_TIMEOUT_MS));
+      expect(result.current.mapErrorCode).toBe('mapFailed');
+      await run(() => mockMapInstances[0].emit('load'));
+      expect(result.current.mapErrorCode).toBeNull();
     } finally {
       jest.useRealTimers();
     }

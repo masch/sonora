@@ -108,6 +108,36 @@ describe('reportMapFailure', () => {
     expect(descriptionOf(0)).toContain('<coords>');
   });
 
+  it('keeps a coordinate out whatever precision it was written with', () => {
+    // MapLibre prints the camera it was handed, so a pair with fewer decimals on one
+    // side is the same pair: how many of them it had never diagnoses a failure.
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      message: 'Invalid LngLat object: (-64.738, -32.21)',
+    });
+    expect(descriptionOf(0)).not.toContain('-64.738');
+    expect(descriptionOf(0)).not.toContain('-32.21');
+    expect(descriptionOf(0)).toContain('<coords>');
+  });
+
+  it('sanitizes the source id, which is a field we do not build either', () => {
+    // The source id is appended to the description the way a url is: one that carries a
+    // signed request or the walker's own position would otherwise leave the device
+    // inside it, and a third party is where neither belongs.
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      sourceId: 'basemap https://t.example/1.pbf?token=s3cr3t',
+    });
+    reportMapFailure('mapFailed', {
+      stage: 'draw',
+      sourceId: 'basemap (-64.738, -32.21)',
+    });
+    expect(descriptionOf(0)).toContain('source=basemap https://t.example/1.pbf');
+    expect(descriptionOf(0)).not.toContain('s3cr3t');
+    expect(descriptionOf(1)).toContain('source=basemap (<coords>)');
+    expect(descriptionOf(1)).not.toContain('-64.738');
+  });
+
   it('redacts a url the sentence glues to prose, in any scheme', () => {
     // An exception message is the one field we do not build ourselves, so the redaction
     // cannot assume a space before the scheme or a lowercase one.
@@ -161,6 +191,13 @@ describe('redactUrl', () => {
     expect(redactUrl(undefined)).toBeNull();
     expect(redactUrl(null)).toBeNull();
     expect(redactUrl('')).toBeNull();
+  });
+
+  it('strips the credentials out of an authority that carries no scheme', () => {
+    // A protocol-relative url has an authority too, and the scheme is not what makes
+    // userinfo dangerous: the pair is who asked, not what failed.
+    expect(redactUrl('//user:pw@example.test/x?q=1')).toBe('//example.test/x');
+    expect(redactUrl('//example.test/a@b/c.json')).toBe('//example.test/a@b/c.json');
   });
 
   it('strips userinfo but keeps an @ that belongs to the path', () => {

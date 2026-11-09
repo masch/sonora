@@ -168,6 +168,21 @@ export interface WebMapInstance {
 }
 
 /**
+ * Whether the node a map draws into is still rendered.
+ *
+ * A failure surface replaces the map, which unmounts the container and leaves the
+ * instance drawing into a node nobody reads. A late `load` there must not withdraw the
+ * failure that sent the walker to the retry: clearing the code would re-render an empty
+ * container over a map bound to the old node, and the retry is what rebuilds the map.
+ *
+ * Tolerant on purpose: the container is a real element in a browser, and a node that
+ * cannot answer is not one to keep drawing over.
+ */
+function isInDocument(node: unknown): boolean {
+  return Boolean((node as { isConnected?: boolean } | null)?.isConnected);
+}
+
+/**
  * The map instance: created once per source and camera, and removed on unmount.
  *
  * Everything that can change on every render — callbacks, translation, documents — is
@@ -377,12 +392,15 @@ export function useWebMapInstance({
           if (cancelledRef.current) return;
           drewOnce = true;
           clearTimeout(loadTimer);
-          // The map drew, so it is not a failed map. `load` waits for tiles and the
-          // sprite, so a working map can pass the deadline above and load afterwards:
-          // leaving the code would keep a "map failed" card over a map that draws, and
-          // the walker would have no way back to it. The report stays as the record the
-          // deadline made; only the screen stops saying the map failed.
-          setMapErrorCode(null);
+          // The map drew, so it is not a failed map — while it still has a node to draw
+          // into. `load` waits for tiles and the sprite, so a working map can pass the
+          // deadline above and load afterwards: leaving the code would keep a "map failed"
+          // card over a map that draws, and the walker would have no way back to it. The
+          // report stays as the record the deadline made; only the screen stops saying the
+          // map failed. Once the failure surface replaced the map, the container is gone
+          // and this instance is attached to a detached node: the code stays, because
+          // withdrawing it would re-render an empty container and the retry rebuilds.
+          if (isInDocument(containerRef.current)) setMapErrorCode(null);
           // The build this instance drew, not a bare flag: the next build starts unloaded.
           setLoadedAttempt(attempt);
           applyOverlays(map);

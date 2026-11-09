@@ -79,6 +79,10 @@ export function resetReportedMapFailures(): void {
  * belongs in a third-party dashboard. The cut falls on the literal separators only: a
  * percent-encoded one (`%3F`) is a character of the path and cutting there would name a
  * different document than the one that failed.
+ *
+ * The authority is read with or without a scheme, because a protocol-relative url
+ * (`//user:secret@example.test/x`) has one and the scheme is not what makes userinfo
+ * dangerous. The userinfo is the only thing removed: an `@` in the path is the path's.
  */
 export function redactUrl(url?: string | null): string | null {
   if (!url) return null;
@@ -86,7 +90,7 @@ export function redactUrl(url?: string | null): string | null {
   const named = cut === -1 ? url : url.slice(0, cut);
   // `https://user:secret@example.test/x` names `example.test` and nothing else: the
   // credentials in the authority are who asked, not what failed.
-  return named.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/]*@/i, '$1');
+  return named.replace(/^((?:[a-z][a-z0-9+.-]*:)?\/\/)[^/]*@/i, '$1');
 }
 
 /**
@@ -106,9 +110,11 @@ function redactUrlsIn(text: string): string {
  *
  * MapLibre refuses an invalid camera with `Invalid LngLat object: (-64.738, -32.212)`,
  * and that sentence travels with the report: how many decimals it had is never what
- * diagnoses a failure, only that a coordinate was there.
+ * diagnoses a failure, only that a coordinate was there. Precision is not part of the
+ * shape, because the library prints the camera it was handed: a pair with two decimals
+ * on one side is the same pair.
  */
-const COORDINATE_PAIR = /[-+]?\d{1,3}\.\d{3,},\s*[-+]?\d{1,3}\.\d{3,}/g;
+const COORDINATE_PAIR = /[-+]?\d{1,3}\.\d+,\s*[-+]?\d{1,3}\.\d+/g;
 
 /** Everything a detail may carry that must not leave the device. */
 function sanitize(text: string): string {
@@ -152,7 +158,10 @@ function describeFailure(code: MapReportedErrorCode, detail: MapFailureDetail): 
   }
   const url = redactUrl(detail.url);
   if (url) parts.push(url);
-  if (detail.sourceId) parts.push(`source=${detail.sourceId}`);
+  // The source id is MapLibre's own string, not one we build, so it is sanitized like the
+  // exception's sentence: a source that carries a signed url or a coordinate must not
+  // become the way either leaves the device.
+  if (detail.sourceId) parts.push(`source=${sanitize(detail.sourceId)}`);
   if (detail.message) parts.push(sanitize(detail.message));
   return parts.join(' ').slice(0, MAX_MAP_FAILURE_MESSAGE);
 }
