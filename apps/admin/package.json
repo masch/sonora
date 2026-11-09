@@ -12,7 +12,7 @@
     "expo-router": "57.0.29",
     "expo-symbols": "57.0.3",
     "i18next": "catalog:",
-    "nativewind": "5.0.0-rc.0",
+    "nativewind": "5.0.0-rc.1",
     "postcss": "catalog:",
     "react": "19.2.3",
     "react-dom": "19.2.3",
