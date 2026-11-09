@@ -57,8 +57,8 @@ native canvas exposes no error callback, so closing it is its own slice.
 | T1  | S2–S5  | inline | `feat(mobile): report map failures to analytics once per episode`    |
 | T2  | S2, S7 | inline | `feat(mobile): name what failed and fail a web map that never loads` |
 | T3  | S6     | inline | `feat(mobile): name what failed and fail a web map that never loads` |
-| T4  | S8     | worker | uncommitted: the native waits report through the same episode funnel    |
-| T5  | S9     | open   | the native draw stage, its own slice                                  |
+| T4  | S8     | worker | uncommitted: the native waits report through the same episode funnel |
+| T5  | S9     | open   | the native draw stage, its own slice                                 |
 
 ## Log
 

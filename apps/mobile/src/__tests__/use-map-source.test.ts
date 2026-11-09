@@ -87,7 +87,8 @@ const ARCHIVE_CODE_CORRUPT = 'https://api.example/media/public/tiles/code-corrup
 const STYLE_CODE_STYLE = 'https://api.example/media/public/styles/code-style.json';
 const STYLE_CODE_INVALID = 'https://api.example/media/public/styles/code-invalid.json';
 const STYLE_CODE_KEEP = 'https://api.example/media/public/styles/code-keep.json';
-const ARCHIVE_CODE_STYLE_STATUS = 'https://api.example/media/public/tiles/code-style-status/v1.pmtiles';
+const ARCHIVE_CODE_STYLE_STATUS =
+  'https://api.example/media/public/tiles/code-style-status/v1.pmtiles';
 const STYLE_CODE_STYLE_STATUS = 'https://api.example/media/public/styles/code-style-status.json';
 /** The archive whose 404 is followed all the way to the log and to the report. */
 const ARCHIVE_REPORTED_FAILURE = 'https://api.example/media/public/tiles/reported/v1.pmtiles';

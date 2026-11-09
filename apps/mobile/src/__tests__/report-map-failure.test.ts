@@ -166,6 +166,8 @@ describe('redactUrl', () => {
   it('strips userinfo but keeps an @ that belongs to the path', () => {
     expect(redactUrl('https://user@example.test/x?q=1')).toBe('https://example.test/x');
     expect(redactUrl('HTTPS://user:pw@example.test/x?q=1')).toBe('HTTPS://example.test/x');
-    expect(redactUrl('https://example.test/a@b/c.json?x=1#y')).toBe('https://example.test/a@b/c.json');
+    expect(redactUrl('https://example.test/a@b/c.json?x=1#y')).toBe(
+      'https://example.test/a@b/c.json',
+    );
   });
 });

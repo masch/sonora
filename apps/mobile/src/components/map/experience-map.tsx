@@ -24,10 +24,7 @@ import {
 import LoadingView from '@/components/loading-view';
 import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
-import {
-  useMapArchiveFile,
-  type MapArchiveFileState,
-} from '@/hooks/use-map-archive-file';
+import { useMapArchiveFile, type MapArchiveFileState } from '@/hooks/use-map-archive-file';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { fetchStyleDocument, isDrawableStyle } from '@/services/map-style-cache';
 import { downloadStyleAssets, localizeStyle } from '@/services/map-styles';
@@ -46,7 +43,7 @@ import {
   type MapWaitState,
 } from './map-view.types';
 import { MapCanvas } from './map-canvas';
-import { reportMapFailure } from './report-map-failure';
+import { useMapFailureReport } from './use-map-failure-report';
 import { useNativeFocusFlight } from './use-native-focus-flight';
 
 /** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
@@ -655,27 +652,14 @@ export default function ExperienceMap({
 
   const failure = failureCode({ noRegion, archive, remote });
 
-  /**
-   * The one report a native map failure makes, once per episode.
-   *
-   * It is an effect and not part of the render body: the report is a side effect of a
-   * commit, and the renderer commits more than once over one failure. The episode
-   * registry deduplicates the repeats of one cause; it is not a licence to report from
-   * a function that React is allowed to call whenever it wants.
-   *
-   * The stage and the url are the wait the code came from, never inferred from the code
-   * alone: `failureCode` reports the archive before the style, so an archive that failed
-   * is the archive's. A place in no region has no failure at all and reports nothing.
-   */
-  useEffect(() => {
-    if (!failure) return;
-    const archiveFailed = archive.status === 'error';
-    reportMapFailure(failure, {
-      stage: archiveFailed ? 'archive' : 'style',
-      url: (archiveFailed ? source.archiveUrl : source.styleUrl) ?? null,
-      httpStatus: archiveFailed ? null : (remote.httpStatus ?? null),
-    });
-  }, [failure, archive.status, source.archiveUrl, source.styleUrl, remote.httpStatus]);
+  // The report the failure makes, once per episode, wherever it came from.
+  useMapFailureReport({
+    failure,
+    archiveFailed: archive.status === 'error',
+    archiveUrl: source.archiveUrl,
+    styleUrl: source.styleUrl,
+    httpStatus: remote.httpStatus,
+  });
 
   /**
    * What is still pending: the stage, and the transfer the walker is really paying for.
