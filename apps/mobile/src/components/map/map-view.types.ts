@@ -7,6 +7,8 @@ import type {
   MapLayerSelection,
 } from '@sonora/shared';
 
+import type { MapArchiveErrorCode } from '@/services/map-archive-download';
+
 export { resolveMapRenderer, MAP_RENDERER_ENV, type MapRenderer } from './resolve-renderer';
 
 /** Where the base map tiles come from. */
@@ -211,6 +213,38 @@ export function documentKeyOfLayer(layerId: string): string | null {
  */
 export type MapLoadErrorCode =
   'archiveMissing' | 'archiveDownloadFailed' | 'styleRequestFailed' | 'styleInvalid' | 'mapFailed';
+
+/**
+ * Stable codes for what can go wrong while the style document is fetched.
+ *
+ * The two a failed request settles on are part of the shared `MapLoadErrorCode` as well;
+ * `styleTimeout` is the native bound's own code and nothing else raises it. The three are
+ * named together because the native failure surface translates them in one table, and
+ * because a report has to be able to name one without importing a renderer.
+ */
+export type MapStyleErrorCode = 'styleTimeout' | 'styleRequestFailed' | 'styleInvalid';
+
+// The archive codes are raised by the transfer that names them, so this module re-exports
+// the union instead of restating it: two spellings of one vocabulary drift apart.
+export type { MapArchiveErrorCode };
+
+/**
+ * Every stable code a renderer's waits can settle on: the archive file and the style
+ * document, which is what a renderer waits for before it can draw.
+ *
+ * Apart from `MapLoadErrorCode` on purpose: that one is the closed vocabulary both
+ * renderers put on screen, and a code only the native waits raise is not part of it.
+ */
+export type MapWaitErrorCode = MapStyleErrorCode | MapArchiveErrorCode;
+
+/**
+ * Every code a map failure may report, from either renderer and any of its stages.
+ *
+ * The reporter accepts this rather than `MapLoadErrorCode`, because the code is the
+ * reference a report is grouped by: a native archive that could not be published and a
+ * style that never answered are failures a dashboard has to be able to tell apart.
+ */
+export type MapReportedErrorCode = MapLoadErrorCode | MapStyleErrorCode | MapArchiveErrorCode;
 
 /** Which wait a failure belongs to, so a retry restarts that one and not the others. */
 export type MapLoadStage = 'archive' | 'style' | 'map';
