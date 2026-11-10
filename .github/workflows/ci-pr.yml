@@ -87,9 +87,22 @@ jobs:
         run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
       - name: React Doctor (full scan — required)
         run: make doctor
+      # A broken stylesheet or a bad dependency shows up as a bundle that cannot be
+      # produced, and no other check sees it. The web guard used to run only when
+      # configuration changed, so web source changes never reached it.
       - name: Verify Web Bundle (catch CJS interop bugs)
-        if: ${{ needs.changes.outputs.config == 'true' }}
+        if: ${{ needs.changes.outputs.mobile == 'true' || needs.changes.outputs.config == 'true' }}
         run: make verify-web
+      # Gated on the whole mobile surface on purpose. An exclusion for tests and documents
+      # was tried and dropped: dorny/paths-filter matches each rule independently, so a
+      # negated rule does not exclude a file the positive one already matched. A guard that
+      # can silently not run is worth less than a slow guard.
+      - name: Bundle the Android JavaScript
+        if: ${{ needs.changes.outputs.mobile == 'true' }}
+        run: make verify-android
+      - name: Bundle the iOS JavaScript
+        if: ${{ needs.changes.outputs.mobile == 'true' }}
+        run: make verify-ios
 
   validate-api:
     needs: changes
