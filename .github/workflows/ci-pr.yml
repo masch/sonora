@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
+      mobile_src: ${{ steps.filter.outputs.mobile_src }}
       api: ${{ steps.filter.outputs.api }}
       admin: ${{ steps.filter.outputs.admin }}
       config: ${{ steps.filter.outputs.config }}
@@ -32,6 +33,14 @@ jobs:
               - 'apps/mobile/**'
               - 'packages/shared/**'
               - 'bun.lock'
+            # The same set minus what cannot break a bundle: a test or a document does not
+            # build, so it should not pay for one.
+            mobile_src:
+              - 'apps/mobile/**'
+              - 'packages/shared/**'
+              - 'bun.lock'
+              - '!apps/mobile/**/__tests__/**'
+              - '!apps/mobile/**/*.md'
             api:
               - 'apps/api/**'
               - 'packages/shared/**'
@@ -87,17 +96,20 @@ jobs:
         run: make doctor-diff BASE=origin/${{ github.event.pull_request.base.ref }}
       - name: React Doctor (full scan — required)
         run: make doctor
+      # A broken stylesheet or a bad dependency shows up as a bundle that cannot be
+      # produced, and no other check sees it. The web guard used to run only when
+      # configuration changed, so web source changes never reached it.
       - name: Verify Web Bundle (catch CJS interop bugs)
-        if: ${{ needs.changes.outputs.config == 'true' }}
+        if: ${{ needs.changes.outputs.mobile_src == 'true' || needs.changes.outputs.config == 'true' }}
         run: make verify-web
-      # Nothing else in CI compiles the Android bundle: without this, a CSS pipeline that
-      # cannot build the stylesheet keeps every Android build broken while all the other
-      # checks stay green.
+      # Android and iOS bundle the same JavaScript, so one change breaks both or neither:
+      # splitting them would be theatre. Test-only and documentation changes cannot break
+      # a bundle, and the filter above keeps them out.
       - name: Bundle the Android JavaScript
+        if: ${{ needs.changes.outputs.mobile_src == 'true' }}
         run: make verify-android
-      # The same gap existed for iOS: its bundle goes through the same Metro and the same
-      # CSS compiler, so a stylesheet that cannot build breaks both platforms.
       - name: Bundle the iOS JavaScript
+        if: ${{ needs.changes.outputs.mobile_src == 'true' }}
         run: make verify-ios
 
   validate-api:
