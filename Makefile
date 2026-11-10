@@ -1521,11 +1521,22 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 ## intercepting it. The plugin version tracks EAS_CLI_VERSION because the two are released
 ## in lockstep.
 ##
-## Only the path goes to stdout, so a workflow can append the output to $GITHUB_ENV.
+## Every local build target below depends on this one and carries the variable, so the fix
+## reaches them from a single place — including a local build this repository has not
+## added yet — and no workflow has to know about it. The plugin version tracks
+## EAS_CLI_VERSION because the two are released in lockstep.
 .PHONY: eas-local-build-plugin
 eas-local-build-plugin:
 	@bun add -g eas-cli-local-build-plugin@$(EAS_CLI_VERSION) >&2
-	@echo "EAS_LOCAL_BUILD_PLUGIN_PATH=$$(bun pm bin -g)/eas-cli-local-build-plugin"
+
+EAS_LOCAL_BUILD_TARGETS := \
+	eas-build-android-preview-ci \
+	eas-build-android-aab-ci \
+	eas-build-ios-simulator-ci \
+	eas-build-ios-device-ci
+
+$(EAS_LOCAL_BUILD_TARGETS): eas-local-build-plugin
+$(EAS_LOCAL_BUILD_TARGETS): export EAS_LOCAL_BUILD_PLUGIN_PATH = $(shell bun pm bin -g)/eas-cli-local-build-plugin
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)
