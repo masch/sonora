@@ -95,6 +95,10 @@ jobs:
       # checks stay green.
       - name: Bundle the Android JavaScript
         run: make verify-android
+      # The same gap existed for iOS: its bundle goes through the same Metro and the same
+      # CSS compiler, so a stylesheet that cannot build breaks both platforms.
+      - name: Bundle the iOS JavaScript
+        run: make verify-ios
 
   validate-api:
     needs: changes

@@ -107,6 +107,17 @@ verify-android:
 		exit 1; \
 	}
 
+.PHONY: verify-ios
+verify-ios:
+	rm -rf /tmp/sonora-ios-bundle
+	cd apps/mobile && APP_ENV=staging \
+		APP_VERSION_NAME="$(if $(APP_VERSION_NAME),$(APP_VERSION_NAME),0.0.0-ci)" \
+		bun expo export --platform ios --output-dir /tmp/sonora-ios-bundle
+	@ls /tmp/sonora-ios-bundle/_expo/static/js/ios/*.hbc >/dev/null 2>&1 || { \
+		echo "✘ the iOS bundle was not produced"; \
+		exit 1; \
+	}
+
 .PHONY: dev-android-local
 dev-android-local: ## Launch Expo dev server for Android pointing to local Node API (port 3000 via 10.0.2.2)
 	cd apps/mobile && APP_ENV=development APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:3000" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run android-dev
