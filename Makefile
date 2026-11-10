@@ -1524,7 +1524,7 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 ## Only the path goes to stdout, so a workflow can append the output to $GITHUB_ENV.
 .PHONY: eas-local-build-plugin
 eas-local-build-plugin:
-	bun add -g eas-cli-local-build-plugin@$(EAS_CLI_VERSION) >&2
+	@bun add -g eas-cli-local-build-plugin@$(EAS_CLI_VERSION) >&2
 	@echo "EAS_LOCAL_BUILD_PLUGIN_PATH=$$(bun pm bin -g)/eas-cli-local-build-plugin"
 
 .PHONY: eas-build-android-preview-ci
