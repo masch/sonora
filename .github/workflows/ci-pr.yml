@@ -90,6 +90,11 @@ jobs:
       - name: Verify Web Bundle (catch CJS interop bugs)
         if: ${{ needs.changes.outputs.config == 'true' }}
         run: make verify-web
+      # Nothing else in CI compiles the Android bundle: without this, a CSS pipeline that
+      # cannot build the stylesheet keeps every Android build broken while all the other
+      # checks stay green.
+      - name: Bundle the Android JavaScript
+        run: make verify-android
 
   validate-api:
     needs: changes

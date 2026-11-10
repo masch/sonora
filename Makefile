@@ -96,6 +96,17 @@ verify-web: web-worker-asset ## Build web bundle and execute it to verify CJS in
 	}
 	node -e "require('fs').readdirSync('apps/mobile/dist/_expo/static/js/web').filter(f => f.endsWith('.js')).forEach(f => require('./apps/mobile/dist/_expo/static/js/web/' + f))"
 
+.PHONY: verify-android
+verify-android:
+	rm -rf /tmp/sonora-android-bundle
+	cd apps/mobile && APP_ENV=staging \
+		APP_VERSION_NAME="$(if $(APP_VERSION_NAME),$(APP_VERSION_NAME),0.0.0-ci)" \
+		bun expo export --platform android --output-dir /tmp/sonora-android-bundle
+	@ls /tmp/sonora-android-bundle/_expo/static/js/android/*.hbc >/dev/null 2>&1 || { \
+		echo "✘ the Android bundle was not produced"; \
+		exit 1; \
+	}
+
 .PHONY: dev-android-local
 dev-android-local: ## Launch Expo dev server for Android pointing to local Node API (port 3000 via 10.0.2.2)
 	cd apps/mobile && APP_ENV=development APP_VERSION_NAME="$(APP_VERSION_NAME)" EXPO_PUBLIC_API_URL="http://10.0.2.2:3000" EXPO_PUBLIC_BYPASS_GEOFENCE=true bun run android-dev
