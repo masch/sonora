@@ -22,8 +22,12 @@ export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
 FIREBASE_TOKEN_CLEAN := $(patsubst "%",%,$(FIREBASE_TOKEN))
 export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
 
-# Bypass expo-doctor during EAS local builds to prevent crashes from Bun workspace false positives
+# `EXPO_NO_DOCTOR` is read by the Expo CLI, not by the EAS local build: the build's doctor
+# step is gated by `EAS_BUILD_DISABLE_EXPO_DOCTOR_STEP`, and while doctor runs it shells out
+# to `npm explain` for every package, which cannot read this repository's Bun catalogue.
+# Both are exported because each CLI reads its own.
 export EXPO_NO_DOCTOR = 1
+export EAS_BUILD_DISABLE_EXPO_DOCTOR_STEP = 1
 
 
 MOBILE_BUNDLE_ID = org.masch.sonora.app
@@ -1495,6 +1499,22 @@ eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single p
 	  mv android/app/build/outputs/bundle/release/app-release.aab $(if $(OUTPUT_AAB),$(OUTPUT_AAB),sonora-release-unsigned.aab) && \
 	  cp android/app/build/outputs/mapping/release/mapping.txt $(if $(OUTPUT_MAPPING),$(OUTPUT_MAPPING),sonora-release-mapping.txt) && \
 	  (cp android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip $(if $(OUTPUT_NATIVE_SYMBOLS),$(OUTPUT_NATIVE_SYMBOLS),sonora-release-native-debug-symbols.zip) 2>/dev/null || true)
+
+## Installs the EAS local build plugin outside npm and prints where it landed.
+##
+## eas-cli launches that plugin with `npx -y eas-cli-local-build-plugin@<version>`, and npm
+## cannot read this repository's root manifest: `catalog:` is a Bun specifier with no npm
+## resolver, so the launch dies before the build starts. The CLI takes
+## `EAS_LOCAL_BUILD_PLUGIN_PATH` and uses it verbatim instead (eas-cli 20.1.0,
+## build/build/local.js), which removes npm from that step by configuration rather than by
+## intercepting it. The plugin version tracks EAS_CLI_VERSION because the two are released
+## in lockstep.
+##
+## Only the path goes to stdout, so a workflow can append the output to $GITHUB_ENV.
+.PHONY: eas-local-build-plugin
+eas-local-build-plugin:
+	bun add -g eas-cli-local-build-plugin@$(EAS_CLI_VERSION) >&2
+	@echo "EAS_LOCAL_BUILD_PLUGIN_PATH=$$(bun pm bin -g)/eas-cli-local-build-plugin"
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)
