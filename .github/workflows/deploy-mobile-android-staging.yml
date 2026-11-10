@@ -63,12 +63,11 @@ jobs:
           echo "$ANDROID_GOOGLE_SERVICES_BASE64" | base64 -d > apps/mobile/google-services.json
           git add -f apps/mobile/google-services.json
 
-      # npm cannot read this repository's Bun catalogue, and an EAS local build starts its
-      # own plugin with `npx -y`, so the build dies before it compiles anything. The shim
-      # forwards that call to bunx; scripts/bin/npx explains why and names the fallback.
-      # Remove this step once the local build stops going through npm.
-      - name: Point npx at the repository's package manager
-        run: echo "${{ github.workspace }}/scripts/bin" >> "$GITHUB_PATH"
+      # eas-cli launches its local build plugin with `npx -y`, and npm cannot read this
+      # repository's Bun catalogue. The path variable below is the seam eas-cli documents in
+      # its own code (build/build/local.js) and removes npm from that launch entirely.
+      - name: Install the EAS local build plugin without npm
+        run: make eas-local-build-plugin >> "$GITHUB_ENV"
 
       - name: Build Android Preview APK
         id: build-apk
