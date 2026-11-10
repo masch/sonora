@@ -1543,6 +1543,8 @@ eas-local-build-plugin:
 EAS_LOCAL_BUILD_TARGETS := \
 	eas-build-android-preview-ci \
 	eas-build-android-aab-ci \
+	eas-build-android-local \
+	eas-build-android-preview-local \
 	eas-build-ios-simulator-ci \
 	eas-build-ios-device-ci
 

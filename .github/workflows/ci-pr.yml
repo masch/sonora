@@ -19,7 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
-      mobile_src: ${{ steps.filter.outputs.mobile_src }}
       api: ${{ steps.filter.outputs.api }}
       admin: ${{ steps.filter.outputs.admin }}
       config: ${{ steps.filter.outputs.config }}
@@ -33,14 +32,6 @@ jobs:
               - 'apps/mobile/**'
               - 'packages/shared/**'
               - 'bun.lock'
-            # The same set minus what cannot break a bundle: a test or a document does not
-            # build, so it should not pay for one.
-            mobile_src:
-              - 'apps/mobile/**'
-              - 'packages/shared/**'
-              - 'bun.lock'
-              - '!apps/mobile/**/__tests__/**'
-              - '!apps/mobile/**/*.md'
             api:
               - 'apps/api/**'
               - 'packages/shared/**'
@@ -100,16 +91,17 @@ jobs:
       # produced, and no other check sees it. The web guard used to run only when
       # configuration changed, so web source changes never reached it.
       - name: Verify Web Bundle (catch CJS interop bugs)
-        if: ${{ needs.changes.outputs.mobile_src == 'true' || needs.changes.outputs.config == 'true' }}
+        if: ${{ needs.changes.outputs.mobile == 'true' || needs.changes.outputs.config == 'true' }}
         run: make verify-web
-      # Android and iOS bundle the same JavaScript, so one change breaks both or neither:
-      # splitting them would be theatre. Test-only and documentation changes cannot break
-      # a bundle, and the filter above keeps them out.
+      # Gated on the whole mobile surface on purpose. An exclusion for tests and documents
+      # was tried and dropped: dorny/paths-filter matches each rule independently, so a
+      # negated rule does not exclude a file the positive one already matched. A guard that
+      # can silently not run is worth less than a slow guard.
       - name: Bundle the Android JavaScript
-        if: ${{ needs.changes.outputs.mobile_src == 'true' }}
+        if: ${{ needs.changes.outputs.mobile == 'true' }}
         run: make verify-android
       - name: Bundle the iOS JavaScript
-        if: ${{ needs.changes.outputs.mobile_src == 'true' }}
+        if: ${{ needs.changes.outputs.mobile == 'true' }}
         run: make verify-ios
 
   validate-api:
