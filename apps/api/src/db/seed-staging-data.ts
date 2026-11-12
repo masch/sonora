@@ -192,10 +192,11 @@ const STAGING_SHOWCASE_DESCRIPTION =
  *
  * Audio and covers
  * ----------------
- * Both rows play audio that already lives in the staging private bucket, so this seed uploads
- * no binary: `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s) and `Fuego`
- * points at its own object, `experiences/trips-deriva-fuego.mp3` (303 s). Covers are members of
- * `TRACK_IMAGE_KEYS`.
+ * `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s). `Fuego` points at its own
+ * object, `experiences/trips-deriva-fuego.mp3` (303 s), which the staging bucket **must already
+ * hold**: nothing in this repository uploads it, and no test can observe a bucket, so a missing
+ * object surfaces only as a 404 at playback. Confirm it before relying on the row. Covers are
+ * members of `TRACK_IMAGE_KEYS`.
  *
  * Where the coordinates come from
  * -------------------------------
