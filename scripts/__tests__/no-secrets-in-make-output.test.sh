@@ -215,14 +215,30 @@ else
   pass "every loader call passes its arguments with set --"
 fi
 
-# Both forms of the old call: `. path/to/load-env.sh <args>` and `. "$loader" <args>`. The path
-# is anchored on the repository root so the check cannot pass vacuously from another directory.
-if grep -Ev '^[[:space:]]*#' "$root"/scripts/__tests__/*.sh \
-  | grep -Eq '\.\s+("[^"]*load-env\.sh"|[^;[:space:]]*load-env\.sh)\s+[^;&[:space:]]'; then
+# Every spelling of the old call: a literal path (`. path/to/load-env.sh <args>`) and a variable
+# (`. "$loader" <args>` or `. $(LOADER) <args>`). grep sees text, not expansions, so the variable
+# form can only be caught by its own spelling. Anchored on the repository root so the check cannot
+# pass vacuously from another directory.
+legacy_call='\.\s+"?((\$[{A-Za-z_][A-Za-z0-9_]*|\$\([A-Za-z_][A-Za-z0-9_]*\)|[^;[:space:]]*load-env\.sh))"?\s+[^;&[:space:]]'
+if grep -Ev '^[[:space:]]*#' "$root"/scripts/__tests__/*.sh | grep -Eq "$legacy_call"; then
   fault "the suites themselves use the portable call form" "found . loader <file> <keys>"
 else
   pass "the suites themselves use the portable call form"
 fi
+
+# The check is only worth its message while it still bites, so each legacy spelling is exercised
+# here. They are assembled at runtime so this file never contains an example of the form it forbids.
+for legacy in \
+  "$(printf '%s "%s" "%s" PLAIN' '.' '$loader' '$fixture')" \
+  "$(printf '%s %s %s PLAIN' '.' 'scripts/load-env.sh' '"$fixture"')" \
+  "$(printf '%s $(%s) %s' '.' 'LOADER' 'x')"
+do
+  if printf '%s\n' "$legacy" | grep -Eq "$legacy_call"; then
+    pass "the portable call check still detects [$legacy]"
+  else
+    fault "the portable call check still detects [$legacy]" "no match"
+  fi
+done
 
 # A CI staging run has no apps/api/.env: the ambient secret must win and must not be masked.
 ambient=$(DATABASE_URL=ambient-ci-url sh -c \
