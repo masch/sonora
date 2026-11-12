@@ -1,9 +1,14 @@
 #!/bin/sh
 # Load secrets from an .env file into the current shell — never into Make.
 #
-# Sourced, never executed:
+# Sourced, never executed. The arguments are the shell's positional parameters, because dash
+# (Ubuntu's /bin/sh, and therefore every GitHub runner) does NOT pass arguments to a sourced file:
 #
-#   . scripts/load-env.sh apps/api/.env DATABASE_URL=DATABASE_URL_STAGING ADMIN_API_KEY
+#   set -- apps/api/.env DATABASE_URL=DATABASE_URL_STAGING ADMIN_API_KEY
+#   . scripts/load-env.sh
+#
+# Never write `. scripts/load-env.sh <file> <keys>`: bash accepts it and dash silently drops the
+# arguments, which is how this helper once broke a deploy in CI.
 #
 # Why a sourced helper instead of a Make variable: whatever Make expands into a recipe becomes
 # part of the command line. Make echoes recipe lines, prints them under `make -n`, dumps them
@@ -35,7 +40,7 @@
 # `export NAME=VALUE` and is never re-evaluated, so `$`, backticks, quotes and `&` survive
 # verbatim. No value is ever printed.
 
-load_env_file="${1:?load-env.sh: the .env path is required}"
+load_env_file="${1:?load-env.sh: no environment file in the positional parameters; run `set -- <file> <keys>...` before sourcing this file}"
 shift
 
 load_env_file_present=0

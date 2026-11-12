@@ -206,9 +206,24 @@ else
   pass "no recipe substitutes SEED_ENV with a default"
 fi
 
+# The helper reads its arguments from the shell's positional parameters, set by `set --`.
+# `. loader <file> <keys>` works in bash and silently drops the arguments in dash, which is
+# /bin/sh on every GitHub runner: that is what broke a deploy in CI once.
+if grep -Eq '\.\s+([.][.]/)*\$\(LOAD_ENV\)\s+[^;&[:space:]]' "$makefile"; then
+  fault "every loader call passes its arguments with set --" "found the . loader <args> form"
+else
+  pass "every loader call passes its arguments with set --"
+fi
+
+if grep -Eq '\.\s+[^;]*load-env\.sh .+;' scripts/__tests__/*.sh; then
+  fault "the suites themselves use the portable call form" "found . loader <file> <keys>"
+else
+  pass "the suites themselves use the portable call form"
+fi
+
 # A CI staging run has no apps/api/.env: the ambient secret must win and must not be masked.
 ambient=$(DATABASE_URL=ambient-ci-url sh -c \
-  ". '$root/scripts/load-env.sh' /nonexistent/file DATABASE_URL=DATABASE_URL_STAGING; printf %s \"\$DATABASE_URL\"" 2>&1)
+  "set -- /nonexistent/file DATABASE_URL=DATABASE_URL_STAGING; . '$root/scripts/load-env.sh'; printf %s \"\$DATABASE_URL\"" 2>&1)
 rc=$?
 if [ "$rc" -eq 0 ] && [ "$ambient" = 'ambient-ci-url' ]; then
   pass "missing .env keeps the ambient DATABASE_URL"
@@ -217,7 +232,7 @@ else
 fi
 
 ( cd "$root" || exit 1
-  env -u DATABASE_URL sh -c '. scripts/load-env.sh /nonexistent/file DATABASE_URL=DATABASE_URL_STAGING' \
+  env -u DATABASE_URL sh -c 'set -- /nonexistent/file DATABASE_URL=DATABASE_URL_STAGING; . scripts/load-env.sh' \
     >"$tmp/absent.out" 2>"$tmp/absent.err" )
 rc=$?
 if [ "$rc" -eq 1 ]; then

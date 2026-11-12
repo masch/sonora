@@ -290,7 +290,7 @@ db-migrate-local: ## Run/select a one-time data migration (local DB)
 
 .PHONY: db-migrate-staging
 db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING; \
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_STAGING; . ../../$(LOAD_ENV) ; \
 	if [ -z "$(MIGRATION)" ]; then \
 		bun run scripts/migrations/_run-migration.ts; \
 	else \
@@ -299,7 +299,7 @@ db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
 
 .PHONY: db-migrate-production
 db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION; \
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_PRODUCTION; . ../../$(LOAD_ENV) ; \
 	if [ -z "$(MIGRATION)" ]; then \
 		bun run scripts/migrations/_run-migration.ts; \
 	else \
@@ -565,7 +565,7 @@ api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging ADMIN_API_KEY=\"<staging-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	@. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	@set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
 	curl -X POST $(API_STAGING_URL)/audio/upload \
 	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -F "key=$(KEY)" \
@@ -577,7 +577,7 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production ADMIN_API_KEY=\"<prod-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	@. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	@set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
 	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
 	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -F "key=$(KEY)" \
@@ -969,7 +969,7 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
-	. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
 	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -H "Content-Type: application/json" \
@@ -995,7 +995,7 @@ api-create-coupon-production: ## Create a group trip coupon on production. Usage
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
-	. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
 	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
 	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -H "Content-Type: application/json" \
@@ -1154,20 +1154,20 @@ LOAD_ENV = scripts/load-env.sh
 # keys are optional on purpose: a missing token leaves the variable unset and the CLI's own
 # authentication error stays the failure mode, exactly as when the token was merely exported, and
 # an ambient value (CI) always wins over the file.
-LOAD_EXPO = . $(LOAD_ENV) apps/mobile/.env ?EXPO_TOKEN;
-LOAD_FIREBASE = . $(LOAD_ENV) apps/mobile/.env ?FIREBASE_TOKEN;
-LOAD_SOCKET = . $(LOAD_ENV) apps/mobile/.env ?SOCKET_SECURITY_API_KEY ?SOCKET_CLI_ORG_SLUG;
+LOAD_EXPO = set -- apps/mobile/.env '?EXPO_TOKEN'; . $(LOAD_ENV) ;
+LOAD_FIREBASE = set -- apps/mobile/.env '?FIREBASE_TOKEN'; . $(LOAD_ENV) ;
+LOAD_SOCKET = set -- apps/mobile/.env '?SOCKET_SECURITY_API_KEY' '?SOCKET_CLI_ORG_SLUG'; . $(LOAD_ENV) ;
 
 # Not a secret: the documented local development database.
 DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING && exec bun run db:migrate
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_STAGING; . ../../$(LOAD_ENV) && exec bun run db:migrate
 
 .PHONY: api-db-migrate-production
 api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION && exec bun run db:migrate
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_PRODUCTION; . ../../$(LOAD_ENV) && exec bun run db:migrate
 
 .PHONY: api-db-migrate-ci
 api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
@@ -1191,12 +1191,12 @@ api-db-seed-ci-staging: ## Seed staging DB using DATABASE_URL from env (for CI);
 
 .PHONY: api-db-seed-staging
 api-db-seed-staging: ## Seed staging Neon DB with staging-only data
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING && \
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_STAGING; . ../../$(LOAD_ENV) && \
 	SEED_ENV=staging exec bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-production
 api-db-seed-production: ## Seed production Neon DB with base data
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION && \
+	@cd $(API_DIR) || exit 1; set -- .env DATABASE_URL=DATABASE_URL_PRODUCTION; . ../../$(LOAD_ENV) && \
 	SEED_ENV=production exec bun src/db/seed.ts
 
 .PHONY: api-deploy-staging-full
@@ -1241,7 +1241,7 @@ api-deploy-production-set-hmac-secret: ## Set HMAC_SECRET on production Worker (
 
 .PHONY: api-db-backup
 api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and prune old backups (>90 days)
-	@. $(LOAD_ENV) $(API_DIR)/.env ?DATABASE_URL ?BACKUP_ENCRYPTION_KEY ?CLOUDFLARE_API_TOKEN ?CLOUDFLARE_ACCOUNT_ID; \
+	@set -- $(API_DIR)/.env '?DATABASE_URL' '?BACKUP_ENCRYPTION_KEY' '?CLOUDFLARE_API_TOKEN' '?CLOUDFLARE_ACCOUNT_ID'; . $(LOAD_ENV) ; \
 	DB_URL="$(DB_URL)"; \
 	if [ -z "$$DB_URL" ]; then \
 	  DB_URL="$$DATABASE_URL"; \
@@ -1296,7 +1296,7 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 
 .PHONY: api-db-restore
 api-db-restore: ## Download and restore database backup from R2. Usage: make api-db-restore DATE="2026-07-13" [DB_URL="postgresql://..."]
-	@. $(LOAD_ENV) $(API_DIR)/.env ?DATABASE_URL ?BACKUP_ENCRYPTION_KEY; \
+	@set -- $(API_DIR)/.env '?DATABASE_URL' '?BACKUP_ENCRYPTION_KEY'; . $(LOAD_ENV) ; \
 	KEY="$$BACKUP_ENCRYPTION_KEY"; \
 	if [ -z "$$KEY" ]; then \
 	  read -r -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
@@ -1359,14 +1359,14 @@ api-db-shell: ## Open psql shell to local Postgres (amigable)
 
 .PHONY: api-db-shell-staging
 api-db-shell-staging: ## Open psql shell to Neon staging DB (amigable)
-	@. $(LOAD_ENV) $(API_DIR)/.env DATABASE_URL=DATABASE_URL_STAGING; \
+	@set -- $(API_DIR)/.env DATABASE_URL=DATABASE_URL_STAGING; . $(LOAD_ENV) ; \
 	podman run -it --rm \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
 		postgres:18-alpine psql "$$DATABASE_URL"
 
 .PHONY: api-db-shell-production
 api-db-shell-production: ## Open psql shell to Neon production DB (amigable)
-	@. $(LOAD_ENV) $(API_DIR)/.env DATABASE_URL=DATABASE_URL_PRODUCTION; \
+	@set -- $(API_DIR)/.env DATABASE_URL=DATABASE_URL_PRODUCTION; . $(LOAD_ENV) ; \
 	podman run -it --rm \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
 		postgres:18-alpine psql "$$DATABASE_URL"
