@@ -119,6 +119,15 @@ check "unbalanced quotes are not trimmed" \
   "$(sh -c 'set -- "$staging" LEAD; . "$loader"; printf %s "$LEAD"')" \
   'abc"'
 
+# A key assigned twice resolves to the last assignment, which is what GNU make did when it
+# included the file; picking the first one would silently target a stale database.
+duplicate="$tmp/duplicate.txt"
+printf '%s\n' 'DATABASE_URL_STAGING="first-url"' 'DATABASE_URL_STAGING="second-url"' >"$duplicate"
+export duplicate
+check "a duplicated key resolves to the last assignment" \
+  "$(sh -c 'set -- "$duplicate" DATABASE_URL=DATABASE_URL_STAGING; . "$loader"; printf %s "$DATABASE_URL"')" \
+  'second-url'
+
 sh -c 'set -- "$fixture" "A.B"; . "$loader"' >"$tmp/badkey" 2>&1
 check "a key that is not an identifier is refused" "$?" 1
 

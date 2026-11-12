@@ -73,46 +73,79 @@ firebase-login-ci
 firebase-distribute
 '
 
+# Synthetic canaries: a recipe that expanded a credential into its text would print one of these
+# names, which `make -n` must never do. Without them the audit could not tell "no leak" from "the
+# variable was simply unset", so an expansion that exposes a real value for an operator would pass.
+canary_names='DATABASE_URL_STAGING DATABASE_URL_PRODUCTION ADMIN_API_KEY BACKUP_ENCRYPTION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID EXPO_TOKEN FIREBASE_TOKEN SOCKET_SECURITY_API_KEY SOCKET_CLI_ORG_SLUG'
+for name in $canary_names; do
+  eval "CANARY_$name=\"canary-value-of-$name\""
+  eval "export CANARY_$name"
+done
+
 for target in $converted_targets $mobile_cli_targets; do
-  make -C "$root" -n "$target" >"$tmp/recipe" 2>"$tmp/stderr"
+  env \
+    DATABASE_URL_STAGING="$CANARY_DATABASE_URL_STAGING" \
+    DATABASE_URL_PRODUCTION="$CANARY_DATABASE_URL_PRODUCTION" \
+    ADMIN_API_KEY="$CANARY_ADMIN_API_KEY" \
+    BACKUP_ENCRYPTION_KEY="$CANARY_BACKUP_ENCRYPTION_KEY" \
+    CLOUDFLARE_API_TOKEN="$CANARY_CLOUDFLARE_API_TOKEN" \
+    CLOUDFLARE_ACCOUNT_ID="$CANARY_CLOUDFLARE_ACCOUNT_ID" \
+    EXPO_TOKEN="$CANARY_EXPO_TOKEN" \
+    FIREBASE_TOKEN="$CANARY_FIREBASE_TOKEN" \
+    SOCKET_SECURITY_API_KEY="$CANARY_SOCKET_SECURITY_API_KEY" \
+    SOCKET_CLI_ORG_SLUG="$CANARY_SOCKET_CLI_ORG_SLUG" \
+    make -C "$root" -n "$target" >"$tmp/recipe" 2>"$tmp/stderr"
   rc=$?
   if [ "$rc" -eq 0 ]; then
     pass "make -n $target exits 0"
   else
-    fault "make -n $target exits 0" "exit $rc: $(head -n 1 "$tmp/stderr")"
+    fault "make -n $target exits 0" "exit $rc, first stderr line differs"
   fi
 
   if sh -n "$tmp/recipe" 2>"$tmp/syntax"; then
     pass "make -n $target is valid shell"
   else
-    fault "make -n $target is valid shell" "$(head -n 1 "$tmp/syntax")"
+    fault "make -n $target is valid shell" "sh -n rejected the rendered recipe"
   fi
 
-  # Strip the local dev URL, then any postgres URL left behind is a cloud one.
+  # Any canary that reached the recipe text is a credential expansion, whatever its real value is.
+  leaked_canary=''
+  for name in $canary_names; do
+    eval "value=\$CANARY_$name"
+    if grep -Fq -- "$value" "$tmp/recipe"; then
+      leaked_canary="$name"
+      break
+    fi
+  done
+  if [ -z "$leaked_canary" ]; then
+    pass "make -n $target expands no credential canary"
+  else
+    fault "make -n $target expands no credential canary" "$leaked_canary reached the recipe text"
+  fi
+
+  # Strip the local dev URL, then any postgres URL left behind is a cloud one. The value itself is
+  # never interpolated into the message: a test that guards leaks must not print the leak.
   sed "s|$dev_url||g" "$tmp/recipe" >"$tmp/recipe.redacted"
-  leak=$(grep -Eo 'postgres(ql)?://[^ ]*' "$tmp/recipe.redacted" | head -n 1)
-  if [ -z "$leak" ] && ! grep -Eq "$credentialled_url" "$tmp/recipe.redacted"; then
+  if ! grep -Eq "$credentialled_url" "$tmp/recipe.redacted"; then
     pass "make -n $target prints no cloud database URL"
   else
-    fault "make -n $target prints no cloud database URL" "found: ${leak:-credentialled postgres URL}"
+    fault "make -n $target prints no cloud database URL" "a credentialled database URL reached the recipe text"
   fi
 
-  token=$(grep -Eo "$bearer_literal" "$tmp/recipe" | head -n 1)
-  if [ -z "$token" ]; then
+  if ! grep -Eq "$bearer_literal" "$tmp/recipe"; then
     pass "make -n $target prints no literal bearer token"
   else
-    fault "make -n $target prints no literal bearer token" "found: $token"
+    fault "make -n $target prints no literal bearer token" "a literal bearer token reached the recipe text"
   fi
 done
 
 # The whole variable database, not just the sixteen converted recipes.
 make -C "$root" -pn >"$tmp/database" 2>/dev/null
 sed "s|$dev_url||g" "$tmp/database" >"$tmp/database.redacted"
-leak=$(grep -Eo 'postgres(ql)?://[^ ]*' "$tmp/database.redacted" | head -n 1)
-if [ -z "$leak" ]; then
+if ! grep -Eq "$credentialled_url" "$tmp/database.redacted"; then
   pass "make -pn prints no cloud database URL"
 else
-  fault "make -pn prints no cloud database URL" "found: $leak"
+  fault "make -pn prints no cloud database URL" "a credentialled database URL reached the variable database"
 fi
 
 # The mobile tokens are read by the sourced helper inside the recipe shell, never by Make: a Make
@@ -170,7 +203,7 @@ cli_prefix_check() {
   matched=$(awk -F "$tab" -v marker="$1" 'index($2, marker) { print $1 }' "$tmp/recipe-lines" |
     sort -u | wc -l | tr -d ' ')
   unprefixed=$(awk -F "$tab" -v marker="$1" -v prefix="$2" '
-    index($2, marker) && !index($2, prefix) { print $1 }
+    index($2, marker) && substr($2, 1, length(prefix)) != prefix { print $1 }
   ' "$tmp/recipe-lines" | sort -u | tr '\n' ' ')
 
   if [ "$matched" -eq 0 ]; then

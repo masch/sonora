@@ -118,9 +118,11 @@ for load_env_pair in "$@"; do
     fi
   fi
 
-  # 3. The file.
+  # 3. The file. A key assigned twice resolves to the last assignment, which is what GNU make did
+  #    when it included the file: picking the first one could point a destructive recipe at a
+  #    stale database.
   if [ -z "$load_env_from" ] && [ "$load_env_file_present" -eq 1 ]; then
-    load_env_value="$(sed -n "s/^${load_env_source}=//p" "$load_env_file" | head -n 1)"
+    load_env_value="$(sed -n "s/^${load_env_source}=//p" "$load_env_file" | tail -n 1)"
     load_env_value="$(strip_quotes "$load_env_value")"
     load_env_from=file
   fi
