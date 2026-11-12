@@ -178,9 +178,28 @@ export const stagingTripTest2HugoPathWaypoints: readonly NewWaypoint[] =
     experienceId: stagingTripTest2Id,
   }));
 
+export const stagingShowcaseTripId = 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f';
+
+/**
+ * The stops of the showcase trip. Three of them, walked in order from the pin, and about 800 m of
+ * total route: 60 m south-east, 380 m south, then 360 m east. Placed by hand from the same
+ * published figures as the trip itself, not surveyed; `radiusMeters` stays at the staging default
+ * so the geofence behaves like every other row here.
+ */
+export const stagingShowcaseWaypoints: readonly WaypointInput[] = [
+  { order: 1, latitude: -32.190126, longitude: -64.752127, radiusMeters: 50 },
+  { order: 2, latitude: -32.193552, longitude: -64.752127, radiusMeters: 50 },
+  { order: 3, latitude: -32.193552, longitude: -64.748309, radiusMeters: 50 },
+];
+
+export const stagingShowcaseTripWaypoints: readonly NewWaypoint[] = stagingShowcaseWaypoints.map(
+  (waypoint) => ({ ...waypoint, experienceId: stagingShowcaseTripId }),
+);
+
 export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
   ...stagingTripTest1HugoPathWaypoints,
   ...stagingTripTest2HugoPathWaypoints,
+  ...stagingShowcaseTripWaypoints,
 ];
 
 /** Shared placeholder description for showcase rows that carry no description of their own. */
@@ -206,15 +225,19 @@ const STAGING_SHOWCASE_DESCRIPTION =
  * surveyed ground truth and must be replaced before anyone walks a geofence (the default
  * trip/track radius is 100 m).
  *
- * `DERIVA PÒLEN SOMOS` is a trip, so it renders as one; it carries no waypoints yet —
- * `stagingOnlyWaypoints` only covers the two test trips.
+ * `DERIVA PÒLEN SOMOS` is a trip, so it renders as one and carries its own stops: three
+ * waypoints, ordered, that walk about 800 m from the pin (60 m south-east, 380 m south, 360 m
+ * east). The same caveat as the coordinates applies to them: they are placed by hand from the same
+ * published figures, they are **not** surveyed, and they must be replaced before anyone walks the
+ * route.
  *
  * `published: true` because staging is where these two are meant to appear next to the base
  * experiences.
  */
+
 export const stagingShowcaseExperiences: readonly NewExperience[] = [
   {
-    id: 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f',
+    id: stagingShowcaseTripId,
     slug: 'deriva-polem-somos',
     title: 'DERIVA PÒLEN SOMOS',
     description: STAGING_SHOWCASE_DESCRIPTION,

@@ -14,6 +14,8 @@ import {
   stagingOnlyExperiences,
   stagingOnlyWaypoints,
   stagingShowcaseExperiences,
+  stagingShowcaseTripId,
+  stagingShowcaseWaypoints,
   stagingTestExperiences,
 } from '../seed-staging-data';
 
@@ -64,9 +66,10 @@ describe('assertSeedEnv — environment guard', () => {
 });
 
 describe('stagingTestExperiences — staging test-data contract', () => {
-  it('contains exactly 6 explicit experiences and 4 waypoints', () => {
+  it('contains exactly 6 explicit experiences and 7 waypoints', () => {
     expect(stagingTestExperiences).toHaveLength(6);
-    expect(stagingOnlyWaypoints).toHaveLength(4);
+    // Four for the two test trips, three for the showcase trip.
+    expect(stagingOnlyWaypoints).toHaveLength(7);
   });
 
   it('is an explicit set: four tracks and two trips', () => {
@@ -116,7 +119,7 @@ describe('stagingTestExperiences — staging test-data contract', () => {
     }
   });
 
-  it('provides exactly 2 waypoints for each of the trip ids', () => {
+  it('provides exactly 2 waypoints for each of the test trip ids', () => {
     const trips = stagingTestExperiences.filter((e) => e.format === 'trip');
     expect(trips).toHaveLength(2);
     const tripIds = trips.map((e) => e.id!);
@@ -127,7 +130,8 @@ describe('stagingTestExperiences — staging test-data contract', () => {
     for (const id of tripIds) {
       expect(wpByTrip.get(id)).toBe(2);
     }
-    expect(wpByTrip.size).toBe(2);
+    // The two test trips plus the showcase trip: nothing else in the seed carries stops.
+    expect(wpByTrip.size).toBe(3);
   });
 });
 
@@ -178,6 +182,62 @@ describe('stagingShowcaseExperiences — the two showcase pieces', () => {
     expect(new Set(all.map((e) => e.slug)).size).toBe(all.length);
   });
 });
+
+describe('waypoints — every seeded trip can be walked', () => {
+  it('gives every trip in the seed at least one stop', () => {
+    // The gap this closes: a trip was added with no stops and the older check only looked at the
+    // test trips, so staging published a route nobody could walk.
+    const trips = stagingOnlyExperiences.filter((e) => e.format === 'trip');
+    const withStops = new Set(stagingOnlyWaypoints.map((w) => w.experienceId));
+    for (const trip of trips) {
+      expect(withStops.has(trip.id!)).toBe(true);
+    }
+    expect(trips.length).toBeGreaterThan(0);
+  });
+
+  it('walks about 800 m from the pin through its three stops', () => {
+    const trip = stagingShowcaseExperiences.find((row) => row.id === stagingShowcaseTripId);
+    expect(trip).toBeDefined();
+    const stops = [...stagingShowcaseWaypoints].sort((a, b) => a.order - b.order);
+    expect(stops.map((s) => s.order)).toEqual([1, 2, 3]);
+    // The walk starts at the pin, so the pin is where the measurement starts.
+    const meters = routeMeters([
+      { latitude: trip!.latitude, longitude: trip!.longitude },
+      ...stops,
+    ]);
+    expect(meters).toBeGreaterThan(780);
+    expect(meters).toBeLessThan(820);
+  });
+
+  it('keeps every showcase stop inside the territory the map draws', () => {
+    for (const stop of stagingShowcaseWaypoints) {
+      expect(stop.latitude).toBeGreaterThan(-32.215);
+      expect(stop.latitude).toBeLessThan(-32.185);
+      expect(stop.longitude).toBeGreaterThan(-64.76);
+      expect(stop.longitude).toBeLessThan(-64.725);
+    }
+  });
+});
+
+/** Great-circle length of the polyline through the stops, in metres. */
+function routeMeters(points: readonly { latitude: number; longitude: number }[]): number {
+  const earthRadius = 6_371_008.8;
+  const radians = (value: number) => (value * Math.PI) / 180;
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1]!;
+    const to = points[index]!;
+    const deltaLat = radians(to.latitude - from.latitude);
+    const deltaLon = radians(to.longitude - from.longitude);
+    const haversine =
+      Math.sin(deltaLat / 2) ** 2 +
+      Math.cos(radians(from.latitude)) *
+        Math.cos(radians(to.latitude)) *
+        Math.sin(deltaLon / 2) ** 2;
+    total += 2 * earthRadius * Math.asin(Math.sqrt(haversine));
+  }
+  return total;
+}
 
 describe('collectExperienceIds — waypoint delete scope', () => {
   it('returns the union of base + staging ids when both are seeded', () => {
