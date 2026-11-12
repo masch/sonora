@@ -5,22 +5,11 @@
 
 # ── Convenience ────────────────────────────────
 
-# Include .env files (leading '-' prevents error if file is missing)
--include apps/mobile/.env
--include apps/api/.env
-
-# Export token explicitly so it's available in all subshells
-EXPO_TOKEN_CLEAN := $(patsubst "%",%,$(EXPO_TOKEN))
-export EXPO_TOKEN = $(EXPO_TOKEN_CLEAN)
-
-SOCKET_SECURITY_API_KEY_CLEAN := $(patsubst "%",%,$(SOCKET_SECURITY_API_KEY))
-export SOCKET_SECURITY_API_KEY=$(SOCKET_SECURITY_API_KEY_CLEAN)
-
-SOCKET_CLI_ORG_SLUG_CLEAN := $(patsubst "%",%,$(SOCKET_CLI_ORG_SLUG))
-export SOCKET_CLI_ORG_SLUG=$(SOCKET_CLI_ORG_SLUG_CLEAN)
-
-FIREBASE_TOKEN_CLEAN := $(patsubst "%",%,$(FIREBASE_TOKEN))
-export FIREBASE_TOKEN = $(FIREBASE_TOKEN_CLEAN)
+# Make includes no .env file at all. An included file lands in Make's variable database, and a
+# Make variable ends up in the recipe text: Make echoes recipes, prints them under `make -n` and
+# dumps them under `make -p`. Every secret is read inside the recipe's own shell by
+# scripts/load-env.sh (see LOAD_ENV and the LOAD_* prefixes below), which exports it into the
+# child's environment only.
 
 # `EXPO_NO_DOCTOR` is read by the Expo CLI, not by the EAS local build: the build's doctor
 # step is gated by `EAS_BUILD_DISABLE_EXPO_DOCTOR_STEP`, and while doctor runs it shells out
@@ -253,11 +242,11 @@ expo-upgrade: ## Check recommended versions and upgrade Expo SDK packages
 
 .PHONY: socket-login socket-scan
 socket-login: ## Authenticate with Socket.dev CLI (persists token locally)
-	bunx socket login
+	$(LOAD_SOCKET) bunx socket login
 
 socket-scan: ## Run Socket.dev security scan and show report (requires: SOCKET_SECURITY_API_KEY + ORG in .env, API token scopes: full-scans:create, full-scans:list, security-policy:read)
-	SOCKET_CLI_API_TOKEN=$(SOCKET_SECURITY_API_KEY) bunx socket scan create \
-		--json --no-interactive --org=$(SOCKET_CLI_ORG_SLUG) --report \
+	$(LOAD_SOCKET) export SOCKET_CLI_API_TOKEN="$$SOCKET_SECURITY_API_KEY"; bunx socket scan create \
+		--json --no-interactive --org="$$SOCKET_CLI_ORG_SLUG" --report \
 		--no-set-as-alerts-page --branch=$(shell git branch --show-current)
 
 .PHONY: pin-deps
@@ -301,18 +290,20 @@ db-migrate-local: ## Run/select a one-time data migration (local DB)
 
 .PHONY: db-migrate-staging
 db-migrate-staging: ## Run/select a one-time data migration (staging Neon DB)
-	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
-		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING; \
+	if [ -z "$(MIGRATION)" ]; then \
+		bun run scripts/migrations/_run-migration.ts; \
 	else \
-		DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+		bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
 	fi
 
 .PHONY: db-migrate-production
 db-migrate-production: ## Run/select a one-time data migration (production Neon DB)
-	@cd $(API_DIR) && if [ -z "$(MIGRATION)" ]; then \
-		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts; \
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION; \
+	if [ -z "$(MIGRATION)" ]; then \
+		bun run scripts/migrations/_run-migration.ts; \
 	else \
-		DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
+		bun run scripts/migrations/_run-migration.ts $(MIGRATION) $(ARGS); \
 	fi
 
 # ── Utilities ─────────────────────────────────
@@ -574,8 +565,9 @@ api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging ADMIN_API_KEY=\"<staging-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	@curl -X POST $(API_STAGING_URL)/audio/upload \
-	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	@. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	curl -X POST $(API_STAGING_URL)/audio/upload \
+	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
@@ -585,8 +577,9 @@ api-upload-audio-production: ## Upload an audio file to production R2. Usage: ma
 		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production ADMIN_API_KEY=\"<prod-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
 	fi
-	@curl -X POST $(API_PRODUCTION_URL)/audio/upload \
-	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	@. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
+	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
+	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
@@ -976,8 +969,9 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
 	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
-	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -H "Content-Type: application/json" \
 	  -d "$$PAYLOAD"
 
@@ -1001,8 +995,9 @@ api-create-coupon-production: ## Create a group trip coupon on production. Usage
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
+	. $(LOAD_ENV) $(API_DIR)/.env ADMIN_API_KEY; \
 	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
-	  -H "Authorization: Bearer $(ADMIN_API_KEY_CLEAN)" \
+	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
 	  -H "Content-Type: application/json" \
 	  -d "$$PAYLOAD"
 
@@ -1147,41 +1142,59 @@ api-db-migrate: api-db-up ## Apply pending Drizzle migrations
 api-db-seed: api-db-migrate ## Seed default trips data in local Postgres
 	cd $(API_DIR) && bun run db:seed
 
-# ── Neon cloud DB (requires DATABASE_URL_STAGING / DATABASE_URL_PRODUCTION in api/.env) ──
-# Values are unquoted via patsubst to prevent shell interpretation of special chars (&, etc.)
+# ── Neon cloud DB ─────────────────────────────────────────────────────────────
+# Cloud credentials never become Make variables: recipes read apps/api/.env through
+# scripts/load-env.sh, so no secret reaches a recipe line, `make -n` output or a `make -p` dump.
+# An ambient variable always wins, which is how CI injects its secrets.
 
-DATABASE_URL_STAGING_CLEAN := $(patsubst "%",%,$(DATABASE_URL_STAGING))
-DATABASE_URL_PRODUCTION_CLEAN := $(patsubst "%",%,$(DATABASE_URL_PRODUCTION))
-ADMIN_API_KEY_CLEAN := $(patsubst "%",%,$(ADMIN_API_KEY))
+LOAD_ENV = scripts/load-env.sh
+
+# Recipe prefixes for the mobile tokens: each one sources the helper into the recipe's own shell,
+# so the value reaches the CLI through the environment and never through a Make variable. The `?`
+# keys are optional on purpose: a missing token leaves the variable unset and the CLI's own
+# authentication error stays the failure mode, exactly as when the token was merely exported, and
+# an ambient value (CI) always wins over the file.
+LOAD_EXPO = . $(LOAD_ENV) apps/mobile/.env ?EXPO_TOKEN;
+LOAD_FIREBASE = . $(LOAD_ENV) apps/mobile/.env ?FIREBASE_TOKEN;
+LOAD_SOCKET = . $(LOAD_ENV) apps/mobile/.env ?SOCKET_SECURITY_API_KEY ?SOCKET_CLI_ORG_SLUG;
+
+# Not a secret: the documented local development database.
 DATABASE_URL_LOCAL_CLEAN := postgres://sonora:sonora@localhost:5432/sonora
 
 .PHONY: api-db-migrate-staging
 api-db-migrate-staging: ## Apply Drizzle migrations to staging Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' bun run db:migrate
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING && exec bun run db:migrate
 
 .PHONY: api-db-migrate-production
 api-db-migrate-production: ## Apply Drizzle migrations to production Neon DB
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' bun run db:migrate
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION && exec bun run db:migrate
 
 .PHONY: api-db-migrate-ci
 api-db-migrate-ci: ## Apply Drizzle migrations using DATABASE_URL from env (for CI)
 	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" bun run db:migrate
 
 .PHONY: api-db-seed-ci
+# The base entry fails closed on SEED_ENV: an empty value is refused, an absent one is allowed
+# for local dev. Both must therefore be exported as empty strings, never left unset — `export X`
+# alone drops the variable instead of emptying it.
 api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI); forwards SEED_ENV guard
-	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" SEED_ENV="$${SEED_ENV}" bun src/db/seed.ts
+	@cd $(API_DIR) || exit 1; DATABASE_URL="$${DATABASE_URL-}"; SEED_ENV="$${SEED_ENV-}"; \
+	export DATABASE_URL SEED_ENV; exec bun src/db/seed.ts
 
 .PHONY: api-db-seed-ci-staging
-api-db-seed-ci-staging: ## Seed staging DB via staging entry using DATABASE_URL from env (for CI); forwards SEED_ENV guard
-	cd $(API_DIR) && DATABASE_URL="$${DATABASE_URL}" SEED_ENV="$${SEED_ENV}" bun src/db/seed-staging.ts
+api-db-seed-ci-staging: ## Seed staging DB: DATABASE_URL from env, else DATABASE_URL_STAGING from api/.env; SEED_ENV must be staging
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING; \
+	SEED_ENV="$${SEED_ENV-}"; export SEED_ENV; exec bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-staging
 api-db-seed-staging: ## Seed staging Neon DB with staging-only data
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_STAGING_CLEAN)' SEED_ENV=staging bun src/db/seed-staging.ts
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING && \
+	SEED_ENV=staging exec bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-production
 api-db-seed-production: ## Seed production Neon DB with base data
-	cd $(API_DIR) && DATABASE_URL='$(DATABASE_URL_PRODUCTION_CLEAN)' SEED_ENV=production bun src/db/seed.ts
+	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_PRODUCTION && \
+	SEED_ENV=production exec bun src/db/seed.ts
 
 .PHONY: api-deploy-staging-full
 api-deploy-staging-full: api-deploy-staging api-db-seed-staging ## Deploy staging Worker + seed Neon DB
@@ -1225,15 +1238,16 @@ api-deploy-production-set-hmac-secret: ## Set HMAC_SECRET on production Worker (
 
 .PHONY: api-db-backup
 api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and prune old backups (>90 days)
-	@DB_URL="$(DB_URL)"; \
+	@. $(LOAD_ENV) $(API_DIR)/.env ?DATABASE_URL ?BACKUP_ENCRYPTION_KEY ?CLOUDFLARE_API_TOKEN ?CLOUDFLARE_ACCOUNT_ID; \
+	DB_URL="$(DB_URL)"; \
 	if [ -z "$$DB_URL" ]; then \
-	  DB_URL="$(DATABASE_URL)"; \
+	  DB_URL="$$DATABASE_URL"; \
 	fi; \
 	if [ -z "$$DB_URL" ]; then \
 	  read -r -p "Enter DATABASE_URL: " DB_URL; \
 	fi; \
 	if [ -z "$$DB_URL" ]; then echo "Error: DATABASE_URL is required"; exit 1; fi; \
-	KEY="$(BACKUP_ENCRYPTION_KEY)"; \
+	KEY="$$BACKUP_ENCRYPTION_KEY"; \
 	if [ -z "$$KEY" ]; then \
 	  read -r -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
 	fi; \
@@ -1256,8 +1270,8 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 	fi; \
 	echo "Uploading to R2 ($$FILE_SIZE bytes)..." && \
 	bun --cwd apps/api wrangler r2 object put "sonora-db-backups/db/$$BACKUP_FILE" --file "$$TEMP_FILE" --remote && \
-	TOKEN="$(CLOUDFLARE_API_TOKEN)"; \
-	ACCOUNT="$(CLOUDFLARE_ACCOUNT_ID)"; \
+	TOKEN="$$CLOUDFLARE_API_TOKEN"; \
+	ACCOUNT="$$CLOUDFLARE_ACCOUNT_ID"; \
 	if [ -n "$$TOKEN" ] && [ -n "$$ACCOUNT" ]; then \
 	  echo "Cleaning up backups older than 90 days from R2..." && \
 	  CUTOFF=$$(date -d "90 days ago" +%Y-%m-%d); \
@@ -1279,7 +1293,8 @@ api-db-backup: ## Dump database, encrypt with GPG, upload to Cloudflare R2, and 
 
 .PHONY: api-db-restore
 api-db-restore: ## Download and restore database backup from R2. Usage: make api-db-restore DATE="2026-07-13" [DB_URL="postgresql://..."]
-	@KEY="$(BACKUP_ENCRYPTION_KEY)"; \
+	@. $(LOAD_ENV) $(API_DIR)/.env ?DATABASE_URL ?BACKUP_ENCRYPTION_KEY; \
+	KEY="$$BACKUP_ENCRYPTION_KEY"; \
 	if [ -z "$$KEY" ]; then \
 	  read -r -sp "Enter BACKUP_ENCRYPTION_KEY (GPG passphrase): " KEY; echo ""; \
 	fi; \
@@ -1291,7 +1306,7 @@ api-db-restore: ## Download and restore database backup from R2. Usage: make api
 	fi; \
 	TARGET_DB_URL="$(DB_URL)"; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
-	  TARGET_DB_URL="$(DATABASE_URL)"; \
+	  TARGET_DB_URL="$$DATABASE_URL"; \
 	fi; \
 	if [ -z "$$TARGET_DB_URL" ]; then \
 	  read -r -p "Enter DATABASE_URL to restore into: " TARGET_DB_URL; \
@@ -1341,15 +1356,17 @@ api-db-shell: ## Open psql shell to local Postgres (amigable)
 
 .PHONY: api-db-shell-staging
 api-db-shell-staging: ## Open psql shell to Neon staging DB (amigable)
+	@. $(LOAD_ENV) $(API_DIR)/.env DATABASE_URL=DATABASE_URL_STAGING; \
 	podman run -it --rm \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
-		postgres:18-alpine psql '$(DATABASE_URL_STAGING_CLEAN)'
+		postgres:18-alpine psql "$$DATABASE_URL"
 
 .PHONY: api-db-shell-production
 api-db-shell-production: ## Open psql shell to Neon production DB (amigable)
+	@. $(LOAD_ENV) $(API_DIR)/.env DATABASE_URL=DATABASE_URL_PRODUCTION; \
 	podman run -it --rm \
 		-v $(PSQLRC_SONORA):/root/.psqlrc:Z \
-		postgres:18-alpine psql '$(DATABASE_URL_PRODUCTION_CLEAN)'
+		postgres:18-alpine psql "$$DATABASE_URL"
 
 .PHONY: api-dev-local
 api-dev-local: ## Run Hono API locally with Docker Postgres
@@ -1478,15 +1495,15 @@ EAS_CLI_VERSION ?=
 
 .PHONY: eas-whoami
 eas-whoami: ## Verify EAS authentication (uses EXPO_TOKEN from .env)
-	bunx eas-cli@$(EAS_CLI_VERSION) whoami
+	$(LOAD_EXPO) bunx eas-cli@$(EAS_CLI_VERSION) whoami
 
 .PHONY: eas-list
 eas-list: ## List recent EAS builds
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build:list
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build:list
 
 .PHONY: eas-init
 eas-init: ## Initialize EAS for this project (first-time setup)
-	bunx eas-cli@$(EAS_CLI_VERSION) init
+	$(LOAD_EXPO) bunx eas-cli@$(EAS_CLI_VERSION) init
 
 # production vs preview:
 #   production → signed APK for Google Play (uses production keystore)
@@ -1494,20 +1511,20 @@ eas-init: ## Initialize EAS for this project (first-time setup)
 
 .PHONY: eas-build-android
 eas-build-android: eas-whoami ## Build Play Store APK via EAS cloud (needs production keystore)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --wait
 
 .PHONY: eas-build-android-preview
 eas-build-android-preview: eas-whoami ## Build test APK for sideload via EAS cloud (internal distribution)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --wait
 
 .PHONY: eas-build-android-local
 eas-build-android-local: eas-whoami ## Build Play Store APK locally (needs Android SDK + production keystore)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile production --local --wait
 
 .PHONY: eas-build-android-preview-local
 eas-build-android-preview-local: eas-whoami ## Build test APK for sideload locally (interactive, prompts for APP_VERSION_CODE)
 	@read -r -p "Enter APP_VERSION_CODE (or leave empty for default): " vc; \
-	cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
+	$(LOAD_EXPO) cd apps/mobile && APP_VERSION_CODE=$$vc bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local
 
 .PHONY: eas-build-android-release-ci-unsigned
 eas-build-android-release-ci-unsigned: ## Build unsigned APK + AAB from single prebuild+Gradle
@@ -1553,23 +1570,23 @@ $(EAS_LOCAL_BUILD_TARGETS): export EAS_LOCAL_BUILD_PLUGIN_PATH = $(shell bun pm 
 
 .PHONY: eas-build-android-preview-ci
 eas-build-android-preview-ci: eas-whoami ## Build test APK for sideload in CI (kept for local dev, use eas-build-android-release-ci for production)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local $(if $(OUTPUT_APK),--output="$(OUTPUT_APK)")
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile preview --local $(if $(OUTPUT_APK),--output="$(OUTPUT_APK)")
 
 .PHONY: eas-build-android-aab-ci
 eas-build-android-aab-ci: eas-whoami ## Build signed AAB (kept for backward compat, use eas-build-android-release-ci for production)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile aab --local $(if $(OUTPUT_AAB),--output="$(OUTPUT_AAB)")
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p android --profile aab --local $(if $(OUTPUT_AAB),--output="$(OUTPUT_AAB)")
 
 .PHONY: eas-build-ios-simulator-ci
 eas-build-ios-simulator-ci: eas-whoami ## Build iOS app for simulator in CI
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile simulator --local $(if $(OUTPUT_APP),--output="$(OUTPUT_APP)")
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile simulator --local $(if $(OUTPUT_APP),--output="$(OUTPUT_APP)")
 
 .PHONY: eas-build-ios-device-ci
 eas-build-ios-device-ci: eas-whoami ## Build signed iOS IPA for physical device in CI
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile preview --local $(if $(OUTPUT_IPA),--output="$(OUTPUT_IPA)")
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) build -p ios --profile preview --local $(if $(OUTPUT_IPA),--output="$(OUTPUT_IPA)")
 
 .PHONY: eas-upload-apk
 eas-upload-apk: eas-whoami ## Upload a local APK to EAS (usage: make eas-upload-apk APK=path/to/file.apk)
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) submit -p android --path "$(APK)"
 
 .PHONY: eas-build-web-production
 eas-build-web-production: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting production
@@ -1578,7 +1595,7 @@ eas-build-web-production: eas-whoami web-worker-asset ## Export web app and depl
 		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
 		exit 1; \
 	}
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-web-staging
 eas-build-web-staging: eas-whoami web-worker-asset ## Export web app and deploy to EAS Hosting staging (alias: staging)
@@ -1587,15 +1604,15 @@ eas-build-web-staging: eas-whoami web-worker-asset ## Export web app and deploy 
 		echo "✘ the MapLibre worker did not reach the export; nothing was deployed"; \
 		exit 1; \
 	}
-	cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+	$(LOAD_EXPO) cd apps/mobile && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 .PHONY: eas-build-admin-production
 eas-build-admin-production: eas-whoami ## Export admin web app and deploy to EAS Hosting production
-	cd apps/admin && APP_ENV=production EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
+	$(LOAD_EXPO) cd apps/admin && APP_ENV=production EXPO_PUBLIC_API_URL="$(API_PRODUCTION_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --prod
 
 .PHONY: eas-build-admin-staging
 eas-build-admin-staging: eas-whoami ## Export admin web app and deploy to EAS Hosting staging
-	cd apps/admin && APP_ENV=staging EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
+	$(LOAD_EXPO) cd apps/admin && APP_ENV=staging EXPO_PUBLIC_API_URL="$(API_STAGING_URL)" bun run export:web && bunx eas-cli@$(EAS_CLI_VERSION) deploy --alias staging
 
 # ── Firebase App Distribution ────────────
 
@@ -1628,12 +1645,12 @@ FIREBASE_RELEASE_NOTES ?= $(FIREBASE_RELEASE_NOTES_CMD)
 
 .PHONY: firebase-login-ci
 firebase-login-ci: ## Firebase CI login — generates a token for FIREBASE_TOKEN in .env
-	bun --filter @sonora/mobile firebase-cli login:ci
+	$(LOAD_FIREBASE) bun --filter @sonora/mobile firebase-cli login:ci
 
 .PHONY: firebase-distribute
 firebase-distribute: ## Upload APK to Firebase App Distribution. Requires: GROUPS. Optional: APP_ENV (staging|production), FIREBASE_RELEASE_NOTES
 	@if [ -z "$(GROUPS)" ]; then echo "Error: GROUPS parameter is required (e.g. GROUPS=dev-team)"; exit 1; fi
-	bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
+	$(LOAD_FIREBASE) bun --filter @sonora/mobile firebase-cli appdistribution:distribute "$(abspath $(FIREBASE_APK_PATH))" \
 		--app "$(FIREBASE_TARGET_APP_ID)" \
 		--groups "$(GROUPS)" \
 		--release-notes "$$FIREBASE_RELEASE_NOTES" \
