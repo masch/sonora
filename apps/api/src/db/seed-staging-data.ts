@@ -17,8 +17,9 @@ import type { NewExperience, NewWaypoint } from './schema';
  * states what their coordinates are and are not).
  *
  * Both sets: stable hardcoded UUIDs + unique slugs, `imageKey` values that are members of
- * `TRACK_IMAGE_KEYS`, and audio served from R2 objects that already exist in the staging
- * bucket — this seed uploads no binary.
+ * `TRACK_IMAGE_KEYS`, and audio served from R2 objects that must already exist in the staging
+ * bucket — this seed uploads no binary, and no test can observe a bucket, so a missing object
+ * surfaces only as a 404 at playback.
  */
 
 // Audio is served from R2. Staging audio rows reuse the existing object key

@@ -157,7 +157,7 @@ describe('stagingShowcaseExperiences — the two showcase pieces', () => {
     }
   });
 
-  it('needs no new binary: existing R2 audio object and an existing cover per row', () => {
+  it('needs no new binary: R2 audio objects that must already exist, plus a cover per row', () => {
     const deriva = stagingShowcaseExperiences[0]!;
     const fuego = stagingShowcaseExperiences[1]!;
     expect(deriva.audioUrl).toBe(STAGING_AUDIO_KEY);
