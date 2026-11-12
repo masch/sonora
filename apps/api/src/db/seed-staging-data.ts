@@ -5,19 +5,20 @@ import type { NewExperience, NewWaypoint } from './schema';
  * Staging-only data. Never imported by the base entry (`seed.ts`).
  *
  * Two sets, deliberately separate (see `stagingTestExperiences` and
- * `stagingArtworkTracks`):
+ * `stagingShowcaseExperiences`):
  *
  * Test rows — written by hand (no combinatorial generation): four tracks and two trips that
  * exercise the geofence modes. Stable hardcoded UUIDs, unique slugs (changed only via PR),
  * `[PRUEBA]`/`[Test` prefixed titles, `published: false`.
  *
- * Artwork rows — the four pieces the home map illustration names and the published base
- * experiences do not cover. Their titles are the artwork's, they are published so staging shows
- * them, and their coordinates are the pinned positions of that illustration (±300 m; the doc
- * comment on `stagingArtworkTracks` states why).
+ * Showcase rows — the trip `DERIVA PÒLEN SOMOS` and the track `Fuego`: staging content the
+ * published base experiences do not cover. The title and description are the pieces' own, and
+ * they are published so staging shows them (the doc comment on `stagingShowcaseExperiences`
+ * states what their coordinates are and are not).
  *
- * Both sets: stable hardcoded UUIDs + unique slugs, audio served from R2 reusing the shared
- * staging audio key, and `imageKey` values that are members of `TRACK_IMAGE_KEYS`.
+ * Both sets: stable hardcoded UUIDs + unique slugs, `imageKey` values that are members of
+ * `TRACK_IMAGE_KEYS`, and audio served from R2 objects that already exist in the staging
+ * bucket — this seed uploads no binary.
  */
 
 // Audio is served from R2. Staging audio rows reuse the existing object key
@@ -181,39 +182,41 @@ export const stagingOnlyWaypoints: readonly NewWaypoint[] = [
   ...stagingTripTest2HugoPathWaypoints,
 ];
 
-/** Shared placeholder description: every artwork row says the same thing about itself. */
-const STAGING_ARTWORK_DESCRIPTION =
-  'Pieza de staging: título del mapa de la obra, audio y portada provisorios, posición aproximada.';
+/** Shared placeholder description for showcase rows that carry no description of their own. */
+const STAGING_SHOWCASE_DESCRIPTION =
+  'Pieza de staging: título de la obra, audio y portada provisorios, posición aproximada.';
 
 /**
- * The four pieces the artwork `apps/mobile/assets/images/sonora/home-map.jpg` names and
- * the two published base experiences do not cover yet: LAVANDAS, INCENDIO, NINA and
- * MANIFIESTO DE UN BROTE. They are staging rows, not production content: the title is the
- * artwork's own, everything else is a placeholder.
+ * The two staging pieces the published base experiences do not cover yet: the trip
+ * `DERIVA PÒLEN SOMOS` and the track `Fuego`.
+ *
+ * Audio and covers
+ * ----------------
+ * Both rows play audio that already lives in the staging private bucket, so this seed uploads
+ * no binary: `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s) and `Fuego`
+ * points at its own object, `experiences/trips-deriva-fuego.mp3` (303 s). Covers are members of
+ * `TRACK_IMAGE_KEYS`.
  *
  * Where the coordinates come from
  * -------------------------------
- * The illustration's base map is a real render of Umepay — calibrated against the vector
- * geometry of the local archive (`.tools/cache/out/calamuchita.pmtiles`) it lands within a
- * few pixels of the real roads, river and landuse — but **its pins were placed by hand**: the
- * real coordinates of `umepay-bosque` fall ~150 px (~300 m) from the pin drawn for it, and
- * those of `texto-maga` ~376 px (~700 m) from theirs. So each latitude/longitude below is the
- * position of the pin the artwork draws, resolved through that calibration, and inherits the
- * same **±300 m** uncertainty. They are good enough to place the points on staging and to see
- * them where the artwork shows them; they are not surveyed ground truth and must be replaced
- * before anyone walks a geofence (the default trip/track radius is 100 m).
+ * These are the positions the pieces are published with on staging, rounded from the published
+ * figures: they are good enough to see the pieces where they belong, but they are **not**
+ * surveyed ground truth and must be replaced before anyone walks a geofence (the default
+ * trip/track radius is 100 m).
  *
- * Audio and covers are reused rather than invented: the shared staging audio key and existing
- * covers mean this seed adds no binary and no R2 upload. `published: true` because staging is
- * where these four are meant to appear next to the two live experiences.
+ * `DERIVA PÒLEN SOMOS` is a trip, so it renders as one; it carries no waypoints yet —
+ * `stagingOnlyWaypoints` only covers the two test trips.
+ *
+ * `published: true` because staging is where these two are meant to appear next to the base
+ * experiences.
  */
-export const stagingArtworkTracks: readonly NewExperience[] = [
+export const stagingShowcaseExperiences: readonly NewExperience[] = [
   {
     id: 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f',
-    slug: 'lavandas-somos-raices',
-    title: 'LAVANDAS -somos raíces',
-    description: STAGING_ARTWORK_DESCRIPTION,
-    format: 'track',
+    slug: 'deriva-polem-somos',
+    title: 'DERIVA PÒLEN SOMOS',
+    description: STAGING_SHOWCASE_DESCRIPTION,
+    format: 'trip',
     themeKey: 'community',
     audioUrl: STAGING_AUDIO_KEY,
     durationSeconds: 180,
@@ -228,53 +231,17 @@ export const stagingArtworkTracks: readonly NewExperience[] = [
   },
   {
     id: 'f6c3a8d4-0001-5c9a-b2e1-4a5b6c7d8e9f',
-    slug: 'incendio',
-    title: 'INCENDIO',
-    description: STAGING_ARTWORK_DESCRIPTION,
+    slug: 'fuego',
+    title: 'Fuego',
+    description: 'Maga de Massi',
     format: 'track',
     themeKey: 'community',
-    audioUrl: STAGING_AUDIO_KEY,
-    durationSeconds: 180,
-    latitude: -32.192807,
-    longitude: -64.752621,
+    audioUrl: 'experiences/trips-deriva-fuego.mp3',
+    durationSeconds: 303,
+    latitude: -32.191576848045585,
+    longitude: -64.75240243117017,
     free: true,
     imageKey: TRACK_IMAGE_KEYS[2],
-    geofenceBypassable: false,
-    geoMode: 'formatDefaultRadius',
-    radiusMeters: null,
-    published: true,
-  },
-  {
-    id: 'f6c3a8d4-0002-5c9a-b2e1-4a5b6c7d8e9f',
-    slug: 'nina',
-    title: 'NINA',
-    description: STAGING_ARTWORK_DESCRIPTION,
-    format: 'track',
-    themeKey: 'community',
-    audioUrl: STAGING_AUDIO_KEY,
-    durationSeconds: 180,
-    latitude: -32.194208,
-    longitude: -64.744619,
-    free: true,
-    imageKey: TRACK_IMAGE_KEYS[0],
-    geofenceBypassable: false,
-    geoMode: 'formatDefaultRadius',
-    radiusMeters: null,
-    published: true,
-  },
-  {
-    id: 'f6c3a8d4-0003-5c9a-b2e1-4a5b6c7d8e9f',
-    slug: 'manifiesto-de-un-brote',
-    title: 'MANIFIESTO DE UN BROTE',
-    description: STAGING_ARTWORK_DESCRIPTION,
-    format: 'track',
-    themeKey: 'community',
-    audioUrl: STAGING_AUDIO_KEY,
-    durationSeconds: 180,
-    latitude: -32.207657,
-    longitude: -64.731576,
-    free: true,
-    imageKey: TRACK_IMAGE_KEYS[1],
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,
@@ -284,5 +251,5 @@ export const stagingArtworkTracks: readonly NewExperience[] = [
 
 export const stagingOnlyExperiences: readonly NewExperience[] = [
   ...stagingTestExperiences,
-  ...stagingArtworkTracks,
+  ...stagingShowcaseExperiences,
 ];
