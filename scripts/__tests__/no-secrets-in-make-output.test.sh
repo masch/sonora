@@ -219,6 +219,23 @@ cli_prefix_check 'bunx eas-cli@' '$(LOAD_EXPO)' 'every bunx eas-cli@ line starts
 cli_prefix_check 'firebase-cli' '$(LOAD_FIREBASE)' 'every Firebase CLI line starts with $(LOAD_FIREBASE)'
 cli_prefix_check 'bunx socket' '$(LOAD_SOCKET)' 'every bunx socket line starts with $(LOAD_SOCKET)'
 
+# The prefix must sit at the start of the launching command: a prefix moved behind the CLI, or
+# placed after an earlier command, is not a prefix. Synthetic recipe lines, so the Makefile is
+# never touched.
+tab=$(printf '\t')
+printf '%s\n%s\n%s\n' \
+  "t1${tab}bunx eas-cli@1 whoami; \$(LOAD_EXPO)" \
+  "t2${tab}true; \$(LOAD_EXPO) bunx eas-cli@1 whoami" \
+  "t3${tab}\$(LOAD_EXPO) bunx eas-cli@1 whoami" >"$tmp/prefix-samples"
+anchored=$(awk -F "$tab" -v prefix='$(LOAD_EXPO)' \
+  'index($2, "bunx eas-cli@") && substr($2, 1, length(prefix)) != prefix { print $1 }' \
+  "$tmp/prefix-samples" | tr '\n' ' ')
+if [ "$anchored" = 't1 t2 ' ]; then
+  pass "the CLI prefix check rejects a prefix that is not first"
+else
+  fault "the CLI prefix check rejects a prefix that is not first" "misclassified samples: [$anchored]"
+fi
+
 # The CI seed entry must forward SEED_ENV empty-preserving: the base entry fails closed on an
 # empty SEED_ENV but allows an absent one, so `-` (keep unset as empty) is the only correct form.
 seed_ci_recipe=$(awk '

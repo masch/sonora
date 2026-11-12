@@ -128,6 +128,24 @@ check "a duplicated key resolves to the last assignment" \
   "$(sh -c 'set -- "$duplicate" DATABASE_URL=DATABASE_URL_STAGING; . "$loader"; printf %s "$DATABASE_URL"')" \
   'second-url'
 
+# An empty last assignment is not a usable value: the loader refuses instead of exporting an
+# empty string, which make would have done. Failing closed is the contract, so pin it, and pin
+# that it never falls back to the shadowed first assignment.
+dupempty="$tmp/duplicate-empty.txt"
+printf '%s\n' 'DATABASE_URL_STAGING="first-url"' 'DATABASE_URL_STAGING=' >"$dupempty"
+export dupempty
+sh -c 'set -- "$dupempty" DATABASE_URL=DATABASE_URL_STAGING; . "$loader"' >"$tmp/dupenv.out" 2>&1
+check "a duplicate whose last assignment is empty refuses" "$?" 1
+check "and never falls back to the first assignment" "$(grep -c 'first-url' "$tmp/dupenv.out")" 0
+
+# The first assignment may be empty; the last one still wins, matching make.
+duplast="$tmp/duplicate-first-empty.txt"
+printf '%s\n' 'DATABASE_URL_STAGING=' 'DATABASE_URL_STAGING="second-url"' >"$duplast"
+export duplast
+check "an empty first assignment does not shadow the last" \
+  "$(sh -c 'set -- "$duplast" DATABASE_URL=DATABASE_URL_STAGING; . "$loader"; printf %s "$DATABASE_URL"')" \
+  'second-url'
+
 sh -c 'set -- "$fixture" "A.B"; . "$loader"' >"$tmp/badkey" 2>&1
 check "a key that is not an identifier is refused" "$?" 1
 
