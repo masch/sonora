@@ -31,7 +31,7 @@ err=$(sh -c ". '$root/scripts/load-env.sh' '$tmp/missing' NOPE" 2>&1)
 rc=$?
 check "missing file + missing key exits 1" "$rc" 1
 case "$err" in
-  *"does not exist"*) check "missing file + missing key explains why" yes yes ;;
+  *"not in the environment"*) check "missing file + missing key explains why" yes yes ;;
   *) check "missing file + missing key explains why" no yes ;;
 esac
 
@@ -82,5 +82,28 @@ check "optional key still respects ambient" \
 check "KEY=SOURCE_KEY remaps the name" \
   "$(sh -c ". '$root/scripts/load-env.sh' '$fixture' TARGET=PLAIN; printf %s \"\$TARGET\"")" \
   "hello world"
+
+# `DATABASE_URL_STAGING=... make api-db-migrate-staging` and its command-line form were valid
+# before this helper existed, so the renamed SOURCE is read from the environment too.
+check "exported SOURCE key is honoured with no file" \
+  "$(DATABASE_URL_STAGING=env-url sh -c ". '$root/scripts/load-env.sh' '$tmp/missing' DATABASE_URL=DATABASE_URL_STAGING; printf %s \"\$DATABASE_URL\"")" \
+  env-url
+
+check "an ambient target beats an ambient source" \
+  "$(DATABASE_URL=target-url DATABASE_URL_STAGING=source-url sh -c ". '$root/scripts/load-env.sh' '$tmp/missing' DATABASE_URL=DATABASE_URL_STAGING; printf %s \"\$DATABASE_URL\"")" \
+  target-url
+
+printf '%s\n' 'DATABASE_URL_STAGING="file-url"' 'LEAD=abc"' >"$tmp/staging.txt"
+
+check "an ambient source beats the file" \
+  "$(DATABASE_URL_STAGING=source-url sh -c ". '$root/scripts/load-env.sh' '$tmp/staging.txt' DATABASE_URL=DATABASE_URL_STAGING; printf %s \"\$DATABASE_URL\"")" \
+  source-url
+
+check "unbalanced quotes are not trimmed" \
+  "$(sh -c ". '$root/scripts/load-env.sh' '$tmp/staging.txt' LEAD; printf %s \"\$LEAD\"")" \
+  'abc"'
+
+sh -c ". '$root/scripts/load-env.sh' '$fixture' 'A.B'" >"$tmp/badkey" 2>&1
+check "a key that is not an identifier is refused" "$?" 1
 
 exit $fail
