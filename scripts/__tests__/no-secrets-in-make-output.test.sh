@@ -215,7 +215,10 @@ else
   pass "every loader call passes its arguments with set --"
 fi
 
-if grep -Eq '\.\s+[^;]*load-env\.sh .+;' scripts/__tests__/*.sh; then
+# Both forms of the old call: `. path/to/load-env.sh <args>` and `. "$loader" <args>`. The path
+# is anchored on the repository root so the check cannot pass vacuously from another directory.
+if grep -Ev '^[[:space:]]*#' "$root"/scripts/__tests__/*.sh \
+  | grep -Eq '\.\s+("[^"]*load-env\.sh"|[^;[:space:]]*load-env\.sh)\s+[^;&[:space:]]'; then
   fault "the suites themselves use the portable call form" "found . loader <file> <keys>"
 else
   pass "the suites themselves use the portable call form"

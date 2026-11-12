@@ -40,7 +40,14 @@
 # `export NAME=VALUE` and is never re-evaluated, so `$`, backticks, quotes and `&` survive
 # verbatim. No value is ever printed.
 
-load_env_file="${1:?load-env.sh: no environment file in the positional parameters; run `set -- <file> <keys>...` before sourcing this file}"
+# Fail closed with a plain check rather than `${1:?word}`: the word's expansions are evaluated by
+# the shell and can abort with an unrelated status, and this message is the one a future caller
+# will read when a recipe forgets to set the parameters first.
+if [ -z "${1-}" ]; then
+  echo "load-env.sh: the positional parameters are empty; pass the environment file and its keys first, with: set -- FILE KEY..." >&2
+  exit 1
+fi
+load_env_file="$1"
 shift
 
 load_env_file_present=0

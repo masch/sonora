@@ -32,7 +32,6 @@ check() {
 export loader missing fixture
 
 # A missing file is legitimate (CI has none): ambient values still work.
-out=$(DATABASE_URL=ambient sh -c '. "$loader"' 2>/dev/null; true)
 out=$(DATABASE_URL=ambient sh -c 'set -- "$missing" DATABASE_URL=DATABASE_URL_STAGING; . "$loader"; printf %s "$DATABASE_URL"' 2>&1)
 check "missing file + ambient key succeeds" "$out" ambient
 
@@ -122,5 +121,13 @@ check "unbalanced quotes are not trimmed" \
 
 sh -c 'set -- "$fixture" "A.B"; . "$loader"' >"$tmp/badkey" 2>&1
 check "a key that is not an identifier is refused" "$?" 1
+
+# Sourcing with no positional parameters is the mistake that broke a deploy: it must explain
+# itself in one readable line, with no shell syntax noise from the message itself.
+sh -c '. "$loader"' >"$tmp/noargs.out" 2>"$tmp/noargs.err"
+check "sourcing without positional parameters exits 1" "$?" 1
+check "and explains itself in a single line" \
+  "$(grep -vc '^load-env.sh: the positional parameters are empty; pass the environment file and its keys first, with: set -- FILE KEY\.\.\.$' "$tmp/noargs.err")" \
+  0
 
 exit $fail

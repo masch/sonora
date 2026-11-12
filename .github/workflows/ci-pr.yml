@@ -53,6 +53,13 @@ jobs:
       - uses: ./.github/actions/setup
       - run: make format-check
 
+  shell-suites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: make test-scripts
+
   deps:
     runs-on: ubuntu-latest
     steps:

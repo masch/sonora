@@ -1149,6 +1149,14 @@ api-db-seed: api-db-migrate ## Seed default trips data in local Postgres
 
 LOAD_ENV = scripts/load-env.sh
 
+# The loader contract is the only thing keeping credentials out of Make's output, and two of its
+# failure modes are shell-specific (dash drops arguments to a sourced file), so the suites run in
+# CI from a real POSIX shell instead of only on a developer's machine.
+.PHONY: test-scripts
+test-scripts: ## Run the shell suites that pin the env loader contract
+	@sh scripts/__tests__/load-env.test.sh
+	@sh scripts/__tests__/no-secrets-in-make-output.test.sh
+
 # Recipe prefixes for the mobile tokens: each one sources the helper into the recipe's own shell,
 # so the value reaches the CLI through the environment and never through a Make variable. The `?`
 # keys are optional on purpose: a missing token leaves the variable unset and the CLI's own
