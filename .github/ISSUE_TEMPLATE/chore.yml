@@ -1,0 +1,42 @@
+name: Chore or tech debt
+description: Internal work that closes a known gap without changing user-facing behaviour.
+title: '[chore] '
+labels: ['type:chore']
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One sentence naming what is missing or still exposed.
+      placeholder: The Make recipes still pass a credential as a command-line argument.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: The risk this leaves open today, and who it affects.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and acceptance criteria
+      description: What has to be true when this is done, one bullet per criterion.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where the work lands.
+      options:
+        - api
+        - build
+        - mobile
+        - docs
+    validations:
+      required: true
