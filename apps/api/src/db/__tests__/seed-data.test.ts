@@ -11,9 +11,9 @@ import {
 } from '../seed-data';
 import {
   STAGING_AUDIO_KEY,
-  stagingArtworkTracks,
   stagingOnlyExperiences,
   stagingOnlyWaypoints,
+  stagingShowcaseExperiences,
   stagingTestExperiences,
 } from '../seed-staging-data';
 
@@ -131,32 +131,25 @@ describe('stagingTestExperiences — staging test-data contract', () => {
   });
 });
 
-describe('stagingArtworkTracks — the four pieces the artwork names', () => {
-  it('carries the four titles of the map illustration, verbatim', () => {
-    expect(stagingArtworkTracks.map((e) => e.title)).toEqual([
-      'LAVANDAS -somos raíces',
-      'INCENDIO',
-      'NINA',
-      'MANIFIESTO DE UN BROTE',
-    ]);
+describe('stagingShowcaseExperiences — the two showcase pieces', () => {
+  it('carries both titles verbatim', () => {
+    expect(stagingShowcaseExperiences.map((e) => e.title)).toEqual(['DERIVA PÒLEN SOMOS', 'Fuego']);
   });
 
-  it('is four free tracks staging shows, not test rows', () => {
-    expect(stagingArtworkTracks).toHaveLength(4);
-    for (const e of stagingArtworkTracks) {
-      expect(e.format).toBe('track');
+  it('is one trip and one free track staging shows, not test rows', () => {
+    expect(stagingShowcaseExperiences.map((e) => e.format)).toEqual(['trip', 'track']);
+    for (const e of stagingShowcaseExperiences) {
       expect(e.free).toBe(true);
       expect(e.price).toBeUndefined();
       expect(e.published).toBe(true);
-      // The artwork names real pieces, so the staging test-data prefix does not apply.
+      // These are real pieces, so the staging test-data prefix does not apply.
       expect(e.title.startsWith('[PRUEBA]') || e.title.startsWith('[Test')).toBe(false);
     }
   });
 
-  it('places every piece inside the territory the illustration draws', () => {
-    // These are the positions of the pins the artwork draws, ±300 m: the illustration's
-    // base map is a real render of Umepay, but its pins were placed by hand.
-    for (const e of stagingArtworkTracks) {
+  it('places every piece inside the territory the artwork draws', () => {
+    // Umepay, as the home map illustration draws it: the pieces must land inside that frame.
+    for (const e of stagingShowcaseExperiences) {
       expect(e.latitude).toBeGreaterThan(-32.215);
       expect(e.latitude).toBeLessThan(-32.185);
       expect(e.longitude).toBeGreaterThan(-64.76);
@@ -164,16 +157,23 @@ describe('stagingArtworkTracks — the four pieces the artwork names', () => {
     }
   });
 
-  it('needs no new binary: staging audio and an existing cover per row', () => {
-    for (const e of stagingArtworkTracks) {
-      expect(e.audioUrl).toBe(STAGING_AUDIO_KEY);
+  it('needs no new binary: R2 audio objects that must already exist, plus a cover per row', () => {
+    const deriva = stagingShowcaseExperiences[0]!;
+    const fuego = stagingShowcaseExperiences[1]!;
+    expect(deriva.audioUrl).toBe(STAGING_AUDIO_KEY);
+    expect(deriva.durationSeconds).toBe(180);
+    expect(fuego.audioUrl).toBe('experiences/trips-deriva-fuego.mp3');
+    expect(fuego.durationSeconds).toBe(303);
+    for (const e of stagingShowcaseExperiences) {
       expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
     }
   });
 
   it('keeps ids and slugs unique across base and every staging row', () => {
     const all = [...baseExperiences, ...stagingOnlyExperiences];
-    expect(all).toHaveLength(baseExperiences.length + 10);
+    expect(all).toHaveLength(
+      baseExperiences.length + stagingTestExperiences.length + stagingShowcaseExperiences.length,
+    );
     expect(new Set(all.map((e) => e.id)).size).toBe(all.length);
     expect(new Set(all.map((e) => e.slug)).size).toBe(all.length);
   });
