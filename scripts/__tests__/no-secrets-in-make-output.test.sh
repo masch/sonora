@@ -290,6 +290,17 @@ do
   fi
 done
 
+# The CI target must refuse without an ambient URL and say where to go instead. The refusal is
+# the contract; the hint is what stops a developer from typing it twice and reading a cryptic
+# message from the entry point. Both variables are removed so the recipe cannot reach the seed.
+missing_url=$(env -u DATABASE_URL -u SEED_ENV sh -c 'cd "$1" && make api-db-seed-ci-staging' sh "$root" 2>&1)
+missing_rc=$?
+if [ "$missing_rc" -ne 0 ] && printf '%s' "$missing_url" | grep -Fq 'make api-db-seed-staging'; then
+  pass "api-db-seed-ci-staging names the local target when the URL is missing"
+else
+  fault "api-db-seed-ci-staging names the local target when the URL is missing" "exit $missing_rc"
+fi
+
 # A CI staging run has no apps/api/.env: the ambient secret must win and must not be masked.
 ambient=$(DATABASE_URL=ambient-ci-url sh -c \
   "set -- /nonexistent/file DATABASE_URL=DATABASE_URL_STAGING; . '$root/scripts/load-env.sh'; printf %s \"\$DATABASE_URL\"" 2>&1)

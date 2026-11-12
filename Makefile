@@ -1194,7 +1194,13 @@ api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI); forwards SEED_E
 # back to a developer's local file, so a runner with a stale file can never seed the real staging
 # database by accident. Use `api-db-seed-staging` from a laptop instead.
 api-db-seed-ci-staging: ## Seed staging DB using DATABASE_URL from env (for CI); SEED_ENV must be staging
-	@cd $(API_DIR) || exit 1; DATABASE_URL="$${DATABASE_URL-}"; SEED_ENV="$${SEED_ENV-}"; \
+	@cd $(API_DIR) || exit 1; \
+	if [ -z "$${DATABASE_URL-}" ]; then \
+		echo "api-db-seed-ci-staging reads DATABASE_URL from the environment only, on purpose: a runner with a stale local file must never seed staging by accident." >&2; \
+		echo "From a laptop, use: make api-db-seed-staging" >&2; \
+		exit 1; \
+	fi; \
+	DATABASE_URL="$${DATABASE_URL-}"; SEED_ENV="$${SEED_ENV-}"; \
 	export DATABASE_URL SEED_ENV; exec bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-staging
