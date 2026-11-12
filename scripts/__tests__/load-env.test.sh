@@ -31,7 +31,7 @@ err=$(sh -c ". '$root/scripts/load-env.sh' '$tmp/missing' NOPE" 2>&1)
 rc=$?
 check "missing file + missing key exits 1" "$rc" 1
 case "$err" in
-  *"not in the environment"*) check "missing file + missing key explains why" yes yes ;;
+  *"resolved to no usable value"*) check "missing file + missing key explains why" yes yes ;;
   *) check "missing file + missing key explains why" no yes ;;
 esac
 
@@ -98,6 +98,12 @@ printf '%s\n' 'DATABASE_URL_STAGING="file-url"' 'LEAD=abc"' >"$tmp/staging.txt"
 check "an ambient source beats the file" \
   "$(DATABASE_URL_STAGING=source-url sh -c ". '$root/scripts/load-env.sh' '$tmp/staging.txt' DATABASE_URL=DATABASE_URL_STAGING; printf %s \"\$DATABASE_URL\"")" \
   source-url
+
+# An exported-but-empty value is a deliberate answer, not an absence: falling through to the file
+# would silently point a destructive recipe at a different database than the caller named.
+DATABASE_URL= sh -c ". '$root/scripts/load-env.sh' '$tmp/staging.txt' DATABASE_URL=DATABASE_URL_STAGING" >"$tmp/emptyamb" 2>&1
+check "an empty ambient value refuses instead of using the file" "$?" 1
+check "and it never reveals the file value" "$(grep -c 'file-url' "$tmp/emptyamb")" 0
 
 check "unbalanced quotes are not trimmed" \
   "$(sh -c ". '$root/scripts/load-env.sh' '$tmp/staging.txt' LEAD; printf %s \"\$LEAD\"")" \

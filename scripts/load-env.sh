@@ -14,18 +14,22 @@
 # Arguments: the .env path, then one or more KEY or KEY=SOURCE_KEY entries, meaning "export KEY
 # with the value of SOURCE_KEY". An entry may be prefixed with `?` to make it optional: such a
 # key is loaded when available and otherwise left unset without failing, which is what a recipe
-# with its own prompt or skip branch needs. A missing required key aborts the recipe with exit 1.
+# with its own prompt or skip branch needs. A missing required key aborts the recipe.
+#
+# A required key that cannot be resolved calls `exit 1` on purpose: this file is sourced into the
+# recipe's own shell, so exiting it is what stops the command that follows from running with an
+# empty secret. Returning instead would let the recipe continue.
 #
 # Where a value comes from, in order:
-#   1. KEY already in the environment — an ambient variable always wins, so a CI-injected
-#      secret is never shadowed by a developer's file;
+#   1. KEY in the environment, even when it is empty. An empty value is a deliberate answer, not
+#      an absence, so it never falls through to the file and silently points a destructive recipe
+#      at a different database;
 #   2. SOURCE_KEY in the environment, so `DATABASE_URL_STAGING=... make api-db-migrate-staging`
 #      and `make api-db-migrate-staging DATABASE_URL_STAGING=...` keep working exactly as they
 #      did when the recipes read the Make variable directly;
 #   3. SOURCE_KEY in the file;
 #   4. for `?` entries, nothing.
-# A missing file is not an error: CI checkouts have none and every key arrives in the
-# environment.
+# A missing file is not an error: CI checkouts have none and every key arrives in the environment.
 #
 # Keys must look like shell identifiers, which is checked before use; the value is exported with
 # `export NAME=VALUE` and is never re-evaluated, so `$`, backticks, quotes and `&` survive
@@ -83,29 +87,41 @@ for load_env_pair in "$@"; do
       ;;
   esac
 
-  # 1. Ambient target wins.
-  eval "load_env_value=\${${load_env_target}:-}"
+  load_env_from=''
+  load_env_value=''
 
-  # 2. Ambient source, when the entry renames it.
-  if [ -z "$load_env_value" ] && [ "$load_env_source" != "$load_env_target" ]; then
-    eval "load_env_value=\${${load_env_source}:-}"
+  # 1. The ambient target, considered present as soon as it is set at all.
+  eval "load_env_present=\${${load_env_target}+set}"
+  if [ -n "$load_env_present" ]; then
+    eval "load_env_value=\${${load_env_target}-}"
+    load_env_from=environment
+  fi
+
+  # 2. The ambient source, for entries that rename it.
+  if [ -z "$load_env_from" ] && [ "$load_env_source" != "$load_env_target" ]; then
+    eval "load_env_present=\${${load_env_source}+set}"
+    if [ -n "$load_env_present" ]; then
+      eval "load_env_value=\${${load_env_source}-}"
+      load_env_from=environment
+    fi
   fi
 
   # 3. The file.
-  if [ -z "$load_env_value" ] && [ "$load_env_file_present" -eq 1 ]; then
+  if [ -z "$load_env_from" ] && [ "$load_env_file_present" -eq 1 ]; then
     load_env_value="$(sed -n "s/^${load_env_source}=//p" "$load_env_file" | head -n 1)"
     load_env_value="$(strip_quotes "$load_env_value")"
+    load_env_from=file
   fi
 
   if [ -z "$load_env_value" ]; then
     if [ "$load_env_required" -eq 0 ]; then
       continue
     fi
-    echo "load-env.sh: ${load_env_source} is not in the environment and not in ${load_env_file}" >&2
+    echo "load-env.sh: ${load_env_source} resolved to no usable value (environment or ${load_env_file})" >&2
     exit 1
   fi
 
   export "$load_env_target=$load_env_value"
 done
 
-unset load_env_file load_env_file_present load_env_pair load_env_required load_env_target load_env_source load_env_value
+unset load_env_file load_env_file_present load_env_from load_env_pair load_env_present load_env_required load_env_target load_env_source load_env_value strip_quotes_inner

@@ -1182,9 +1182,12 @@ api-db-seed-ci: ## Seed DB using DATABASE_URL from env (for CI); forwards SEED_E
 	export DATABASE_URL SEED_ENV; exec bun src/db/seed.ts
 
 .PHONY: api-db-seed-ci-staging
-api-db-seed-ci-staging: ## Seed staging DB: DATABASE_URL from env, else DATABASE_URL_STAGING from api/.env; SEED_ENV must be staging
-	@cd $(API_DIR) || exit 1; . ../../$(LOAD_ENV) .env DATABASE_URL=DATABASE_URL_STAGING; \
-	SEED_ENV="$${SEED_ENV-}"; export SEED_ENV; exec bun src/db/seed-staging.ts
+# CI only: the staging worker's secret arrives in the environment. It deliberately does NOT fall
+# back to a developer's local file, so a runner with a stale file can never seed the real staging
+# database by accident. Use `api-db-seed-staging` from a laptop instead.
+api-db-seed-ci-staging: ## Seed staging DB using DATABASE_URL from env (for CI); SEED_ENV must be staging
+	@cd $(API_DIR) || exit 1; DATABASE_URL="$${DATABASE_URL-}"; SEED_ENV="$${SEED_ENV-}"; \
+	export DATABASE_URL SEED_ENV; exec bun src/db/seed-staging.ts
 
 .PHONY: api-db-seed-staging
 api-db-seed-staging: ## Seed staging Neon DB with staging-only data
