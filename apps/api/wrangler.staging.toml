@@ -27,6 +27,8 @@ DB_ADAPTER = "neon"
 ENVIRONMENT = "staging"
 ADMIN_SESSION_COOKIE_SAMESITE = "None"
 AUDIO_LINK_EXPIRY_SECONDS = "900"
+GEOFENCE_TRACK_RADIUS_METERS = "2900"
+GEOFENCE_TRIP_RADIUS_METERS = "2900"
 
 # Published map artifacts served by this same Worker from the public bucket. The
 # client rewrites the style's source url with its local protocol, so one style

@@ -79,6 +79,26 @@ describe('POST /experiences/:id/proximity', () => {
     });
   });
 
+  it('honors GEOFENCE_TRIP_RADIUS_METERS and GEOFENCE_TRACK_RADIUS_METERS env overrides on proximity check', async () => {
+    setDbClient(mockDb);
+    const user = { latitude: 10, longitude: 10 };
+    const res = await app.request(
+      '/experiences/exp-1/proximity',
+      {
+        method: 'POST',
+        headers: DEVICE_HEADERS,
+        body: JSON.stringify(user),
+      },
+      { ...env, GEOFENCE_TRIP_RADIUS_METERS: '42' },
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      effectiveRadiusMeters: number | null;
+    };
+    expect(body.effectiveRadiusMeters).toBe(42);
+  });
+
   it('rejects out-of-range latitude', async () => {
     setDbClient(mockDb);
     const res = await app.request(

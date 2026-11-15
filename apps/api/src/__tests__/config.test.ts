@@ -121,6 +121,48 @@ describe('GET /config', () => {
     expect(bodyOn.geofence.bypassIosBrowser).toBe(true);
   });
 
+  it('honors GEOFENCE_TRACK_RADIUS_METERS and GEOFENCE_TRIP_RADIUS_METERS env overrides', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        GEOFENCE_TRACK_RADIUS_METERS: '50',
+        GEOFENCE_TRIP_RADIUS_METERS: '25',
+      },
+    );
+    const body = (await res.json()) as {
+      geofence: {
+        track: { radiusMeters: number };
+        trip: { radiusMeters: number };
+      };
+    };
+    expect(body.geofence.track.radiusMeters).toBe(50);
+    expect(body.geofence.trip.radiusMeters).toBe(25);
+  });
+
+  it('falls back to DEFAULT_REMOTE_CONFIG when radius env vars are invalid or absent', async () => {
+    const res = await app.request(
+      '/config',
+      {},
+      {
+        ...BINDINGS,
+        GEOFENCE_TRACK_RADIUS_METERS: '-10',
+        GEOFENCE_TRIP_RADIUS_METERS: 'invalid',
+      },
+    );
+    const body = (await res.json()) as {
+      geofence: {
+        track: { radiusMeters: number };
+        trip: { radiusMeters: number };
+      };
+    };
+    expect(body.geofence.track.radiusMeters).toBe(
+      DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
+    );
+    expect(body.geofence.trip.radiusMeters).toBe(DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters);
+  });
+
   it('lists a published region with the size the bucket reports', async () => {
     const { bucket, heads } = publicBucket({ [CALAMUCHITA_V1_KEY]: 4_321_000 });
 

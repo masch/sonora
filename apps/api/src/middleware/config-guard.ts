@@ -45,11 +45,38 @@ export function normalizePreloadRegions(value: string | undefined): readonly Map
   return [...entries];
 }
 
+export function normalizeRadius(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function resolveGeofenceConfig(env?: Env) {
+  return {
+    ...DEFAULT_REMOTE_CONFIG.geofence,
+    track: {
+      ...DEFAULT_REMOTE_CONFIG.geofence.track,
+      radiusMeters: normalizeRadius(
+        env?.GEOFENCE_TRACK_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
+      ),
+    },
+    trip: {
+      ...DEFAULT_REMOTE_CONFIG.geofence.trip,
+      radiusMeters: normalizeRadius(
+        env?.GEOFENCE_TRIP_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
+      ),
+    },
+  };
+}
+
 export const configGuard = (): MiddlewareHandler<{
   Bindings: Env;
   Variables: Variables;
 }> => {
   return async (c, next) => {
+    const geofence = resolveGeofenceConfig(c.env);
     c.set('configEnv', {
       minimumVersion: c.env?.MINIMUM_APP_VERSION || '1.0.0',
       blockOlderVersions: c.env?.BLOCK_OLDER_VERSIONS === 'true',
@@ -59,6 +86,8 @@ export const configGuard = (): MiddlewareHandler<{
         c.env?.BYPASS_GEOFENCE_IOS_BROWSER !== undefined
           ? c.env.BYPASS_GEOFENCE_IOS_BROWSER === 'true'
           : DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
+      geofenceTrackRadiusMeters: geofence.track.radiusMeters,
+      geofenceTripRadiusMeters: geofence.trip.radiusMeters,
       // The artifact urls are derived from this version and the request origin,
       // never from a variable, so publishing v7 is one line and the head that
       // confirms the object reads the same key the client is given.
