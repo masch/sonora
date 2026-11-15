@@ -1,15 +1,14 @@
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { sign } from 'hono/jwt';
-import { zValidator } from '@hono/zod-validator';
 import {
   DEFAULT_REMOTE_CONFIG,
+  ExperiencesQuerySchema,
   ProximityBodySchema,
-  type ProximityBody,
   resolveProximity,
   type UserExperienceFormat,
 } from '@sonora/shared';
-import { normalizeRadius } from '../middleware/config-guard';
+import { resolveGeofenceConfig } from '../middleware/config-guard';
 import {
   experienceAccesses,
   experienceCouponRedemptions,
@@ -23,14 +22,17 @@ import {
 import { type Env, type Variables } from '../index';
 import { dbGuard } from '../middleware/db-guard';
 import { deviceIdGuard } from '../middleware/device-id-guard';
+import { envGuard } from '../middleware/env-guard';
 import { ERRORS, problem, success } from '../middleware/problem-details';
 import { urlGuard } from '../middleware/url-guard';
-import { validationHook } from '../middleware/validation-error';
+import { validateJson, validateQuery } from '../middleware/validation-error';
 
 import { jwtGuard } from '../middleware/jwt-guard';
 import { RATE_LIMIT_DEFAULTS, rateLimit } from '../middleware/rate-limit-guard';
 
 const experiencesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+experiencesRouter.use('*', envGuard());
 
 experiencesRouter.get(
   '/',
@@ -39,6 +41,7 @@ experiencesRouter.get(
   deviceIdGuard(),
   jwtGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.EXPERIENCES_LIST),
+  validateQuery(ExperiencesQuerySchema),
   async (c) => {
     const db = c.var.db;
     const list = await db.select().from(experiences).where(eq(experiences.published, true));
@@ -54,7 +57,7 @@ experiencesRouter.get(
       .from(experienceAccesses)
       .where(eq(experienceAccesses.deviceId, deviceId));
 
-    const email = c.req.query('email');
+    const { email } = c.req.valid('query');
     const purchaseConditions = [eq(purchases.status, 'approved')];
 
     const deviceOrEmailFilter = email
@@ -176,7 +179,7 @@ experiencesRouter.post(
   dbGuard(),
   deviceIdGuard(),
   rateLimit(RATE_LIMIT_DEFAULTS.PROXIMITY_CHECK),
-  zValidator('json', ProximityBodySchema, validationHook),
+  validateJson(ProximityBodySchema),
   async (c) => {
     const db = c.var.db;
     const id = c.req.param('id');
@@ -194,25 +197,9 @@ experiencesRouter.post(
     if (!exp) {
       return problem(c, ERRORS.NOT_FOUND, 'Experience not found');
     }
-    const { latitude, longitude } = c.req.valid('json') as ProximityBody;
+    const { latitude, longitude } = c.req.valid('json');
 
-    const geofence = {
-      ...DEFAULT_REMOTE_CONFIG.geofence,
-      track: {
-        ...DEFAULT_REMOTE_CONFIG.geofence.track,
-        radiusMeters: normalizeRadius(
-          c.env?.GEOFENCE_TRACK_RADIUS_METERS,
-          DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
-        ),
-      },
-      trip: {
-        ...DEFAULT_REMOTE_CONFIG.geofence.trip,
-        radiusMeters: normalizeRadius(
-          c.env?.GEOFENCE_TRIP_RADIUS_METERS,
-          DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
-        ),
-      },
-    };
+    const geofence = resolveGeofenceConfig(c.env);
 
     const geo = resolveProximity({
       user: { latitude, longitude },

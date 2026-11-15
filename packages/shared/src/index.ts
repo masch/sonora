@@ -26,4 +26,5 @@ export * from './locales/es';
 export * from './utils/uuid';
 export * from './utils/sha256';
 export * from './schemas/terms';
+export * from './schemas/experiences';
 export * from './config';

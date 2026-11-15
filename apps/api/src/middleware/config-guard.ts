@@ -51,11 +51,32 @@ export function normalizeRadius(value: string | undefined, fallback: number): nu
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+export function resolveGeofenceConfig(env?: Env) {
+  return {
+    ...DEFAULT_REMOTE_CONFIG.geofence,
+    track: {
+      ...DEFAULT_REMOTE_CONFIG.geofence.track,
+      radiusMeters: normalizeRadius(
+        env?.GEOFENCE_TRACK_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
+      ),
+    },
+    trip: {
+      ...DEFAULT_REMOTE_CONFIG.geofence.trip,
+      radiusMeters: normalizeRadius(
+        env?.GEOFENCE_TRIP_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
+      ),
+    },
+  };
+}
+
 export const configGuard = (): MiddlewareHandler<{
   Bindings: Env;
   Variables: Variables;
 }> => {
   return async (c, next) => {
+    const geofence = resolveGeofenceConfig(c.env);
     c.set('configEnv', {
       minimumVersion: c.env?.MINIMUM_APP_VERSION || '1.0.0',
       blockOlderVersions: c.env?.BLOCK_OLDER_VERSIONS === 'true',
@@ -65,14 +86,8 @@ export const configGuard = (): MiddlewareHandler<{
         c.env?.BYPASS_GEOFENCE_IOS_BROWSER !== undefined
           ? c.env.BYPASS_GEOFENCE_IOS_BROWSER === 'true'
           : DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
-      geofenceTrackRadiusMeters: normalizeRadius(
-        c.env?.GEOFENCE_TRACK_RADIUS_METERS,
-        DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
-      ),
-      geofenceTripRadiusMeters: normalizeRadius(
-        c.env?.GEOFENCE_TRIP_RADIUS_METERS,
-        DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
-      ),
+      geofenceTrackRadiusMeters: geofence.track.radiusMeters,
+      geofenceTripRadiusMeters: geofence.trip.radiusMeters,
       // The artifact urls are derived from this version and the request origin,
       // never from a variable, so publishing v7 is one line and the head that
       // confirms the object reads the same key the client is given.

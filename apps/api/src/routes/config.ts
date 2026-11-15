@@ -13,24 +13,14 @@ import {
 import type { Env, Variables } from '../index';
 import { success } from '../middleware/problem-details';
 import { configGuard } from '../middleware/config-guard';
+import { envGuard } from '../middleware/env-guard';
 import { resolveMapRenderer } from '../lib/map-renderer';
 import { rendererCanToggleGroups } from '../lib/map-layers';
 
 const configRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-/**
- * The regions this environment publishes.
- *
- * A region reaches the payload only when the public bucket holds its archive:
- * `head` is the confirmation, and the size it reports is what the client shows
- * in the download prompt. A region that is not uploaded, or a bucket that cannot
- * answer, is omitted — the payload names downloads the app is expected to
- * finish, so an unpublished region must never travel.
- *
- * The public bucket is read from the bindings instead of `publicBucketGuard()`,
- * which answers 500 when no bucket is bound: `/config` bootstraps the whole app,
- * and an environment without artifacts still has to serve a payload.
- */
+configRouter.use('*', envGuard());
+
 /** How long one bucket lookup may hold `/config` before the region counts as unpublished. */
 const HEAD_TIMEOUT_MS = 1500;
 
@@ -53,6 +43,19 @@ type ServedRemoteConfigPayload = Omit<RemoteConfigPayload, 'map'> & {
     Partial<Pick<RemoteConfigPayload['map'], 'layers'>>;
 };
 
+/**
+ * The regions this environment publishes.
+ *
+ * A region reaches the payload only when the public bucket holds its archive:
+ * `head` is the confirmation, and the size it reports is what the client shows
+ * in the download prompt. A region that is not uploaded, or a bucket that cannot
+ * answer, is omitted — the payload names downloads the app is expected to
+ * finish, so an unpublished region must never travel.
+ *
+ * The public bucket is read from the bindings instead of `publicBucketGuard()`,
+ * which answers 500 when no bucket is bound: `/config` bootstraps the whole app,
+ * and an environment without artifacts still has to serve a payload.
+ */
 async function readPublishedRegions(
   bucket: R2Bucket | undefined,
   origin: string,
