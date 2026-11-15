@@ -1,7 +1,12 @@
 # ──────────────────────────────────────────────
 # Makefile — sonora (Expo SDK 57)
-# All targets delegate to `bun` (project package manager).
+# All targets delegate to `bun` (project manager).
 # ──────────────────────────────────────────────
+
+# Interactive recipes rely on bash builtins (`read -s -u 3`): GNU make defaults to /bin/sh, and
+# on dash-based systems the hidden read fails, so the shell is fixed here. Every recipe already
+# assumes bash-compatible constructs.
+SHELL := /bin/bash
 
 # ── Convenience ────────────────────────────────
 
@@ -567,9 +572,10 @@ api-upload-audio-staging: ## Upload an audio file to staging R2. Prompts for the
 	fi; \
 	KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -593,9 +599,10 @@ api-upload-audio-production: ## Upload an audio file to production R2. Prompts f
 	fi; \
 	KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -943,9 +950,10 @@ api-ingest-osm-dry-run: ## Preview the OSM reference ingestion: writes nothing a
 api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
 	@KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -962,9 +970,10 @@ api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts fo
 api-ingest-osm-production: ## Publish OSM references to the production API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
 	@KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -999,9 +1008,10 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Prompts for
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
 	ADMIN_KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$ADMIN_KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s ADMIN_KEY < /dev/tty; \
+			read -s -u 3 ADMIN_KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r ADMIN_KEY; \
@@ -1039,9 +1049,10 @@ api-create-coupon-production: ## Create a group trip coupon on production. Promp
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
 	ADMIN_KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$ADMIN_KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s ADMIN_KEY < /dev/tty; \
+			read -s -u 3 ADMIN_KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r ADMIN_KEY; \
@@ -1291,27 +1302,29 @@ api-deploy-production-set-db-url: ## Set DATABASE_URL on production Worker (inte
 
 .PHONY: api-deploy-staging-set-admin-api-key
 api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (interactive, input hidden)
-	@if [ -r /dev/tty ]; then \
+	@if exec 3</dev/tty 2>/dev/null; then \
 		printf "ADMIN_API_KEY for staging (input hidden): " > /dev/tty; \
-		read -s SECRET < /dev/tty; \
+		read -s -u 3 SECRET; \
+		exec 3<&-; \
 		printf "\n" > /dev/tty; \
 	else \
 		read -r SECRET; \
 	fi; \
-	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g'); \
+	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
 	if [ -z "$$SECRET" ]; then echo "Error: no ADMIN_API_KEY provided."; exit 1; fi; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-admin-api-key
 api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive, input hidden)
-	@if [ -r /dev/tty ]; then \
+	@if exec 3</dev/tty 2>/dev/null; then \
 		printf "ADMIN_API_KEY for production (input hidden): " > /dev/tty; \
-		read -s SECRET < /dev/tty; \
+		read -s -u 3 SECRET; \
+		exec 3<&-; \
 		printf "\n" > /dev/tty; \
 	else \
 		read -r SECRET; \
 	fi; \
-	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g'); \
+	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
 	if [ -z "$$SECRET" ]; then echo "Error: no ADMIN_API_KEY provided."; exit 1; fi; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY
 
