@@ -1,7 +1,12 @@
 # ──────────────────────────────────────────────
 # Makefile — sonora (Expo SDK 57)
-# All targets delegate to `bun` (project package manager).
+# All targets delegate to `bun` (project manager).
 # ──────────────────────────────────────────────
+
+# Interactive recipes rely on bash builtins (`read -s -u 3`): GNU make defaults to /bin/sh, and
+# on dash-based systems the hidden read fails, so the shell is fixed here. Every recipe already
+# assumes bash-compatible constructs.
+SHELL := /bin/bash
 
 # ── Convenience ────────────────────────────────
 
@@ -560,26 +565,56 @@ api-kv-list-production: ## List production KV namespaces
 	cd $(API_DIR) && bunx wrangler kv namespace list
 
 .PHONY: api-upload-audio-staging
-api-upload-audio-staging: ## Upload an audio file to staging R2. Usage: make api-upload-audio-staging ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-staging: ## Upload an audio file to staging R2. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. Usage: make api-upload-audio-staging FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging ADMIN_API_KEY=\"<staging-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-staging FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
-	fi
-	@set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
-	curl -X POST $(API_STAGING_URL)/audio/upload \
-	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
+	fi; \
+	KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$KEY" ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r KEY; \
+		fi; \
+	fi; \
+	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$KEY" ]; then \
+		echo "Error: no admin key provided."; \
+		exit 1; \
+	fi; \
+	curl -sS -X POST $(API_STAGING_URL)/audio/upload \
+	  -H "Authorization: Bearer $$KEY" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
 .PHONY: api-upload-audio-production
-api-upload-audio-production: ## Upload an audio file to production R2. Usage: make api-upload-audio-production ADMIN_API_KEY="key" FILE="path/to/file.mp3" KEY="experiences/name.mp3"
+api-upload-audio-production: ## Upload an audio file to production R2. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. Usage: make api-upload-audio-production FILE="path/to/file.mp3" KEY="experiences/name.mp3"
 	@if [ -z "$(FILE)" ] || [ -z "$(KEY)" ]; then \
-		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production ADMIN_API_KEY=\"<prod-key>\" FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
+		echo "Error: FILE and KEY parameters are required. Example: make api-upload-audio-production FILE=\"/path/to/audio.mp3\" KEY=\"experiences/audio.mp3\""; \
 		exit 1; \
-	fi
-	@set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
-	curl -X POST $(API_PRODUCTION_URL)/audio/upload \
-	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
+	fi; \
+	KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$KEY" ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r KEY; \
+		fi; \
+	fi; \
+	KEY=$$(printf '%s' "$$KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$KEY" ]; then \
+		echo "Error: no admin key provided."; \
+		exit 1; \
+	fi; \
+	curl -sS -X POST $(API_PRODUCTION_URL)/audio/upload \
+	  -H "Authorization: Bearer $$KEY" \
 	  -F "key=$(KEY)" \
 	  -F "file=@$(FILE)"
 
@@ -915,9 +950,10 @@ api-ingest-osm-dry-run: ## Preview the OSM reference ingestion: writes nothing a
 api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
 	@KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -934,9 +970,10 @@ api-ingest-osm-staging: ## Publish OSM references to the staging API. Prompts fo
 api-ingest-osm-production: ## Publish OSM references to the production API. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. [REGION=calamuchita]
 	@KEY="$${ADMIN_API_KEY:-}"; \
 	if [ -z "$$KEY" ]; then \
-		if [ -r /dev/tty ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
 			printf "Admin key (input hidden): " > /dev/tty; \
-			read -s KEY < /dev/tty; \
+			read -s -u 3 KEY; \
+			exec 3<&-; \
 			printf "\n" > /dev/tty; \
 		else \
 			read -r KEY; \
@@ -950,10 +987,10 @@ api-ingest-osm-production: ## Publish OSM references to the production API. Prom
 	cd $(API_DIR) && ADMIN_API_KEY="$$KEY" bun src/scripts/ingest-osm-references.ts --region=$(REGION) --publish --api=$(API_PRODUCTION_URL)
 
 .PHONY: api-create-coupon-staging
-api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make api-create-coupon-staging ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+api-create-coupon-staging: ## Create a group trip coupon on staging. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. Usage: make api-create-coupon-staging EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
 	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
 		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-staging ADMIN_API_KEY=\"<staging-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		echo "Example: make api-create-coupon-staging EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi; \
 	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
@@ -969,17 +1006,32 @@ api-create-coupon-staging: ## Create a group trip coupon on staging. Usage: make
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
-	set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
+	ADMIN_KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$ADMIN_KEY" ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s -u 3 ADMIN_KEY; \
+			exec 3<&-; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r ADMIN_KEY; \
+		fi; \
+	fi; \
+	ADMIN_KEY=$$(printf '%s' "$$ADMIN_KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$ADMIN_KEY" ]; then \
+		echo "Error: no admin key provided."; \
+		exit 1; \
+	fi; \
 	curl -s -X POST $(API_STAGING_URL)/payments/experiences/$(EXP_ID)/coupons \
-	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
+	  -H "Authorization: Bearer $$ADMIN_KEY" \
 	  -H "Content-Type: application/json" \
 	  -d "$$PAYLOAD"
 
 .PHONY: api-create-coupon-production
-api-create-coupon-production: ## Create a group trip coupon on production. Usage: make api-create-coupon-production ADMIN_API_KEY="key" EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
+api-create-coupon-production: ## Create a group trip coupon on production. Prompts for the key (hidden); set ADMIN_API_KEY to skip the prompt in CI. Usage: make api-create-coupon-production EXP_ID="<id>" EMAIL="mail" STARTS="date" EXPIRES="date" NOTES="text" [MAX=1]
 	@if [ -z "$(EXP_ID)" ] || [ -z "$(EMAIL)" ] || [ -z "$(STARTS)" ] || [ -z "$(EXPIRES)" ] || [ -z "$(NOTES)" ]; then \
 		echo "Error: EXP_ID, EMAIL, STARTS, EXPIRES and NOTES parameters are required."; \
-		echo "Example: make api-create-coupon-production ADMIN_API_KEY=\"<prod-key>\" EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
+		echo "Example: make api-create-coupon-production EXP_ID=\"<uuid>\" EMAIL=\"user@mail.com\" STARTS=\"2026-10-09T00:00:00-03:00\" EXPIRES=\"2026-12-31T23:59:59-03:00\" NOTES=\"Viaje Grupal\" MAX=3"; \
 		exit 1; \
 	fi; \
 	NORM_STARTS=$$(date -u -d "$(STARTS)" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || bun -e 'const d = new Date(process.argv[1]); if (isNaN(d)) process.exit(1); console.log(d.toISOString())' "$(STARTS)"); \
@@ -995,9 +1047,24 @@ api-create-coupon-production: ## Create a group trip coupon on production. Usage
 	  --arg notes "$(NOTES)" \
 	  --argjson maxDownloads "$(if $(MAX),$(MAX),1)" \
 	  '{email: $$email, startsAt: $$startsAt, expiresAt: $$expiresAt, notes: $$notes, maxDownloads: $$maxDownloads}'); \
-	set -- $(API_DIR)/.env ADMIN_API_KEY; . $(LOAD_ENV) ; \
+	ADMIN_KEY="$${ADMIN_API_KEY:-}"; \
+	if [ -z "$$ADMIN_KEY" ]; then \
+		if exec 3</dev/tty 2>/dev/null; then \
+			printf "Admin key (input hidden): " > /dev/tty; \
+			read -s -u 3 ADMIN_KEY; \
+			exec 3<&-; \
+			printf "\n" > /dev/tty; \
+		else \
+			read -r ADMIN_KEY; \
+		fi; \
+	fi; \
+	ADMIN_KEY=$$(printf '%s' "$$ADMIN_KEY" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$ADMIN_KEY" ]; then \
+		echo "Error: no admin key provided."; \
+		exit 1; \
+	fi; \
 	curl -s -X POST $(API_PRODUCTION_URL)/payments/experiences/$(EXP_ID)/coupons \
-	  -H "Authorization: Bearer $$ADMIN_API_KEY" \
+	  -H "Authorization: Bearer $$ADMIN_KEY" \
 	  -H "Content-Type: application/json" \
 	  -d "$$PAYLOAD"
 
@@ -1234,13 +1301,31 @@ api-deploy-production-set-db-url: ## Set DATABASE_URL on production Worker (inte
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put DATABASE_URL
 
 .PHONY: api-deploy-staging-set-admin-api-key
-api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (interactive)
-	@read -r -p "Paste the ADMIN_API_KEY for staging: " SECRET; \
+api-deploy-staging-set-admin-api-key: ## Set ADMIN_API_KEY on staging Worker (interactive, input hidden)
+	@if exec 3</dev/tty 2>/dev/null; then \
+		printf "ADMIN_API_KEY for staging (input hidden): " > /dev/tty; \
+		read -s -u 3 SECRET; \
+		exec 3<&-; \
+		printf "\n" > /dev/tty; \
+	else \
+		read -r SECRET; \
+	fi; \
+	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$SECRET" ]; then echo "Error: no ADMIN_API_KEY provided."; exit 1; fi; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY --config wrangler.staging.toml
 
 .PHONY: api-deploy-production-set-admin-api-key
-api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive)
-	@read -r -p "Paste the ADMIN_API_KEY for production: " SECRET; \
+api-deploy-production-set-admin-api-key: ## Set ADMIN_API_KEY on production Worker (interactive, input hidden)
+	@if exec 3</dev/tty 2>/dev/null; then \
+		printf "ADMIN_API_KEY for production (input hidden): " > /dev/tty; \
+		read -s -u 3 SECRET; \
+		exec 3<&-; \
+		printf "\n" > /dev/tty; \
+	else \
+		read -r SECRET; \
+	fi; \
+	SECRET=$$(printf '%s' "$$SECRET" | tr -d '\r\n\033' | sed 's/\[200~//g; s/\[201~//g; s/^ *//; s/ *$$//; s/^"//; s/"$$//; s/^'\''//; s/'\''$$//'); \
+	if [ -z "$$SECRET" ]; then echo "Error: no ADMIN_API_KEY provided."; exit 1; fi; \
 	cd $(API_DIR) && printf '%s' "$$SECRET" | bunx wrangler secret put ADMIN_API_KEY
 
 .PHONY: api-deploy-staging-set-hmac-secret
