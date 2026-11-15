@@ -127,7 +127,7 @@ const stagingTrips: readonly NewExperience[] = [
   },
   {
     id: stagingTripTest2Id,
-    slug: 'test-trip-01geofence-entity-radius-hugo-path',
+    slug: 'test-trip-01-geomode-entity-radius-hugo-path',
     title: '[Test-R01] Deriva de prueba con geofence entidad',
     description: 'Deriva de prueba para staging',
     format: 'trip',
@@ -213,7 +213,7 @@ const STAGING_SHOWCASE_DESCRIPTION =
  * Audio and covers
  * ----------------
  * `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s). `Fuego` points at its own
- * object, `experiences/trips-deriva-fuego.mp3` (303 s), which the staging bucket **must already
+ * object, `experiences/tracks-fuego.mp3` (303 s), which the staging bucket **must already
  * hold**: nothing in this repository uploads it, and no test can observe a bucket, so a missing
  * object surfaces only as a 404 at playback. Confirm it before relying on the row. Covers are
  * members of `TRACK_IMAGE_KEYS`.
