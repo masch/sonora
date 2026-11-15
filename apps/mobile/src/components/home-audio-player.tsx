@@ -7,7 +7,7 @@ import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useAppTranslation } from '@/hooks/use-translation';
-import { TwView } from '@/tw';
+import { TwPressable, TwView } from '@/tw';
 import { Button, IconButton } from '@/components/ui/button';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { formatTime } from '@/utils/time';
@@ -230,26 +230,34 @@ export function HomeAudioPlayer({ format }: HomeAudioPlayerProps) {
           variant="ghost"
           size="lg"
           tintColor={colors.homeCardText}
+          iconSize={30}
+          className="self-center"
         />
 
         <TwView className="flex-1">
           <TwView className="flex-row justify-between items-start">
-            <TwView className="flex-1 mr-2">
-              <Button
-                variant="ghost"
-                onPress={handlePlayPress}
-                disabled={isDownloading}
-                label={t('home.instructionsName')}
-                testID="home-player-title-button"
-                accessibilityLabel={t('home.instructionsName')}
-              />
+            {/* Compound title+subtitle surface (card row, rich text): `Button`
+                fixes its own typography and cannot express the card title. */}
+            <TwPressable
+              testID="home-player-title-button"
+              onPress={handlePlayPress}
+              disabled={isDownloading}
+              className="flex-1 mr-2 active:opacity-75"
+              accessibilityLabel={t('home.instructionsName')}
+            >
+              <ThemedText
+                className="text-lg font-extrabold leading-tight"
+                style={{ color: colors.homeCardText }}
+              >
+                {t('home.instructionsName')}
+              </ThemedText>
               <ThemedText
                 className="text-sm font-semibold mt-0.5"
                 style={{ color: colors.homeCardSubtext }}
               >
                 {statusText}
               </ThemedText>
-            </TwView>
+            </TwPressable>
 
             {/* Compact Mini Controls (Only shown when downloaded) */}
             {download.status === 'completed' && (

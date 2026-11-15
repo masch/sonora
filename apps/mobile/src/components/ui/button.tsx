@@ -21,6 +21,10 @@ export interface ButtonProps {
     web?: AndroidSymbol;
   };
   iconPosition?: 'left' | 'right';
+  /** Appended to the label's classes, after the variant's, so callers can express typography the variant cannot (e.g. a card title). */
+  textClassName?: string;
+  /** Overrides the variant's label color; use for surfaces with their own palette. */
+  textColor?: string;
   loading?: boolean;
   disabled?: boolean;
   className?: string;
@@ -42,6 +46,8 @@ export function Button({
   iconName,
   icon,
   iconPosition = 'left',
+  textClassName,
+  textColor,
   loading = false,
   disabled = false,
   className = '',
@@ -151,7 +157,8 @@ export function Button({
           {iconPosition === 'left' && renderIcon()}
           <ThemedText
             numberOfLines={numberOfLines}
-            className={`${sizeStyles.text} ${variantStyles.text}`}
+            className={`${sizeStyles.text} ${variantStyles.text} ${textClassName ?? ''}`}
+            style={textColor ? { color: textColor } : undefined}
           >
             {label}
           </ThemedText>
