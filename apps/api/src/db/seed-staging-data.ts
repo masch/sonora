@@ -261,7 +261,7 @@ export const stagingShowcaseExperiences: readonly NewExperience[] = [
     description: 'Maga de Massi',
     format: 'track',
     themeKey: 'community',
-    audioUrl: 'experiences/trips-deriva-fuego.mp3',
+    audioUrl: 'experiences/tracks-fuego.mp3',
     durationSeconds: 303,
     latitude: -32.191576848045585,
     longitude: -64.75240243117017,

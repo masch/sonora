@@ -166,7 +166,7 @@ describe('stagingShowcaseExperiences — the two showcase pieces', () => {
     const fuego = stagingShowcaseExperiences[1]!;
     expect(deriva.audioUrl).toBe(STAGING_AUDIO_KEY);
     expect(deriva.durationSeconds).toBe(180);
-    expect(fuego.audioUrl).toBe('experiences/trips-deriva-fuego.mp3');
+    expect(fuego.audioUrl).toBe('experiences/tracks-fuego.mp3');
     expect(fuego.durationSeconds).toBe(303);
     for (const e of stagingShowcaseExperiences) {
       expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
