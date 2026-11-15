@@ -126,6 +126,61 @@ export const MapConfigSchema = z.looseObject({
 
 export type MapConfig = z.infer<typeof MapConfigSchema>;
 
+/**
+ * Instructions audio for one experience format: the slug doubles as the
+ * download-cache track id on the client, so it must stay stable across
+ * releases — changing it makes every installed device re-download the audio.
+ * `audioKey` is the object key in the public audio bucket; `/config` derives
+ * the absolute url from the request origin, so the same compiled value serves
+ * every environment. `route` is where the global player navigates when this
+ * audio is current: the instructions experience has no detail screen of its
+ * own, so the destination is the format's list, chosen by configuration
+ * rather than compiled into the app.
+ */
+export const ExperienceInstructionsConfigSchema = z.looseObject({
+  slug: z.string().min(1),
+  audioKey: z.string().min(1).regex(/^[^/]/, 'must be a bucket key, not an absolute path or url'),
+  route: z.string().regex(/^\//, 'must be an app path starting with /'),
+});
+export type ExperienceInstructionsConfig = z.infer<typeof ExperienceInstructionsConfigSchema>;
+
+/**
+ * Per-format configuration the app reads from `/config`, keyed by experience
+ * format (`trip`, `track`, ...). Every declared format must carry its
+ * instructions node; a new node type travels without a schema change on older
+ * clients, which tolerate unknown keys instead of rejecting the payload.
+ */
+export const ExperiencesConfigSchema = z.record(
+  z.string(),
+  z.looseObject({
+    instructions: ExperienceInstructionsConfigSchema,
+  }),
+);
+export type ExperiencesConfig = z.infer<typeof ExperiencesConfigSchema>;
+
+/**
+ * The compiled per-format configuration `/config` publishes: instructions
+ * audio per experience format. The slug doubles as the client's download-cache
+ * track id — never change a slug once released. The audio keys name objects in
+ * the public bucket (`make api-upload-public-audio-*`).
+ */
+export const EXPERIENCES_CONFIG_DEFAULT: ExperiencesConfig = {
+  trip: {
+    instructions: {
+      slug: 'instructions-trip',
+      audioKey: 'instructions/trip.mp3',
+      route: '/derivas',
+    },
+  },
+  track: {
+    instructions: {
+      slug: 'instructions-track',
+      audioKey: 'instructions/track.mp3',
+      route: '/poetics',
+    },
+  },
+};
+
 export const RemoteConfigPayloadSchema = z.object({
   geofence: z.object({
     trip: z.object({
@@ -145,6 +200,12 @@ export const RemoteConfigPayloadSchema = z.object({
   feedback: z.object({
     syncIntervalSec: z.number().positive(),
   }),
+  /**
+   * Per-experience-format configuration, compiled: the instructions audio and
+   * its navigation route are the same in every environment, so the defaults
+   * below are the single source and `/config` publishes them unchanged.
+   */
+  experiences: ExperiencesConfigSchema.default(EXPERIENCES_CONFIG_DEFAULT),
   appVersion: RemoteConfigAppVersionSchema,
   social: RemoteConfigSocialSchema,
   /** Public map catalog. An empty `regions` means nothing is published yet. */
@@ -162,6 +223,7 @@ export const DEFAULT_REMOTE_CONFIG: RemoteConfigPayload = {
   },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
+  experiences: EXPERIENCES_CONFIG_DEFAULT,
   appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
   social: {
     instagramHandle: 'sonora.derivapoetica',
