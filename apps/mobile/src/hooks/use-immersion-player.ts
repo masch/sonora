@@ -7,6 +7,8 @@ export type { PlayerStatus };
 
 export interface ImmersionPlayerState {
   status: PlayerStatus;
+  /** Whether the shared player is currently on this hook's audio. */
+  isCurrentTrack: boolean;
   positionMs: number;
   durationMs: number;
   errorMsg: string | null;
@@ -76,6 +78,7 @@ export function useImmersionPlayer(
 
   return {
     status,
+    isCurrentTrack,
     positionMs: displayPositionMs,
     durationMs: displayDurationMs,
     errorMsg: displayErrorMsg,

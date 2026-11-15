@@ -9,6 +9,7 @@ import { useTrackDownload } from '@/hooks/use-track-download';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
 import { Button, IconButton } from '@/components/ui/button';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { formatTime } from '@/utils/time';
 import { useEffect, useRef } from 'react';
 
@@ -105,7 +106,8 @@ function InstructionsLoadingCard({
 export function HomeAudioPlayer({ format }: HomeAudioPlayerProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
-  const { instructions, loading: configLoading } = useInstructionsAudio(format);
+  const { instructions, loading: configLoading, error: configError } = useInstructionsAudio(format);
+  const refetchConfig = useRemoteConfigStore((state) => state.refetch);
   const resolved = configLoading ? null : instructions;
   const audioUrl = resolved?.audioUrl ?? null;
   const trackId = resolved?.slug ?? null;
@@ -144,14 +146,17 @@ export function HomeAudioPlayer({ format }: HomeAudioPlayerProps) {
     }
   };
 
+  // Rewind and reset act on the shared player, so they only run when this
+  // card's audio is the one playing — an idle card must not seek another
+  // format's player.
   const handleRewind = () => {
-    if (download.status === 'completed') {
+    if (download.status === 'completed' && player.isCurrentTrack) {
       rewind();
     }
   };
 
   const handleReset = () => {
-    if (download.status === 'completed') {
+    if (download.status === 'completed' && player.isCurrentTrack) {
       player.seekTo(0);
     }
   };
@@ -174,6 +179,31 @@ export function HomeAudioPlayer({ format }: HomeAudioPlayerProps) {
   // loading -> ready transition.
   if (configLoading) {
     return <InstructionsLoadingCard colors={colors} title={t('home.instructionsName')} />;
+  }
+
+  // The config request failed without a cache: a distinct state with a retry,
+  // so a failed fetch is not mistaken for an unconfigured format.
+  if (configError) {
+    return (
+      <TwView
+        className="rounded-[24px] p-5"
+        style={{ backgroundColor: colors.homeInstructionsBg }}
+        testID="home-audio-player-error"
+      >
+        <ThemedText className="text-sm font-semibold" style={{ color: colors.homeCardText }}>
+          {t('components.mediaControls.configError')}
+        </ThemedText>
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => refetchConfig()}
+          label={t('components.mediaControls.configRetry')}
+          testID="home-audio-player-error-retry"
+          accessibilityLabel={t('components.mediaControls.configRetry')}
+          className="mt-3 self-start"
+        />
+      </TwView>
+    );
   }
 
   // The config answered without instructions for this format: nothing to offer.
