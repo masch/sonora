@@ -145,7 +145,7 @@ describe('ExperiencesScreen', () => {
     expect(queryByText('El arroyo')).toBeNull();
   });
 
-  it('does not render instructions audio player when format prop is locked to track', async () => {
+  it('renders instructions audio player when format prop is locked to track', async () => {
     const { getByPlaceholderText, queryByTestId } = await render(
       <ExperiencesScreen format="track" />,
     );
@@ -154,27 +154,27 @@ describe('ExperiencesScreen', () => {
       expect(getByPlaceholderText('Search tracks...')).toBeTruthy();
     });
 
-    expect(queryByTestId('home-audio-player')).toBeNull();
+    expect(queryByTestId('home-audio-player')).toBeTruthy();
   });
 
-  it('renders instructions audio player when format is trip and hides it when switching back to track', async () => {
-    const { getByTestId, queryByTestId } = await render(<ExperiencesScreen showChips />);
+  it('renders instructions audio player for both track and trip formats', async () => {
+    const { getByTestId } = await render(<ExperiencesScreen showChips />);
 
     await waitFor(() => {
       expect(getByTestId('type-chip-track')).toBeTruthy();
     });
 
-    // 1. Initial state is track -> must not be present
-    expect(queryByTestId('home-audio-player')).toBeNull();
+    // 1. Initial state is track -> instructions player must be present
+    expect(getByTestId('home-audio-player')).toBeTruthy();
 
-    // 2. Switch to trip -> must be present
+    // 2. Switch to trip -> instructions player must still be present
     const tripChip = getByTestId('type-chip-trip');
     await fireEvent.press(tripChip);
     expect(getByTestId('home-audio-player')).toBeTruthy();
 
-    // 3. Switch back to track -> must disappear
+    // 3. Switch back to track -> instructions player must still be present
     const trackChip = getByTestId('type-chip-track');
     await fireEvent.press(trackChip);
-    expect(queryByTestId('home-audio-player')).toBeNull();
+    expect(getByTestId('home-audio-player')).toBeTruthy();
   });
 });

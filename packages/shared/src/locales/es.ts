@@ -250,6 +250,8 @@ export const es = {
       btnPause: 'Pausar',
       btnStop: 'Detener',
       statusLoading: 'Cargando…',
+      configError: 'No se pudo cargar la configuración de instrucciones.',
+      configRetry: 'Reintentar',
       position: '{{value}}s',
       duration: '{{value}}s',
       btnPlayDownload: 'Reproducir',

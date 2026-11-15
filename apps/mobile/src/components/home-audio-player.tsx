@@ -1,5 +1,6 @@
 import { Icon, type GenericIconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
+import { type ExperienceFormat } from '@/data/experiences';
 import { useAudioRewind } from '@/hooks/use-audio-rewind';
 import { useImmersionPlayer } from '@/hooks/use-immersion-player';
 import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
@@ -7,20 +8,117 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useTrackDownload } from '@/hooks/use-track-download';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwPressable, TwView } from '@/tw';
+import { Button, IconButton } from '@/components/ui/button';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { formatTime } from '@/utils/time';
 import { useEffect, useRef } from 'react';
 
-export function HomeAudioPlayer() {
+export interface HomeAudioPlayerProps {
+  /** Which experience format's instructions to play; there is no default on purpose. */
+  format: ExperienceFormat;
+}
+
+/** Label below the title: elapsed time when playing, download progress, or the subtitle. */
+function resolveStatusText({
+  download,
+  player,
+  subtitle,
+  downloading,
+}: {
+  download: { status: string; progress: number };
+  player: { durationMs: number; positionMs: number };
+  subtitle: string;
+  downloading: string;
+}): string {
+  if (download.status === 'downloading') return downloading;
+  if (download.status === 'completed' && player.durationMs > 0) {
+    return `${formatTime(player.positionMs)} / ${formatTime(player.durationMs)}`;
+  }
+  return subtitle;
+}
+
+/** Progress bar fill: download progress while downloading, playback position once ready. */
+function resolveProgressPct({
+  download,
+  player,
+}: {
+  download: { status: string; progress: number };
+  player: { durationMs: number; positionMs: number };
+}): number {
+  if (download.status === 'downloading') return download.progress;
+  if (download.status === 'completed' && player.durationMs > 0) {
+    return (player.positionMs / player.durationMs) * 100;
+  }
+  return 0;
+}
+
+/** Main action icon: download while fetching, pause while playing, play otherwise. */
+function resolveActionIcon({
+  isDownloading,
+  isPlaying,
+}: {
+  isDownloading: boolean;
+  isPlaying: boolean;
+}): GenericIconName {
+  if (isDownloading) return 'download';
+  if (isPlaying) return 'pause';
+  return 'play';
+}
+
+function InstructionsLoadingCard({
+  colors,
+  title,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  title: string;
+}) {
+  const { t } = useAppTranslation();
+
+  return (
+    <TwView
+      className="rounded-[24px] p-5 opacity-70"
+      style={{ backgroundColor: colors.homeInstructionsBg }}
+      testID="home-audio-player-loading"
+    >
+      <TwView className="flex-row items-start gap-4">
+        <TwView className="pt-1">
+          <Icon name="play" size={28} tintColor={colors.homeCardText} />
+        </TwView>
+        <TwView className="flex-1">
+          <ThemedText
+            className="text-lg font-extrabold leading-tight"
+            style={{ color: colors.homeCardText }}
+          >
+            {title}
+          </ThemedText>
+          <ThemedText
+            className="text-sm font-semibold mt-0.5"
+            style={{ color: colors.homeCardSubtext }}
+          >
+            {t('components.mediaControls.statusLoading')}
+          </ThemedText>
+        </TwView>
+      </TwView>
+    </TwView>
+  );
+}
+
+export function HomeAudioPlayer({ format }: HomeAudioPlayerProps) {
   const { t } = useAppTranslation();
   const colors = useThemeColors();
+  const { instructions, loading: configLoading, error: configError } = useInstructionsAudio(format);
+  const refetchConfig = useRemoteConfigStore((state) => state.refetch);
+  const resolved = configLoading ? null : instructions;
+  const audioUrl = resolved?.audioUrl ?? null;
+  const trackId = resolved?.slug ?? null;
+
   const playOnDownloadCompleteRef = useRef(false);
   const rewind = useAudioRewind();
 
-  const { audioUrl, trackId } = useInstructionsAudio();
   const download = useTrackDownload(trackId, audioUrl, t('home.instructionsName'));
   const player = useImmersionPlayer(download.localAudioUri, {
     title: t('home.instructionsName'),
-    id: trackId,
+    id: trackId ?? undefined,
   });
 
   // Auto-play when download completes if requested by user
@@ -48,14 +146,17 @@ export function HomeAudioPlayer() {
     }
   };
 
+  // Rewind and reset act on the shared player, so they only run when this
+  // card's audio is the one playing — an idle card must not seek another
+  // format's player.
   const handleRewind = () => {
-    if (download.status === 'completed') {
+    if (download.status === 'completed' && player.isCurrentTrack) {
       rewind();
     }
   };
 
   const handleReset = () => {
-    if (download.status === 'completed') {
+    if (download.status === 'completed' && player.isCurrentTrack) {
       player.seekTo(0);
     }
   };
@@ -63,38 +164,60 @@ export function HomeAudioPlayer() {
   const isDownloading = download.status === 'downloading';
   const isPlaying = player.status === 'playing';
 
-  // Determine label/time string
-  let statusText = t('home.instructionsSubtitle');
-  if (isDownloading) {
-    statusText = t('components.mediaControls.statusDownloading', {
+  const statusText = resolveStatusText({
+    download,
+    player,
+    subtitle: t('home.instructionsSubtitle'),
+    downloading: t('components.mediaControls.statusDownloading', {
       value: Math.round(download.progress),
-    });
-  } else if (download.status === 'completed' && player.durationMs > 0) {
-    statusText = `${formatTime(player.positionMs)} / ${formatTime(player.durationMs)}`;
+    }),
+  });
+  const progressPct = resolveProgressPct({ download, player });
+  const actionIconName = resolveActionIcon({ isDownloading, isPlaying });
+
+  // Loading card after every hook, so hook order stays stable across the
+  // loading -> ready transition.
+  if (configLoading) {
+    return <InstructionsLoadingCard colors={colors} title={t('home.instructionsName')} />;
   }
 
-  // Determine progress bar percentage
-  let progressPct = 0;
-  if (isDownloading) {
-    progressPct = download.progress;
-  } else if (download.status === 'completed' && player.durationMs > 0) {
-    progressPct = (player.positionMs / player.durationMs) * 100;
+  // The config request failed without a cache: a distinct state with a retry,
+  // so a failed fetch is not mistaken for an unconfigured format.
+  if (configError) {
+    return (
+      <TwView
+        className="rounded-[24px] p-5"
+        style={{ backgroundColor: colors.homeInstructionsBg }}
+        testID="home-audio-player-error"
+      >
+        <ThemedText className="text-sm font-semibold" style={{ color: colors.homeCardText }}>
+          {t('components.mediaControls.configError')}
+        </ThemedText>
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => refetchConfig()}
+          label={t('components.mediaControls.configRetry')}
+          testID="home-audio-player-error-retry"
+          accessibilityLabel={t('components.mediaControls.configRetry')}
+          className="mt-3 self-start"
+        />
+      </TwView>
+    );
   }
 
-  // Determine main play/pause/download icon name
-  let actionIconName: GenericIconName = 'play';
-  if (isDownloading) {
-    actionIconName = 'download';
-  } else if (isPlaying) {
-    actionIconName = 'pause';
+  // The config answered without instructions for this format: nothing to offer.
+  if (!resolved) {
+    return null;
   }
 
   return (
     <TwView className="rounded-[24px] p-5" style={{ backgroundColor: colors.homeInstructionsBg }}>
       <TwView className="flex-row items-start gap-4">
         {/* Play / Pause / Download Icon Button */}
-        <TwPressable
+        <IconButton
           testID="home-audio-player"
+          iconName={actionIconName}
           onPress={handlePlayPress}
           disabled={isDownloading}
           accessibilityLabel={
@@ -104,15 +227,17 @@ export function HomeAudioPlayer() {
                 ? t('components.mediaControls.btnPlay')
                 : t('components.mediaControls.btnPlayDownload')
           }
-          className="pt-1 active:opacity-75"
-        >
-          <TwView testID="home-player-play-button">
-            <Icon name={actionIconName} size={28} tintColor={colors.homeCardText} />
-          </TwView>
-        </TwPressable>
+          variant="ghost"
+          size="lg"
+          tintColor={colors.homeCardText}
+          iconSize={30}
+          className="self-center"
+        />
 
         <TwView className="flex-1">
           <TwView className="flex-row justify-between items-start">
+            {/* Compound title+subtitle surface (card row, rich text): `Button`
+                fixes its own typography and cannot express the card title. */}
             <TwPressable
               testID="home-player-title-button"
               onPress={handlePlayPress}
@@ -138,26 +263,28 @@ export function HomeAudioPlayer() {
             {download.status === 'completed' && (
               <TwView className="flex-row items-center gap-1 pt-1">
                 {/* Reset button */}
-                <TwPressable
+                <IconButton
                   onPress={handleReset}
                   accessibilityLabel={t('components.mediaControls.btnReset')}
                   testID="home-player-reset-button"
+                  iconName="reset"
+                  variant="ghost"
+                  size="sm"
+                  tintColor={colors.homeCardText}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  className="active:opacity-75 p-2"
-                >
-                  <Icon name="reset" size={20} tintColor={colors.homeCardText} />
-                </TwPressable>
+                />
 
                 {/* Rewind 10s button */}
-                <TwPressable
+                <IconButton
                   onPress={handleRewind}
                   accessibilityLabel={t('components.mediaControls.btnRewind')}
                   testID="home-player-rewind-button"
+                  iconName="rewind"
+                  variant="ghost"
+                  size="sm"
+                  tintColor={colors.homeCardText}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  className="active:opacity-75 p-2"
-                >
-                  <Icon name="rewind" size={20} tintColor={colors.homeCardText} />
-                </TwPressable>
+                />
               </TwView>
             )}
           </TwView>

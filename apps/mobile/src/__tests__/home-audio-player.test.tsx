@@ -4,8 +4,16 @@ import { fireEvent, render } from '@testing-library/react-native';
 const mockStartDownload = jest.fn();
 const mockDeleteTrackLocal = jest.fn();
 let mockDownloadStatus = 'idle';
+let mockIsCurrentTrack = true;
 let mockDownloadProgress = 0;
 let mockLocalAudioUri: string | null = null;
+
+const mockRefetchConfig = jest.fn(() => false);
+
+jest.mock('@/store/remote-config-store', () => ({
+  useRemoteConfigStore: (selector: (state: { refetch: () => boolean }) => unknown) =>
+    selector({ refetch: mockRefetchConfig }),
+}));
 
 jest.mock('@/hooks/use-track-download', () => ({
   useTrackDownload: () => ({
@@ -29,6 +37,7 @@ let mockDurationMs = 0;
 jest.mock('@/hooks/use-immersion-player', () => ({
   useImmersionPlayer: () => ({
     status: mockPlayerStatus,
+    isCurrentTrack: mockIsCurrentTrack,
     positionMs: mockPositionMs,
     durationMs: mockDurationMs,
     errorMsg: null,
@@ -59,13 +68,18 @@ jest.mock('@/hooks/use-audio-rewind', () => ({
   useAudioRewind: () => mockRewind,
 }));
 
+const mockInstructionsState = {
+  instructions: null as { slug: string; audioUrl: string } | null,
+  loading: false,
+  error: null as Error | null,
+};
+mockInstructionsState.instructions = {
+  slug: 'instructions',
+  audioUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
+};
+
 jest.mock('@/hooks/use-instructions-audio', () => ({
-  useInstructionsAudio: () => ({
-    audioUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
-    trackId: 'instructions',
-    loading: false,
-    error: null,
-  }),
+  useInstructionsAudio: () => mockInstructionsState,
 }));
 
 describe('HomeAudioPlayer', () => {
@@ -73,6 +87,7 @@ describe('HomeAudioPlayer', () => {
     jest.clearAllMocks();
     mockDownloadStatus = 'idle';
     mockDownloadProgress = 0;
+    mockIsCurrentTrack = true;
     mockLocalAudioUri = null;
     mockPlayerStatus = 'idle';
     mockPositionMs = 0;
@@ -80,7 +95,7 @@ describe('HomeAudioPlayer', () => {
   });
 
   it('renders initial state when undownloaded', async () => {
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     expect(getByTestId('home-audio-player')).toBeTruthy();
     expect(getByText('home.instructionsName')).toBeTruthy();
@@ -95,7 +110,7 @@ describe('HomeAudioPlayer', () => {
     mockDownloadStatus = 'downloading';
     mockDownloadProgress = 45;
 
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     expect(getByText('Downloading (45%)…')).toBeTruthy();
     const fill = getByTestId('home-player-progress-bar-fill');
@@ -109,7 +124,7 @@ describe('HomeAudioPlayer', () => {
     mockPositionMs = 30000;
     mockDurationMs = 120000;
 
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     // Shows current/duration time
     expect(getByText('0:30 / 2:00')).toBeTruthy();
@@ -135,10 +150,51 @@ describe('HomeAudioPlayer', () => {
     mockLocalAudioUri = 'local-file-path.mp3';
     mockPlayerStatus = 'playing';
 
-    const { getByTestId } = await render(<HomeAudioPlayer />);
+    const { getByTestId } = await render(<HomeAudioPlayer format="trip" />);
 
     const playBtn = getByTestId('home-audio-player');
     await fireEvent.press(playBtn);
     expect(mockPause).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rewind or reset when the card does not own the current audio', async () => {
+    mockDownloadStatus = 'completed';
+    mockIsCurrentTrack = false;
+    const { getByTestId } = await render(<HomeAudioPlayer format="track" />);
+
+    await fireEvent.press(getByTestId('home-player-rewind-button'));
+    await fireEvent.press(getByTestId('home-player-reset-button'));
+
+    expect(mockRewind).not.toHaveBeenCalled();
+    expect(mockSeekTo).not.toHaveBeenCalled();
+  });
+
+  it('renders a distinct config-error state with a retry that refetches', async () => {
+    mockInstructionsState.loading = false;
+    mockInstructionsState.error = new Error('config fetch failed');
+    mockInstructionsState.instructions = null;
+    const { getByTestId } = await render(<HomeAudioPlayer format="track" />);
+
+    expect(getByTestId('home-audio-player-error')).toBeTruthy();
+    await fireEvent.press(getByTestId('home-audio-player-error-retry'));
+
+    expect(mockRefetchConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a disabled loading card while the remote config has not answered', async () => {
+    mockInstructionsState.loading = true;
+    const { getByTestId, queryByTestId } = await render(<HomeAudioPlayer format="trip" />);
+
+    expect(getByTestId('home-audio-player-loading')).toBeTruthy();
+    expect(queryByTestId('home-audio-player')).toBeNull();
+  });
+
+  it('renders nothing when the config answers without instructions audio', async () => {
+    mockInstructionsState.loading = false;
+    mockInstructionsState.instructions = null;
+    const { queryByTestId } = await render(<HomeAudioPlayer format="trip" />);
+
+    expect(queryByTestId('home-audio-player-loading')).toBeNull();
+    expect(queryByTestId('home-audio-player')).toBeNull();
   });
 });

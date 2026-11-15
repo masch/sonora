@@ -23,6 +23,7 @@ const CONFIG_FIXTURE = {
     bypassIosBrowser: true,
   },
   audio: { rewindOffsetMs: 15000 },
+  experiences: {},
   feedback: { syncIntervalSec: 60 },
   appVersion: { minimumVersion: '0.0.0', blockOlderVersions: false },
   social: { instagramHandle: 'sonora.derivapoetica' },

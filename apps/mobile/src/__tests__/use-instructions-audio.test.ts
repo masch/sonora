@@ -1,123 +1,125 @@
-import { APP_CONFIG } from '@/config/app-config';
-import type { Experience } from '@/data/experiences';
-import { fetchExperiences, INSTRUCTIONS_FALLBACK_TRACK_ID } from '@/data/experiences';
+import {
+  DEFAULT_REMOTE_CONFIG as mockDefaultRemoteConfig,
+  type RemoteConfigPayload,
+} from '@sonora/shared';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useInstructionsAudio } from '@/hooks/use-instructions-audio';
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 
 // ── Mocks ─────────────────────────────────────────────
 
-const mockTrip: Experience = {
-  id: 'a23baa7e-2c82-472f-9241-4f23e00c1733',
-  slug: 'instructions',
-  title: 'INSTRUCTIONS',
-  description: '(cómo usar la app de Sonora)',
-  format: 'trip',
-  themeKey: 'onboarding',
-  audioUrl: 'experiences/instrucciones.mp3',
-  durationSeconds: 116,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: true,
-  imageKey: 'tracks-pajaros-chiricotes-cover',
-  geofenceBypassable: false,
-} as Experience;
+// A real zustand store backing the mocked module, so tests drive it with
+// `useRemoteConfigStore.setState` exactly like the app runtime does.
+jest.mock('@/store/remote-config-store', () => {
+  const { create } = jest.requireActual('zustand') as typeof import('zustand');
+  return {
+    useRemoteConfigStore: create(() => ({
+      config: jest.requireActual('@sonora/shared').DEFAULT_REMOTE_CONFIG as RemoteConfigPayload,
+      isLoading: false,
+      error: null,
+      versionStatus: 'ok',
+      liveConfigApplied: false,
+      init: jest.fn(),
+      refetch: jest.fn(() => false),
+    })),
+  };
+});
 
-const mockOtherExperience: Experience = {
-  id: 'a23baa7e-2c82-472f-9241-4f23e00c1732',
-  slug: 'umepay-bosque',
-  title: 'DERIVA DEL BOSQUE AL RÍO',
-  description: 'Deriva del boque al río',
-  format: 'trip',
-  themeKey: 'landscapes',
-  audioUrl: 'experiences/trips-deriva-centro.mp3',
-  durationSeconds: 2104,
-  latitude: -32.211913,
-  longitude: -64.73809012343702,
-  free: false,
-  price: 100,
-  currency: 'ARS',
-  imageKey: 'trips-deriva-centro-cover',
-  geofenceBypassable: false,
-} as Experience;
-
-jest.mock('@/data/experiences', () => ({
-  fetchExperiences: jest.fn(),
-  isPlayableExperience: jest.fn((exp: unknown) => exp != null),
-  INSTRUCTIONS_SLUG: 'instructions',
-  INSTRUCTIONS_FALLBACK_TRACK_ID: 'instructions',
-}));
-
-jest.mock('@/config/app-config', () => ({
-  APP_CONFIG: {
-    audio: {
-      instructionsUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
+// Mirrors what `/config` serves: the compiled audioKey plus the derived url.
+const configWithInstructions: RemoteConfigPayload = {
+  ...mockDefaultRemoteConfig,
+  experiences: {
+    trip: {
+      instructions: {
+        slug: 'instructions-trip',
+        audioKey: 'instructions/trip.mp3',
+        audioUrl: 'https://audio.example.com/instructions-trip.mp3',
+        route: '/derivas',
+      },
+    },
+    track: {
+      instructions: {
+        slug: 'instructions-track',
+        audioKey: 'instructions/track.mp3',
+        audioUrl: 'https://audio.example.com/instructions-track.mp3',
+        route: '/poetics',
+      },
     },
   },
-}));
+} as RemoteConfigPayload;
+
+function setStore(
+  patch: Partial<{ config: RemoteConfigPayload; isLoading: boolean; error: Error | null }>,
+) {
+  useRemoteConfigStore.setState(patch as never);
+}
 
 // ── Tests ─────────────────────────────────────────────
 
 describe('useInstructionsAudio', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.mocked(fetchExperiences).mockReturnValue(new Promise<never>(() => {}));
+    setStore({ config: mockDefaultRemoteConfig, isLoading: false, error: null });
   });
 
-  it('returns loading state on mount with fallback values', async () => {
-    jest.mocked(fetchExperiences).mockImplementationOnce(
-      () => new Promise<never>(() => {}), // never resolves
-    );
+  it('returns null audioUrl and trackId when the format has no instructions node', async () => {
+    const { result } = await renderHook(() => useInstructionsAudio('trip'));
 
-    const { result } = await renderHook(() => useInstructionsAudio());
+    expect(result.current.instructions).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('returns trip instructions slug and audioUrl from the remote config', async () => {
+    setStore({ config: configWithInstructions });
+
+    const { result } = await renderHook(() => useInstructionsAudio('trip'));
+
+    expect(result.current.instructions).toEqual({
+      slug: 'instructions-trip',
+      audioUrl: 'https://audio.example.com/instructions-trip.mp3',
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('returns track instructions slug and audioUrl when format is track', async () => {
+    setStore({ config: configWithInstructions });
+
+    const { result } = await renderHook(() => useInstructionsAudio('track'));
+
+    expect(result.current.instructions).toEqual({
+      slug: 'instructions-track',
+      audioUrl: 'https://audio.example.com/instructions-track.mp3',
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('returns a null node for a configured format missing from the config', async () => {
+    setStore({
+      config: {
+        ...configWithInstructions,
+        experiences: { trip: configWithInstructions.experiences.trip! },
+      },
+    });
+
+    const { result } = await renderHook(() => useInstructionsAudio('track'));
+
+    expect(result.current.instructions).toBeNull();
+  });
+
+  it('reports loading while the remote config has not answered', async () => {
+    setStore({ isLoading: true });
+
+    const { result } = await renderHook(() => useInstructionsAudio('trip'));
 
     expect(result.current.loading).toBe(true);
-    expect(result.current.audioUrl).toBe(APP_CONFIG.audio.instructionsUrl);
-    expect(result.current.trackId).toBe(INSTRUCTIONS_FALLBACK_TRACK_ID);
-    expect(result.current.error).toBeNull();
   });
 
-  it('returns trip audioUrl and UUID when instructions trip is found', async () => {
-    jest.mocked(fetchExperiences).mockResolvedValueOnce([mockTrip]);
+  it('propagates the remote config error', async () => {
+    const configError = new Error('config fetch failed');
+    setStore({ error: configError });
 
-    const { result } = await renderHook(() => useInstructionsAudio());
+    const { result } = await renderHook(() => useInstructionsAudio('trip'));
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.audioUrl).toBe('experiences/instrucciones.mp3');
-    expect(result.current.trackId).toBe(mockTrip.id);
-    expect(result.current.error).toBeNull();
-  });
-
-  it('returns fallback values when API succeeds but no instructions trip', async () => {
-    jest.mocked(fetchExperiences).mockResolvedValueOnce([mockOtherExperience]);
-
-    const { result } = await renderHook(() => useInstructionsAudio());
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.audioUrl).toBe(APP_CONFIG.audio.instructionsUrl);
-    expect(result.current.trackId).toBe(INSTRUCTIONS_FALLBACK_TRACK_ID);
-    expect(result.current.error).toBeNull();
-  });
-
-  it('returns fallback values and error when API fetch fails', async () => {
-    const networkError = new Error('Network request failed');
-    jest.mocked(fetchExperiences).mockRejectedValueOnce(networkError);
-
-    const { result } = await renderHook(() => useInstructionsAudio());
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.audioUrl).toBe(APP_CONFIG.audio.instructionsUrl);
-    expect(result.current.trackId).toBe(INSTRUCTIONS_FALLBACK_TRACK_ID);
-    expect(result.current.error).toBe(networkError);
-  });
-
-  it('passes abort signal from controller to fetchExperiences', async () => {
-    const { unmount } = await renderHook(() => useInstructionsAudio());
-
-    expect(jest.mocked(fetchExperiences)).toHaveBeenCalled();
-
-    unmount();
+    expect(result.current.error).toBe(configError);
   });
 });

@@ -6,8 +6,9 @@ import { isSameExperience, useCurrentExperience } from '@/hooks/use-current-expe
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
 import { useAudioPlayerStore } from '@/store/audio-player-store';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { TwView } from '@/tw';
-import { INSTRUCTIONS_EXPERIENCE_ID, INSTRUCTIONS_EXPERIENCES_SLUG } from '@sonora/shared';
+import { FEEDBACK_NO_EXPERIENCE_ID } from '@sonora/shared';
 import { usePathname, useRouter, useSegments } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,8 +39,18 @@ function navigateToCurrentExperience(
   title?: string | null,
 ) {
   const targetId = experienceId || slug || id;
-  if (targetId === INSTRUCTIONS_EXPERIENCES_SLUG || targetId === INSTRUCTIONS_EXPERIENCE_ID) {
+  // The instructions audio has no detail screen: where it navigates is decided
+  // by its configured `route` in the remote config, per format (the list of
+  // that format). A node without a route, and the feedback sentinel id, do not
+  // navigate.
+  const config = useRemoteConfigStore.getState().config;
+  const configuredRoute = Object.values(config.experiences).find(
+    (formatConfig) => formatConfig.instructions?.slug === targetId,
+  )?.instructions?.route;
+  if (targetId === FEEDBACK_NO_EXPERIENCE_ID) {
     router.push(ROUTES.PATH.DERIVAS);
+  } else if (targetId && configuredRoute) {
+    router.push(configuredRoute as import('expo-router').Href);
   } else if (targetId) {
     router.push(ROUTES.PATH.POETICS_DETAIL(targetId, title || undefined));
   }

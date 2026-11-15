@@ -16,6 +16,15 @@ const fullPayload: RemoteConfigPayload = {
   },
   audio: { rewindOffsetMs: 10000 },
   feedback: { syncIntervalSec: 30 },
+  experiences: {
+    trip: {
+      instructions: {
+        slug: 'instructions-trip',
+        audioKey: 'instructions/trip.mp3',
+        route: '/derivas',
+      },
+    },
+  },
   appVersion: {
     minimumVersion: '1.0.0',
     blockOlderVersions: true,
@@ -109,6 +118,74 @@ describe('RemoteConfigPayloadSchema', () => {
     it('rejects negative syncIntervalSec', () => {
       const schema = RemoteConfigPayloadSchema.shape.feedback.shape.syncIntervalSec;
       expect(schema.safeParse(-5).success).toBe(false);
+    });
+  });
+
+  describe('experiences (per-format instructions)', () => {
+    it('parses a per-format instructions node', () => {
+      const parsed = RemoteConfigPayloadSchema.parse(fullPayload);
+      expect(parsed.experiences.trip?.instructions?.slug).toBe('instructions-trip');
+      expect(parsed.experiences.trip?.instructions?.audioKey).toBe('instructions/trip.mp3');
+    });
+
+    it('defaults to the compiled per-format configuration', () => {
+      const { experiences: _omitted, ...withoutExperiences } = fullPayload;
+      const parsed = RemoteConfigPayloadSchema.parse(withoutExperiences);
+      expect(parsed.experiences.trip?.instructions?.slug).toBe('instructions-trip');
+      expect(parsed.experiences.track?.instructions?.route).toBe('/poetics');
+    });
+
+    it('tolerates unknown per-format nodes (forward compatibility)', () => {
+      const payload = {
+        ...fullPayload,
+        experiences: {
+          trip: {
+            instructions: fullPayload.experiences.trip.instructions,
+            outro: { slug: 'x', audioKey: 'instructions/x.mp3' },
+          },
+          futureFormat: {
+            instructions: { slug: 'y', audioKey: 'instructions/future.mp3', route: '/future' },
+          },
+        },
+      };
+      const parsed = RemoteConfigPayloadSchema.parse(payload);
+      // A known node keeps its unknown fields (looseObject), and an unknown
+      // format node is carried through untouched — older clients keep working.
+      expect(parsed.experiences.futureFormat?.instructions?.slug).toBe('y');
+    });
+
+    it('rejects a relative route', () => {
+      const badRelativeRoute = {
+        ...fullPayload,
+        experiences: {
+          trip: {
+            instructions: { slug: 's', audioKey: 'instructions/x.mp3', route: 'derivas' },
+          },
+        },
+      };
+      expect(() => RemoteConfigPayloadSchema.parse(badRelativeRoute)).toThrow();
+    });
+
+    it('rejects an audioKey that is an absolute path or url', () => {
+      const absolute = {
+        ...fullPayload,
+        experiences: {
+          trip: {
+            instructions: { slug: 's', audioKey: '/instructions/trip.mp3', route: '/derivas' },
+          },
+        },
+      };
+      expect(() => RemoteConfigPayloadSchema.parse(absolute)).toThrow();
+    });
+
+    it('rejects an instructions node missing a required field', () => {
+      const missingAudioKey = {
+        ...fullPayload,
+        experiences: {
+          trip: { instructions: { slug: 's', route: '/derivas' } },
+        },
+      };
+      expect(() => RemoteConfigPayloadSchema.parse(missingAudioKey)).toThrow();
     });
   });
 

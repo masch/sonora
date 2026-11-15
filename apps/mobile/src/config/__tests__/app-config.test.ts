@@ -44,7 +44,6 @@ describe('APP_CONFIG and config helpers', () => {
     expect(APP_CONFIG.geofence.trip.radiusMeters).toBeGreaterThan(0);
     expect(APP_CONFIG.geofence.track.radiusMeters).toBeGreaterThan(0);
     expect(APP_CONFIG.geofence.bypassGeofence).toBe(false);
-    expect(APP_CONFIG.audio.instructionsUrl).toBeDefined();
     expect(APP_CONFIG.feedback.syncIntervalSec).toBeGreaterThan(0);
   });
 

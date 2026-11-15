@@ -185,6 +185,20 @@ configRouter.get('/', configGuard(), async (c) => {
 
   return success(c, {
     ...DEFAULT_REMOTE_CONFIG,
+    // The compiled per-format configuration travels unchanged; the audio urls
+    // are derived from the request origin like every other public artifact.
+    experiences: Object.fromEntries(
+      Object.entries(DEFAULT_REMOTE_CONFIG.experiences).map(([format, formatConfig]) => [
+        format,
+        {
+          ...formatConfig,
+          instructions: {
+            ...formatConfig.instructions,
+            audioUrl: `${origin}/media/public/${formatConfig.instructions.audioKey}`,
+          },
+        },
+      ]),
+    ),
     geofence: {
       ...DEFAULT_REMOTE_CONFIG.geofence,
       track: {

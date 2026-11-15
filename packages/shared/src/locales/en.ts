@@ -249,6 +249,8 @@ export const en = {
       btnPause: 'Pause',
       btnStop: 'Stop',
       statusLoading: 'Loading…',
+      configError: 'Could not load the instructions configuration.',
+      configRetry: 'Retry',
       position: '{{value}}s',
       duration: '{{value}}s',
       btnPlayDownload: 'Play',

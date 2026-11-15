@@ -4,6 +4,7 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { GlobalAudioPlayer } from '@/components/global-audio-player';
 
 import { ExperienceAudioMetadata } from '@/store/audio-player-store';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 
 let mockSegments = ['(tabs)', 'index'];
 let mockPathname = '/(tabs)/index';
@@ -44,18 +45,24 @@ jest.mock('@/store/audio-player-store', () => {
   };
 });
 
-jest.mock('@/store/remote-config-store', () => ({
-  useRemoteConfigStore: (
-    selector: (state: { config: { audio: { rewindOffsetMs: number } } }) => unknown,
-  ) =>
-    selector({
+// A real zustand store backing the mocked module, so tests drive it with
+// `useRemoteConfigStore.setState` exactly like the app runtime does, and
+// `getState()` works for imperative readers (the global player navigation).
+jest.mock('@/store/remote-config-store', () => {
+  const { create } = jest.requireActual('zustand') as typeof import('zustand');
+  return {
+    useRemoteConfigStore: create(() => ({
       config: {
         audio: {
           rewindOffsetMs: 10000,
         },
+        experiences: {},
       },
-    }),
-}));
+      isLoading: false,
+      error: null,
+    })),
+  };
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -216,11 +223,32 @@ describe('GlobalAudioPlayer', () => {
     );
   });
 
-  it('navigates to derivas tab screen when title is pressed for instructions audio', async () => {
+  it('navigates to the configured route when the current track is a configured instructions slug', async () => {
+    useRemoteConfigStore.setState({
+      config: {
+        audio: { rewindOffsetMs: 10000 },
+        experiences: {
+          trip: {
+            instructions: {
+              slug: 'instructions-trip',
+              audioUrl: 'https://audio.example.com/instructions-trip.mp3',
+              route: '/derivas',
+            },
+          },
+          track: {
+            instructions: {
+              slug: 'instructions-track',
+              audioUrl: 'https://audio.example.com/instructions-track.mp3',
+              route: '/poetics',
+            },
+          },
+        },
+      },
+    } as never);
     mockState.status = 'playing';
     mockState.currentUri = 'file://instructions.mp3';
     mockState.currentMetadata = {
-      id: 'instructions',
+      id: 'instructions-trip',
       title: 'Instructions',
     };
 
@@ -229,9 +257,20 @@ describe('GlobalAudioPlayer', () => {
     await fireEvent.press(titleBtn);
 
     expect(mockPush).toHaveBeenCalledWith('/derivas');
+
+    // The same guard routes each format to its own configured list: a fresh
+    // render picks up the track instructions metadata.
+    mockState.currentMetadata = {
+      id: 'instructions-track',
+      title: 'Instructions',
+    };
+    const trackRender = await render(<GlobalAudioPlayer />);
+    await fireEvent.press(trackRender.getByTestId('global-player-title-button'));
+
+    expect(mockPush).toHaveBeenCalledWith('/poetics');
   });
 
-  it('navigates to derivas tab screen when slug matches instructions slug', async () => {
+  it('navigates to poetics detail when the slug matches no configured instructions', async () => {
     mockState.status = 'playing';
     mockState.currentUri = 'file://audio.mp3';
     mockState.currentMetadata = {
@@ -242,7 +281,7 @@ describe('GlobalAudioPlayer', () => {
     const titleBtn = getByTestId('global-player-title-button');
     await fireEvent.press(titleBtn);
 
-    expect(mockPush).toHaveBeenCalledWith('/derivas');
+    expect(mockPush).toHaveBeenCalledWith('/poetics/instructions');
   });
 
   it('navigates to poetics detail with slug when id is absent', async () => {

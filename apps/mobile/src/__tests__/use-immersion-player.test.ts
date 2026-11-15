@@ -221,6 +221,7 @@ describe('useImmersionPlayer (refactored — thin store wrapper)', () => {
       [
         'durationMs',
         'errorMsg',
+        'isCurrentTrack',
         'pause',
         'play',
         'positionMs',

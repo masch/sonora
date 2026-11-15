@@ -1,4 +1,4 @@
-import { DEFAULT_REMOTE_CONFIG, INSTRUCTIONS_AUDIO_KEY } from '@sonora/shared';
+import { DEFAULT_REMOTE_CONFIG } from '@sonora/shared';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { SPLASH_ICONS } from '@/constants/images';
@@ -81,10 +81,6 @@ export const APP_CONFIG = {
      * Default sourced from @sonora/shared — overrideable via GET /api/config.
      */
     rewindOffsetMs: DEFAULT_REMOTE_CONFIG.audio.rewindOffsetMs,
-    /**
-     * Default instructions audio URL.
-     */
-    instructionsUrl: `${getApiBaseUrl()}/audio/public/${encodeURIComponent(INSTRUCTIONS_AUDIO_KEY)}`,
   },
   geofence: {
     /**

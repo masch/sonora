@@ -10,9 +10,11 @@ export type ExperienceFormat = (typeof EXPERIENCE_FORMATS)[number];
 export const DEVICE_ID_KEY = 'device_id';
 
 export const INSTRUCTIONS_EXPERIENCES_SLUG = 'instructions' as const;
-export const INSTRUCTIONS_EXPERIENCE_ID = '00000000-0000-0000-0000-000000000000' as const;
-export const INSTRUCTIONS_AUDIO_KEY = 'experiences/instrucciones.mp3' as const;
-export const INSTRUCTIONS_FALLBACK_TRACK_ID = 'instructions' as const;
+/** Sentinel experience id for feedback that belongs to no experience at all.
+ *  TODO(chore): rename the messages.tsx consumer and drop this alias. */
+export const FEEDBACK_NO_EXPERIENCE_ID = '00000000-0000-0000-0000-000000000000' as const;
+/** Deprecated alias kept until the messages screen chore lands. */
+export const INSTRUCTIONS_EXPERIENCE_ID = FEEDBACK_NO_EXPERIENCE_ID;
 
 export const TRACK_IMAGE_KEYS = [
   'trips-deriva-centro-cover',

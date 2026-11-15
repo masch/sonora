@@ -274,7 +274,7 @@ function ExperiencesContent({
 
       <TwView className="px-1 gap-5">
         {/* Instructions Audio Player */}
-        {selectedFormat === 'trip' && <HomeAudioPlayer />}
+        <HomeAudioPlayer key={selectedFormat} format={selectedFormat} />
 
         {filteredExperiences.length === 0 ? (
           <TwView className="items-center py-12" testID="tracks-empty-state">
