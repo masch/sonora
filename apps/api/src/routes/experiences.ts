@@ -9,6 +9,7 @@ import {
   resolveProximity,
   type UserExperienceFormat,
 } from '@sonora/shared';
+import { normalizeRadius } from '../middleware/config-guard';
 import {
   experienceAccesses,
   experienceCouponRedemptions,
@@ -195,6 +196,24 @@ experiencesRouter.post(
     }
     const { latitude, longitude } = c.req.valid('json') as ProximityBody;
 
+    const geofence = {
+      ...DEFAULT_REMOTE_CONFIG.geofence,
+      track: {
+        ...DEFAULT_REMOTE_CONFIG.geofence.track,
+        radiusMeters: normalizeRadius(
+          c.env?.GEOFENCE_TRACK_RADIUS_METERS,
+          DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
+        ),
+      },
+      trip: {
+        ...DEFAULT_REMOTE_CONFIG.geofence.trip,
+        radiusMeters: normalizeRadius(
+          c.env?.GEOFENCE_TRIP_RADIUS_METERS,
+          DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
+        ),
+      },
+    };
+
     const geo = resolveProximity({
       user: { latitude, longitude },
       origin: { latitude: exp.latitude, longitude: exp.longitude },
@@ -202,7 +221,7 @@ experiencesRouter.post(
       geoMode: exp.geoMode,
       radiusMeters: exp.radiusMeters,
       bypassGeofence: DEFAULT_REMOTE_CONFIG.geofence.bypassGeofence,
-      geofence: DEFAULT_REMOTE_CONFIG.geofence,
+      geofence,
     });
 
     return success(c, {

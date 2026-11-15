@@ -91,6 +91,8 @@ export interface Env {
   GRACE_PERIOD_START?: string;
   GRACE_PERIOD_END?: string;
   BYPASS_GEOFENCE_IOS_BROWSER?: string;
+  GEOFENCE_TRACK_RADIUS_METERS?: string;
+  GEOFENCE_TRIP_RADIUS_METERS?: string;
   MP_ACCESS_TOKEN?: string;
   MP_WEBHOOK_SECRET?: string;
   DEFAULT_PAYMENT_PROVIDER?: string;
@@ -117,6 +119,8 @@ export interface Variables {
     gracePeriodStart?: string;
     gracePeriodEnd?: string;
     bypassIosBrowser: boolean;
+    geofenceTrackRadiusMeters: number;
+    geofenceTripRadiusMeters: number;
     /** Version the archive and style urls are derived from. */
     mapArtifactVersion: string;
     /**

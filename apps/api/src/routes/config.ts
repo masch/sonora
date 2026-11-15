@@ -106,6 +106,8 @@ configRouter.get('/', configGuard(), async (c) => {
     gracePeriodStart,
     gracePeriodEnd,
     bypassIosBrowser,
+    geofenceTrackRadiusMeters,
+    geofenceTripRadiusMeters,
     mapArtifactVersion,
     mapPreloadRegions,
     mapRenderer,
@@ -182,6 +184,14 @@ configRouter.get('/', configGuard(), async (c) => {
     ...DEFAULT_REMOTE_CONFIG,
     geofence: {
       ...DEFAULT_REMOTE_CONFIG.geofence,
+      track: {
+        ...DEFAULT_REMOTE_CONFIG.geofence.track,
+        radiusMeters: geofenceTrackRadiusMeters,
+      },
+      trip: {
+        ...DEFAULT_REMOTE_CONFIG.geofence.trip,
+        radiusMeters: geofenceTripRadiusMeters,
+      },
       bypassIosBrowser,
     },
     map: {

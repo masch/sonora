@@ -45,6 +45,12 @@ export function normalizePreloadRegions(value: string | undefined): readonly Map
   return [...entries];
 }
 
+export function normalizeRadius(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export const configGuard = (): MiddlewareHandler<{
   Bindings: Env;
   Variables: Variables;
@@ -59,6 +65,14 @@ export const configGuard = (): MiddlewareHandler<{
         c.env?.BYPASS_GEOFENCE_IOS_BROWSER !== undefined
           ? c.env.BYPASS_GEOFENCE_IOS_BROWSER === 'true'
           : DEFAULT_REMOTE_CONFIG.geofence.bypassIosBrowser,
+      geofenceTrackRadiusMeters: normalizeRadius(
+        c.env?.GEOFENCE_TRACK_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.track.radiusMeters,
+      ),
+      geofenceTripRadiusMeters: normalizeRadius(
+        c.env?.GEOFENCE_TRIP_RADIUS_METERS,
+        DEFAULT_REMOTE_CONFIG.geofence.trip.radiusMeters,
+      ),
       // The artifact urls are derived from this version and the request origin,
       // never from a variable, so publishing v7 is one line and the head that
       // confirms the object reads the same key the client is given.
