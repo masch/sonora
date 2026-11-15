@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose new user-facing behaviour for the app or its APIs.
+title: '[feat] '
+labels: ['type:feature']
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One sentence naming what the user gains.
+      placeholder: The soundscape list shows an instructions audio player for its format.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Who needs this and what gap it closes today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What has to be true when this is done, one bullet per criterion.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where the work lands.
+      options:
+        - api
+        - mobile
+        - shared
+        - docs
+    validations:
+      required: true
