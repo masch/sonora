@@ -59,13 +59,18 @@ jest.mock('@/hooks/use-audio-rewind', () => ({
   useAudioRewind: () => mockRewind,
 }));
 
+const mockInstructionsState = {
+  instructions: null as { slug: string; audioUrl: string } | null,
+  loading: false,
+  error: null as Error | null,
+};
+mockInstructionsState.instructions = {
+  slug: 'instructions',
+  audioUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
+};
+
 jest.mock('@/hooks/use-instructions-audio', () => ({
-  useInstructionsAudio: () => ({
-    audioUrl: 'http://fallback-url/audio/stream?key=instructions.mp3&token=fallback',
-    trackId: 'instructions',
-    loading: false,
-    error: null,
-  }),
+  useInstructionsAudio: () => mockInstructionsState,
 }));
 
 describe('HomeAudioPlayer', () => {
@@ -80,7 +85,7 @@ describe('HomeAudioPlayer', () => {
   });
 
   it('renders initial state when undownloaded', async () => {
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     expect(getByTestId('home-audio-player')).toBeTruthy();
     expect(getByText('home.instructionsName')).toBeTruthy();
@@ -95,7 +100,7 @@ describe('HomeAudioPlayer', () => {
     mockDownloadStatus = 'downloading';
     mockDownloadProgress = 45;
 
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     expect(getByText('Downloading (45%)…')).toBeTruthy();
     const fill = getByTestId('home-player-progress-bar-fill');
@@ -109,7 +114,7 @@ describe('HomeAudioPlayer', () => {
     mockPositionMs = 30000;
     mockDurationMs = 120000;
 
-    const { getByTestId, getByText } = await render(<HomeAudioPlayer />);
+    const { getByTestId, getByText } = await render(<HomeAudioPlayer format="trip" />);
 
     // Shows current/duration time
     expect(getByText('0:30 / 2:00')).toBeTruthy();
@@ -135,10 +140,27 @@ describe('HomeAudioPlayer', () => {
     mockLocalAudioUri = 'local-file-path.mp3';
     mockPlayerStatus = 'playing';
 
-    const { getByTestId } = await render(<HomeAudioPlayer />);
+    const { getByTestId } = await render(<HomeAudioPlayer format="trip" />);
 
     const playBtn = getByTestId('home-audio-player');
     await fireEvent.press(playBtn);
     expect(mockPause).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a disabled loading card while the remote config has not answered', async () => {
+    mockInstructionsState.loading = true;
+    const { getByTestId, queryByTestId } = await render(<HomeAudioPlayer format="trip" />);
+
+    expect(getByTestId('home-audio-player-loading')).toBeTruthy();
+    expect(queryByTestId('home-audio-player')).toBeNull();
+  });
+
+  it('renders nothing when the config answers without instructions audio', async () => {
+    mockInstructionsState.loading = false;
+    mockInstructionsState.instructions = null;
+    const { queryByTestId } = await render(<HomeAudioPlayer format="trip" />);
+
+    expect(queryByTestId('home-audio-player-loading')).toBeNull();
+    expect(queryByTestId('home-audio-player')).toBeNull();
   });
 });

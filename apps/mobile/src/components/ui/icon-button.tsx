@@ -20,6 +20,8 @@ export interface IconButtonProps {
   };
   variant?: IconButtonVariant;
   size?: IconButtonSize;
+  /** Overrides the variant's icon color; use for surfaces with their own palette. */
+  tintColor?: string;
   loading?: boolean;
   disabled?: boolean;
   className?: string;
@@ -38,6 +40,7 @@ export function IconButton({
   icon,
   variant = 'ghost',
   size = 'md',
+  tintColor,
   loading = false,
   disabled = false,
   className = '',
@@ -102,7 +105,11 @@ export function IconButton({
     }
     if (iconName) {
       return (
-        <Icon name={iconName} size={sizeStyles.iconSize} tintColor={variantStyles.iconColor} />
+        <Icon
+          name={iconName}
+          size={sizeStyles.iconSize}
+          tintColor={tintColor ?? variantStyles.iconColor}
+        />
       );
     }
     if (icon) {

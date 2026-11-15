@@ -221,6 +221,7 @@ describe('RemoteConfigStore', () => {
         bypassIosBrowser: true,
       },
       audio: { rewindOffsetMs: 20000 },
+      experiences: DEFAULT_REMOTE_CONFIG.experiences,
       feedback: { syncIntervalSec: 300 },
       appVersion: { minimumVersion: '2.0.0', blockOlderVersions: true },
       social: { instagramHandle: 'sonora.derivapoetica' },

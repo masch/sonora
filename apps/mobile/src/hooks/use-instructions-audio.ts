@@ -1,71 +1,48 @@
-import { APP_CONFIG } from '@/config/app-config';
-import {
-  type Experience,
-  type PlayableExperience,
-  fetchExperiences,
-  isPlayableExperience,
-  INSTRUCTIONS_SLUG,
-  INSTRUCTIONS_FALLBACK_TRACK_ID,
-} from '@/data/experiences';
-import { useEffect, useState } from 'react';
+import type { ExperienceFormat } from '@/data/experiences';
+import { useRemoteConfigStore } from '@/store/remote-config-store';
 
 export interface UseInstructionsAudioResult {
-  /** Resolved audio URL — from the API instructions trip, or APP_CONFIG fallback */
-  audioUrl: string | null;
-  /** Resolved track ID — the trip UUID, or 'instructions' fallback */
-  trackId: string;
-  /** Loading while the experiences fetch is in-flight */
+  /**
+   * The configured instructions node for this format, or null when the
+   * remote config has none. Both fields always travel together: the shared
+   * schema requires slug and audioUrl in the same node, so a non-null node
+   * guarantees both.
+   */
+  instructions: { slug: string; audioUrl: string } | null;
+  /** Loading while the remote config has not answered yet */
   loading: boolean;
-  /** Error state when both API and fallback fail */
+  /** Error state when the remote config fetch fails */
   error: Error | null;
 }
 
 /**
- * Hook that resolves the instructions audio URL from the Experiences API.
+ * Hook that resolves the instructions audio for one experience format from the
+ * remote config payload (`GET /config`).
  *
- * On mount, fetches all experiences and finds the one with `slug === INSTRUCTIONS_SLUG`
- * and `format === 'trip'`. Falls back to `APP_CONFIG.audio.instructionsUrl` and
- * `INSTRUCTIONS_FALLBACK_TRACK_ID` when the API fetch fails or the trip is not found.
+ * The config node is `experiences.<format>.instructions` with `slug` and
+ * `audioUrl`; the slug doubles as the download-cache track id, so it must stay
+ * stable across releases. Returns null while loading and when the format has
+ * no instructions node — the player renders a loading card in the first case
+ * and nothing in the second.
  */
-export function useInstructionsAudio(): UseInstructionsAudioResult {
-  const [experiences, setExperiences] = useState<Experience[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+export function useInstructionsAudio(format: ExperienceFormat): UseInstructionsAudioResult {
+  const config = useRemoteConfigStore((state) => state.config);
+  const isLoading = useRemoteConfigStore((state) => state.isLoading);
+  const error = useRemoteConfigStore((state) => state.error);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let cancelled = false;
-
-    fetchExperiences(controller.signal)
-      .then((data) => {
-        if (!cancelled) {
-          setExperiences(data);
-          setError(null);
-          setLoading(false);
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, []);
-
-  // Derived value: React Compiler memoizes it automatically, no manual useMemo needed.
-  const found = experiences?.find((exp) => exp.slug === INSTRUCTIONS_SLUG && exp.format === 'trip');
-  const instructionsTrip: PlayableExperience | null =
-    found && isPlayableExperience(found) ? found : null;
+  const node = config.experiences?.[format]?.instructions ?? null;
+  // `audioUrl` is derived by `/config` from the compiled `audioKey` and is not
+  // part of the payload type. A compiled default without a live `/config`
+  // answer carries the key but no derived url, so it is not playable and the
+  // node stays null.
+  const audioUrl = (node as { audioUrl?: unknown } | null)?.audioUrl;
 
   return {
-    audioUrl: instructionsTrip?.audioUrl ?? APP_CONFIG.audio.instructionsUrl,
-    trackId: instructionsTrip?.id ?? INSTRUCTIONS_FALLBACK_TRACK_ID,
-    loading,
-    error: !instructionsTrip && error ? error : null,
+    instructions:
+      node && typeof audioUrl === 'string' && audioUrl.length > 0
+        ? { slug: node.slug, audioUrl }
+        : null,
+    loading: isLoading,
+    error,
   };
 }
