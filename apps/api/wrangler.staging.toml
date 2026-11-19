@@ -48,7 +48,7 @@ MAP_PRELOAD_REGIONS = "calamuchita"
 # The rollback is this value back to `leaflet` plus a deploy — no app release — and
 # it reaches every build that left the choice open. A build made with
 # `EXPO_PUBLIC_MAP_RENDERER=maplibre` stays on MapLibre regardless (T7 device builds).
-MAP_RENDERER = "maplibre"
+MAP_RENDERER = "leaflet"
 # Capability gate, not a preference: only these platforms can render the new map, and
 # `resolveMapRenderer` reads it before any list, so an incapable or missing platform
 # keeps Leaflet even with the value above. `web` is included because the export emits
