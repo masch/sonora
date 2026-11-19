@@ -40,7 +40,7 @@ MAP_ARTIFACT_VERSION = "v1"
 MAP_PRELOAD_REGIONS = "calamuchita"
 # Renderer served to this environment's clients. `maplibre` switches every build
 # that left the choice open; anything else keeps them on the Leaflet map.
-MAP_RENDERER = "leaflet"
+MAP_RENDERER = "maplibre"
 # Capability gate, not a preference: only these platforms can render the new map.
 # `web` is absent because the web export emits no MapLibre worker yet — adding
 # `web` here is what turns the new map on in browsers, once that worker loads.
