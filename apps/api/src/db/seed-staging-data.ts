@@ -11,10 +11,11 @@ import type { NewExperience, NewWaypoint } from './schema';
  * exercise the geofence modes. Stable hardcoded UUIDs, unique slugs (changed only via PR),
  * `[PRUEBA]`/`[Test` prefixed titles, `published: false`.
  *
- * Showcase rows — the trip `DERIVA PÒLEN SOMOS` and the track `Fuego`: staging content the
+ * Showcase rows — the trip `DERIVA PÒLEN SOMOS`: staging content the
  * published base experiences do not cover. The title and description are the pieces' own, and
  * they are published so staging shows them (the doc comment on `stagingShowcaseExperiences`
- * states what their coordinates are and are not).
+ * states what their coordinates are and are not). The track `Fuego` moved to the base seed
+ * (`seed-data.ts`) so production serves it too.
  *
  * Both sets: stable hardcoded UUIDs + unique slugs, `imageKey` values that are members of
  * `TRACK_IMAGE_KEYS`, and audio served from R2 objects that must already exist in the staging
@@ -179,7 +180,6 @@ export const stagingTripTest2HugoPathWaypoints: readonly NewWaypoint[] =
   }));
 
 export const stagingShowcaseTripId = 'f6c3a8d4-0000-5c9a-b2e1-4a5b6c7d8e9f';
-
 /**
  * The stops of the showcase trip. Three of them, walked in order from the pin, and about 800 m of
  * total route: 60 m south-east, 380 m south, then 360 m east. Placed by hand from the same
@@ -207,15 +207,12 @@ const STAGING_SHOWCASE_DESCRIPTION =
   'Pieza de staging: título de la obra, audio y portada provisorios, posición aproximada.';
 
 /**
- * The two staging pieces the published base experiences do not cover yet: the trip
- * `DERIVA PÒLEN SOMOS` and the track `Fuego`.
+ * The staging piece the published base experiences do not cover yet: the trip
+ * `DERIVA PÒLEN SOMOS`.
  *
  * Audio and covers
  * ----------------
- * `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s). `Fuego` points at its own
- * object, `experiences/tracks-fuego.mp3` (303 s), which the staging bucket **must already
- * hold**: nothing in this repository uploads it, and no test can observe a bucket, so a missing
- * object surfaces only as a 404 at playback. Confirm it before relying on the row. Covers are
+ * `DERIVA PÒLEN SOMOS` reuses the shared `STAGING_AUDIO_KEY` (180 s). Covers are
  * members of `TRACK_IMAGE_KEYS`.
  *
  * Where the coordinates come from
@@ -249,24 +246,6 @@ export const stagingShowcaseExperiences: readonly NewExperience[] = [
     longitude: -64.752577,
     free: true,
     imageKey: TRACK_IMAGE_KEYS[1],
-    geofenceBypassable: false,
-    geoMode: 'formatDefaultRadius',
-    radiusMeters: null,
-    published: true,
-  },
-  {
-    id: 'f6c3a8d4-0001-5c9a-b2e1-4a5b6c7d8e9f',
-    slug: 'fuego',
-    title: 'Fuego',
-    description: 'Maga de Massi',
-    format: 'track',
-    themeKey: 'community',
-    audioUrl: 'experiences/tracks-fuego.mp3',
-    durationSeconds: 303,
-    latitude: -32.191576848045585,
-    longitude: -64.75240243117017,
-    free: true,
-    imageKey: TRACK_IMAGE_KEYS[2],
     geofenceBypassable: false,
     geoMode: 'formatDefaultRadius',
     radiusMeters: null,

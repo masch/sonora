@@ -192,6 +192,24 @@ const tracks: readonly NewExperience[] = [
     radiusMeters: null,
     published: false,
   },
+  {
+    id: 'f6c3a8d4-0001-5c9a-b2e1-4a5b6c7d8e9f',
+    slug: 'fuego',
+    title: 'Fuego',
+    description: 'Maga de Massi',
+    format: 'track',
+    themeKey: 'community',
+    audioUrl: 'experiences/tracks-fuego.mp3',
+    durationSeconds: 303,
+    latitude: -32.191576848045585,
+    longitude: -64.75240243117017,
+    free: true,
+    imageKey: 'tracks-pajaros-chiricotes-cover',
+    geofenceBypassable: false,
+    geoMode: 'formatDefaultRadius',
+    radiusMeters: null,
+    published: true,
+  },
 ];
 
 export const baseExperiences: readonly NewExperience[] = [...trips, ...tracks];

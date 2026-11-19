@@ -135,13 +135,13 @@ describe('stagingTestExperiences — staging test-data contract', () => {
   });
 });
 
-describe('stagingShowcaseExperiences — the two showcase pieces', () => {
-  it('carries both titles verbatim', () => {
-    expect(stagingShowcaseExperiences.map((e) => e.title)).toEqual(['DERIVA PÒLEN SOMOS', 'Fuego']);
+describe('stagingShowcaseExperiences — the showcase piece', () => {
+  it('carries the title verbatim', () => {
+    expect(stagingShowcaseExperiences.map((e) => e.title)).toEqual(['DERIVA PÒLEN SOMOS']);
   });
 
-  it('is one trip and one free track staging shows, not test rows', () => {
-    expect(stagingShowcaseExperiences.map((e) => e.format)).toEqual(['trip', 'track']);
+  it('is one free trip staging shows, not a test row', () => {
+    expect(stagingShowcaseExperiences.map((e) => e.format)).toEqual(['trip']);
     for (const e of stagingShowcaseExperiences) {
       expect(e.free).toBe(true);
       expect(e.price).toBeUndefined();
@@ -161,13 +161,10 @@ describe('stagingShowcaseExperiences — the two showcase pieces', () => {
     }
   });
 
-  it('needs no new binary: R2 audio objects that must already exist, plus a cover per row', () => {
+  it('needs no new binary: the shared R2 audio object, plus a cover', () => {
     const deriva = stagingShowcaseExperiences[0]!;
-    const fuego = stagingShowcaseExperiences[1]!;
     expect(deriva.audioUrl).toBe(STAGING_AUDIO_KEY);
     expect(deriva.durationSeconds).toBe(180);
-    expect(fuego.audioUrl).toBe('experiences/tracks-fuego.mp3');
-    expect(fuego.durationSeconds).toBe(303);
     for (const e of stagingShowcaseExperiences) {
       expect(TRACK_IMAGE_KEYS as readonly string[]).toContain(e.imageKey);
     }
@@ -180,6 +177,19 @@ describe('stagingShowcaseExperiences — the two showcase pieces', () => {
     );
     expect(new Set(all.map((e) => e.id)).size).toBe(all.length);
     expect(new Set(all.map((e) => e.slug)).size).toBe(all.length);
+  });
+});
+
+describe('baseExperiences — the production Fuego track', () => {
+  it('carries the Fuego row the staging seed no longer holds', () => {
+    const fuego = baseExperiences.find((e) => e.slug === 'fuego');
+    expect(fuego).toBeDefined();
+    expect(fuego!.title).toBe('Fuego');
+    expect(fuego!.format).toBe('track');
+    expect(fuego!.free).toBe(true);
+    expect(fuego!.published).toBe(true);
+    expect(fuego!.audioUrl).toBe('experiences/tracks-fuego.mp3');
+    expect(fuego!.durationSeconds).toBe(303);
   });
 });
 
