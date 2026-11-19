@@ -11,7 +11,7 @@ import { AndroidConfig, type ConfigPlugin, withAndroidManifest } from 'expo/conf
  */
 const withOptionalPortraitFeature: ConfigPlugin = (config) => {
   return withAndroidManifest(config, (modConfig) => {
-    const manifest = modConfig.modResults;
+    const manifest = modConfig.modResults.manifest;
     const manifestFields = manifest as unknown as Record<
       string,
       Array<{ $: Record<string, string> }>
