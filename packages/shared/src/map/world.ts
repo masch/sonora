@@ -87,32 +87,6 @@ const WORLD_SIDE_MARGIN_RATIO = 0.12;
  */
 const WORLD_LABEL_MARGIN_RATIO = 0.12;
 
-/**
- * The span a coincident point's marker is pushed away from its real place, in degrees.
- *
- * Two experiences published at the same GPS point draw two dots on the same pixels, and
- * a thumb cannot tell them apart. Each member of such a group is drawn on a fan around
- * the true place, each with a stem back to it. The radius is a constant of the frame the
- * hub opens on (`WORLD_MIN_SPAN_DEGREES` across a 400 dp card is about 4 m per pixel),
- * so this radius reads as roughly a dot-and-a-half of separation at that opening zoom
- * and grows apart as the walker zooms in.
- */
-export const SPIDER_OFFSET_DEGREES = 0.0004;
-
-/**
- * How far a coincident point's name sits from its pushed-out dot, in em.
- *
- * The fan already separated the dots, so each name is placed beside its own dot —
- * the same direction the dot was pushed — and nothing can collide with its sibling's
- * name, because the sibling was pushed the other way.
- */
-export const SPIDER_LABEL_OFFSET_EM = 0.9;
-
-/** Two places are the same place when they round to the same millionth of a degree. */
-function coincidentKey(experience: WorldExperience): string {
-  return `${Math.round(experience.latitude * 1e6)}:${Math.round(experience.longitude * 1e6)}`;
-}
-
 /** The fields of a published experience the world draws, and nothing else. */
 export interface WorldExperience {
   slug: string;
@@ -273,84 +247,22 @@ export function worldDocuments(
   const westmost = Math.min(...frame);
   const span = Math.max(...frame) - westmost;
 
-  /**
-   * Experiences grouped by the place they publish, in draw order.
-   *
-   * A group with more than one member is a crowd: the same GPS point carrying two
-   * experiences draws two dots on the same pixels, and no zoom separates them. Each
-   * member of a crowd is drawn on a fan around the true place, with a stem back to it,
-   * so both markers and both names are thumb-reachable.
-   */
-  const crowds = new Map<string, WorldExperience[]>();
-  for (const experience of drawable) {
-    const key = coincidentKey(experience);
-    const members = crowds.get(key);
-    if (members) members.push(experience);
-    else crowds.set(key, [experience]);
-  }
-
-  const features: MapReferenceFeature[] = [];
-  for (const members of crowds.values()) {
-    const count = members.length;
-    members.forEach((experience, index) => {
-      const label: MapReferenceText = { [language]: worldPointLabel(experience) };
-      const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
-      const color = colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format];
-
-      /**
-       * Where this marker is drawn: the place itself, unless it is one member of a
-       * crowd, and then a spoke of the fan. The fan starts pointing north and turns
-       * once around, so two members end up on opposite sides of the true place.
-       */
-      let longitude = experience.longitude;
-      let latitude = experience.latitude;
-      let properties: MapReferenceFeature['properties'] = {
+  const points = drawable.map((experience): MapReferenceFeature => {
+    const label: MapReferenceText = { [language]: worldPointLabel(experience) };
+    const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
+    return {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
+      properties: {
         label,
-        color,
+        color: colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format],
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
-      };
-
-      if (count > 1) {
-        const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
-        const directionX = Math.cos(angle);
-        const directionY = Math.sin(angle);
-        longitude += directionX * SPIDER_OFFSET_DEGREES;
-        latitude += directionY * SPIDER_OFFSET_DEGREES;
-        properties = {
-          ...properties,
-          // Screen y grows downwards and latitude upwards, so the name's offset
-          // mirrors the dot's direction on the y axis.
-          spiderLabelOffset: [
-            directionX * SPIDER_LABEL_OFFSET_EM,
-            -directionY * SPIDER_LABEL_OFFSET_EM,
-          ],
-        };
-        // The stem tells the eye which name belongs to which place, and it is drawn
-        // by the document's own line layer: a LineString in the same source, in the
-        // point's colour, from the true place to the pushed-out marker.
-        features.push({
-          type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [experience.longitude, experience.latitude],
-              [longitude, latitude],
-            ],
-          },
-          properties: { color },
-        });
-      }
-
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [longitude, latitude] },
-        properties,
-      });
-    });
-  }
+      },
+    };
+  });
 
   const paths = drawable
     .map(worldPathDocument)
@@ -360,7 +272,7 @@ export function worldDocuments(
     {
       key: WORLD_POINTS_DOCUMENT_KEY,
       scope: 'experience',
-      collection: { type: 'FeatureCollection', features },
+      collection: { type: 'FeatureCollection', features: points },
     },
     ...paths,
   ];

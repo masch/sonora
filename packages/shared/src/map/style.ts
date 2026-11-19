@@ -241,30 +241,19 @@ export function buildReferenceStyleLayers(
     // the filter it always had.
     const splitSides = bold && movable;
 
-    /**
-     * One label layer, with the anchor order its side of the frame needs.
-     *
-     * A coincident point's name never asks for a movable anchor: its own layer places it
-     * beside the dot the fan pushed out, where nothing else can be. Including it here
-     * would put a variable-anchor label back on the true place, on top of its sibling's.
-     */
+    /** One label layer, with the anchor order its side of the frame needs. */
     const labelLayer = (id: string, anchorOrder: readonly string[], side: 'east' | 'west') => ({
       id,
       type: 'symbol' as const,
       source: sourceId,
-      filter: [
-        ...forGeometry('Point'),
-        // Excluded on every movable source, not only on a split one: the crowd lives
-        // in the world hub, which is the movable caller.
-        ...(movable ? [['!', ['has', 'spiderLabelOffset']]] : []),
-        ...(splitSides
-          ? [
-              side === 'west'
-                ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
-                : ['!', ['has', 'labelSide']],
-            ]
-          : []),
-      ],
+      filter: splitSides
+        ? [
+            ...forGeometry('Point'),
+            side === 'west'
+              ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
+              : ['!', ['has', 'labelSide']],
+          ]
+        : forGeometry('Point'),
       layout: labelLayout(anchorOrder),
       paint: labelPaint,
     });
@@ -278,29 +267,6 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
-    }
-
-    /**
-     * The crowd's own names: fixed beside the dot the fan pushed out, and allowed to
-     * overlap because the fan already separated them — the culling rule would drop
-     * one of the two names this layer exists to show.
-     */
-    if (movable) {
-      layers.push({
-        id: `${sourceId}:label-spider`,
-        type: 'symbol',
-        source: sourceId,
-        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'spiderLabelOffset']],
-        layout: {
-          'text-field': ['get', 'labelText'],
-          'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
-          'text-size': bold ? BOLD_LABEL_SIZE : 12,
-          'text-anchor': 'center',
-          'text-offset': ['get', 'spiderLabelOffset'],
-          'text-allow-overlap': true,
-        },
-        paint: labelPaint,
-      });
     }
   }
 

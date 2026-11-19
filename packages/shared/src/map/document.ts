@@ -56,15 +56,6 @@ export interface MapReferenceProperties {
   labelColor?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
-  /**
-   * The fixed `[dx, dy]` placement of this point's name, in em, read only by the
-   * movable sources' crowd label layer.
-   *
-   * Set by `worldDocuments` for a member of a crowd: points published on the same GPS
-   * place draw on a fan around it, and each name is fixed beside the dot it was pushed
-   * to, so the two names can never collide or be culled.
-   */
-  spiderLabelOffset?: [number, number];
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
   /**
