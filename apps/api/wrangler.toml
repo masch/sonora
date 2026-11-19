@@ -42,9 +42,11 @@ MAP_PRELOAD_REGIONS = "calamuchita"
 # that left the choice open; anything else keeps them on the Leaflet map.
 MAP_RENDERER = "maplibre"
 # Capability gate, not a preference: only these platforms can render the new map.
-# `web` is absent because the web export emits no MapLibre worker yet — adding
-# `web` here is what turns the new map on in browsers, once that worker loads.
-MAP_RENDERER_PLATFORMS = "android,ios"
+# `web` is present because `apps/mobile/scripts/copy-maplibre-worker.mjs` publishes
+# the MapLibre worker as a static asset (`public/maplibre-gl-worker.js`) that the
+# web export serves; verify a deployed export actually contains that file before
+# relying on this for a new host.
+MAP_RENDERER_PLATFORMS = "android,ios,web"
 
 # --- Layer selector (`map.layers`) -----------------------------------------
 # `MAP_LAYERS_WIRE`, `MAP_LAYERS_SHOW_CONTROL` and `MAP_LAYERS_GROUPS` are

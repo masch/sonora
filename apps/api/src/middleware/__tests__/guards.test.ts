@@ -190,15 +190,15 @@ describe('Middleware Guards (c.var injection)', () => {
       expect(configuredBody.mapRendererPlatforms).toEqual(['android', 'ios', 'web']);
 
       // An unset variable is not "every platform is capable": it is the default
-      // list, which leaves web out because the web build cannot mount the
-      // MapLibre worker yet.
+      // list, which still leaves unlisted platforms out even though web can
+      // mount the MapLibre worker served from `public/maplibre-gl-worker.js`.
       const unset = await app.request(
         '/test',
         {},
         { MINIMUM_APP_VERSION: '1.0.0', BLOCK_OLDER_VERSIONS: 'false' },
       );
       const unsetBody = (await unset.json()) as { mapRendererPlatforms: string[] };
-      expect(unsetBody.mapRendererPlatforms).toEqual(['android', 'ios']);
+      expect(unsetBody.mapRendererPlatforms).toEqual(['android', 'ios', 'web']);
     });
 
     it('normalizes the per-device renderer lists into configEnv', async () => {

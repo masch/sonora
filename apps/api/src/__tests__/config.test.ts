@@ -562,12 +562,12 @@ describe('GET /config', () => {
     expect(body.map.renderer).toBe('maplibre');
   });
 
-  it('serves leaflet to the web even when the environment renders maplibre', async () => {
-    // The web export does not emit the MapLibre worker, so a browser cannot mount
-    // the new map (L37). Capability, not preference: no list can override it.
+  it('serves leaflet to a platform outside the capability list even when the environment renders maplibre', async () => {
+    // Capability, not preference: no list can override it. The web platform is
+    // now in the default list, so `television` stands in as the unlisted case.
     const res = await app.request(
       '/config',
-      { headers: { 'X-Device-Platform': 'web', 'X-Device-Id': 'device-allowed' } },
+      { headers: { 'X-Device-Platform': 'television', 'X-Device-Id': 'device-allowed' } },
       {
         ...BINDINGS,
         MAP_RENDERER: 'maplibre',
