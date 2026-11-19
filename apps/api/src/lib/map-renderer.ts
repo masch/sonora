@@ -31,11 +31,12 @@ export function normalizeDeviceIdList(raw: string | undefined): string[] {
 /**
  * Platforms that can render the new map when no capability list is configured.
  *
- * The web export emits no MapLibre worker, so a browser cannot mount the new
- * renderer until that worker ships (L37); leaving `web` out of this default is
- * what keeps every browser on Leaflet while the variable is unset.
+ * The web export serves the MapLibre worker as a static asset: it is generated
+ * into `public/maplibre-gl-worker.js` by `apps/mobile/scripts/copy-maplibre-worker.mjs`
+ * and selected through `setWorkerUrl` in `use-web-map-instance.ts`. Browsers can
+ * therefore mount the new renderer, and `web` stays in this default.
  */
-export const DEFAULT_CAPABLE_PLATFORMS: readonly string[] = ['android', 'ios'];
+export const DEFAULT_CAPABLE_PLATFORMS: readonly string[] = ['android', 'ios', 'web'];
 
 /**
  * Normalizes a comma-separated platform-capability variable from the environment.
