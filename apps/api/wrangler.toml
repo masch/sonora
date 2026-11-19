@@ -40,7 +40,7 @@ MAP_ARTIFACT_VERSION = "v1"
 MAP_PRELOAD_REGIONS = "calamuchita"
 # Renderer served to this environment's clients. `maplibre` switches every build
 # that left the choice open; anything else keeps them on the Leaflet map.
-MAP_RENDERER = "leaflet"
+MAP_RENDERER = "maplibre"
 # Capability gate, not a preference: only these platforms can render the new map.
 # `web` is absent because the web export emits no MapLibre worker yet — adding
 # `web` here is what turns the new map on in browsers, once that worker loads.
@@ -58,7 +58,7 @@ MAP_RENDERER_PLATFORMS = "android,ios"
 # version a client sends is a rejected alternative, not a deferred one: the app
 # already enforces a floor. Staging publishes it today (see `wrangler.staging.toml`).
 
-MINIMUM_APP_VERSION = "1.0.123"
+MINIMUM_APP_VERSION = "1.0.140"
 BLOCK_OLDER_VERSIONS = "true"
 # ISO dates for grace period range (e.g. "2026-07-02T00:00:00Z" to "2026-07-09T00:00:00Z")
 # GRACE_PERIOD_START = "2026-07-02T00:00:00Z"
