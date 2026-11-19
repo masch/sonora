@@ -1,11 +1,12 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   MAPLIBRE_LAYER_CAPABILITIES,
   applyMapDocuments,
   layerSelectionSignature,
+  referenceSourceId,
   resolveLayerSelection,
   withResolvedLabels,
   type MapDocument,
@@ -17,6 +18,7 @@ import MapErrorView from './map-error-view';
 import { ThemedText } from '@/components/themed-text';
 import { useMapSource, type MapSourceState } from '@/hooks/use-map-source';
 import { applyLayerSelection } from './web-layer-visibility';
+import { openWebCluster } from './web-cluster-press';
 
 import { useAppTranslation } from '@/hooks/use-translation';
 import { TwView } from '@/tw';
@@ -26,13 +28,12 @@ import {
   documentKeyOfLayer,
   FOCUS_DURATION_MS,
   FOCUS_MIN_ZOOM,
-  stageOfFailure,
   type ExperienceMapProps,
   type MapLoadErrorCode,
   type MapReferencePress,
-  type MapWaitState,
 } from './map-view.types';
 import { useMapFocusFlight } from './use-map-focus-flight';
+import { useWebRetry, useWebWait } from './use-web-retry';
 import { raiseUserLocation } from './apply-user-location';
 import { reportMapFailure } from './report-map-failure';
 import { useUserLocation } from './use-user-location';
@@ -147,6 +148,13 @@ export default function ExperienceMap({
   /** Read inside `applyOverlays`: a self-contained reference draws its own text. */
   const languageRef = useRef(language);
   const onFeaturePressRef = useRef(onFeaturePress);
+  /**
+   * The live map handle, read inside `openReference` and kept here because that
+   * callback is handed to the hook that creates the map: the handle does not exist
+   * yet when the callback is declared, and a ref is the one channel that survives
+   * that ordering.
+   */
+  const mapHandleRef = useRef<MapHandle | null>(null);
 
   useEffect(() => {
     overlaysRef.current = overlays;
@@ -213,6 +221,20 @@ export default function ExperienceMap({
     const handler = onFeaturePressRef.current;
     if (!handler) return;
 
+    const documentKey = documentKeyOfLayer(feature.layer.id);
+    // A cluster first tries the zoom it can answer with, and only a group no zoom
+    // can separate reaches the caller as an aggregate (see `openWebCluster`).
+    if (documentKey && typeof feature.properties.point_count === 'number' && mapHandleRef.current) {
+      openWebCluster(
+        mapHandleRef.current,
+        feature,
+        documentKey,
+        referenceSourceId(documentKey),
+        handler,
+      );
+      return;
+    }
+
     const reference = toPressReference(feature.layer.id, feature.properties);
     if (reference) handler(reference);
   }, []);
@@ -229,6 +251,12 @@ export default function ExperienceMap({
     glyphsAvailableRef,
     applyOverlays,
     openReference,
+  });
+
+  // `openReference` reads the live map through this ref: the hook above owns the real
+  // one, and a tap can only arrive after the map exists, so an effect sync is enough.
+  useEffect(() => {
+    mapHandleRef.current = mapRef.current;
   });
 
   /**
@@ -295,39 +323,16 @@ export default function ExperienceMap({
   useMissingArchiveReport(noRegion, archive, source.archiveUrl);
 
   /** Restarts the wait that failed, and only that one. */
-  const retry = useCallback(() => {
-    if (!failure) return;
-    switch (stageOfFailure(failure)) {
-      case 'archive':
-        setArchiveAttempt((previous) => previous + 1);
-        break;
-      case 'style':
-        setStyleAttempt((previous) => previous + 1);
-        break;
-      case 'map':
-        // Nothing to restart but the map itself: the failure is withdrawn and the build
-        // below runs again.
-        setMapErrorCode(null);
-        setMapAttempt((previous) => previous + 1);
-        break;
-    }
-  }, [failure, setMapErrorCode]);
+  const retry = useWebRetry(failure, {
+    setArchiveAttempt,
+    setStyleAttempt,
+    setMapErrorCode,
+    setMapAttempt,
+  });
 
   const archiveStatus = archive.status;
-  /**
-   * The wait this renderer is in, and `null` exactly when it can draw.
-   *
-   * The archive arrives whole and the percentage lives in the browser's transfer, so
-   * this renderer names the stage and never a number it cannot read.
-   */
-  const wait = useMemo<MapWaitState | null>(() => {
-    // A failure is not a wait: it has a surface of its own, with words of its own.
-    if (failure) return null;
-    if (archiveStatus === 'loading') {
-      return { stage: 'archive', downloading: false, progress: null };
-    }
-    return ready ? null : { stage: 'map', downloading: false, progress: null };
-  }, [failure, archiveStatus, ready]);
+  /** The wait this renderer is in, and `null` exactly when it can draw. */
+  const wait = useWebWait(failure, archiveStatus, ready);
 
   if (failure) {
     return <MapErrorView code={failure} onRetry={retry} testID={testID} className={className} />;

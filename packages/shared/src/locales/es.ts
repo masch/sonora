@@ -69,6 +69,7 @@ export const es = {
       empty: 'Todavía no hay experiencias publicadas en el mapa',
       // El mapa no está vacío: lo está el filtro. Una frase sobre el mundo mentiría acá.
       filteredEmpty: 'Todavía no hay experiencias de este formato publicadas en el mapa',
+      clusterTitle: 'Experiencias en este punto',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',

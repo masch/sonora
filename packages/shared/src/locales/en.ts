@@ -68,6 +68,7 @@ export const en = {
       empty: 'No experiences are published on the map yet',
       // The map is not empty: the filter is. A sentence about the world would be a lie here.
       filteredEmpty: 'No experiences of this format are published on the map yet',
+      clusterTitle: 'Places sharing this point',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

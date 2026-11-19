@@ -1,6 +1,6 @@
 import type { MapDocument } from './document';
 import { labelAnchorForDocument } from './itinerary';
-import { movableLabelsForDocument } from './world';
+import { movableLabelsForDocument, WORLD_POINTS_DOCUMENT_KEY } from './world';
 import {
   buildReferenceStyleLayers,
   REFERENCE_SOURCE_PREFIX,
@@ -67,16 +67,23 @@ export function applyMapDocuments(
 
   for (const [sourceId, document] of desired) {
     const existing = map.getSource(sourceId);
+    // Only the world's own points cluster, for the same reason the native style build
+    // does: two experiences published on the same GPS place cannot be told apart.
+    const clustered = document.key === WORLD_POINTS_DOCUMENT_KEY;
+    const clusterOptions = clustered
+      ? { cluster: true, clusterRadius: 40, clusterMaxZoom: 16 }
+      : {};
     if (existing?.setData) {
       existing.setData(document.collection);
     } else if (!existing) {
-      map.addSource(sourceId, { type: 'geojson', data: document.collection });
+      map.addSource(sourceId, { type: 'geojson', data: document.collection, ...clusterOptions });
     }
 
     for (const layer of buildReferenceStyleLayers(sourceId, {
       ...options,
       labelAnchor: labelAnchorForDocument(document.key),
       movableLabels: movableLabelsForDocument(document.key),
+      cluster: clustered,
     })) {
       if (!existingLayers.includes(layer.id)) map.addLayer(layer);
     }

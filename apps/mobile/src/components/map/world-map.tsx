@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   filterWorldExperiences,
@@ -23,9 +23,10 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
-import { FOCUS_SETTLE_FALLBACK_MS } from './map-view.types';
-import ExperiencePreviewCard from './experience-preview-card';
+import { ClusterPickModal } from './cluster-pick-modal';
 import type { MapReferencePress, MapWaitState } from './map-view.types';
+import { useWorldFlight } from './use-world-flight';
+import ExperiencePreviewCard from './experience-preview-card';
 
 /** The chips' label for each filter, `null` being "everything". */
 /**
@@ -172,14 +173,15 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
   const [showLabels, setShowLabels] = useState(true);
   /**
-   * What a tap asked for, and only what the camera still owes it.
-   *
-   * Variant B travels before the card opens, so a tap cannot open it directly: the
-   * request is the destination the camera is flying to, and `id` makes every tap a
-   * new request even when it names the place the previous one did — otherwise
-   * tapping the same point twice would look like no change and never open again.
+   * What a tap asked for, and only what the camera still owes it — one flight per
+   * request, landed by the camera's own report or the dead-man fallback. The whole
+   * state lives in `useWorldFlight`, which is the one channel between a tap and the
+   * card it opens.
    */
-  const [flight, setFlight] = useState<{ slug: string; id: number } | null>(null);
+  const [openedSlug, setOpenedSlug] = useState<string | null>(null);
+  /** The one thing a landing does: it opens the card of the place the tap chose. */
+  const openSlug = useCallback((slug: string) => setOpenedSlug(slug), []);
+  const { flight, beginFlight, landFlight, cancelFlight } = useWorldFlight(openSlug);
   /**
    * Where the walker is, as the device already reports it.
    *
@@ -189,8 +191,16 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * apart from experiences.
    */
   const userCoordinates = useLocationStore((state) => state.coords);
-  const [openedSlug, setOpenedSlug] = useState<string | null>(null);
-  const requestId = useRef(0);
+  /**
+   * The cluster a tap landed on, while the picker that names its places is open.
+   *
+   * A cluster that cannot expand any further — two experiences published on the same
+   * GPS point — has no zoom to answer a tap with, so the places it holds are listed
+   * instead, read from the same payload the map draws: no second copy, no drift.
+   */
+  const [clusterPick, setClusterPick] = useState<{ longitude: number; latitude: number } | null>(
+    null,
+  );
 
   const visible = useMemo(() => filterWorldExperiences(experiences, format), [experiences, format]);
   /**
@@ -269,50 +279,24 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   );
 
   /**
-   * Opens the card once the flight it started has landed.
-   *
-   * The signal is the camera's, not a clock: a renderer reports that the move it was
-   * asked for came to rest, so a walker who pans or pinches during it still gets the
-   * card when the travel ends. A tap replaced by another one supersedes the wait, and
-   * the walker never gets a card for the point they did not choose last.
-   *
-   * The flight is cleared with it: the camera owes nothing once it has arrived, and
-   * keeping the request would leave `focus` asking for a place already reached — a
-   * second tap on that same place would then look like no change at all.
-   */
-  const landFlight = useCallback(() => {
-    if (!flight) return;
-    setOpenedSlug(flight.slug);
-    setFlight(null);
-  }, [flight]);
-
-  /**
-   * The dead-man fallback, and the only timer here: a renderer that never reports
-   * would otherwise eat the tap. It is longer than any flight, so it can never race
-   * the camera, and it reveals the card the walker is already waiting for.
-   */
-  useEffect(() => {
-    if (!flight) return;
-    const timer = setTimeout(landFlight, FOCUS_SETTLE_FALLBACK_MS);
-    return () => clearTimeout(timer);
-  }, [flight, landFlight]);
-
-  /**
    * A tap reports the reference, and the reference names its experience. Anything
    * else drawn on this map — a trip's path — reports nothing and selects nothing.
    */
   const handleFeaturePress = useCallback(
     (reference: MapReferencePress) => {
+      if (reference.cluster) {
+        setClusterPick(reference.cluster);
+        return;
+      }
       if (!reference.experienceSlug) return;
-      requestId.current += 1;
       // Variant A has no travel to wait for: the card is the whole answer.
       if (!centerOnSelect) {
         setOpenedSlug(reference.experienceSlug);
         return;
       }
-      setFlight({ slug: reference.experienceSlug, id: requestId.current });
+      beginFlight(reference.experienceSlug);
     },
-    [centerOnSelect],
+    [centerOnSelect, beginFlight],
   );
 
   if (status === 'error') {
@@ -450,7 +434,17 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         experience={opened}
         onDismiss={() => {
           setOpenedSlug(null);
-          setFlight(null);
+          cancelFlight();
+        }}
+      />
+
+      <ClusterPickModal
+        cluster={clusterPick}
+        experiences={experiences}
+        onDismiss={() => setClusterPick(null)}
+        onPick={(slug) => {
+          setClusterPick(null);
+          handleFeaturePress({ documentKey: '', experienceSlug: slug });
         }}
       />
     </TwView>

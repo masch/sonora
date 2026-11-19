@@ -266,6 +266,7 @@ describe('the walker’s position on the web renderer', () => {
       on: jest.fn(),
       once: jest.fn(),
       remove: jest.fn(),
+      easeTo: jest.fn(),
       getStyle: () => ({ layers: [...layers], sources: Object.fromEntries(sources) }),
       getSource: (id: string) => sources.get(id) as never,
       addSource: ((id: string, value: unknown) => {

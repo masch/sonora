@@ -113,6 +113,17 @@ export interface ReferenceLayerOptions {
    * every other map draws.
    */
   bold?: boolean;
+  /**
+   * Whether the source is clustered and the point layers must therefore skip the
+   * cluster aggregates.
+   *
+   * A clustered source feeds every point layer one aggregate per group (with a
+   * `point_count` property) alongside the surviving points, and a dot layer would
+   * draw the aggregate as a place. Only the world hub asks for it today — two
+   * experiences published on the same GPS place draw two dots on the same pixels,
+   * and no zoom separates them — so the flag is opt-in per source.
+   */
+  cluster?: boolean;
 }
 
 export function buildReferenceStyleLayers(
@@ -125,6 +136,9 @@ export function buildReferenceStyleLayers(
   const fromZoom = ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]];
   const forGeometry = (kind: string) => ['all', ['==', ['geometry-type'], kind], fromZoom];
   const bold = options.bold === true;
+  const cluster = options.cluster === true;
+  /** The aggregates a clustered source reports: not places, and never drawn as ones. */
+  const notClustered = cluster ? [['!', ['has', 'point_count']]] : [];
 
   const layers: MapStyleLayer[] = [
     {
@@ -153,7 +167,7 @@ export function buildReferenceStyleLayers(
       id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
-      filter: forGeometry('Point'),
+      filter: [...forGeometry('Point'), ...notClustered],
       paint: {
         'circle-color': color,
         'circle-radius': BOLD_HIT_RADIUS,
@@ -162,11 +176,49 @@ export function buildReferenceStyleLayers(
     });
   }
 
+  if (cluster) {
+    // The aggregate's own body, drawn before the unclustered points so a dot that
+    // survives clustering is never covered by a nearby aggregate's circle. The
+    // size grows with the group it stands for, in the same steps every MapLibre
+    // example uses, so the shape reads as "more than one" before the count is read.
+    layers.push({
+      id: `${sourceId}:cluster`,
+      type: 'circle',
+      source: sourceId,
+      filter: forGeometry('Point').concat([['has', 'point_count']]),
+      paint: {
+        'circle-color': DEFAULT_COLOR,
+        'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 24],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': DOT_STROKE_WIDTH,
+        'circle-opacity': 0.9,
+      },
+    });
+    // The count reads inside the body. A text layer needs glyphs, which the same
+    // includeLabels gate already guards for this source.
+    if (options.includeLabels !== false) {
+      layers.push({
+        id: `${sourceId}:cluster-count`,
+        type: 'symbol',
+        source: sourceId,
+        filter: forGeometry('Point').concat([['has', 'point_count']]),
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': LABEL_FONT,
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      });
+    }
+  }
+
   layers.push({
     id: `${sourceId}:circle`,
     type: 'circle',
     source: sourceId,
-    filter: forGeometry('Point'),
+    filter: [...forGeometry('Point'), ...notClustered],
     paint: {
       'circle-color': color,
       'circle-radius': DOT_RADIUS,
@@ -246,14 +298,17 @@ export function buildReferenceStyleLayers(
       id,
       type: 'symbol' as const,
       source: sourceId,
-      filter: splitSides
-        ? [
-            ...forGeometry('Point'),
-            side === 'west'
-              ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
-              : ['!', ['has', 'labelSide']],
-          ]
-        : forGeometry('Point'),
+      filter: [
+        ...forGeometry('Point'),
+        ...notClustered,
+        ...(splitSides
+          ? [
+              side === 'west'
+                ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
+                : ['!', ['has', 'labelSide']],
+            ]
+          : []),
+      ],
       layout: labelLayout(anchorOrder),
       paint: labelPaint,
     });

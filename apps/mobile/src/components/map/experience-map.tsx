@@ -4,14 +4,10 @@ import type {
   CameraRef,
   LngLat,
   MapRef,
-  PixelPointBounds,
-  PressEvent,
-  PressEventWithFeatures,
   StyleSpecification,
 } from '@maplibre/maplibre-react-native';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { NativeSyntheticEvent } from 'react-native';
 
 import {
   layerSelectionSignature,
@@ -37,7 +33,6 @@ import {
   FOCUS_DURATION_MS,
   FOCUS_MIN_ZOOM,
   type ExperienceMapProps,
-  type MapReferencePress,
   type MapStyleErrorCode,
   type MapWaitErrorCode,
   type MapWaitState,
@@ -45,9 +40,7 @@ import {
 import { MapCanvas } from './map-canvas';
 import { useMapFailureReport } from './use-map-failure-report';
 import { useNativeFocusFlight } from './use-native-focus-flight';
-
-/** Press target around the tapped point, in pixels: the 44x44 a pressable source uses. */
-const HITBOX_PIXELS = 22;
+import { useNativePressReport } from './use-native-press-report';
 
 /**
  * How long one run may wait for the style document before it reports the style as
@@ -379,36 +372,6 @@ function documentsSignature(documents: readonly MapDocument[]): string {
     .join('|');
 }
 
-/**
- * Reads a reportable reference out of a tapped feature. The web renderer has the
- * same mapping (`toPressReference` in `experience-map.web.tsx`, fed by
- * `feature.layer.id`); native presses carry no layer id, so the layer that was
- * queried stands in for it and both builds emit the same `MapReferencePress`.
- */
-function toPressReference(
-  layerId: string,
-  properties: Record<string, unknown>,
-): MapReferencePress | null {
-  const documentKey = documentKeyOfLayer(layerId);
-  if (!documentKey) return null;
-
-  const reference: MapReferencePress = { documentKey };
-  if (typeof properties.experienceSlug === 'string') {
-    reference.experienceSlug = properties.experienceSlug;
-  }
-  if (typeof properties.labelText === 'string') reference.labelText = properties.labelText;
-  if (typeof properties.labelKey === 'string') reference.labelKey = properties.labelKey;
-  if (typeof properties.descriptionText === 'string') {
-    reference.descriptionText = properties.descriptionText;
-  }
-  if (typeof properties.descriptionKey === 'string') {
-    reference.descriptionKey = properties.descriptionKey;
-  }
-  if (typeof properties.imageUrl === 'string') reference.imageUrl = properties.imageUrl;
-  if (typeof properties.linkUrl === 'string') reference.linkUrl = properties.linkUrl;
-  return reference;
-}
-
 interface MapFailureSurfaceProps {
   /** The failure this map resolved, from either of its two waits. */
   code: MapWaitErrorCode;
@@ -610,45 +573,12 @@ export default function ExperienceMap({
   );
 
   /**
-   * Reports the tapped reference to the caller. A native press carries no layer
-   * id, so the hit test is asked once per reference layer, topmost first (the
-   * layer drawn last covers the ones below it), over the same 44x44 target a
-   * pressable source uses.
+   * Reports the tapped reference to the caller: the hit test is asked once per
+   * reference layer, topmost first, over the same 44x44 target a pressable source
+   * uses. Living in `use-native-press-report.ts` so this component stays at the size
+   * the doctor gate allows.
    */
-  const reportPress = useCallback(
-    async (event: NativeSyntheticEvent<PressEvent | PressEventWithFeatures>): Promise<void> => {
-      const handler = onFeaturePress;
-      const map = mapRef.current;
-      if (!handler || !map) return;
-
-      const [x, y] = event.nativeEvent.point;
-      const target: PixelPointBounds = [
-        [x - HITBOX_PIXELS, y - HITBOX_PIXELS],
-        [x + HITBOX_PIXELS, y + HITBOX_PIXELS],
-      ];
-
-      for (const layerId of [...referenceLayerIds].reverse()) {
-        let features: { properties?: Record<string, unknown> | null }[];
-        try {
-          features = await map.queryRenderedFeatures(target, { layers: [layerId] });
-        } catch (error) {
-          logger.error('ExperienceMap could not query the pressed layers:', error);
-          return;
-        }
-
-        const hit = features[0];
-        if (!hit) continue;
-
-        const reference = toPressReference(
-          layerId,
-          (hit.properties ?? {}) as Record<string, unknown>,
-        );
-        if (reference) handler(reference);
-        return;
-      }
-    },
-    [onFeaturePress, referenceLayerIds],
-  );
+  const reportPress = useNativePressReport(onFeaturePress, referenceLayerIds, mapRef);
 
   const failure = failureCode({ noRegion, archive, remote });
 
