@@ -130,6 +130,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       favicon: './assets/images/sonora/logo.png',
     },
     plugins: [
+      [
+        './plugins/with-optional-portrait-feature',
+        // Keeps android.hardware.screen.portrait optional so tablets, desktop and
+        // Android XR are not excluded from installation (Play Console requirement).
+      ],
       '@react-native-firebase/app',
       '@react-native-firebase/crashlytics',
       [
@@ -226,7 +231,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: {
         projectId: 'ef4f0ad4-7ef6-4b37-858a-b1fc857d048a',
       },
-      isProduction: process.env.APP_ENV === 'production',
+      isProduction: isProduction,
       domain: activeEnv.domain,
     },
     owner: 'sonoraderivapoeticas-team',
