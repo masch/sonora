@@ -136,17 +136,11 @@ export function buildReferenceStyleLayers(
   const fromZoom = ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]];
   const forGeometry = (kind: string) => ['all', ['==', ['geometry-type'], kind], fromZoom];
   const bold = options.bold === true;
-  const movable = options.movableLabels === true;
   const cluster = options.cluster === true;
   /** The aggregates a clustered source reports: not places, and never drawn as ones. */
   const notClustered = cluster ? [['!', ['has', 'point_count']]] : [];
-  /**
-   * Not a place: a crowd's hollow ring on the true share point, drawn by its own
-   * layer on the movable sources that can carry a crowd.
-   */
-  const notSharedCenter = movable ? [['!', ['has', 'sharedCenter']]] : [];
   const isPoint = forGeometry('Point');
-  const pointOnly = [...isPoint, ...notClustered, ...notSharedCenter];
+  const pointOnly = [...isPoint, ...notClustered];
 
   const layers: MapStyleLayer[] = [
     {
@@ -175,7 +169,7 @@ export function buildReferenceStyleLayers(
       id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
-      filter: [...isPoint, ...notClustered, ...notSharedCenter],
+      filter: [...isPoint, ...notClustered],
       paint: {
         'circle-color': color,
         'circle-radius': BOLD_HIT_RADIUS,
@@ -338,27 +332,6 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
-    }
-
-    // The crowd's own ring on the true place: hollow, in the crowd's colour, twice
-    // the dot's radius so it never disappears against the basemap's own white paths
-    // — on a street map the ring sits exactly where a road bends, and a small ring
-    // read as one more bend. It is drawn under the fan's dots so a stem crossing
-    // it keeps reading, and it answers "which pin is the place?" with "none — that
-    // one", without a word on the map.
-    if (movable) {
-      layers.push({
-        id: `${sourceId}:circle-shared-center`,
-        type: 'circle',
-        source: sourceId,
-        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'sharedCenter']],
-        paint: {
-          'circle-color': '#ffffff',
-          'circle-radius': DOT_RADIUS * 2 + 4,
-          'circle-stroke-color': ['coalesce', ['get', 'color'], DEFAULT_COLOR],
-          'circle-stroke-width': 3,
-        },
-      });
     }
 
     /**

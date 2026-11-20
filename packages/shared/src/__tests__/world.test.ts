@@ -122,22 +122,19 @@ describe('worldDocuments', () => {
       expect(slugs).toEqual(expect.arrayContaining(['fuego', 'nogales']));
     });
 
-    it('draws a stem from the true place to each pushed-out marker', () => {
+    it('draws a pin polygon per crowd member, tipped at its pushed-out anchor', () => {
       const [points] = worldDocuments([fuego, nogales], { language: 'es' });
-      const stems = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'LineString',
+      const pins = points?.collection.features.filter(
+        (feature) => feature.geometry.type === 'Polygon',
       );
-      expect(stems).toHaveLength(2);
-      for (const stem of stems ?? []) {
-        const [[startX, startY], [endX, endY]] = stem.geometry.coordinates as [
-          [number, number],
-          [number, number],
-        ];
-        // One end is the published place, untouched.
-        const onPlace =
-          (startX === fuego.longitude && startY === fuego.latitude) ||
-          (endX === fuego.longitude && endY === fuego.latitude);
-        expect(onPlace).toBe(true);
+      expect(pins).toHaveLength(2);
+      for (const pin of pins ?? []) {
+        const [ring] = pin.geometry.coordinates as [number, number][][];
+        // A closed ring, with every vertex within one pin-size of the marker's
+        // pushed-out anchor.
+        expect(ring[0]).toEqual(ring[ring.length - 1]);
+        const longitudes = ring.map(([x]) => x);
+        expect(Math.max(...longitudes) - Math.min(...longitudes)).toBeLessThan(0.002);
       }
     });
 
@@ -153,16 +150,7 @@ describe('worldDocuments', () => {
       expect((offsets[1] as number[])[1]).toBeLessThan(0);
     });
 
-    it('draws the crowd hollow ring on the true place, once, pressless', () => {
-      const [points] = worldDocuments([fuego, nogales], { language: 'es' });
-      const rings = points?.collection.features.filter(
-        (feature) => feature.properties.sharedCenter,
-      );
-      expect(rings).toHaveLength(1);
-      expect(rings?.[0]?.geometry.coordinates).toEqual([fuego.longitude, fuego.latitude]);
-    });
-
-    it('leaves a lone point on its published place, with no stem and no offset', () => {
+    it('leaves a lone point on its published place, with no pin and no offset', () => {
       const [points] = worldDocuments([track], { language: 'es' });
       const features = points?.collection.features ?? [];
       expect(features).toHaveLength(1);

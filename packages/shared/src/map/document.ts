@@ -57,13 +57,6 @@ export interface MapReferenceProperties {
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
   /**
-   * Marks the hollow ring a crowd draws on its true place.
-   *
-   * A ring is a fact, not a choice: the point layers exclude it, and the movable
-   * sources' own ring layer draws it hollow at the shared point.
-   */
-  sharedCenter?: boolean;
-  /**
    * The fixed `[dx, dy]` placement of this point's name, in em, read only by the
    * movable sources' crowd label layer.
    *

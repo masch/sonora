@@ -114,6 +114,42 @@ function coincidentKey(experience: WorldExperience): string {
 }
 
 /**
+ * The pin's size, in degrees: the head's radius. The head is a full circle around
+ * the pushed-out anchor, and the tip is SPIDER_OFFSET_DEGREES of neck back to the
+ * true place, so the whole marker reads as one teardrop at the hub's opening zoom.
+ */
+export const SPIDER_PIN_HEAD_DEGREES = 0.00025;
+
+/**
+ * One closed ring of the teardrop: a full circle around the pushed-out anchor plus
+ * one tip standing back on the true place, in the direction the crowd's spoke came
+ * from. The head spans a fixed angular width so the two arcs meet at the tip without
+ * a seam, and the ring closes by repeating the first point, as GeoJSON requires.
+ */
+function teardropRing(
+  [anchorX, anchorY]: [number, number],
+  [directionX, directionY]: [number, number],
+): [number, number][] {
+  /** The tip stands at the true place: full offset back along the spoke. */
+  const mouthAngle = Math.asin(Math.min(1, SPIDER_PIN_HEAD_DEGREES / SPIDER_OFFSET_DEGREES));
+  const tipAngle = Math.atan2(-directionY, -directionX);
+  const ring: [number, number][] = [];
+  for (let step = 0; step <= 32; step += 1) {
+    const angle = tipAngle + mouthAngle + ((2 * Math.PI - 2 * mouthAngle) * step) / 32;
+    ring.push([
+      anchorX + Math.cos(angle) * SPIDER_PIN_HEAD_DEGREES,
+      anchorY + Math.sin(angle) * SPIDER_PIN_HEAD_DEGREES,
+    ]);
+  }
+  ring.push([
+    anchorX - directionX * SPIDER_OFFSET_DEGREES,
+    anchorY - directionY * SPIDER_OFFSET_DEGREES,
+  ]);
+  ring.push(ring[0]);
+  return ring;
+}
+
+/**
  * The slugs whose published place carries more than one experience.
  *
  * The map draws a crowd on a fan around the true place, and the callers that speak to
@@ -336,23 +372,6 @@ export function worldDocuments(
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
       };
 
-      if (count > 1 && index === 0) {
-        // The true place itself, drawn once per crowd as a hollow ring: the stem
-        // points at it, and it is the one marker that says "the place is here"
-        // without a word. It carries no press: a ring is a fact, not a choice.
-        features.push({
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [experience.longitude, experience.latitude],
-          },
-          properties: {
-            color,
-            sharedCenter: true,
-          },
-        });
-      }
-
       if (count > 1) {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
         const directionX = Math.cos(angle);
@@ -368,27 +387,31 @@ export function worldDocuments(
             -directionY * SPIDER_LABEL_OFFSET_EM,
           ],
         };
-        // The stem tells the eye which name belongs to which place, and it is drawn
-        // by the document's own line layer: a LineString in the same source, in the
-        // point's colour, from the true place to the pushed-out marker.
+        // The pin: a teardrop whose tip stands on the pushed-out anchor and whose
+        // body faces away from the true place, drawn as one polygon so the fill and
+        // outline layers this document already owns carry it — no image asset, no
+        // new layer kind, and the same shape on web and native.
         features.push({
           type: 'Feature',
           geometry: {
-            type: 'LineString',
-            coordinates: [
-              [experience.longitude, experience.latitude],
-              [longitude, latitude],
-            ],
+            type: 'Polygon',
+            coordinates: [teardropRing([longitude, latitude], [directionX, directionY])],
           },
           properties: { color },
         });
+        // The body's own dot, so the pin reads as one marker with a solid centre.
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          properties,
+        });
+      } else {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          properties,
+        });
       }
-
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [longitude, latitude] },
-        properties,
-      });
     });
   }
 
