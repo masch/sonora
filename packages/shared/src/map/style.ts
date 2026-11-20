@@ -160,6 +160,39 @@ export function buildReferenceStyleLayers(
   ];
 
   if (bold) {
+    // The shared-place marker: a crowd's own aggregate, drawn before the dot for the
+    // same reason the cluster body is — a dot that stands for several experiences is
+    // the thing the eye reads first. Same geometry as the cluster's, in the crowd's
+    // own colour, and the count rides inside it.
+    layers.push({
+      id: `${sourceId}:circle-shared`,
+      type: 'circle',
+      source: sourceId,
+      filter: [...isPoint, ...notClustered, ['has', 'sharedCount']],
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['step', ['get', 'sharedCount'], 16, 5, 20, 10, 24],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': DOT_STROKE_WIDTH,
+        'circle-opacity': 0.9,
+      },
+    });
+    if (options.includeLabels !== false) {
+      layers.push({
+        id: `${sourceId}:shared-count`,
+        type: 'symbol',
+        source: sourceId,
+        filter: [...isPoint, ...notClustered, ['has', 'sharedCount']],
+        layout: {
+          'text-field': ['get', 'sharedCount'],
+          'text-font': LABEL_FONT,
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      });
+    }
     // Added before the dot, because MapLibre draws in array order: the target sits under
     // the marker and the marker is what the eye reads. Its id still names the document
     // (`refs:<key>:circle-hit`), which is what makes the press path work untouched on
@@ -308,9 +341,6 @@ export function buildReferenceStyleLayers(
       source: sourceId,
       filter: [
         ...pointOnly,
-        // Excluded on every movable source, not only on a split one: the crowd lives
-        // in the world hub, which is the movable caller.
-        ...(movable ? [['!', ['has', 'spiderLabelOffset']]] : []),
         ...(splitSides
           ? [
               side === 'west'
@@ -332,29 +362,6 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
-    }
-
-    /**
-     * The crowd's own names: fixed beside the dot the fan pushed out, and allowed to
-     * overlap because the fan already separated them — the culling rule would drop
-     * one of the two names this layer exists to show.
-     */
-    if (movable) {
-      layers.push({
-        id: `${sourceId}:label-spider`,
-        type: 'symbol',
-        source: sourceId,
-        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'spiderLabelOffset']],
-        layout: {
-          'text-field': ['get', 'labelText'],
-          'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
-          'text-size': bold ? BOLD_LABEL_SIZE : 12,
-          'text-anchor': 'center',
-          'text-offset': ['get', 'spiderLabelOffset'],
-          'text-allow-overlap': true,
-        },
-        paint: labelPaint,
-      });
     }
   }
 

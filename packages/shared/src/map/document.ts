@@ -57,14 +57,14 @@ export interface MapReferenceProperties {
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
   /**
-   * The fixed `[dx, dy]` placement of this point's name, in em, read only by the
-   * movable sources' crowd label layer.
+   * How many experiences share this point, when more than one publishes the same
+   * place.
    *
-   * Set by `worldDocuments` for a member of a crowd: points published on the same GPS
-   * place draw on a fan around it, and each name is fixed beside the dot it was pushed
-   * to, so the two names can never collide or be culled.
+   * The markers themselves stay on their published coordinates — the crowd is
+   * answered by the picker, not by drawn-apart pins — and this count is what lets a
+   * caller (and a test) know the point is a choice without parsing labels.
    */
-  spiderLabelOffset?: [number, number];
+  sharedCount?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
   /**

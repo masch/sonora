@@ -33,6 +33,8 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     expect(ids).toEqual([
       `${SOURCE}:fill`,
       `${SOURCE}:line`,
+      `${SOURCE}:circle-shared`,
+      `${SOURCE}:shared-count`,
       `${SOURCE}:circle-hit`,
       `${SOURCE}:circle`,
       `${SOURCE}:label`,
@@ -136,6 +138,7 @@ describe('bold references: the hub’s markers carry their own weight', () => {
     expect(withoutLabels.map((layer) => layer.id)).toEqual([
       `${SOURCE}:fill`,
       `${SOURCE}:line`,
+      `${SOURCE}:circle-shared`,
       `${SOURCE}:circle-hit`,
       `${SOURCE}:circle`,
     ]);
@@ -198,7 +201,7 @@ describe('label side follows the camera frame', () => {
     const feature = points?.collection.features.find(
       (candidate) => candidate.properties.experienceSlug === slug,
     );
-    return feature?.properties.labelSide;
+    return feature?.properties.labelSide as string | undefined;
   };
 
   it('keeps the eastern point on its own side when a filter leaves it alone', () => {

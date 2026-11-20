@@ -87,66 +87,9 @@ const WORLD_SIDE_MARGIN_RATIO = 0.12;
  */
 const WORLD_LABEL_MARGIN_RATIO = 0.12;
 
-/**
- * The span a coincident point's marker is pushed away from its real place, in degrees.
- *
- * Two experiences published at the same GPS point draw two dots on the same pixels, and
- * a thumb cannot tell them apart. Each member of such a group is drawn on a fan around
- * the true place, each with a stem back to it. The radius is a constant of the frame the
- * hub opens on (`WORLD_MIN_SPAN_DEGREES` across a 400 dp card is about 4 m per pixel),
- * so this radius reads as roughly a dot-and-a-half of separation at that opening zoom
- * and grows apart as the walker zooms in.
- */
-export const SPIDER_OFFSET_DEGREES = 0.0008;
-
-/**
- * How far a coincident point's name sits from its pushed-out dot, in em.
- *
- * The fan already separated the dots, so each name is placed beside its own dot —
- * the same direction the dot was pushed — and nothing can collide with its sibling's
- * name, because the sibling was pushed the other way.
- */
-export const SPIDER_LABEL_OFFSET_EM = 0.9;
-
 /** Two places are the same place when they round to the same millionth of a degree. */
 function coincidentKey(experience: WorldExperience): string {
   return `${Math.round(experience.latitude * 1e6)}:${Math.round(experience.longitude * 1e6)}`;
-}
-
-/**
- * The pin's size, in degrees: the head's radius. The head is a full circle around
- * the pushed-out anchor, and the tip is SPIDER_OFFSET_DEGREES of neck back to the
- * true place, so the whole marker reads as one teardrop at the hub's opening zoom.
- */
-export const SPIDER_PIN_HEAD_DEGREES = 0.00025;
-
-/**
- * One closed ring of the teardrop: a full circle around the pushed-out anchor plus
- * one tip standing back on the true place, in the direction the crowd's spoke came
- * from. The head spans a fixed angular width so the two arcs meet at the tip without
- * a seam, and the ring closes by repeating the first point, as GeoJSON requires.
- */
-function teardropRing(
-  [anchorX, anchorY]: [number, number],
-  [directionX, directionY]: [number, number],
-): [number, number][] {
-  /** The tip stands at the true place: full offset back along the spoke. */
-  const mouthAngle = Math.asin(Math.min(1, SPIDER_PIN_HEAD_DEGREES / SPIDER_OFFSET_DEGREES));
-  const tipAngle = Math.atan2(-directionY, -directionX);
-  const ring: [number, number][] = [];
-  for (let step = 0; step <= 32; step += 1) {
-    const angle = tipAngle + mouthAngle + ((2 * Math.PI - 2 * mouthAngle) * step) / 32;
-    ring.push([
-      anchorX + Math.cos(angle) * SPIDER_PIN_HEAD_DEGREES,
-      anchorY + Math.sin(angle) * SPIDER_PIN_HEAD_DEGREES,
-    ]);
-  }
-  ring.push([
-    anchorX - directionX * SPIDER_OFFSET_DEGREES,
-    anchorY - directionY * SPIDER_OFFSET_DEGREES,
-  ]);
-  ring.push(ring[0]);
-  return ring;
 }
 
 /**
@@ -350,68 +293,32 @@ export function worldDocuments(
 
   const features: MapReferenceFeature[] = [];
   for (const members of crowds.values()) {
-    const count = members.length;
-    members.forEach((experience, index) => {
+    members.forEach((experience) => {
       const label: MapReferenceText = { [language]: worldPointLabel(experience) };
       const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
       const color = colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format];
 
       /**
-       * Where this marker is drawn: the place itself, unless it is one member of a
-       * crowd, and then a spoke of the fan. The fan starts pointing north and turns
-       * once around, so two members end up on opposite sides of the true place.
+       * Every marker stands on its published place: the crowd is answered by the
+       * picker and the shared-place hint, both of which read the payload, and a
+       * drawn-apart fan competed with the basemap's own streets instead of reading
+       * as a design decision.
        */
-      let longitude = experience.longitude;
-      let latitude = experience.latitude;
-      let properties: MapReferenceFeature['properties'] = {
+      const properties: MapReferenceFeature['properties'] = {
         label,
         color,
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
+        ...(members.length > 1 ? { sharedCount: members.length } : {}),
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
       };
 
-      if (count > 1) {
-        const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
-        const directionX = Math.cos(angle);
-        const directionY = Math.sin(angle);
-        longitude += directionX * SPIDER_OFFSET_DEGREES;
-        latitude += directionY * SPIDER_OFFSET_DEGREES;
-        properties = {
-          ...properties,
-          // Screen y grows downwards and latitude upwards, so the name's offset
-          // mirrors the dot's direction on the y axis.
-          spiderLabelOffset: [
-            directionX * SPIDER_LABEL_OFFSET_EM,
-            -directionY * SPIDER_LABEL_OFFSET_EM,
-          ],
-        };
-        // The pin: a teardrop whose tip stands on the pushed-out anchor and whose
-        // body faces away from the true place, drawn as one polygon so the fill and
-        // outline layers this document already owns carry it — no image asset, no
-        // new layer kind, and the same shape on web and native.
-        features.push({
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [teardropRing([longitude, latitude], [directionX, directionY])],
-          },
-          properties: { color },
-        });
-        // The body's own dot, so the pin reads as one marker with a solid centre.
-        features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          properties,
-        });
-      } else {
-        features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          properties,
-        });
-      }
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
+        properties,
+      });
     });
   }
 

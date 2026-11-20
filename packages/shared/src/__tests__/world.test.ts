@@ -102,60 +102,26 @@ describe('worldDocuments', () => {
     const fuego: WorldExperience = { ...track, slug: 'fuego', title: 'Fuego' };
     const nogales: WorldExperience = { ...track, slug: 'nogales', title: 'Nogales' };
 
-    it('separates coincident points on a fan around the true place', () => {
+    it('marks a shared place with the crowd count, on the published place', () => {
       const [points] = worldDocuments([fuego, nogales], { language: 'es' });
-      const dots = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'Point' && !feature.properties.sharedCenter,
-      );
-      expect(dots).toHaveLength(2);
-
-      // With two members the fan points one south and one north, so the y
-      // axis is what separates them.
-      const [first, second] = (dots ?? []).map(
-        (feature) => feature.geometry.coordinates as [number, number],
-      );
-      expect(first[1]).toBeLessThan(fuego.latitude);
-      expect(second[1]).toBeGreaterThan(nogales.latitude);
-
+      const features = points?.collection.features ?? [];
+      expect(features).toHaveLength(2);
+      for (const feature of features) {
+        expect(feature.geometry.type).toBe('Point');
+        expect(feature.geometry.coordinates).toEqual([fuego.longitude, fuego.latitude]);
+        expect(feature.properties.sharedCount).toBe(2);
+      }
       // Each marker still names its own experience.
-      const slugs = (dots ?? []).map((feature) => feature.properties.experienceSlug);
+      const slugs = features.map((feature) => feature.properties.experienceSlug);
       expect(slugs).toEqual(expect.arrayContaining(['fuego', 'nogales']));
     });
 
-    it('draws a pin polygon per crowd member, tipped at its pushed-out anchor', () => {
-      const [points] = worldDocuments([fuego, nogales], { language: 'es' });
-      const pins = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'Polygon',
-      );
-      expect(pins).toHaveLength(2);
-      for (const pin of pins ?? []) {
-        const [ring] = pin.geometry.coordinates as [number, number][][];
-        // A closed ring, with every vertex within one pin-size of the marker's
-        // pushed-out anchor.
-        expect(ring[0]).toEqual(ring[ring.length - 1]);
-        const longitudes = ring.map(([x]) => x);
-        expect(Math.max(...longitudes) - Math.min(...longitudes)).toBeLessThan(0.002);
-      }
-    });
-
-    it('carries the fixed label offset the crowd layer reads', () => {
-      const [points] = worldDocuments([fuego, nogales], { language: 'es' });
-      const dots = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'Point' && !feature.properties.sharedCenter,
-      );
-      const offsets = (dots ?? []).map((feature) => feature.properties.spiderLabelOffset);
-      for (const offset of offsets) expect(offset).toBeDefined();
-      // The two names point away from each other on the y axis.
-      expect((offsets[0] as number[])[1]).toBeGreaterThan(0);
-      expect((offsets[1] as number[])[1]).toBeLessThan(0);
-    });
-
-    it('leaves a lone point on its published place, with no pin and no offset', () => {
+    it('leaves a lone point on its published place, with no crowd count', () => {
       const [points] = worldDocuments([track], { language: 'es' });
       const features = points?.collection.features ?? [];
       expect(features).toHaveLength(1);
       expect(features[0]?.geometry.coordinates).toEqual([track.longitude, track.latitude]);
-      expect(features[0]?.properties.spiderLabelOffset).toBeUndefined();
+      expect(features[0]?.properties.sharedCount).toBeUndefined();
     });
   });
 

@@ -1383,6 +1383,10 @@ describe('ExperienceMap (web) — bold references', () => {
     expect(added.map((layer) => layer.id)).toEqual([
       'refs:umepay:fill',
       'refs:umepay:line',
+      // The crowd's own aggregate: gated on `sharedCount`, so a source without a
+      // crowd property draws nothing from these two layers.
+      'refs:umepay:circle-shared',
+      'refs:umepay:shared-count',
       'refs:umepay:circle-hit',
       'refs:umepay:circle',
       'refs:umepay:label',
