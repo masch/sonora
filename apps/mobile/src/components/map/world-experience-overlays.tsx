@@ -27,7 +27,6 @@ export interface WorldExperienceOverlaysProps {
   readonly pickerSlugs: readonly string[] | null;
   readonly onClosePicker: () => void;
   readonly onPick: (slug: string) => void;
-  readonly isShared: (slug: string) => boolean;
   /** Whether the open card was reached through the picker, not by its own tap. */
   readonly openedFromPicker: boolean;
   /** Cancels a flight that is still owed when a card closes without being read. */
@@ -44,7 +43,6 @@ export function WorldExperienceOverlays({
   pickerSlugs,
   onClosePicker,
   onPick,
-  isShared,
   openedFromPicker,
   onCancelFlight,
   onRequestPicker,
@@ -66,7 +64,6 @@ export function WorldExperienceOverlays({
     <>
       <ExperiencePreviewCard
         experience={opened}
-        sharedPlace={opened !== null && isShared(opened.slug)}
         onBackToList={openedFromPicker ? backToList : undefined}
         onDismiss={closeCard}
       />

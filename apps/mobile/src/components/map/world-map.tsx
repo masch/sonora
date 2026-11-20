@@ -434,7 +434,6 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         pickerSlugs={pickerSlugs}
         onClosePicker={closePicker}
         onPick={pickFromCluster}
-        isShared={isShared}
         openedFromPicker={openedFromPicker}
         onCancelFlight={() => {
           cancelFlight();

@@ -11,19 +11,10 @@ import { TwImage, TwView } from '@/tw';
 import { ThemedText } from '@/components/themed-text';
 import { BottomModal } from '@/components/ui/bottom-modal';
 import { Button } from '@/components/ui/button';
-import { HintRow } from '@/components/hint-row';
 
 export interface ExperiencePreviewCardProps {
   /** The experience a tap selected, or null while nothing is selected. */
   experience: PlayableExperience | null;
-  /**
-   * Whether this experience shares its published place with others.
-   *
-   * The map draws a crowd's pins apart so both are selectable, and the card says so:
-   * a walker standing at the ring should never read the pushed-out pin as another
-   * place.
-   */
-  sharedPlace?: boolean;
   /**
    * Returns to the list the card was opened from, when it was opened from one.
    *
@@ -52,7 +43,6 @@ export interface ExperiencePreviewCardProps {
  */
 export default function ExperiencePreviewCard({
   experience,
-  sharedPlace = false,
   onBackToList,
   onDismiss,
 }: ExperiencePreviewCardProps) {
@@ -115,13 +105,6 @@ export default function ExperiencePreviewCard({
             <ThemedText type="small" themeColor="textSecondary">
               {experience.description}
             </ThemedText>
-          )}
-
-          {sharedPlace && (
-            <HintRow
-              title={t('map.world.sharedPlaceTitle')}
-              hint={t('map.world.sharedPlaceHint')}
-            />
           )}
 
           {onBackToList && (

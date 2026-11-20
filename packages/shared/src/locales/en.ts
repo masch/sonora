@@ -73,9 +73,6 @@ export const en = {
       clusterShared:
         'These experiences share the same place. The numbered marker groups them; tap it to choose one.',
       backToList: 'Back to list',
-      sharedPlaceTitle: 'Shared place',
-      sharedPlaceHint:
-        'Other experiences also start at this exact point; use the numbered marker to choose between them.',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

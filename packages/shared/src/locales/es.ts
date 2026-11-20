@@ -74,9 +74,6 @@ export const es = {
       clusterShared:
         'Estas experiencias comparten el mismo lugar. El marcador numerado las agrupa; tócalo para elegir una.',
       backToList: 'Volver al listado',
-      sharedPlaceTitle: 'Lugar compartido',
-      sharedPlaceHint:
-        'Otras experiencias también parten de este punto; usa el marcador numerado para elegir entre ellas.',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',
