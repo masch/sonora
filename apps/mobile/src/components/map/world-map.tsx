@@ -292,6 +292,18 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         return;
       }
       if (!reference.experienceSlug) return;
+      // A crowd's member never opens alone: whatever the tap hit — the aggregate,
+      // one of the stacked points or its name — the answer is the same picker, the
+      // one surface that says the place carries several options and lists them.
+      if (sharedPlaceSlugs.has(reference.experienceSlug)) {
+        const shared = experiences.find(
+          (experience) => experience.slug === reference.experienceSlug,
+        );
+        if (shared) {
+          setClusterPick({ longitude: shared.longitude, latitude: shared.latitude });
+          return;
+        }
+      }
       // Variant A has no travel to wait for: the card is the whole answer.
       if (!centerOnSelect) {
         setOpenedSlug(reference.experienceSlug);
@@ -299,7 +311,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
       }
       beginFlight(reference.experienceSlug);
     },
-    [centerOnSelect, beginFlight],
+    [centerOnSelect, beginFlight, sharedPlaceSlugs, experiences],
   );
 
   if (status === 'error') {
