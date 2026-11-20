@@ -65,6 +65,14 @@ export interface MapReferenceProperties {
    * caller (and a test) know the point is a choice without parsing labels.
    */
   sharedCount?: number;
+  /**
+   * This experience's line in the crowd's stacked name list, 0-based.
+   *
+   * A crowd's names do not compete for the pixels under their aggregate: each one
+   * sits one line lower than the previous, read by the stack label layer as its
+   * vertical offset.
+   */
+  sharedIndex?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
   /**

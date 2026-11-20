@@ -341,6 +341,9 @@ export function buildReferenceStyleLayers(
       source: sourceId,
       filter: [
         ...pointOnly,
+        // A crowd member's name lives in the stack layer under the aggregate: a
+        // variable-anchor label here would fight its siblings for the same pixels.
+        ...(movable ? [['!', ['has', 'sharedCount']]] : []),
         ...(splitSides
           ? [
               side === 'west'
@@ -362,6 +365,50 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
+    }
+
+    /**
+     * The crowd's stacked names: one line per experience, under the aggregate.
+     *
+     * The aggregate says how many options share the place; the stack says which.
+     * Each member carries `sharedIndex`, its line in the list, and the offset grows
+     * one em-and-a-bit per line so the names never overlap — the top one clears the
+     * aggregate's own body. The first line is centre-anchored and the rest top, so
+     * the stack hangs from the aggregate like a list.
+     */
+    if (movable) {
+      layers.push({
+        id: `${sourceId}:label-stack`,
+        type: 'symbol',
+        source: sourceId,
+        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'sharedCount']],
+        layout: {
+          'text-field': ['get', 'labelText'],
+          'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
+          'text-size': bold ? BOLD_LABEL_SIZE : 12,
+          'text-anchor': 'top',
+          'text-offset': [
+            'interpolate',
+            ['linear'],
+            ['get', 'sharedIndex'],
+            0,
+            ['literal', [0, -0.6]],
+            1,
+            ['literal', [0, 0.4]],
+            2,
+            ['literal', [0, 1.4]],
+            3,
+            ['literal', [0, 2.4]],
+            4,
+            ['literal', [0, 3.4]],
+            5,
+            ['literal', [0, 4.4]],
+          ],
+          'text-max-width': bold ? BOLD_TEXT_MAX_WIDTH : 8,
+          'text-allow-overlap': true,
+        },
+        paint: labelPaint,
+      });
     }
   }
 

@@ -310,7 +310,9 @@ export function worldDocuments(
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
-        ...(members.length > 1 ? { sharedCount: members.length } : {}),
+        ...(members.length > 1
+          ? { sharedCount: members.length, sharedIndex: members.indexOf(experience) }
+          : {}),
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
       };
 
