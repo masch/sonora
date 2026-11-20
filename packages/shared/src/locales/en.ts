@@ -1,5 +1,6 @@
 export const en = {
   common: {
+    back: 'Back',
     learnMore: 'Learn more',
     dismiss: 'Dismiss',
     yes: 'Yes',
@@ -71,6 +72,7 @@ export const en = {
       clusterTitle: 'Places sharing this point',
       clusterShared:
         'These experiences share the same place. The pins are drawn apart so you can tell them apart; the hollow ring marks the real location.',
+      backToList: 'Back to list',
       sharedPlaceTitle: 'Shared place',
       sharedPlaceHint:
         'Other experiences also start at this exact point; the pin is drawn beside it so both are selectable.',

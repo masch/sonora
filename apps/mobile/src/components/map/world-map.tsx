@@ -4,7 +4,6 @@ import {
   filterWorldExperiences,
   worldCameraBounds,
   worldDocuments,
-  worldSharedPlaceSlugs,
   type GeoBounds,
   type UserExperienceFormat,
 } from '@sonora/shared';
@@ -24,10 +23,10 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
-import { ClusterPickModal } from './cluster-pick-modal';
+import { WorldExperienceOverlays } from './world-experience-overlays';
 import type { MapReferencePress, MapWaitState } from './map-view.types';
 import { useWorldFlight } from './use-world-flight';
-import ExperiencePreviewCard from './experience-preview-card';
+import { useSharedPlacePicker } from './use-shared-place-picker';
 
 /** The chips' label for each filter, `null` being "everything". */
 /**
@@ -183,6 +182,24 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   /** The one thing a landing does: it opens the card of the place the tap chose. */
   const openSlug = useCallback((slug: string) => setOpenedSlug(slug), []);
   const { flight, beginFlight, landFlight, cancelFlight } = useWorldFlight(openSlug);
+  const {
+    clusterPick,
+    setClusterPick,
+    requestPicker,
+    pick: pickFromCluster,
+    isShared,
+    openedFromPicker,
+    clearOpenedFromPicker,
+  } = useSharedPlacePicker(
+    experiences,
+    useCallback(
+      (slug: string) => {
+        setOpenedSlug(slug);
+        if (centerOnSelect) beginFlight(slug);
+      },
+      [centerOnSelect, beginFlight],
+    ),
+  );
   /**
    * Where the walker is, as the device already reports it.
    *
@@ -192,16 +209,6 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * apart from experiences.
    */
   const userCoordinates = useLocationStore((state) => state.coords);
-  /**
-   * The cluster a tap landed on, while the picker that names its places is open.
-   *
-   * A cluster that cannot expand any further — two experiences published on the same
-   * GPS point — has no zoom to answer a tap with, so the places it holds are listed
-   * instead, read from the same payload the map draws: no second copy, no drift.
-   */
-  const [clusterPick, setClusterPick] = useState<{ longitude: number; latitude: number } | null>(
-    null,
-  );
 
   const visible = useMemo(() => filterWorldExperiences(experiences, format), [experiences, format]);
   /**
@@ -267,12 +274,11 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     [experiences, regionBounds],
   );
 
+  /** The experience the open card describes, resolved against the unfiltered payload. */
   const opened = useMemo(
     () => experiences.find((experience) => experience.slug === openedSlug) ?? null,
     [experiences, openedSlug],
   );
-  /** The experiences whose published place carries more than one option. */
-  const sharedPlaceSlugs = useMemo(() => worldSharedPlaceSlugs(experiences), [experiences]);
 
   /** The place the camera is travelling to, in variant B. */
   const traveller = useMemo(
@@ -295,23 +301,19 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
       // A crowd's member never opens alone: whatever the tap hit — the aggregate,
       // one of the stacked points or its name — the answer is the same picker, the
       // one surface that says the place carries several options and lists them.
-      if (sharedPlaceSlugs.has(reference.experienceSlug)) {
-        const shared = experiences.find(
-          (experience) => experience.slug === reference.experienceSlug,
-        );
-        if (shared) {
-          setClusterPick({ longitude: shared.longitude, latitude: shared.latitude });
-          return;
-        }
+      if (isShared(reference.experienceSlug)) {
+        requestPicker(reference.experienceSlug);
+        return;
       }
       // Variant A has no travel to wait for: the card is the whole answer.
       if (!centerOnSelect) {
         setOpenedSlug(reference.experienceSlug);
+        clearOpenedFromPicker();
         return;
       }
       beginFlight(reference.experienceSlug);
     },
-    [centerOnSelect, beginFlight, sharedPlaceSlugs, experiences],
+    [centerOnSelect, beginFlight, isShared, requestPicker, setClusterPick, clearOpenedFromPicker],
   );
 
   if (status === 'error') {
@@ -445,23 +447,21 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         }
       />
 
-      <ExperiencePreviewCard
-        experience={opened}
-        sharedPlace={opened !== null && sharedPlaceSlugs.has(opened.slug)}
-        onDismiss={() => {
-          setOpenedSlug(null);
-          cancelFlight();
-        }}
-      />
-
-      <ClusterPickModal
-        cluster={clusterPick}
+      <WorldExperienceOverlays
         experiences={experiences}
-        onDismiss={() => setClusterPick(null)}
-        onPick={(slug) => {
-          setClusterPick(null);
-          handleFeaturePress({ documentKey: '', experienceSlug: slug });
+        openedSlug={openedSlug}
+        opened={opened}
+        onOpenSlug={setOpenedSlug}
+        clusterPick={clusterPick}
+        onClosePicker={() => setClusterPick(null)}
+        onPick={pickFromCluster}
+        isShared={isShared}
+        openedFromPicker={openedFromPicker}
+        onCancelFlight={() => {
+          cancelFlight();
+          clearOpenedFromPicker();
         }}
+        onRequestPicker={requestPicker}
       />
     </TwView>
   );

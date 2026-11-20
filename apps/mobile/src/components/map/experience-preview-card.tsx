@@ -24,6 +24,15 @@ export interface ExperiencePreviewCardProps {
    * place.
    */
   sharedPlace?: boolean;
+  /**
+   * Returns to the list the card was opened from, when it was opened from one.
+   *
+   * The picker's choice hands the walker a card they never asked for directly: an
+   * explicit back to the list beside the primary action is what makes that legible.
+   * Absent - a card the walker tapped for themselves - there is no list to return
+   * to and the button never draws.
+   */
+  onBackToList?: () => void;
   onDismiss: () => void;
 }
 
@@ -44,6 +53,7 @@ export interface ExperiencePreviewCardProps {
 export default function ExperiencePreviewCard({
   experience,
   sharedPlace = false,
+  onBackToList,
   onDismiss,
 }: ExperiencePreviewCardProps) {
   const { t, translateKey } = useAppTranslation();
@@ -114,6 +124,16 @@ export default function ExperiencePreviewCard({
             />
           )}
 
+          {onBackToList && (
+            <Button
+              label={t('map.world.backToList')}
+              accessibilityLabel={t('map.world.backToList')}
+              testID="experience-preview-back-to-list"
+              variant="outline"
+              icon={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }}
+              onPress={onBackToList}
+            />
+          )}
           <Button
             label={t('map.world.open')}
             accessibilityLabel={t('map.world.open')}
