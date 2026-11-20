@@ -113,6 +113,29 @@ function coincidentKey(experience: WorldExperience): string {
   return `${Math.round(experience.latitude * 1e6)}:${Math.round(experience.longitude * 1e6)}`;
 }
 
+/**
+ * The slugs whose published place carries more than one experience.
+ *
+ * The map draws a crowd on a fan around the true place, and the callers that speak to
+ * the walker (the picker, the preview) name that fact with this set: the same grouping,
+ * read once, so drawing and words can never disagree about what a crowd is.
+ */
+export function worldSharedPlaceSlugs(experiences: readonly WorldExperience[]): Set<string> {
+  const crowds = new Map<string, string[]>();
+  for (const experience of experiences) {
+    if (!isFinitePoint(experience)) continue;
+    const key = coincidentKey(experience);
+    const members = crowds.get(key);
+    if (members) members.push(experience.slug);
+    else crowds.set(key, [experience.slug]);
+  }
+  const shared = new Set<string>();
+  for (const members of crowds.values()) {
+    if (members.length > 1) for (const slug of members) shared.add(slug);
+  }
+  return shared;
+}
+
 /** The fields of a published experience the world draws, and nothing else. */
 export interface WorldExperience {
   slug: string;
@@ -312,6 +335,23 @@ export function worldDocuments(
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
       };
+
+      if (count > 1 && index === 0) {
+        // The true place itself, drawn once per crowd as a hollow ring: the stem
+        // points at it, and it is the one marker that says "the place is here"
+        // without a word. It carries no press: a ring is a fact, not a choice.
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [experience.longitude, experience.latitude],
+          },
+          properties: {
+            color,
+            sharedCenter: true,
+          },
+        });
+      }
 
       if (count > 1) {
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2;

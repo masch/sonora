@@ -70,6 +70,11 @@ export const es = {
       // El mapa no está vacío: lo está el filtro. Una frase sobre el mundo mentiría acá.
       filteredEmpty: 'Todavía no hay experiencias de este formato publicadas en el mapa',
       clusterTitle: 'Experiencias en este punto',
+      clusterShared:
+        'Estas experiencias comparten el mismo lugar. Los pines se dibujan separados para que puedas distinguirlos; el anillo marca la ubicación real.',
+      sharedPlaceTitle: 'Lugar compartido',
+      sharedPlaceHint:
+        'Otras experiencias también parten de este punto; el pin se dibuja a su lado para que ambas se puedan elegir.',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',

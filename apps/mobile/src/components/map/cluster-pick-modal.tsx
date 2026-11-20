@@ -54,24 +54,29 @@ export function ClusterPickModal({
       showCloseButton
       closeButtonTestID="world-cluster-pick-close"
     >
-      <TwView className="gap-2">
-        {held.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            {t('map.world.empty')}
-          </ThemedText>
-        ) : (
-          held.map((experience) => (
-            <Button
-              key={experience.slug}
-              label={experience.title}
-              accessibilityLabel={experience.title}
-              testID={`world-cluster-pick-${experience.slug}`}
-              variant="outline"
-              size="sm"
-              onPress={() => onPick(experience.slug)}
-            />
-          ))
-        )}
+      <TwView className="gap-3">
+        <ThemedText type="small" themeColor="textSecondary">
+          {t('map.world.clusterShared')}
+        </ThemedText>
+        <TwView className="gap-2">
+          {held.length === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {t('map.world.empty')}
+            </ThemedText>
+          ) : (
+            held.map((experience) => (
+              <Button
+                key={experience.slug}
+                label={experience.title}
+                accessibilityLabel={experience.title}
+                testID={`world-cluster-pick-${experience.slug}`}
+                variant="outline"
+                size="sm"
+                onPress={() => onPick(experience.slug)}
+              />
+            ))
+          )}
+        </TwView>
       </TwView>
     </BottomModal>
   );

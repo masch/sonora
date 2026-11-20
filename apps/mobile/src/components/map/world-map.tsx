@@ -4,6 +4,7 @@ import {
   filterWorldExperiences,
   worldCameraBounds,
   worldDocuments,
+  worldSharedPlaceSlugs,
   type GeoBounds,
   type UserExperienceFormat,
 } from '@sonora/shared';
@@ -270,6 +271,8 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     () => experiences.find((experience) => experience.slug === openedSlug) ?? null,
     [experiences, openedSlug],
   );
+  /** The experiences whose published place carries more than one option. */
+  const sharedPlaceSlugs = useMemo(() => worldSharedPlaceSlugs(experiences), [experiences]);
 
   /** The place the camera is travelling to, in variant B. */
   const traveller = useMemo(
@@ -432,6 +435,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
 
       <ExperiencePreviewCard
         experience={opened}
+        sharedPlace={opened !== null && sharedPlaceSlugs.has(opened.slug)}
         onDismiss={() => {
           setOpenedSlug(null);
           cancelFlight();

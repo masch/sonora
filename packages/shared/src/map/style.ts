@@ -136,9 +136,17 @@ export function buildReferenceStyleLayers(
   const fromZoom = ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]];
   const forGeometry = (kind: string) => ['all', ['==', ['geometry-type'], kind], fromZoom];
   const bold = options.bold === true;
+  const movable = options.movableLabels === true;
   const cluster = options.cluster === true;
   /** The aggregates a clustered source reports: not places, and never drawn as ones. */
   const notClustered = cluster ? [['!', ['has', 'point_count']]] : [];
+  /**
+   * Not a place: a crowd's hollow ring on the true share point, drawn by its own
+   * layer on the movable sources that can carry a crowd.
+   */
+  const notSharedCenter = movable ? [['!', ['has', 'sharedCenter']]] : [];
+  const isPoint = forGeometry('Point');
+  const pointOnly = [...isPoint, ...notClustered, ...notSharedCenter];
 
   const layers: MapStyleLayer[] = [
     {
@@ -167,7 +175,7 @@ export function buildReferenceStyleLayers(
       id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
-      filter: [...forGeometry('Point'), ...notClustered],
+      filter: [...isPoint, ...notClustered, ...notSharedCenter],
       paint: {
         'circle-color': color,
         'circle-radius': BOLD_HIT_RADIUS,
@@ -218,7 +226,7 @@ export function buildReferenceStyleLayers(
     id: `${sourceId}:circle`,
     type: 'circle',
     source: sourceId,
-    filter: [...forGeometry('Point'), ...notClustered],
+    filter: pointOnly,
     paint: {
       'circle-color': color,
       'circle-radius': DOT_RADIUS,
@@ -305,8 +313,7 @@ export function buildReferenceStyleLayers(
       type: 'symbol' as const,
       source: sourceId,
       filter: [
-        ...forGeometry('Point'),
-        ...notClustered,
+        ...pointOnly,
         // Excluded on every movable source, not only on a split one: the crowd lives
         // in the world hub, which is the movable caller.
         ...(movable ? [['!', ['has', 'spiderLabelOffset']]] : []),
@@ -331,6 +338,25 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
+    }
+
+    // The crowd's own ring on the true place: hollow, in the crowd's colour, at a
+    // radius just past the dot. It is drawn under the fan's dots so a stem crossing
+    // it keeps reading, and it answers "which pin is the place?" with "none — that
+    // one", without a word on the map.
+    if (movable) {
+      layers.push({
+        id: `${sourceId}:circle-shared-center`,
+        type: 'circle',
+        source: sourceId,
+        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'sharedCenter']],
+        paint: {
+          'circle-color': '#ffffff',
+          'circle-radius': DOT_RADIUS + 3,
+          'circle-stroke-color': ['coalesce', ['get', 'color'], DEFAULT_COLOR],
+          'circle-stroke-width': 2,
+        },
+      });
     }
 
     /**

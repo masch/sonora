@@ -69,6 +69,11 @@ export const en = {
       // The map is not empty: the filter is. A sentence about the world would be a lie here.
       filteredEmpty: 'No experiences of this format are published on the map yet',
       clusterTitle: 'Places sharing this point',
+      clusterShared:
+        'These experiences share the same place. The pins are drawn apart so you can tell them apart; the hollow ring marks the real location.',
+      sharedPlaceTitle: 'Shared place',
+      sharedPlaceHint:
+        'Other experiences also start at this exact point; the pin is drawn beside it so both are selectable.',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

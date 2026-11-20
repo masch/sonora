@@ -105,7 +105,7 @@ describe('worldDocuments', () => {
     it('separates coincident points on a fan around the true place', () => {
       const [points] = worldDocuments([fuego, nogales], { language: 'es' });
       const dots = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'Point',
+        (feature) => feature.geometry.type === 'Point' && !feature.properties.sharedCenter,
       );
       expect(dots).toHaveLength(2);
 
@@ -144,13 +144,22 @@ describe('worldDocuments', () => {
     it('carries the fixed label offset the crowd layer reads', () => {
       const [points] = worldDocuments([fuego, nogales], { language: 'es' });
       const dots = points?.collection.features.filter(
-        (feature) => feature.geometry.type === 'Point',
+        (feature) => feature.geometry.type === 'Point' && !feature.properties.sharedCenter,
       );
       const offsets = (dots ?? []).map((feature) => feature.properties.spiderLabelOffset);
       for (const offset of offsets) expect(offset).toBeDefined();
       // The two names point away from each other on the y axis.
       expect((offsets[0] as number[])[1]).toBeGreaterThan(0);
       expect((offsets[1] as number[])[1]).toBeLessThan(0);
+    });
+
+    it('draws the crowd hollow ring on the true place, once, pressless', () => {
+      const [points] = worldDocuments([fuego, nogales], { language: 'es' });
+      const rings = points?.collection.features.filter(
+        (feature) => feature.properties.sharedCenter,
+      );
+      expect(rings).toHaveLength(1);
+      expect(rings?.[0]?.geometry.coordinates).toEqual([fuego.longitude, fuego.latitude]);
     });
 
     it('leaves a lone point on its published place, with no stem and no offset', () => {
