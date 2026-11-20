@@ -71,11 +71,11 @@ export const en = {
       filteredEmpty: 'No experiences of this format are published on the map yet',
       clusterTitle: 'Places sharing this point',
       clusterShared:
-        'These experiences share the same place. The pins are drawn apart so you can tell them apart; the hollow ring marks the real location.',
+        'These experiences share the same place. The numbered marker groups them; tap it to choose one.',
       backToList: 'Back to list',
       sharedPlaceTitle: 'Shared place',
       sharedPlaceHint:
-        'Other experiences also start at this exact point; the pin is drawn beside it so both are selectable.',
+        'Other experiences also start at this exact point; use the numbered marker to choose between them.',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

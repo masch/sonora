@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   filterWorldExperiences,
   worldCameraBounds,
-  worldDocuments,
   type GeoBounds,
   type UserExperienceFormat,
 } from '@sonora/shared';
@@ -13,20 +12,19 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
 import LoadingView from '@/components/loading-view';
-import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useWorldExperiences } from '@/hooks/use-world-experiences';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useLocationStore } from '@/store/location-store';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
 import { WorldExperienceOverlays } from './world-experience-overlays';
 import type { MapReferencePress, MapWaitState } from './map-view.types';
 import { useWorldFlight } from './use-world-flight';
-import { useSharedPlacePicker } from './use-shared-place-picker';
+import { useWorldDocuments } from './use-world-documents';
+import { useSharedPlacePicker, clusterMemberSlugs } from './use-shared-place-picker';
 
 /** The chips' label for each filter, `null` being "everything". */
 /**
@@ -168,7 +166,6 @@ function WorldMapOverlay({
 
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
   const { t, language } = useAppTranslation();
-  const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
   const [showLabels, setShowLabels] = useState(true);
@@ -183,9 +180,10 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   const openSlug = useCallback((slug: string) => setOpenedSlug(slug), []);
   const { flight, beginFlight, landFlight, cancelFlight } = useWorldFlight(openSlug);
   const {
-    clusterPick,
-    setClusterPick,
+    pickerSlugs,
+    closePicker,
     requestPicker,
+    openPickerWith,
     pick: pickFromCluster,
     isShared,
     openedFromPicker,
@@ -215,43 +213,11 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * MapLibre cannot call the translation layer, so labels are resolved before drawing.
    * The adapter is the hook's, which keeps it stable per language.
    */
-  /**
-   * The points are drawn in the colour the app already gives each format — the same
-   * `RuntimeColors` entry the home's cards and the list rows use — so a Deriva is the
-   * same green everywhere. The label is drawn in the ink those cards put on that
-   * surface, because a pastel that fills a card cannot carry text over a pale basemap.
-   */
-  const documents = useMemo(
-    () =>
-      worldDocuments(visible, {
-        language,
-        // The side a name grows towards is about the frame, not about what a filter left:
-        // the camera stays fitted to the whole world when a chip narrows the map.
-        frameLongitudes: experiences.map((experience) => experience.longitude),
-        colors: {
-          trip: colors[CARD_BG_COLOR_KEYS.trip],
-          track: colors[CARD_BG_COLOR_KEYS.track],
-        },
-        labelColor: colors.homeCardText,
-      }),
-    [visible, language, colors, experiences],
-  );
-
-  /**
-   * The place the world stands on: the middle of everything it draws.
-   *
-   * The region is resolved from that point exactly as a detail screen resolves it
-   * from its own experience — one region per place, never a global default — so the
-   * world draws the same archive the screens do and costs nothing more.
-   */
-  const worldCenter = useMemo(() => {
-    const bounds = worldCameraBounds(experiences, null);
-    if (!bounds) return null;
-    return {
-      latitude: (bounds.south + bounds.north) / 2,
-      longitude: (bounds.west + bounds.east) / 2,
-    };
-  }, [experiences]);
+  const { documents, worldCenter } = useWorldDocuments({
+    experiences,
+    visible,
+    language,
+  });
 
   const { source } = useMapViewConfig(worldCenter);
 
@@ -293,8 +259,12 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    */
   const handleFeaturePress = useCallback(
     (reference: MapReferencePress) => {
+      // Whatever the tap resolves to, a press on the map supersedes an earlier one:
+      // a flight still owed is withdrawn here, so a previous selection's landing
+      // never opens a card the walker did not ask for last.
+      cancelFlight();
       if (reference.cluster) {
-        setClusterPick(reference.cluster);
+        openPickerWith(clusterMemberSlugs(experiences, reference.cluster));
         return;
       }
       if (!reference.experienceSlug) return;
@@ -313,7 +283,16 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
       }
       beginFlight(reference.experienceSlug);
     },
-    [centerOnSelect, beginFlight, isShared, requestPicker, setClusterPick, clearOpenedFromPicker],
+    [
+      centerOnSelect,
+      beginFlight,
+      isShared,
+      requestPicker,
+      openPickerWith,
+      cancelFlight,
+      experiences,
+      clearOpenedFromPicker,
+    ],
   );
 
   if (status === 'error') {
@@ -452,8 +431,8 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         openedSlug={openedSlug}
         opened={opened}
         onOpenSlug={setOpenedSlug}
-        clusterPick={clusterPick}
-        onClosePicker={() => setClusterPick(null)}
+        pickerSlugs={pickerSlugs}
+        onClosePicker={closePicker}
         onPick={pickFromCluster}
         isShared={isShared}
         openedFromPicker={openedFromPicker}

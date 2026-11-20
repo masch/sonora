@@ -10,6 +10,7 @@ import {
   movableLabelsForDocument,
   referenceSourceId,
   withResolvedLabels,
+  WORLD_CLUSTER_CONFIG,
   WORLD_POINTS_DOCUMENT_KEY,
   type MapDocument,
   type MapLayerSelection,
@@ -166,7 +167,13 @@ export function buildMapStyle(
     sources[sourceId] = {
       type: 'geojson',
       data: withResolvedLabels(document, translate, language).collection,
-      ...(clustered ? { cluster: true, clusterRadius: 40, clusterMaxZoom: 16 } : {}),
+      ...(clustered
+        ? {
+            cluster: true,
+            clusterRadius: WORLD_CLUSTER_CONFIG.radiusPx,
+            clusterMaxZoom: WORLD_CLUSTER_CONFIG.maxZoom,
+          }
+        : {}),
     };
     layers.push(
       ...buildReferenceStyleLayers(sourceId, {

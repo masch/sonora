@@ -89,7 +89,7 @@ export interface MapReferencePress {
    * resolves it — by zooming on the web, or by listing the places it holds where a
    * zoom cannot separate them (two experiences on the same GPS point).
    */
-  cluster?: { longitude: number; latitude: number };
+  cluster?: { longitude: number; latitude: number; zoom: number };
   /** The label already resolved to the active language, from the document or a key. */
   labelText?: string;
   /** The description already resolved, when the reference has one. */

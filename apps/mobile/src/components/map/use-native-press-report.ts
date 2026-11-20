@@ -83,7 +83,11 @@ export function useNativePressReport(
 
         const hitProperties = (hit.properties ?? {}) as Record<string, unknown>;
         // A cluster is an aggregate, not a place: it names no experience, so the
-        // reference carries its centre and the caller decides what a tap on it means.
+        // reference carries its centre and the zoom it was pressed at, and the
+        // caller decides what a tap on it means. The zoom is what lets the caller
+        // name the places the aggregate stands for without a source ref: the
+        // cluster's pixel radius converts to degrees at this zoom, and the places
+        // inside that span are the aggregate's members.
         if (typeof hitProperties.point_count === 'number') {
           const geometry = (
             hit as unknown as {
@@ -91,10 +95,20 @@ export function useNativePressReport(
             }
           ).geometry;
           const [longitude, latitude] = geometry?.coordinates ?? [];
-          if (typeof longitude === 'number' && typeof latitude === 'number') {
+          let zoom: number | undefined;
+          try {
+            zoom = await map.getZoom();
+          } catch (error) {
+            logger.warn('ExperienceMap could not read the pressed zoom:', error);
+          }
+          if (
+            typeof longitude === 'number' &&
+            typeof latitude === 'number' &&
+            typeof zoom === 'number'
+          ) {
             handler({
               documentKey: documentKeyOfLayer(layerId) ?? '',
-              cluster: { longitude, latitude },
+              cluster: { longitude, latitude, zoom },
             });
           }
           return;

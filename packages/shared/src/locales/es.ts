@@ -72,11 +72,11 @@ export const es = {
       filteredEmpty: 'Todavía no hay experiencias de este formato publicadas en el mapa',
       clusterTitle: 'Experiencias en este punto',
       clusterShared:
-        'Estas experiencias comparten el mismo lugar. Los pines se dibujan separados para que puedas distinguirlos; el anillo marca la ubicación real.',
+        'Estas experiencias comparten el mismo lugar. El marcador numerado las agrupa; tócalo para elegir una.',
       backToList: 'Volver al listado',
       sharedPlaceTitle: 'Lugar compartido',
       sharedPlaceHint:
-        'Otras experiencias también parten de este punto; el pin se dibuja a su lado para que ambas se puedan elegir.',
+        'Otras experiencias también parten de este punto; usa el marcador numerado para elegir entre ellas.',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',

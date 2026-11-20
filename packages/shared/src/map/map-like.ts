@@ -1,6 +1,6 @@
 import type { MapDocument } from './document';
 import { labelAnchorForDocument } from './itinerary';
-import { movableLabelsForDocument, WORLD_POINTS_DOCUMENT_KEY } from './world';
+import { movableLabelsForDocument, WORLD_CLUSTER_CONFIG, WORLD_POINTS_DOCUMENT_KEY } from './world';
 import {
   buildReferenceStyleLayers,
   REFERENCE_SOURCE_PREFIX,
@@ -71,7 +71,11 @@ export function applyMapDocuments(
     // does: two experiences published on the same GPS place cannot be told apart.
     const clustered = document.key === WORLD_POINTS_DOCUMENT_KEY;
     const clusterOptions = clustered
-      ? { cluster: true, clusterRadius: 40, clusterMaxZoom: 16 }
+      ? {
+          cluster: true,
+          clusterRadius: WORLD_CLUSTER_CONFIG.radiusPx,
+          clusterMaxZoom: WORLD_CLUSTER_CONFIG.maxZoom,
+        }
       : {};
     if (existing?.setData) {
       existing.setData(document.collection);

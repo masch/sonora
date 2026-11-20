@@ -24,7 +24,7 @@ export interface WorldExperienceOverlaysProps {
   /** The resolved playable experience, already found by the caller against the payload. */
   readonly opened: PlayableExperience | null;
   readonly onOpenSlug: (slug: string | null) => void;
-  readonly clusterPick: { longitude: number; latitude: number } | null;
+  readonly pickerSlugs: readonly string[] | null;
   readonly onClosePicker: () => void;
   readonly onPick: (slug: string) => void;
   readonly isShared: (slug: string) => boolean;
@@ -41,7 +41,7 @@ export function WorldExperienceOverlays({
   openedSlug,
   opened,
   onOpenSlug,
-  clusterPick,
+  pickerSlugs,
   onClosePicker,
   onPick,
   isShared,
@@ -72,7 +72,7 @@ export function WorldExperienceOverlays({
       />
 
       <ClusterPickModal
-        cluster={clusterPick}
+        slugs={pickerSlugs}
         experiences={experiences}
         onDismiss={onClosePicker}
         onPick={onPick}

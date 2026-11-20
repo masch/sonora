@@ -106,6 +106,8 @@ export function BottomModal({
             <TwView
               testID="bottom-modal-card"
               className="bg-background rounded-t-3xl pt-6 px-6 gap-4"
+              accessibilityLabel={title}
+              accessibilityViewIsModal
               style={{
                 paddingBottom: bottomPadding,
               }}

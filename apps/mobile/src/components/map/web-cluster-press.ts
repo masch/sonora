@@ -1,9 +1,11 @@
+import { WORLD_CLUSTER_CONFIG } from '@sonora/shared';
+
 import type { MapHandle, RenderedFeature } from './use-web-map-instance';
 
 /** What the caller of the web renderer receives when a press resolves. */
 export type WebClusterHandler = (
   reference:
-    | { documentKey: string; cluster: { longitude: number; latitude: number } }
+    | { documentKey: string; cluster: { longitude: number; latitude: number; zoom: number } }
     | { documentKey: string; experienceSlug: string },
 ) => void;
 
@@ -12,9 +14,10 @@ export type WebClusterHandler = (
  *
  * A cluster first tries the zoom it can answer with: supercluster says how far out
  * the group's members separate, and a flight there replaces the aggregate with the
- * dots it held. A cluster that cannot expand any further — two experiences published
- * on the same GPS point — has no zoom left, and the caller decides what a tap on it
- * means instead.
+ * dots it held. A cluster whose expansion zoom lies past the source's clustering
+ * ceiling — two experiences published on the same GPS point, whose coordinates no
+ * camera can separate — has no zoom to answer with, so the caller opens the picker
+ * for the places it holds instead of flying the walker into a wall.
  */
 export function openWebCluster(
   map: MapHandle,
@@ -32,17 +35,24 @@ export function openWebCluster(
   const expand = source?.getClusterExpansionZoom;
   const clusterId = feature.properties.cluster_id;
   if (!expand || typeof clusterId !== 'number') {
-    handler({ documentKey, cluster: clusterCenter });
+    handler({
+      documentKey,
+      cluster: { ...clusterCenter, zoom: map.getZoom() },
+    });
     return;
   }
   void expand
     .call(source, clusterId)
     .then((zoom) => {
-      if (zoom > (map.getZoom?.() ?? 0)) {
-        map.easeTo?.({ center: [longitude ?? 0, latitude ?? 0], zoom });
+      // A cluster that cannot separate inside the source's own ceiling is a shared
+      // place: flying there would arrive at an aggregate that never opens. The
+      // ceiling is read from the same constant the style build configures, so the
+      // two can never drift apart.
+      if (zoom <= WORLD_CLUSTER_CONFIG.maxZoom && zoom > map.getZoom()) {
+        map.easeTo({ center: [longitude ?? 0, latitude ?? 0], zoom });
         return;
       }
-      handler({ documentKey, cluster: clusterCenter });
+      handler({ documentKey, cluster: { ...clusterCenter, zoom: map.getZoom() } });
     })
-    .catch(() => handler({ documentKey, cluster: clusterCenter }));
+    .catch(() => handler({ documentKey, cluster: { ...clusterCenter, zoom: map.getZoom() } }));
 }

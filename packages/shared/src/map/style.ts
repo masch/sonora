@@ -140,6 +140,8 @@ export function buildReferenceStyleLayers(
   /** The aggregates a clustered source reports: not places, and never drawn as ones. */
   const notClustered = cluster ? [['!', ['has', 'point_count']]] : [];
   const isPoint = forGeometry('Point');
+  /** A crowd's member presses through its aggregate: the hit target skips it too. */
+  const notSharedCenter = bold ? [['!', ['has', 'sharedCount']]] : [];
   const pointOnly = [...isPoint, ...notClustered];
 
   const layers: MapStyleLayer[] = [
@@ -202,7 +204,7 @@ export function buildReferenceStyleLayers(
       id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
-      filter: [...isPoint, ...notClustered],
+      filter: [...isPoint, ...notClustered, ...notSharedCenter],
       paint: {
         'circle-color': color,
         'circle-radius': BOLD_HIT_RADIUS,
@@ -253,7 +255,10 @@ export function buildReferenceStyleLayers(
     id: `${sourceId}:circle`,
     type: 'circle',
     source: sourceId,
-    filter: pointOnly,
+    // A crowd's member draws through the shared aggregate: the plain dot would be
+    // painted over the count digit, because MapLibre draws this layer after the
+    // aggregate's own body. Its hit target stays, so the press path is untouched.
+    filter: [...pointOnly, ...(bold ? [['!', ['has', 'sharedCount']]] : [])],
     paint: {
       'circle-color': color,
       'circle-radius': DOT_RADIUS,
@@ -387,22 +392,29 @@ export function buildReferenceStyleLayers(
           'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
           'text-size': bold ? BOLD_LABEL_SIZE : 12,
           'text-anchor': 'top',
+          // One line per member, the first starting past the aggregate's own body:
+          // its radius plus its stroke is the space the count digit lives in, and
+          // a name drawn inside it would read as the number's caption. The line
+          // spacing is a title's wrapped height (the default line height is 1.2 em
+          // plus air), so a wrapped name never occupies its sibling's row, and the
+          // interpolation is linear in `sharedIndex`, so a crowd of any size gets
+          // its own row instead of clamping to the last stop.
           'text-offset': [
             'interpolate',
             ['linear'],
             ['get', 'sharedIndex'],
             0,
-            ['literal', [0, -0.6]],
+            ['literal', [0, 1.6]],
             1,
-            ['literal', [0, 0.4]],
+            ['literal', [0, 3.0]],
             2,
-            ['literal', [0, 1.4]],
-            3,
-            ['literal', [0, 2.4]],
-            4,
-            ['literal', [0, 3.4]],
-            5,
             ['literal', [0, 4.4]],
+            3,
+            ['literal', [0, 5.8]],
+            4,
+            ['literal', [0, 7.2]],
+            5,
+            ['literal', [0, 8.6]],
           ],
           'text-max-width': bold ? BOLD_TEXT_MAX_WIDTH : 8,
           'text-allow-overlap': true,
