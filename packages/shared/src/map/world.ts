@@ -97,7 +97,7 @@ const WORLD_LABEL_MARGIN_RATIO = 0.12;
  * so this radius reads as roughly a dot-and-a-half of separation at that opening zoom
  * and grows apart as the walker zooms in.
  */
-export const SPIDER_OFFSET_DEGREES = 0.0004;
+export const SPIDER_OFFSET_DEGREES = 0.0008;
 
 /**
  * How far a coincident point's name sits from its pushed-out dot, in em.
