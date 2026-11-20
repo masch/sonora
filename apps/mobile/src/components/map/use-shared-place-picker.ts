@@ -27,28 +27,36 @@ import {
  * The slugs of the experiences one pressed cluster stands for.
  *
  * Native has no source ref to expand the cluster through, so the members are
- * resolved against the payload with supercluster's own rule, read backwards: the
- * cluster's pixel radius at the pressed zoom spans a circle of degrees around its
- * centre, and every published place inside that circle is a member. Identical
- * coordinates are always members of each other's cluster, so the shared-place rule
- * and this rule agree on a crowd; nearby-but-distinct places land here too, which
- * is what the walker pressed for.
+ * resolved against the payload with supercluster's own rule, read backwards: both
+ * the centre and every published place are projected to web mercator pixels at the
+ * pressed zoom (tile extent 512, mercator y), and a place inside the cluster's
+ * radius is a member. The projection is supercluster's own, so this rule and the
+ * clustering agree on exactly who was grouped; identical coordinates are distance
+ * zero, so the shared-place rule and this rule also agree on a crowd.
  */
 export function clusterMemberSlugs(
   experiences: readonly WorldExperience[],
   centre: { longitude: number; latitude: number; zoom: number },
 ): string[] {
-  const worldPx = WORLD_CLUSTER_CONFIG.tileSizePx * 2 ** centre.zoom;
-  const radiusDegrees = (WORLD_CLUSTER_CONFIG.radiusPx / worldPx) * 360;
+  const worldPx = WORLD_CLUSTER_CONFIG.extentPx * 2 ** centre.zoom;
+  const radiusPx = WORLD_CLUSTER_CONFIG.radiusPx;
+  /** Web mercator's x, in pixels from the antimeridian. */
+  const mercX = (longitude: number): number => ((longitude + 180) / 360) * worldPx;
+  /** Web mercator's y, in pixels from the north pole. */
+  const mercY = (latitude: number): number =>
+    ((1 - Math.log(Math.tan(Math.PI / 4 + (latitude * Math.PI) / 360)) / Math.PI) / 2) * worldPx;
+
+  const centreX = mercX(centre.longitude);
+  const centreY = mercY(centre.latitude);
   return experiences
-    .filter(
-      (experience) =>
-        Number.isFinite(experience.latitude) &&
-        Number.isFinite(experience.longitude) &&
-        Math.abs(experience.longitude - centre.longitude) * Math.cos(centre.latitude) <=
-          radiusDegrees &&
-        Math.abs(experience.latitude - centre.latitude) <= radiusDegrees,
-    )
+    .filter((experience) => {
+      if (!Number.isFinite(experience.latitude) || !Number.isFinite(experience.longitude)) {
+        return false;
+      }
+      const dx = mercX(experience.longitude) - centreX;
+      const dy = mercY(experience.latitude) - centreY;
+      return dx * dx + dy * dy <= radiusPx * radiusPx;
+    })
     .map((experience) => experience.slug);
 }
 

@@ -32,8 +32,8 @@ export const WORLD_POINTS_DOCUMENT_KEY = 'world-experiences';
 export const WORLD_CLUSTER_CONFIG = {
   /** supercluster's default radius, in pixels. */
   radiusPx: 40,
-  /** Web mercator's world width at zoom 0, in pixels. */
-  tileSizePx: 256,
+  /** Supercluster's tile extent: the projected world width at zoom 0, in pixels. */
+  extentPx: 512,
   /** Past this camera zoom the source stops clustering. */
   maxZoom: 16,
 } as const;
