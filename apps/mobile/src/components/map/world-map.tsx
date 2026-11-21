@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   filterWorldExperiences,
   worldCameraBounds,
-  worldDocuments,
   type GeoBounds,
   type UserExperienceFormat,
 } from '@sonora/shared';
@@ -13,19 +12,19 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
 import LoadingView from '@/components/loading-view';
-import { CARD_BG_COLOR_KEYS } from '@/constants/theme';
 import { useMapViewConfig } from '@/hooks/use-map-view-config';
 import { useAppTranslation, type TranslationKeys } from '@/hooks/use-translation';
 import { useWorldExperiences } from '@/hooks/use-world-experiences';
 import { useRemoteConfigStore } from '@/store/remote-config-store';
 import { useLocationStore } from '@/store/location-store';
-import { useThemeColors } from '@/hooks/use-theme-colors';
 import { TwView } from '@/tw';
 
 import ExperienceMap from './experience-map';
-import { FOCUS_SETTLE_FALLBACK_MS } from './map-view.types';
-import ExperiencePreviewCard from './experience-preview-card';
+import { WorldExperienceOverlays } from './world-experience-overlays';
 import type { MapReferencePress, MapWaitState } from './map-view.types';
+import { useWorldFlight } from './use-world-flight';
+import { useWorldDocuments } from './use-world-documents';
+import { useSharedPlacePicker, clusterMemberSlugs } from './use-shared-place-picker';
 
 /** The chips' label for each filter, `null` being "everything". */
 /**
@@ -167,19 +166,38 @@ function WorldMapOverlay({
 
 export default function WorldMap({ centerOnSelect = false, testID = 'world-map' }: WorldMapProps) {
   const { t, language } = useAppTranslation();
-  const colors = useThemeColors();
   const { status, experiences, retry } = useWorldExperiences();
   const [format, setFormat] = useState<UserExperienceFormat | null>(null);
   const [showLabels, setShowLabels] = useState(true);
   /**
-   * What a tap asked for, and only what the camera still owes it.
-   *
-   * Variant B travels before the card opens, so a tap cannot open it directly: the
-   * request is the destination the camera is flying to, and `id` makes every tap a
-   * new request even when it names the place the previous one did — otherwise
-   * tapping the same point twice would look like no change and never open again.
+   * What a tap asked for, and only what the camera still owes it — one flight per
+   * request, landed by the camera's own report or the dead-man fallback. The whole
+   * state lives in `useWorldFlight`, which is the one channel between a tap and the
+   * card it opens.
    */
-  const [flight, setFlight] = useState<{ slug: string; id: number } | null>(null);
+  const [openedSlug, setOpenedSlug] = useState<string | null>(null);
+  /** The one thing a landing does: it opens the card of the place the tap chose. */
+  const openSlug = useCallback((slug: string) => setOpenedSlug(slug), []);
+  const { flight, beginFlight, landFlight, cancelFlight } = useWorldFlight(openSlug);
+  const {
+    pickerSlugs,
+    closePicker,
+    requestPicker,
+    openPickerWith,
+    pick: pickFromCluster,
+    isShared,
+    openedFromPicker,
+    clearOpenedFromPicker,
+  } = useSharedPlacePicker(
+    experiences,
+    useCallback(
+      (slug: string) => {
+        setOpenedSlug(slug);
+        if (centerOnSelect) beginFlight(slug);
+      },
+      [centerOnSelect, beginFlight],
+    ),
+  );
   /**
    * Where the walker is, as the device already reports it.
    *
@@ -189,51 +207,17 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
    * apart from experiences.
    */
   const userCoordinates = useLocationStore((state) => state.coords);
-  const [openedSlug, setOpenedSlug] = useState<string | null>(null);
-  const requestId = useRef(0);
 
   const visible = useMemo(() => filterWorldExperiences(experiences, format), [experiences, format]);
   /**
    * MapLibre cannot call the translation layer, so labels are resolved before drawing.
    * The adapter is the hook's, which keeps it stable per language.
    */
-  /**
-   * The points are drawn in the colour the app already gives each format — the same
-   * `RuntimeColors` entry the home's cards and the list rows use — so a Deriva is the
-   * same green everywhere. The label is drawn in the ink those cards put on that
-   * surface, because a pastel that fills a card cannot carry text over a pale basemap.
-   */
-  const documents = useMemo(
-    () =>
-      worldDocuments(visible, {
-        language,
-        // The side a name grows towards is about the frame, not about what a filter left:
-        // the camera stays fitted to the whole world when a chip narrows the map.
-        frameLongitudes: experiences.map((experience) => experience.longitude),
-        colors: {
-          trip: colors[CARD_BG_COLOR_KEYS.trip],
-          track: colors[CARD_BG_COLOR_KEYS.track],
-        },
-        labelColor: colors.homeCardText,
-      }),
-    [visible, language, colors, experiences],
-  );
-
-  /**
-   * The place the world stands on: the middle of everything it draws.
-   *
-   * The region is resolved from that point exactly as a detail screen resolves it
-   * from its own experience — one region per place, never a global default — so the
-   * world draws the same archive the screens do and costs nothing more.
-   */
-  const worldCenter = useMemo(() => {
-    const bounds = worldCameraBounds(experiences, null);
-    if (!bounds) return null;
-    return {
-      latitude: (bounds.south + bounds.north) / 2,
-      longitude: (bounds.west + bounds.east) / 2,
-    };
-  }, [experiences]);
+  const { documents, worldCenter } = useWorldDocuments({
+    experiences,
+    visible,
+    language,
+  });
 
   const { source } = useMapViewConfig(worldCenter);
 
@@ -256,6 +240,7 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
     [experiences, regionBounds],
   );
 
+  /** The experience the open card describes, resolved against the unfiltered payload. */
   const opened = useMemo(
     () => experiences.find((experience) => experience.slug === openedSlug) ?? null,
     [experiences, openedSlug],
@@ -269,50 +254,45 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
   );
 
   /**
-   * Opens the card once the flight it started has landed.
-   *
-   * The signal is the camera's, not a clock: a renderer reports that the move it was
-   * asked for came to rest, so a walker who pans or pinches during it still gets the
-   * card when the travel ends. A tap replaced by another one supersedes the wait, and
-   * the walker never gets a card for the point they did not choose last.
-   *
-   * The flight is cleared with it: the camera owes nothing once it has arrived, and
-   * keeping the request would leave `focus` asking for a place already reached — a
-   * second tap on that same place would then look like no change at all.
-   */
-  const landFlight = useCallback(() => {
-    if (!flight) return;
-    setOpenedSlug(flight.slug);
-    setFlight(null);
-  }, [flight]);
-
-  /**
-   * The dead-man fallback, and the only timer here: a renderer that never reports
-   * would otherwise eat the tap. It is longer than any flight, so it can never race
-   * the camera, and it reveals the card the walker is already waiting for.
-   */
-  useEffect(() => {
-    if (!flight) return;
-    const timer = setTimeout(landFlight, FOCUS_SETTLE_FALLBACK_MS);
-    return () => clearTimeout(timer);
-  }, [flight, landFlight]);
-
-  /**
    * A tap reports the reference, and the reference names its experience. Anything
    * else drawn on this map — a trip's path — reports nothing and selects nothing.
    */
   const handleFeaturePress = useCallback(
     (reference: MapReferencePress) => {
+      // Whatever the tap resolves to, a press on the map supersedes an earlier one:
+      // a flight still owed is withdrawn here, so a previous selection's landing
+      // never opens a card the walker did not ask for last.
+      cancelFlight();
+      if (reference.cluster) {
+        openPickerWith(clusterMemberSlugs(experiences, reference.cluster));
+        return;
+      }
       if (!reference.experienceSlug) return;
-      requestId.current += 1;
+      // A crowd's member never opens alone: whatever the tap hit — the aggregate,
+      // one of the stacked points or its name — the answer is the same picker, the
+      // one surface that says the place carries several options and lists them.
+      if (isShared(reference.experienceSlug)) {
+        requestPicker(reference.experienceSlug);
+        return;
+      }
       // Variant A has no travel to wait for: the card is the whole answer.
       if (!centerOnSelect) {
         setOpenedSlug(reference.experienceSlug);
+        clearOpenedFromPicker();
         return;
       }
-      setFlight({ slug: reference.experienceSlug, id: requestId.current });
+      beginFlight(reference.experienceSlug);
     },
-    [centerOnSelect],
+    [
+      centerOnSelect,
+      beginFlight,
+      isShared,
+      requestPicker,
+      openPickerWith,
+      cancelFlight,
+      experiences,
+      clearOpenedFromPicker,
+    ],
   );
 
   if (status === 'error') {
@@ -446,12 +426,20 @@ export default function WorldMap({ centerOnSelect = false, testID = 'world-map' 
         }
       />
 
-      <ExperiencePreviewCard
-        experience={opened}
-        onDismiss={() => {
-          setOpenedSlug(null);
-          setFlight(null);
+      <WorldExperienceOverlays
+        experiences={experiences}
+        openedSlug={openedSlug}
+        opened={opened}
+        onOpenSlug={setOpenedSlug}
+        pickerSlugs={pickerSlugs}
+        onClosePicker={closePicker}
+        onPick={pickFromCluster}
+        openedFromPicker={openedFromPicker}
+        onCancelFlight={() => {
+          cancelFlight();
+          clearOpenedFromPicker();
         }}
+        onRequestPicker={requestPicker}
       />
     </TwView>
   );

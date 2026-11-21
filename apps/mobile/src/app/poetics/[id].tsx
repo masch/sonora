@@ -1,13 +1,16 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
+import { IconButton } from '@/components/ui/icon-button';
 import LoadingView from '@/components/loading-view';
 import { MapScrollScreenWrapper } from '@/components/map/map-scroll-lock';
 import { ThemedText } from '@/components/themed-text';
 import TrackDetailView from '@/components/track-detail-view';
 import TripDetailView from '@/components/trip-detail-view';
 import { SONORA_TRACKS_BG, SONORA_TRIP_BG } from '@/constants/images';
+import { ROUTES } from '@/constants/routes';
+import { detailBackAction } from '@/utils/detail-back';
 import { fetchExperiences, isPlayableExperience, type Experience } from '@/data/experiences';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppTranslation } from '@/hooks/use-translation';
@@ -20,6 +23,7 @@ export default function TrackDetailScreen() {
   const { id, title: initialTitle } = useLocalSearchParams<{ id: string; title?: string }>();
   const { t } = useAppTranslation();
   const colors = useThemeColors();
+  const router = useRouter();
 
   const [state, setState] = useState<{
     track: Experience | null;
@@ -118,9 +122,34 @@ export default function TrackDetailScreen() {
       });
   };
 
+  /**
+   * Web has no hardware back and the gesture does not exist on desktop browsers: an
+   * explicit arrow returns to wherever the experience was opened from - the world
+   * hub's list included. The guard keeps a deep link or a refresh from popping into
+   * a stack that does not exist, sending the walker home instead. Defined once, so
+   * the loading, error, not-found and success states all carry it: a wait, a failure
+   * or a missing experience still needs a way out.
+   */
+  const renderBackButton = () => (
+    <IconButton
+      onPress={() => detailBackAction(router, ROUTES.PATH.HOME)}
+      variant="ghost"
+      size="sm"
+      className="ml-1"
+      accessibilityLabel={t('common.back')}
+      testID="detail-back-button"
+      icon={{
+        ios: 'chevron.left',
+        android: 'arrow_back',
+        web: 'arrow_back',
+      }}
+    />
+  );
+
   if (error) {
     return (
       <TwView className="flex-grow items-center justify-center p-6 bg-background">
+        <Stack.Screen options={{ headerLeft: renderBackButton }} />
         <ThemedText className="text-base font-bold text-text mb-4 text-center">
           {t('experiences.errorLoading')}
         </ThemedText>
@@ -144,8 +173,11 @@ export default function TrackDetailScreen() {
         <Stack.Screen
           options={
             initialTitle
-              ? { title: initialTitle }
-              : { headerTitle: () => <ActivityIndicator size="small" /> }
+              ? { title: initialTitle, headerLeft: renderBackButton }
+              : {
+                  headerTitle: () => <ActivityIndicator size="small" />,
+                  headerLeft: renderBackButton,
+                }
           }
         />
         <LoadingView message={t('map.loadingMap')} />
@@ -156,7 +188,9 @@ export default function TrackDetailScreen() {
   if (!track || !isPlayableExperience(track)) {
     return (
       <TwView className="flex-grow items-center justify-center px-6">
-        <Stack.Screen options={{ title: t('experiences.notFound') }} />
+        <Stack.Screen
+          options={{ title: t('experiences.notFound'), headerLeft: renderBackButton }}
+        />
         <ThemedText themeColor="text">{t('experiences.notFound')}</ThemedText>
       </TwView>
     );
@@ -173,6 +207,7 @@ export default function TrackDetailScreen() {
             backgroundColor: colors.background,
           },
           headerTintColor: colors.text,
+          headerLeft: renderBackButton,
         }}
       />
       <MapScrollScreenWrapper

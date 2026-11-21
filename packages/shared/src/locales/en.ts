@@ -1,5 +1,6 @@
 export const en = {
   common: {
+    back: 'Back',
     learnMore: 'Learn more',
     dismiss: 'Dismiss',
     yes: 'Yes',
@@ -68,6 +69,10 @@ export const en = {
       empty: 'No experiences are published on the map yet',
       // The map is not empty: the filter is. A sentence about the world would be a lie here.
       filteredEmpty: 'No experiences of this format are published on the map yet',
+      clusterTitle: 'Places sharing this point',
+      clusterShared:
+        'These experiences share the same place. The numbered marker groups them; tap it to choose one.',
+      backToList: 'Back to list',
     },
     fetchingLocation: 'Locating…',
     openLink: 'Open link',

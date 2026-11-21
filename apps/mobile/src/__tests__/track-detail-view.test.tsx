@@ -1,6 +1,7 @@
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { useTranslation } from 'react-i18next';
 
+import { detailBackAction } from '@/utils/detail-back';
 import TrackDetailScreen from '@/app/poetics/[id]';
 import { type Experience } from '@/data/experiences';
 
@@ -24,12 +25,19 @@ const mockExperience: Experience = {
 };
 
 const mockParams: Record<string, string> = {};
+/** Stable spies, so a test can read what the back button did. */
+const mockRouterSpies = {
+  canGoBack: jest.fn(() => true),
+  back: jest.fn(),
+  replace: jest.fn(),
+};
 jest.mock('expo-router', () => ({
   Stack: {
     Screen: () => null,
   },
   useLocalSearchParams: () => mockParams,
   useFocusEffect: jest.fn(),
+  useRouter: () => mockRouterSpies,
 }));
 
 jest.mock('@/data/experiences', () => ({
@@ -506,5 +514,21 @@ describe('TrackDetailView (via TrackDetail screen)', () => {
     await fireEvent.press(getByTestId('restore-link-button'));
     await fireEvent.changeText(getByTestId('restore-email-input'), 'user@test.com');
     await fireEvent.press(getByTestId('restore-button'));
+  });
+});
+
+describe('detailBackAction', () => {
+  it('pops the stack when there is one to pop', () => {
+    const router = { canGoBack: () => true, back: jest.fn(), replace: jest.fn() };
+    detailBackAction(router, '/');
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('goes home when a deep link or a refresh left no stack', () => {
+    const router = { canGoBack: () => false, back: jest.fn(), replace: jest.fn() };
+    detailBackAction(router, '/');
+    expect(router.replace).toHaveBeenCalledWith('/');
+    expect(router.back).not.toHaveBeenCalled();
   });
 });

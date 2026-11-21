@@ -113,6 +113,17 @@ export interface ReferenceLayerOptions {
    * every other map draws.
    */
   bold?: boolean;
+  /**
+   * Whether the source is clustered and the point layers must therefore skip the
+   * cluster aggregates.
+   *
+   * A clustered source feeds every point layer one aggregate per group (with a
+   * `point_count` property) alongside the surviving points, and a dot layer would
+   * draw the aggregate as a place. Only the world hub asks for it today — two
+   * experiences published on the same GPS place draw two dots on the same pixels,
+   * and no zoom separates them — so the flag is opt-in per source.
+   */
+  cluster?: boolean;
 }
 
 export function buildReferenceStyleLayers(
@@ -125,6 +136,13 @@ export function buildReferenceStyleLayers(
   const fromZoom = ['>=', ['zoom'], ['coalesce', ['get', 'minzoom'], 0]];
   const forGeometry = (kind: string) => ['all', ['==', ['geometry-type'], kind], fromZoom];
   const bold = options.bold === true;
+  const cluster = options.cluster === true;
+  /** The aggregates a clustered source reports: not places, and never drawn as ones. */
+  const notClustered = cluster ? [['!', ['has', 'point_count']]] : [];
+  const isPoint = forGeometry('Point');
+  /** A crowd's member presses through its aggregate: the hit target skips it too. */
+  const notSharedCenter = bold ? [['!', ['has', 'sharedCount']]] : [];
+  const pointOnly = [...isPoint, ...notClustered];
 
   const layers: MapStyleLayer[] = [
     {
@@ -144,6 +162,39 @@ export function buildReferenceStyleLayers(
   ];
 
   if (bold) {
+    // The shared-place marker: a crowd's own aggregate, drawn before the dot for the
+    // same reason the cluster body is — a dot that stands for several experiences is
+    // the thing the eye reads first. Same geometry as the cluster's, in the crowd's
+    // own colour, and the count rides inside it.
+    layers.push({
+      id: `${sourceId}:circle-shared`,
+      type: 'circle',
+      source: sourceId,
+      filter: [...isPoint, ...notClustered, ['has', 'sharedCount']],
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['step', ['get', 'sharedCount'], 16, 5, 20, 10, 24],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': DOT_STROKE_WIDTH,
+        'circle-opacity': 0.9,
+      },
+    });
+    if (options.includeLabels !== false) {
+      layers.push({
+        id: `${sourceId}:shared-count`,
+        type: 'symbol',
+        source: sourceId,
+        filter: [...isPoint, ...notClustered, ['has', 'sharedCount']],
+        layout: {
+          'text-field': ['get', 'sharedCount'],
+          'text-font': LABEL_FONT,
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      });
+    }
     // Added before the dot, because MapLibre draws in array order: the target sits under
     // the marker and the marker is what the eye reads. Its id still names the document
     // (`refs:<key>:circle-hit`), which is what makes the press path work untouched on
@@ -153,7 +204,7 @@ export function buildReferenceStyleLayers(
       id: `${sourceId}:circle-hit`,
       type: 'circle',
       source: sourceId,
-      filter: forGeometry('Point'),
+      filter: [...isPoint, ...notClustered, ...notSharedCenter],
       paint: {
         'circle-color': color,
         'circle-radius': BOLD_HIT_RADIUS,
@@ -162,11 +213,52 @@ export function buildReferenceStyleLayers(
     });
   }
 
+  if (cluster) {
+    // The aggregate's own body, drawn before the unclustered points so a dot that
+    // survives clustering is never covered by a nearby aggregate's circle. The
+    // size grows with the group it stands for, in the same steps every MapLibre
+    // example uses, so the shape reads as "more than one" before the count is read.
+    layers.push({
+      id: `${sourceId}:cluster`,
+      type: 'circle',
+      source: sourceId,
+      filter: forGeometry('Point').concat([['has', 'point_count']]),
+      paint: {
+        'circle-color': DEFAULT_COLOR,
+        'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 24],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': DOT_STROKE_WIDTH,
+        'circle-opacity': 0.9,
+      },
+    });
+    // The count reads inside the body. A text layer needs glyphs, which the same
+    // includeLabels gate already guards for this source.
+    if (options.includeLabels !== false) {
+      layers.push({
+        id: `${sourceId}:cluster-count`,
+        type: 'symbol',
+        source: sourceId,
+        filter: forGeometry('Point').concat([['has', 'point_count']]),
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': LABEL_FONT,
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      });
+    }
+  }
+
   layers.push({
     id: `${sourceId}:circle`,
     type: 'circle',
     source: sourceId,
-    filter: forGeometry('Point'),
+    // A crowd's member draws through the shared aggregate: the plain dot would be
+    // painted over the count digit, because MapLibre draws this layer after the
+    // aggregate's own body. Its hit target stays, so the press path is untouched.
+    filter: [...pointOnly, ...(bold ? [['!', ['has', 'sharedCount']]] : [])],
     paint: {
       'circle-color': color,
       'circle-radius': DOT_RADIUS,
@@ -241,19 +333,30 @@ export function buildReferenceStyleLayers(
     // the filter it always had.
     const splitSides = bold && movable;
 
-    /** One label layer, with the anchor order its side of the frame needs. */
+    /**
+     * One label layer, with the anchor order its side of the frame needs.
+     *
+     * A coincident point's name never asks for a movable anchor: its own layer places it
+     * beside the dot the fan pushed out, where nothing else can be. Including it here
+     * would put a variable-anchor label back on the true place, on top of its sibling's.
+     */
     const labelLayer = (id: string, anchorOrder: readonly string[], side: 'east' | 'west') => ({
       id,
       type: 'symbol' as const,
       source: sourceId,
-      filter: splitSides
-        ? [
-            ...forGeometry('Point'),
-            side === 'west'
-              ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
-              : ['!', ['has', 'labelSide']],
-          ]
-        : forGeometry('Point'),
+      filter: [
+        ...pointOnly,
+        // A crowd member's name lives in the stack layer under the aggregate: a
+        // variable-anchor label here would fight its siblings for the same pixels.
+        ...(movable ? [['!', ['has', 'sharedCount']]] : []),
+        ...(splitSides
+          ? [
+              side === 'west'
+                ? ['==', ['get', 'labelSide'], LABEL_WEST_SIDE]
+                : ['!', ['has', 'labelSide']],
+            ]
+          : []),
+      ],
       layout: labelLayout(anchorOrder),
       paint: labelPaint,
     });
@@ -267,6 +370,57 @@ export function buildReferenceStyleLayers(
     // for it: the detail map has no eastern convention to respect.
     if (splitSides) {
       layers.push(labelLayer(`${sourceId}:label-west`, ['right', 'top', 'bottom', 'left'], 'west'));
+    }
+
+    /**
+     * The crowd's stacked names: one line per experience, under the aggregate.
+     *
+     * The aggregate says how many options share the place; the stack says which.
+     * Each member carries `sharedIndex`, its line in the list, and the offset grows
+     * one em-and-a-bit per line so the names never overlap — the top one clears the
+     * aggregate's own body. The first line is centre-anchored and the rest top, so
+     * the stack hangs from the aggregate like a list.
+     */
+    if (movable) {
+      layers.push({
+        id: `${sourceId}:label-stack`,
+        type: 'symbol',
+        source: sourceId,
+        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'sharedCount']],
+        layout: {
+          'text-field': ['get', 'labelText'],
+          'text-font': bold ? BOLD_LABEL_FONT : LABEL_FONT,
+          'text-size': bold ? BOLD_LABEL_SIZE : 12,
+          'text-anchor': 'top',
+          // One line per member, the first starting past the aggregate's own body:
+          // its radius plus its stroke is the space the count digit lives in, and
+          // a name drawn inside it would read as the number's caption. The line
+          // spacing is a title's wrapped height (the default line height is 1.2 em
+          // plus air), so a wrapped name never occupies its sibling's row, and the
+          // interpolation is linear in `sharedIndex`, so a crowd of any size gets
+          // its own row instead of clamping to the last stop.
+          'text-offset': [
+            'interpolate',
+            ['linear'],
+            ['get', 'sharedIndex'],
+            0,
+            ['literal', [0, 1.6]],
+            1,
+            ['literal', [0, 3.0]],
+            2,
+            ['literal', [0, 4.4]],
+            3,
+            ['literal', [0, 5.8]],
+            4,
+            ['literal', [0, 7.2]],
+            5,
+            ['literal', [0, 8.6]],
+          ],
+          'text-max-width': bold ? BOLD_TEXT_MAX_WIDTH : 8,
+          'text-allow-overlap': true,
+        },
+        paint: labelPaint,
+      });
     }
   }
 

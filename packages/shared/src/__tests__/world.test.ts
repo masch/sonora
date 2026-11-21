@@ -97,6 +97,34 @@ describe('worldPointLabel', () => {
 });
 
 describe('worldDocuments', () => {
+  describe('coincident experiences', () => {
+    /** Two experiences published on the same GPS point. */
+    const fuego: WorldExperience = { ...track, slug: 'fuego', title: 'Fuego' };
+    const nogales: WorldExperience = { ...track, slug: 'nogales', title: 'Nogales' };
+
+    it('marks a shared place with the crowd count, on the published place', () => {
+      const [points] = worldDocuments([fuego, nogales], { language: 'es' });
+      const features = points?.collection.features ?? [];
+      expect(features).toHaveLength(2);
+      for (const feature of features) {
+        expect(feature.geometry.type).toBe('Point');
+        expect(feature.geometry.coordinates).toEqual([fuego.longitude, fuego.latitude]);
+        expect(feature.properties.sharedCount).toBe(2);
+      }
+      // Each marker still names its own experience.
+      const slugs = features.map((feature) => feature.properties.experienceSlug);
+      expect(slugs).toEqual(expect.arrayContaining(['fuego', 'nogales']));
+    });
+
+    it('leaves a lone point on its published place, with no crowd count', () => {
+      const [points] = worldDocuments([track], { language: 'es' });
+      const features = points?.collection.features ?? [];
+      expect(features).toHaveLength(1);
+      expect(features[0]?.geometry.coordinates).toEqual([track.longitude, track.latitude]);
+      expect(features[0]?.properties.sharedCount).toBeUndefined();
+    });
+  });
+
   const documents = worldDocuments([trip, track], { language: 'es' });
 
   it('draws one points document, one point per experience', () => {

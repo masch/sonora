@@ -82,6 +82,14 @@ export interface MapReferencePress {
    * preview resolves to the experience in the payload.
    */
   experienceSlug?: string;
+  /**
+   * The centre of a cluster the tap landed on, when the reference is one.
+   *
+   * A cluster is an aggregate, not a place: it names no experience, and the caller
+   * resolves it — by zooming on the web, or by listing the places it holds where a
+   * zoom cannot separate them (two experiences on the same GPS point).
+   */
+  cluster?: { longitude: number; latitude: number; zoom: number };
   /** The label already resolved to the active language, from the document or a key. */
   labelText?: string;
   /** The description already resolved, when the reference has one. */

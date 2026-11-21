@@ -487,6 +487,10 @@ describe('reference style layers', () => {
     expect(layers.map((layer) => layer.id)).toEqual([
       `${REFERENCE_SOURCE_PREFIX}sendero:fill`,
       `${REFERENCE_SOURCE_PREFIX}sendero:line`,
+      // The crowd's own aggregate: gated on `sharedCount`, so a source without a
+      // crowd property draws nothing from these two layers.
+      `${REFERENCE_SOURCE_PREFIX}sendero:circle-shared`,
+      `${REFERENCE_SOURCE_PREFIX}sendero:shared-count`,
       `${REFERENCE_SOURCE_PREFIX}sendero:circle-hit`,
       `${REFERENCE_SOURCE_PREFIX}sendero:circle`,
       `${REFERENCE_SOURCE_PREFIX}sendero:label`,

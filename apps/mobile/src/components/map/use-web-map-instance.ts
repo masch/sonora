@@ -76,6 +76,8 @@ function errorFields(event: MapLibreErrorEvent): { sourceId: string | null; url:
 export interface RenderedFeature {
   layer: { id: string };
   properties: Record<string, unknown>;
+  /** GeoJSON geometry of the rendered feature; a cluster's centre rides here. */
+  geometry?: { coordinates?: [number, number] };
 }
 
 /** The slice of the MapLibre map this component drives. */
@@ -90,9 +92,18 @@ export interface MapHandle {
   once(event: string, handler: () => void): void;
   remove(): void;
   getStyle(): { layers?: { id: string }[]; sources?: Record<string, unknown> };
-  getSource(id: string): { setData?: (data: unknown) => void } | undefined;
+  getSource(id: string):
+    | {
+        setData?: (data: unknown) => void;
+        getClusterExpansionZoom?: (id: number) => Promise<number>;
+      }
+    | undefined;
   addSource(id: string, value: unknown): void;
   removeSource(id: string): void;
+  /** The current camera zoom. */
+  getZoom(): number;
+  /** One animated camera move to a centre and zoom. */
+  easeTo(options: { center: [number, number]; zoom: number }): void;
   addLayer(layer: unknown): void;
   removeLayer(id: string): void;
   /**

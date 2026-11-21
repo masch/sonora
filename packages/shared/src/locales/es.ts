@@ -1,5 +1,6 @@
 export const es = {
   common: {
+    back: 'Volver',
     learnMore: 'Más información',
     dismiss: 'Descartar',
     yes: 'Sí',
@@ -69,6 +70,10 @@ export const es = {
       empty: 'Todavía no hay experiencias publicadas en el mapa',
       // El mapa no está vacío: lo está el filtro. Una frase sobre el mundo mentiría acá.
       filteredEmpty: 'Todavía no hay experiencias de este formato publicadas en el mapa',
+      clusterTitle: 'Experiencias en este punto',
+      clusterShared:
+        'Estas experiencias comparten el mismo lugar. El marcador numerado las agrupa; tócalo para elegir una.',
+      backToList: 'Volver al listado',
     },
     fetchingLocation: 'Ubicando…',
     openLink: 'Abrir enlace',

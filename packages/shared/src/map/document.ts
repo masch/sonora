@@ -56,6 +56,23 @@ export interface MapReferenceProperties {
   labelColor?: string;
   /** Minimum map zoom at which the reference should be drawn. */
   minzoom?: number;
+  /**
+   * How many experiences share this point, when more than one publishes the same
+   * place.
+   *
+   * The markers themselves stay on their published coordinates — the crowd is
+   * answered by the picker, not by drawn-apart pins — and this count is what lets a
+   * caller (and a test) know the point is a choice without parsing labels.
+   */
+  sharedCount?: number;
+  /**
+   * This experience's line in the crowd's stacked name list, 0-based.
+   *
+   * A crowd's names do not compete for the pixels under their aggregate: each one
+   * sits one line lower than the previous, read by the stack label layer as its
+   * vertical offset.
+   */
+  sharedIndex?: number;
   /** Position inside an auto-numbered series, read by `map.point` as `{{index}}`. */
   labelIndex?: number;
   /**

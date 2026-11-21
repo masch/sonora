@@ -20,6 +20,24 @@ import type { TranslateKey } from './labels';
 /** Stable key of the document that draws one point per experience. */
 export const WORLD_POINTS_DOCUMENT_KEY = 'world-experiences';
 
+/**
+ * The world points source's clustering settings, in one place.
+ *
+ * The style build configures the source with them, the press paths read them back:
+ * the radius decides how far a cluster's members sit from its centre (the native
+ * press resolves them by pixel span), and the ceiling decides whether an expansion
+ * zoom can ever separate a group or whether it is a shared place the picker answers.
+ * One table, so the two can never drift apart.
+ */
+export const WORLD_CLUSTER_CONFIG = {
+  /** supercluster's default radius, in pixels. */
+  radiusPx: 40,
+  /** Supercluster's tile extent: the projected world width at zoom 0, in pixels. */
+  extentPx: 512,
+  /** Past this camera zoom the source stops clustering. */
+  maxZoom: 16,
+} as const;
+
 /** Prefix of the document that draws one trip's own path. */
 export const WORLD_PATH_PREFIX = 'world-path-';
 
@@ -86,6 +104,49 @@ const WORLD_SIDE_MARGIN_RATIO = 0.12;
  * south. Slightly more than a two-line label at the label's own size.
  */
 const WORLD_LABEL_MARGIN_RATIO = 0.12;
+
+/** Two places are the same place when they round to the same millionth of a degree. */
+function coincidentKey(experience: WorldExperience): string {
+  return `${Math.round(experience.latitude * 1e6)}:${Math.round(experience.longitude * 1e6)}`;
+}
+
+/**
+ * The slugs whose published place carries more than one experience.
+ *
+ * The map draws a crowd on a fan around the true place, and the callers that speak to
+ * the walker (the picker, the preview) name that fact with this set: the same grouping,
+ * read once, so drawing and words can never disagree about what a crowd is.
+ */
+export function worldSharedPlaceSlugs(experiences: readonly WorldExperience[]): Set<string> {
+  const shared = new Set<string>();
+  for (const members of worldPlaceGroups(experiences).values()) {
+    if (members.length > 1) for (const experience of members) shared.add(experience.slug);
+  }
+  return shared;
+}
+
+/**
+ * Experiences grouped by the place they publish, sharing `worldSharedPlaceSlugs`'s
+ * own "same place" rule: two positions are the same place when they round to the
+ * same millionth of a degree.
+ *
+ * Callers that must name a crowd's members (the picker, a pressed cluster) read
+ * this table instead of re-deciding what "the same place" means, so the map and
+ * the lists can never disagree about who belongs together.
+ */
+export function worldPlaceGroups(
+  experiences: readonly WorldExperience[],
+): Map<string, WorldExperience[]> {
+  const crowds = new Map<string, WorldExperience[]>();
+  for (const experience of experiences) {
+    if (!isFinitePoint(experience)) continue;
+    const key = coincidentKey(experience);
+    const members = crowds.get(key);
+    if (members) members.push(experience);
+    else crowds.set(key, [experience]);
+  }
+  return crowds;
+}
 
 /** The fields of a published experience the world draws, and nothing else. */
 export interface WorldExperience {
@@ -247,22 +308,47 @@ export function worldDocuments(
   const westmost = Math.min(...frame);
   const span = Math.max(...frame) - westmost;
 
-  const points = drawable.map((experience): MapReferenceFeature => {
-    const label: MapReferenceText = { [language]: worldPointLabel(experience) };
-    const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
-    return {
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
-      properties: {
+  /**
+   * Experiences grouped by the place they publish, in draw order.
+   *
+   * A group with more than one member is a crowd: the same GPS point carrying two
+   * experiences draws two dots on the same pixels, and no zoom separates them.
+   * The grouping is `worldPlaceGroups`'s, the one rule the picker also reads.
+   */
+  const crowds = worldPlaceGroups(drawable);
+
+  const features: MapReferenceFeature[] = [];
+  for (const members of crowds.values()) {
+    members.forEach((experience) => {
+      const label: MapReferenceText = { [language]: worldPointLabel(experience) };
+      const acrossFrame = span === 0 ? 0 : (experience.longitude - westmost) / span;
+      const color = colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format];
+
+      /**
+       * Every marker stands on its published place: the crowd is answered by the
+       * picker and the shared-place hint, both of which read the payload, and a
+       * drawn-apart fan competed with the basemap's own streets instead of reading
+       * as a design decision.
+       */
+      const properties: MapReferenceFeature['properties'] = {
         label,
-        color: colors?.[experience.format] ?? WORLD_POINT_COLORS[experience.format],
+        color,
         ...(labelColor === undefined ? {} : { labelColor }),
         experienceSlug: experience.slug,
         sortKey: WORLD_POINT_SORT_KEYS[experience.format],
+        ...(members.length > 1
+          ? { sharedCount: members.length, sharedIndex: members.indexOf(experience) }
+          : {}),
         ...(acrossFrame >= LABEL_WEST_FROM_FRAME_SHARE ? { labelSide: LABEL_WEST_SIDE } : {}),
-      },
-    };
-  });
+      };
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [experience.longitude, experience.latitude] },
+        properties,
+      });
+    });
+  }
 
   const paths = drawable
     .map(worldPathDocument)
@@ -272,7 +358,7 @@ export function worldDocuments(
     {
       key: WORLD_POINTS_DOCUMENT_KEY,
       scope: 'experience',
-      collection: { type: 'FeatureCollection', features: points },
+      collection: { type: 'FeatureCollection', features },
     },
     ...paths,
   ];

@@ -10,6 +10,8 @@ import {
   movableLabelsForDocument,
   referenceSourceId,
   withResolvedLabels,
+  WORLD_CLUSTER_CONFIG,
+  WORLD_POINTS_DOCUMENT_KEY,
   type MapDocument,
   type MapLayerSelection,
   type MapStyleLayer,
@@ -156,9 +158,22 @@ export function buildMapStyle(
 
   for (const document of orderedDocuments(documents)) {
     const sourceId = referenceSourceId(document.key);
+    // Only the world's own points cluster: two experiences published on the same GPS
+    // place draw two dots on the same pixels, and no zoom separates them. The radius
+    // is supercluster's default, in pixels; beyond clusterMaxZoom the aggregates are
+    // left to the press path, which answers a cluster that cannot expand any further
+    // by naming the places it holds.
+    const clustered = document.key === WORLD_POINTS_DOCUMENT_KEY;
     sources[sourceId] = {
       type: 'geojson',
       data: withResolvedLabels(document, translate, language).collection,
+      ...(clustered
+        ? {
+            cluster: true,
+            clusterRadius: WORLD_CLUSTER_CONFIG.radiusPx,
+            clusterMaxZoom: WORLD_CLUSTER_CONFIG.maxZoom,
+          }
+        : {}),
     };
     layers.push(
       ...buildReferenceStyleLayers(sourceId, {
@@ -166,6 +181,7 @@ export function buildMapStyle(
         labelAnchor: labelAnchorForDocument(document.key),
         movableLabels: movableLabelsForDocument(document.key),
         bold: boldReferences,
+        cluster: clustered,
       }),
     );
   }
