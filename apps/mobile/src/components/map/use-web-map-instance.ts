@@ -15,6 +15,8 @@ import { ensureLocalProtocol, type MapSourceState } from '@/hooks/use-map-source
 import { attributionWithVersion } from '@/utils/map-attribution';
 import { logger } from '@/utils/logger';
 
+import { browserCapability } from './browser-capability';
+
 import { documentKeyOfLayer, type MapLoadErrorCode, type MapSourceConfig } from './map-view.types';
 import { reportMapFailure, type MapFailureDetail } from './report-map-failure';
 import type { FocusFlightOptions } from './use-map-focus-flight';
@@ -258,6 +260,21 @@ export function useWebMapInstance({
       try {
         if (cancelledRef.current || !containerRef.current) return;
         if (!noRegion && (archive.status !== 'ready' || !archive.sourceUrl)) return;
+
+        // The device verdict comes before any wait: a browser that cannot run the
+        // library at all would spend the style fetch, the deadline and a report on
+        // a failure whose retry can never succeed. Reported once per episode like
+        // every other failure, so the dashboard keeps naming the OS versions involved.
+        const capability = browserCapability();
+        if (!capability.mapSupported) {
+          logger.error('ExperienceMap unsupported browser:', capability);
+          reportMapFailure('mapFailed', {
+            stage: 'draw',
+            message: 'unsupported browser',
+          });
+          setMapErrorCode('unsupported');
+          return;
+        }
 
         ensureLocalProtocol(maplibregl);
 

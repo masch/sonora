@@ -220,7 +220,12 @@ export function documentKeyOfLayer(layerId: string): string | null {
  * platforms and no request-layer prose ever reaches the screen.
  */
 export type MapLoadErrorCode =
-  'archiveMissing' | 'archiveDownloadFailed' | 'styleRequestFailed' | 'styleInvalid' | 'mapFailed';
+  | 'archiveMissing'
+  | 'archiveDownloadFailed'
+  | 'styleRequestFailed'
+  | 'styleInvalid'
+  | 'mapFailed'
+  | 'unsupported';
 
 /**
  * Stable codes for what can go wrong while the style document is fetched.
