@@ -267,11 +267,11 @@ export function useWebMapInstance({
         // every other failure, so the dashboard keeps naming the OS versions involved.
         const capability = browserCapability();
         if (!capability.mapSupported) {
+          // Local diagnostics only: this condition is never reported to telemetry,
+          // because it is not a failure of the attempt but a fact about the device,
+          // and the gate the web renderer applies means this is unreachable in the
+          // normal flow — the defense belongs here so the map is never created.
           logger.error('ExperienceMap unsupported browser:', capability);
-          reportMapFailure('mapFailed', {
-            stage: 'draw',
-            message: 'unsupported browser',
-          });
           setMapErrorCode('unsupported');
           return;
         }
