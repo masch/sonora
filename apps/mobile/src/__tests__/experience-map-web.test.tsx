@@ -33,6 +33,7 @@ jest.mock('@/services/analytics', () => ({
 
 import ExperienceMap from '@/components/map/experience-map.web';
 import { resetReportedMapFailures } from '@/components/map/report-map-failure';
+import { resetMeasuredUnsupportedBrowser } from '@/components/map/use-map-capability';
 import { ThemedText } from '@/components/themed-text';
 import { mockAddProtocol, mockMapInstances } from '@/test-utils/fake-maplibre';
 import { logger } from '@/utils/logger';
@@ -134,6 +135,7 @@ describe('ExperienceMap (web)', () => {
     mockedLogger.error.mockClear();
     // The episode registry belongs to a page session, and each case is its own page.
     resetReportedMapFailures();
+    resetMeasuredUnsupportedBrowser();
     recordError.mockClear();
     mockGetHeader.mockReset().mockResolvedValue({
       minZoom: 0,
@@ -1475,6 +1477,7 @@ describe('ExperienceMap (web) — bold references', () => {
   });
 
   it('measures the walker the map is locked away from, and draws no map', async () => {
+    const originalUserAgent = globalThis.navigator.userAgent;
     // The field reports came from this exact profile: Safari 15.6.8 on iOS 15.8.8.
     const userAgent =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.8 Mobile/15E148 Safari/604.1';
@@ -1483,22 +1486,29 @@ describe('ExperienceMap (web) — bold references', () => {
       configurable: true,
     });
 
-    const view = await render(
-      <ExperienceMap source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }} overlays={[document]} />,
-    );
+    try {
+      const view = await render(
+        <ExperienceMap source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }} overlays={[document]} />,
+      );
 
-    // The measurement is a trackEvent, never an error report: a device condition is
-    // not a failure of the attempt, and the OS the walker has is what decides the
-    // downgrade decision.
-    await waitFor(() =>
-      expect(trackEvent).toHaveBeenCalledWith('map_unsupported_browser', {
-        os_version: 'iOS 15.8.8',
-      }),
-    );
-    expect(recordError).not.toHaveBeenCalled();
-    // No map, no waits paid: the archive and the style the source names are never sent.
-    expect(mockMapInstances).toHaveLength(0);
-    expect(view.queryByText('map.errors.unsupported')).toBeTruthy();
-    expect(view.queryByTestId('experience-map-retry')).toBeNull();
+      // The measurement is a trackEvent, never an error report: a device condition is
+      // not a failure of the attempt, and the OS the walker has is what decides the
+      // downgrade decision.
+      await waitFor(() =>
+        expect(trackEvent).toHaveBeenCalledWith('map_unsupported_browser', {
+          os_version: 'iOS 15.8.8',
+        }),
+      );
+      expect(recordError).not.toHaveBeenCalled();
+      // No map, no waits paid: the archive and the style the source names are never sent.
+      expect(mockMapInstances).toHaveLength(0);
+      expect(view.queryByText('map.errors.unsupported')).toBeTruthy();
+      expect(view.queryByTestId('experience-map-retry')).toBeNull();
+    } finally {
+      Object.defineProperty(globalThis.navigator, 'userAgent', {
+        value: originalUserAgent,
+        configurable: true,
+      });
+    }
   });
 });
