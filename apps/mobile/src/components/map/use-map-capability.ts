@@ -1,8 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AnalyticsService } from '@/services/analytics';
 
 import { browserCapability } from './browser-capability';
+
+/**
+ * Whether this page session already measured the unsupported verdict.
+ *
+ * A hook-level ref would die with each mount and the count the dashboard reads
+ * has to be of devices, not of renders, so the one measurement is a fact of the
+ * page: a flag the module itself holds, forgettable only when the page is gone.
+ */
+let measuredThisPage = false;
+
+/** Forgets the measurement, the way a new page load would. For tests. */
+export function resetMeasuredUnsupportedBrowser(): void {
+  measuredThisPage = false;
+}
 
 /**
  * The browser verdict this page session draws the map under, measured once.
@@ -25,10 +39,9 @@ export function useMapCapability(): {
     return { mapSupported: capability.mapSupported, osVersion: capability.osVersion };
   });
 
-  const measuredRef = useRef(false);
   useEffect(() => {
-    if (mapSupported || measuredRef.current) return;
-    measuredRef.current = true;
+    if (mapSupported || measuredThisPage) return;
+    measuredThisPage = true;
     AnalyticsService.trackEvent('map_unsupported_browser', {
       os_version: osVersion ?? 'unknown',
     });
