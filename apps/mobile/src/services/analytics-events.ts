@@ -34,6 +34,14 @@ export interface GpsLocationEvents {
 
 export interface SystemEvents {
   network_status_changed: { is_online: boolean; type: string };
+  /**
+   * A walker opened the map web renderer in a browser that cannot run the map at
+   * all — Safari/iOS below 16.4, the release that ships module workers and WebGL2
+   * together. Not an error of the app: a fact about the device, measured here so
+   * the count of walkers the map is locked away from is a number, not an anecdote.
+   * `os_version` is the device's own, as its user agent spelled it (`iOS 15.8.8`).
+   */
+  map_unsupported_browser: { os_version: string };
 }
 
 export interface TestEvents {
