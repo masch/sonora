@@ -38,9 +38,33 @@ import { raiseUserLocation } from './apply-user-location';
 import { reportMapFailure } from './report-map-failure';
 import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
+import { browserCapability } from './browser-capability';
 
 /** No selection at all: no group is declared, so the style draws what it authored. */
 const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
+
+/** The map supported verdict the live browser reports, read lazily through useState. */
+const browserSupported = () => browserCapability().mapSupported;
+
+/**
+ * The failure this renderer reports, out of the component's control flow.
+ *
+ * An unsupported browser is the one answer that outranks every other: its failure
+ * is a fact about the device, so it names the verdict before any wait's own error
+ * can. A point outside every region draws no basemap on purpose, so neither an
+ * archive it never needed nor a style it never draws is a failure there.
+ */
+function resolveFailure(
+  mapSupported: boolean,
+  noRegion: boolean,
+  archive: Pick<MapSourceState, 'status' | 'error'>,
+  mapErrorCode: MapLoadErrorCode | null,
+): MapLoadErrorCode | undefined {
+  if (!mapSupported) return 'unsupported';
+  if (mapErrorCode) return mapErrorCode;
+  if (!noRegion && archive.status === 'error') return archive.error ?? 'archiveDownloadFailed';
+  return undefined;
+}
 
 function toPressReference(
   layerId: string,
@@ -134,9 +158,20 @@ export default function ExperienceMap({
   const [styleAttempt, setStyleAttempt] = useState(0);
   /** The map's own build: a failure there is not a wait, so it has a counter of its own. */
   const [mapAttempt, setMapAttempt] = useState(0);
+  // Read once per page session: the verdict is about the browser, which does not
+  // change while a page is open. False is the one answer that shortcuts every wait
+  // below: no archive transfer, no style request, no map, no deadline, no report —
+  // the failure a retry cannot fix never gets to start (issue #704). The initializer
+  // is lazy: the user agent is read only once, not on every render.
+  const [mapSupported] = useState(browserSupported);
   // The archive is downloaded whole and its tiles are read from memory: the route
-  // that serves the bucket supports no byte ranges.
-  const archive = useMapSource(source.archiveUrl, source.styleUrl, archiveAttempt + styleAttempt);
+  // that serves the bucket supports no byte ranges. An unsupported browser is handed
+  // no urls at all, so neither wait it would owe is ever sent.
+  const archive = useMapSource(
+    mapSupported ? source.archiveUrl : undefined,
+    mapSupported ? source.styleUrl : undefined,
+    archiveAttempt + styleAttempt,
+  );
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const overlaysRef = useRef(overlays);
@@ -307,11 +342,12 @@ export default function ExperienceMap({
    * A point outside every region draws no basemap on purpose, so neither an archive it
    * never needed nor a style it never draws is a failure there.
    */
-  const failure: MapLoadErrorCode | undefined =
-    mapErrorCode ??
-    (!noRegion && archive.status === 'error'
-      ? (archive.error ?? 'archiveDownloadFailed')
-      : undefined);
+  const failure: MapLoadErrorCode | undefined = resolveFailure(
+    mapSupported,
+    noRegion,
+    archive,
+    mapErrorCode,
+  );
 
   /**
    * The one failure the shared source hook cannot report.

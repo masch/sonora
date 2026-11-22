@@ -100,6 +100,10 @@ export const es = {
       styleUnavailable: 'No pudimos cargar el estilo del mapa',
       styleTimeout: 'El estilo del mapa tardó demasiado',
       mapUnavailable: 'No pudimos dibujar el mapa',
+      // The one failure retry cannot fix, so the sentence carries the gap itself:
+      // what the map requires and what the device actually has.
+      unsupported:
+        'El mapa necesita {{required}} o posterior y tu dispositivo tiene {{current}}. Actualizá el sistema y abrí esta página de nuevo.',
     },
   },
   tabs: {

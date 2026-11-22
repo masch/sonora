@@ -99,6 +99,10 @@ export const en = {
       styleUnavailable: "We couldn't load the map style",
       styleTimeout: 'The map style took too long to load',
       mapUnavailable: "We couldn't draw the map",
+      // The one failure retry cannot fix, so the sentence carries the gap itself:
+      // what the map requires and what the device actually has.
+      unsupported:
+        'The map needs {{required}} or later and your device has {{current}}. Update the system and open this page again.',
     },
   },
   tabs: {
