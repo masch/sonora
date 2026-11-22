@@ -38,13 +38,9 @@ import { raiseUserLocation } from './apply-user-location';
 import { reportMapFailure } from './report-map-failure';
 import { useUserLocation } from './use-user-location';
 import { useWebMapInstance, type MapHandle, type RenderedFeature } from './use-web-map-instance';
-import { browserCapability } from './browser-capability';
-
+import { useMapCapability } from './use-map-capability';
 /** No selection at all: no group is declared, so the style draws what it authored. */
 const NO_LAYER_SELECTION: readonly MapLayerSelection[] = [];
-
-/** The map supported verdict the live browser reports, read lazily through useState. */
-const browserSupported = () => browserCapability().mapSupported;
 
 /**
  * The failure this renderer reports, out of the component's control flow.
@@ -104,8 +100,16 @@ function useMissingArchiveReport(
   noRegion: boolean,
   archive: Pick<MapSourceState, 'status' | 'error'>,
   archiveUrl?: string,
+  mapSupported?: boolean,
 ): void {
-  const missing = !noRegion && archive.status === 'error' && archive.error === 'archiveMissing';
+  // An unsupported browser owes no archive at all: the absence its gate created is
+  // not a configuration gap, and reporting it would bury the real condition under
+  // an error that never happened.
+  const missing =
+    mapSupported !== false &&
+    !noRegion &&
+    archive.status === 'error' &&
+    archive.error === 'archiveMissing';
   useEffect(() => {
     if (!missing) return;
     reportMapFailure('archiveMissing', { stage: 'archive', url: archiveUrl ?? null });
@@ -158,12 +162,10 @@ export default function ExperienceMap({
   const [styleAttempt, setStyleAttempt] = useState(0);
   /** The map's own build: a failure there is not a wait, so it has a counter of its own. */
   const [mapAttempt, setMapAttempt] = useState(0);
-  // Read once per page session: the verdict is about the browser, which does not
-  // change while a page is open. False is the one answer that shortcuts every wait
-  // below: no archive transfer, no style request, no map, no deadline, no report —
-  // the failure a retry cannot fix never gets to start (issue #704). The initializer
-  // is lazy: the user agent is read only once, not on every render.
-  const [mapSupported] = useState(browserSupported);
+  // The verdict and its measurement hide in one hook: an unsupported browser never
+  // starts a wait, and the walkers the map is locked away from are counted without
+  // this component having to remember it.
+  const { mapSupported } = useMapCapability();
   // The archive is downloaded whole and its tiles are read from memory: the route
   // that serves the bucket supports no byte ranges. An unsupported browser is handed
   // no urls at all, so neither wait it would owe is ever sent.
@@ -356,7 +358,7 @@ export default function ExperienceMap({
    * `archiveMissing`, which the hook itself never reports: it opens no wait at all
    * without an archive url.
    */
-  useMissingArchiveReport(noRegion, archive, source.archiveUrl);
+  useMissingArchiveReport(noRegion, archive, source.archiveUrl, mapSupported);
 
   /** Restarts the wait that failed, and only that one. */
   const retry = useWebRetry(failure, {

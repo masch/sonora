@@ -27,7 +27,9 @@ jest.mock('@/utils/logger', () => ({
 
 // What a report does with its fields is the reporter's own suite: here the assertion is
 // that the failure the shared source hook cannot report still reaches analytics.
-jest.mock('@/services/analytics', () => ({ AnalyticsService: { recordError: jest.fn() } }));
+jest.mock('@/services/analytics', () => ({
+  AnalyticsService: { recordError: jest.fn(), trackEvent: jest.fn() },
+}));
 
 import ExperienceMap from '@/components/map/experience-map.web';
 import { resetReportedMapFailures } from '@/components/map/report-map-failure';
@@ -66,6 +68,8 @@ const mockedLogger = logger as unknown as { error: jest.Mock };
 
 /** The report, as jest sees it: what a failure the renderer owns reaches. */
 const recordError = jest.mocked(AnalyticsService.recordError);
+/** The measurement, as jest sees it: what a device condition reaches. */
+const trackEvent = jest.mocked(AnalyticsService.trackEvent);
 
 const document: MapDocument = {
   key: 'umepay',
@@ -1468,5 +1472,33 @@ describe('ExperienceMap (web) — bold references', () => {
       'circle-radius': 6,
       'circle-stroke-width': 2,
     });
+  });
+
+  it('measures the walker the map is locked away from, and draws no map', async () => {
+    // The field reports came from this exact profile: Safari 15.6.8 on iOS 15.8.8.
+    const userAgent =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.8 Mobile/15E148 Safari/604.1';
+    Object.defineProperty(globalThis.navigator, 'userAgent', {
+      value: userAgent,
+      configurable: true,
+    });
+
+    const view = await render(
+      <ExperienceMap source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }} overlays={[document]} />,
+    );
+
+    // The measurement is a trackEvent, never an error report: a device condition is
+    // not a failure of the attempt, and the OS the walker has is what decides the
+    // downgrade decision.
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('map_unsupported_browser', {
+        os_version: 'iOS 15.8.8',
+      }),
+    );
+    expect(recordError).not.toHaveBeenCalled();
+    // No map, no waits paid: the archive and the style the source names are never sent.
+    expect(mockMapInstances).toHaveLength(0);
+    expect(view.queryByText('map.errors.unsupported')).toBeTruthy();
+    expect(view.queryByTestId('experience-map-retry')).toBeNull();
   });
 });
