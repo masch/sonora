@@ -1488,7 +1488,10 @@ describe('ExperienceMap (web) — bold references', () => {
 
     try {
       const view = await render(
-        <ExperienceMap source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }} overlays={[document]} />,
+        <ExperienceMap
+          source={{ archiveUrl: ARCHIVE, styleUrl: STYLE_URL }}
+          overlays={[document]}
+        />,
       );
 
       // The measurement is a trackEvent, never an error report: a device condition is
