@@ -18,7 +18,7 @@
   "dependencies": {
     "@hono/node-server": "2.1.8",
     "@hono/zod-validator": "0.9.1",
-    "@neondatabase/serverless": "1.2.0",
+    "@neondatabase/serverless": "1.2.1",
     "@sonora/shared": "workspace:*",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.21",
