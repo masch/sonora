@@ -76,7 +76,7 @@
     "jest-expo": "57.0.6",
     "lightningcss": "catalog:",
     "prettier": "3.9.10",
-    "react-doctor": "0.9.22",
+    "react-doctor": "0.9.23",
     "react-test-renderer": "19.2.3",
     "test-renderer": "1.2.0",
     "typescript": "catalog:"
